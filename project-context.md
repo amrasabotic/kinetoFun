@@ -22,19 +22,21 @@ Users will be able to:
 
 ## Current System Architecture
 
-- **Frontend:** Next.js + React (web-first, TV-oriented UI)
+- **Frontend:** Next.js 16.2.7 (App Router) + React 19, TypeScript 5, Tailwind CSS v4, ESLint 9. `src/` dir, `@/*` import alias. (web-first, TV-oriented UI)
 - **Backend:** Supabase (PostgreSQL) — *not yet integrated*
 - **Auth:** JWT-based — *not yet integrated*
 - **Input (current):** Keyboard / mouse
 - **Input (future):** Raspberry Pi + camera + MediaPipe hand tracking
+- **Runtime:** Node v24.16.0
+- **VCS:** Git initialized — `main` (stable, tracking files only) and `dev` (active, scaffold). Currently on `dev`.
 
-> Nothing is scaffolded yet. The repository currently contains only the tracking files.
+> Base Next.js scaffold exists and builds successfully (`npm run build` passes). No KinetoFun-specific UI/features built yet.
 
 ---
 
 ## Completed Features
 
-_None yet._
+- **[2026-06-08] Project foundation / scaffold.** `create-next-app@latest` (App Router, TS, Tailwind v4, ESLint, `src/`, `@/*`). Git initialized with `main`/`dev` branches; tracking files committed on `main`, scaffold on `dev`. Production build verified (`npm run build`).
 
 ---
 
@@ -64,6 +66,7 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 - Frontend will use mocked backend data until Phase 2 (Supabase integration).
 - TV interface targets large-screen, remote/keyboard-driven navigation (focus-based UI).
 - No real auth or persistence required to complete Phase 1.
+- This machine intercepts TLS; npm/Next network operations may require `NODE_OPTIONS=--use-system-ca` (see ADR-007).
 
 ---
 

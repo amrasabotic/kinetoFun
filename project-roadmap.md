@@ -8,7 +8,6 @@
 ## Backlog
 
 ### Phase 1 — Frontend First (NO HARDWARE)
-- [ ] Scaffold Next.js + React project
 - [ ] TV interface shell / layout
 - [ ] Game browser (grid of games, mocked data)
 - [ ] Navigation system (focus-based, keyboard/remote friendly)
@@ -48,13 +47,16 @@ _None yet._
 
 ## Done
 
-_None yet._
+- [x] **[2026-06-08] Project foundation.** Scaffolded Next.js (App Router) + TS + Tailwind + ESLint via `create-next-app@latest`; git init with `main`/`dev`; tracking files on `main`, scaffold on `dev`; production build verified. (ADR-007)
 
 ---
 
 ## Blockers
 
-- **[2026-06-08] Node version too old for scaffolding.** Installed Node is v16.14.2 (EOL); Next.js 15 (`create-next-app@latest`) requires Node ≥ 18.18 (recommend Node 20 or 22 LTS). Phase 1 scaffolding is blocked until Node is upgraded, OR we pin an older Next.js version compatible with Node 16 (not recommended).
+_None active._
+
+**Resolved:**
+- ~~[2026-06-08] Node version too old (v16.14.2, EOL).~~ User upgraded to Node v24.16.0; scaffolding proceeded. Also resolved a `UNABLE_TO_VERIFY_LEAF_SIGNATURE` TLS error via `NODE_OPTIONS=--use-system-ca` (see ADR-007).
 
 ---
 
