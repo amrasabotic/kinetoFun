@@ -8,11 +8,14 @@
 ## Backlog
 
 ### Phase 1 — Frontend First (NO HARDWARE)
-- [ ] TV interface shell / layout
-- [ ] Game browser (grid of games, mocked data)
-- [ ] Navigation system (focus-based, keyboard/remote friendly)
-- [ ] User profiles (mocked backend)
-- [ ] Score display (mocked backend)
+- ✅ Complete — see Done.
+
+### Phase 1.x — Frontend polish (optional, future)
+- [ ] Persist display settings (large text / reduce motion) and actually apply them
+- [ ] Loading/skeleton states (will matter once services become async)
+- [ ] Real cover art instead of gradient placeholders
+- [ ] Favorites / wishlist
+- [ ] Per-rail "View all" deep links
 
 ### Phase 2 — Backend Integration
 - [ ] Supabase PostgreSQL integration
@@ -48,6 +51,14 @@ _None yet._
 ## Done
 
 - [x] **[2026-06-08] Project foundation.** Scaffolded Next.js (App Router) + TS + Tailwind + ESLint via `create-next-app@latest`; git init with `main`/`dev`; tracking files on `main`, scaffold on `dev`; production build verified. (ADR-007)
+- [x] **[2026-06-08] TV interface shell / layout.** Root + `(app)`/`(auth)` route-group layouts, sticky `TopBar` with live clock, dark console theme. (ADR-008)
+- [x] **[2026-06-08] Navigation system (focus-based, remote-friendly).** Global arrow-key spatial navigation over `[data-focusable]` elements — the seam for the future gesture layer. (ADR-008)
+- [x] **[2026-06-08] Game browser.** Home dashboard (hero + rails) and Library (search + category filter grid) over mock catalog.
+- [x] **[2026-06-08] Game detail + launch (UI only).** Detail page with per-game leaderboard; placeholder launch screen.
+- [x] **[2026-06-08] User profiles (mocked).** Profile page: avatar, level/XP, stats, recent scores + sessions.
+- [x] **[2026-06-08] Score display + leaderboards (mocked).** `LeaderboardTable`, `ScoreList`; global + per-game rankings derived from mock scores.
+- [x] **[2026-06-08] Mock auth UI + session.** Login/signup forms, `SessionProvider` (localStorage-backed, no real auth). (ADR-008)
+- [x] **[2026-06-08] Settings page.** Account/sign-out, mock display toggles, input status, about.
 
 ---
 
