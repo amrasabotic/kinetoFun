@@ -104,3 +104,18 @@
 - Lives in `src/components/ui/` — the path the `@/*` alias + the component's own import expect. This is **not** a shadcn project (no `components.json`), but the component has no shadcn/Radix deps so none is required.
 **Trade-off:** A returning, signed-in user may see a brief flash of the logged-out hero before `localStorage` hydration restores their session. Acceptable for the mock phase; revisit with an SSR-aware session check in Phase 2.
 **Rationale:** Satisfies the explicit request to show the hero when not logged in, and gives the app a real landing page. The `/login` form pre-fills demo credentials so sign-in is one click.
+
+---
+
+## ADR-010 — Futuristic SaaS visual re-skin (design language only)
+**Date:** 2026-06-08
+**Status:** Accepted (revises ADR-008 point 6 styling)
+**Decision:** Re-skinned the UI with a premium dark-SaaS visual language per a reference design, **without changing any content, copy, layout, sections, navigation, component hierarchy, or user flows** — purely the visual system.
+1. **Palette (`@theme` in `globals.css`).** Deep navy near-black canvas (`--color-bg #060913`); **neon-green primary accent** (`--color-accent #22e56f`, was violet); purple/pink secondary (`--color-accent-2 #b066ff`). Surfaces became translucent (glass) and `--color-line` is now `rgba(255,255,255,0.08)`. Added `--radius-card` / `--shadow-card` tokens.
+2. **Ambient backdrop.** Fixed `body::before` subtle grid (masked top-fade) + `body::after` radial glow blobs (green corners, purple/pink center) + vignette; `pointer-events:none`, `z-index` behind content.
+3. **Glassmorphism.** Global rule applies `backdrop-filter: blur(14px) saturate(1.2)` to any `.bg-surface`/`.bg-surface-2` panel — cheap because all panels already use those tokens.
+4. **Buttons.** Primary = neon-green bg with **dark text** (`text-bg`) + glow + hover scale; secondary = blurred dark glass + hover scale.
+5. **Accent details.** Logo mark + profile XP bar recolored to brand green; accent `Badge` is now a neon green chip (`text-accent` + ring).
+6. **Animated hero canvas.** `AnimatedHero` now clears to transparent (so the page backdrop shows through) instead of painting solid black; unhit text pixels off-white, hit pixels glow green, ball green (with glow), paddles purple. No behavioral change.
+**Rationale:** Because every component already consumes the `@theme` color tokens, swapping the tokens cascades the new look across all 9 pages with minimal per-file edits — keeping the change a re-skin, not a rewrite.
+**Verification:** `npm run build` passes (no new TS/lint errors; the 2 remaining lint errors in `session-context.tsx` are pre-existing and untouched).

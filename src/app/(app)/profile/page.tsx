@@ -50,7 +50,7 @@ export default function ProfilePage() {
             </div>
             <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-surface-2">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-indigo-500"
+                className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 shadow-[0_0_12px_rgba(34,229,111,0.5)]"
                 style={{ width: `${xpPct}%` }}
               />
             </div>

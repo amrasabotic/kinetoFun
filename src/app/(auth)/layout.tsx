@@ -17,7 +17,7 @@ export default function AuthLayout({
         data-focusable
         className="mb-10 flex items-center gap-2 rounded-lg text-3xl font-black tracking-tight text-white focus:outline-none"
       >
-        <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-indigo-600 text-xl">
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-accent to-emerald-400 text-xl text-bg shadow-lg shadow-accent/30">
           K
         </span>
         Kineto<span className="text-accent">Fun</span>

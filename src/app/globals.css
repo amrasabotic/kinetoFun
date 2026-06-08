@@ -1,16 +1,25 @@
 @import "tailwindcss";
 
-/* KinetoFun console theme — dark, high-contrast, TV-friendly. */
+/*
+ * KinetoFun — futuristic SaaS theme.
+ * Deep navy near-black canvas, neon-green primary accent, purple/pink ambient
+ * glow. Dark, high-contrast, TV-friendly. Only the visual language changed —
+ * layout, content and component structure are untouched.
+ */
 @theme {
-  --color-bg: #07070c;
-  --color-surface: #111119;
-  --color-surface-2: #1b1b27;
-  --color-line: #2a2a3a;
-  --color-muted: #9494a8;
-  --color-accent: #7c5cff;
-  --color-accent-2: #16e0c8;
+  --color-bg: #060913;
+  --color-surface: rgba(18, 23, 38, 0.7);
+  --color-surface-2: rgba(30, 37, 58, 0.85);
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-muted: #8b93ac;
+  --color-accent: #22e56f;
+  --color-accent-2: #b066ff;
 
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+
+  /* Card system: large radii + soft depth shadow. */
+  --radius-card: 24px;
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.35);
 }
 
 html {
@@ -19,8 +28,55 @@ html {
 }
 
 body {
-  background: var(--color-bg);
+  background-color: var(--color-bg);
   color: #ededf2;
+  position: relative;
+}
+
+/*
+ * Full-page futuristic backdrop, fixed behind all content:
+ *  - a very subtle grid
+ *  - ambient blurred gradient blobs (green in corners, purple/pink center)
+ *  - a soft vignette for depth
+ * pointer-events:none so it never intercepts focus/clicks.
+ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, #000 40%, transparent 100%);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(620px circle at 0% 0%, rgba(34, 229, 111, 0.16), transparent 60%),
+    radial-gradient(680px circle at 100% 8%, rgba(34, 229, 111, 0.1), transparent 60%),
+    radial-gradient(900px circle at 50% 42%, rgba(176, 102, 255, 0.14), transparent 60%),
+    radial-gradient(700px circle at 85% 95%, rgba(232, 84, 196, 0.12), transparent 60%),
+    radial-gradient(1200px circle at 50% 120%, rgba(0, 0, 0, 0.6), transparent 70%);
+}
+
+/*
+ * Glassmorphism: every translucent surface panel gets a backdrop blur so it
+ * reads as frosted glass over the ambient glow. Cheap to apply globally since
+ * all panels already use the `bg-surface` / `bg-surface-2` tokens.
+ */
+.bg-surface,
+.bg-surface-2 {
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
 }
 
 /* Subtle scrollbars so rails feel native on desktop. */

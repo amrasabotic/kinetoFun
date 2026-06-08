@@ -9,11 +9,11 @@ export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "bg-accent text-white shadow-lg shadow-accent/30 hover:brightness-110",
+    "bg-accent text-bg shadow-lg shadow-accent/30 hover:shadow-accent/50 hover:brightness-105 hover:scale-[1.02] active:scale-100",
   secondary:
-    "bg-surface border border-line text-white hover:bg-surface-2",
+    "bg-surface border border-line text-white backdrop-blur-md hover:bg-surface-2 hover:scale-[1.02] active:scale-100",
   ghost: "bg-transparent text-muted hover:bg-surface-2 hover:text-white",
-  danger: "bg-red-600 text-white hover:bg-red-500",
+  danger: "bg-red-600 text-white hover:bg-red-500 hover:scale-[1.02] active:scale-100",
 };
 
 const SIZES: Record<ButtonSize, string> = {

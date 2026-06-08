@@ -4,7 +4,7 @@ type BadgeTone = "default" | "accent" | "outline";
 
 const TONES: Record<BadgeTone, string> = {
   default: "bg-surface-2 text-zinc-200",
-  accent: "bg-accent/20 text-white",
+  accent: "bg-accent/15 text-accent ring-1 ring-accent/30",
   outline: "border border-line text-muted",
 };
 

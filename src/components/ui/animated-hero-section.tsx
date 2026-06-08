@@ -2,11 +2,10 @@
 
 import { useEffect, useRef } from "react"
 
-const COLOR = "#FFFFFF"
-const HIT_COLOR = "#333333"
-const BACKGROUND_COLOR = "#000000"
-const BALL_COLOR = "#FFFFFF"
-const PADDLE_COLOR = "#FFFFFF"
+const COLOR = "#ECECF2"
+const HIT_COLOR = "#22E56F"
+const BALL_COLOR = "#22E56F"
+const PADDLE_COLOR = "#B066FF"
 const LETTER_SPACING = 1
 const WORD_SPACING = 3
 
@@ -411,23 +410,29 @@ export function AnimatedHero() {
     const drawGame = () => {
       if (!ctx) return
 
-      ctx.fillStyle = BACKGROUND_COLOR
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      // Clear to transparent so the page's futuristic backdrop shows through.
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       pixelsRef.current.forEach((pixel) => {
         ctx.fillStyle = pixel.hit ? HIT_COLOR : COLOR
         ctx.fillRect(pixel.x, pixel.y, pixel.size, pixel.size)
       })
 
+      ctx.shadowColor = BALL_COLOR
+      ctx.shadowBlur = 24
       ctx.fillStyle = BALL_COLOR
       ctx.beginPath()
       ctx.arc(ballRef.current.x, ballRef.current.y, ballRef.current.radius, 0, Math.PI * 2)
       ctx.fill()
 
+      ctx.shadowColor = PADDLE_COLOR
       ctx.fillStyle = PADDLE_COLOR
       paddlesRef.current.forEach((paddle) => {
         ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height)
       })
+
+      // Reset so the (unhit) text pixels stay crisp on the next frame.
+      ctx.shadowBlur = 0
     }
 
     let animationFrameId = 0
