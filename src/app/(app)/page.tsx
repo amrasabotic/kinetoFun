@@ -8,13 +8,14 @@ import { GameRail } from "@/components/game/GameRail";
 import { ButtonLink } from "@/components/ui/Button";
 import { StarRating } from "@/components/ui/StarRating";
 import { Badge } from "@/components/ui/Badge";
+import { AnimatedHero } from "@/components/ui/animated-hero-section";
 import { playersLabel } from "@/lib/format";
 import type { Game, GameCategory } from "@/types";
 
 const CATEGORY_RAILS: GameCategory[] = ["Action", "Adventure", "Puzzle", "Sports"];
 
 export default function HomePage() {
-  const { user } = useSession();
+  const { user, isAuthenticated } = useSession();
   const featured = gamesService.featured();
   const spotlight = featured[0];
 
@@ -33,6 +34,28 @@ export default function HomePage() {
       .map((id) => allGames.find((g) => g.id === id))
       .filter((g): g is Game => Boolean(g));
   }, [user]);
+
+  // Logged-out landing: animated KinetoFun "Play with a wave" hero.
+  if (!isAuthenticated || !user) {
+    return (
+      <>
+        <AnimatedHero />
+        <div className="pointer-events-none fixed inset-x-0 bottom-12 z-50 flex flex-col items-center gap-4 px-6 text-center">
+          <p className="text-xs font-medium uppercase tracking-[0.3em] text-white/70">
+            Gesture-ready gaming for your TV
+          </p>
+          <div className="pointer-events-auto flex flex-wrap justify-center gap-3">
+            <ButtonLink href="/login" size="lg">
+              Sign in to play
+            </ButtonLink>
+            <ButtonLink href="/library" size="lg" variant="secondary">
+              Browse games
+            </ButtonLink>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="space-y-12">

@@ -27,23 +27,22 @@ const SessionContext = createContext<SessionState | null>(null);
  * In-memory mock session, persisted to localStorage so a refresh keeps you
  * "signed in". No real auth happens here — see services/auth.service.ts.
  *
- * We seed the default mock user on first render so the portal feels complete
- * out of the box, then reconcile with localStorage after mount (which keeps
- * SSR and the first client render identical, avoiding hydration warnings).
+ * Starts logged-OUT so a fresh visitor lands on the animated hero. We render
+ * the same null state on the server and the first client paint (avoiding
+ * hydration warnings), then reconcile with localStorage after mount — so a
+ * returning, previously-signed-in user is restored.
  */
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => authService.defaultUser());
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw === "null") {
-        setUser(null);
-      } else if (raw) {
+      if (raw && raw !== "null") {
         setUser(JSON.parse(raw) as User);
       }
     } catch {
-      // Ignore corrupt storage; keep the seeded default.
+      // Ignore corrupt storage; remain logged out.
     }
   }, []);
 

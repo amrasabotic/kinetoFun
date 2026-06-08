@@ -73,7 +73,8 @@ src/
     leaderboard/ LeaderboardTable.tsx
     profile/  ScoreList.tsx
     ui/       Button.tsx (Button + ButtonLink), Badge.tsx, Avatar.tsx,
-              StarRating.tsx, TextField.tsx
+              StarRating.tsx, TextField.tsx,
+              animated-hero-section.tsx (AnimatedHero — canvas Pong landing)
   features/
     auth/     session-context.tsx       # SessionProvider + useSession (mock)
   services/   games | leaderboard | profile | auth (.service.ts) + index.ts
@@ -86,7 +87,7 @@ src/
 ### Pages (routes)
 | Route | File | Purpose |
 |---|---|---|
-| `/` | `(app)/page.tsx` | Dashboard: hero spotlight, "Continue playing", featured + per-category rails. |
+| `/` | `(app)/page.tsx` | **Logged out:** animated "KinetoFun / Play with a wave" Pong hero (`AnimatedHero`) + sign-in CTA. **Logged in:** dashboard — hero spotlight, "Continue playing", featured + per-category rails. |
 | `/library` | `(app)/library/page.tsx` | Searchable, category-filterable grid of all games. |
 | `/games/[id]` | `(app)/games/[id]/page.tsx` | Game detail: hero, stats, description, top-5 leaderboard, "more like this". |
 | `/games/[id]/play` | `(app)/games/[id]/play/page.tsx` | **UI-only** launch screen: faux loading → "now playing" + session timer. |
@@ -104,7 +105,7 @@ src/
 - **LeaderboardTable, ScoreList, Avatar, StarRating, Badge, TextField** — presentational building blocks.
 
 ### State management (mock, in-memory)
-- **`SessionProvider` (`features/auth/session-context.tsx`)** — React Context. Seeds the default mock user (so the portal looks complete), persists to `localStorage` (`kinetofun.session`), and exposes `user`, `isAuthenticated`, `login`, `signup`, `logout`. No real auth.
+- **`SessionProvider` (`features/auth/session-context.tsx`)** — React Context. **Starts logged-out** (so a fresh visitor sees the animated hero landing); persists to `localStorage` (`kinetofun.session`) and restores a returning user on mount. Exposes `user`, `isAuthenticated`, `login`, `signup`, `logout`. No real auth. The `/login` form pre-fills the demo email for one-click sign-in.
 - Page-local `useState` for search/filter/toggles. No global store needed yet.
 
 ### Mock data structure (`src/mock/`)
