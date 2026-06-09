@@ -74,7 +74,7 @@ function HeroSection() {
         <div className="lg:w-[52%] xl:w-[50%]">
 
           {/* Live badge */}
-          <div className="mb-5 inline-flex items-center gap-2.5 rounded-full border border-[#1AACE0]/30 bg-white/80 px-4 py-2 shadow-sm backdrop-blur-sm">
+          {/* <div className="mb-5 inline-flex items-center gap-2.5 rounded-full border border-[#1AACE0]/30 bg-white/80 px-4 py-2 shadow-sm backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style={{ background: "#5ABB47" }} />
               <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: "#5ABB47" }} />
@@ -82,7 +82,7 @@ function HeroSection() {
             <ShimmerText className="text-[11px] font-bold uppercase tracking-widest text-[#1A2E74]" duration={3} delay={2}>
               Next-gen gaming — now live
             </ShimmerText>
-          </div>
+          </div> */}
 
           {/* Headline */}
           <h1
