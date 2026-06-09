@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-06-08 (Phase 1 frontend complete; futuristic SaaS re-skin — ADR-010)
+> Last updated: 2026-06-09 (Homepage redesign — colorful/playful landing page — ADR-011)
 
 ---
 
@@ -39,6 +39,7 @@ Users will be able to:
 - **[2026-06-08] Project foundation / scaffold.** `create-next-app@latest` (App Router, TS, Tailwind v4, ESLint, `src/`, `@/*`). Git initialized with `main`/`dev` branches; tracking files committed on `main`, scaffold on `dev`. Production build verified (`npm run build`).
 - **[2026-06-08] Phase 1 — Frontend (TV portal UI).** Full mock-data UI: 9 pages, shared component library, mock session/auth, spatial (arrow-key/remote) navigation, service boundary layer. See **Frontend Architecture** below. Build + route smoke tests pass.
 - **[2026-06-08] Futuristic SaaS visual re-skin.** Re-skinned the UI (design language only — no content/layout/flow changes): deep-navy canvas, **neon-green** primary accent (was violet), purple/pink ambient glow, full-page grid + radial-glow backdrop, glassmorphism panels, green/glow buttons. Driven mostly by swapping `@theme` tokens in `globals.css`. (ADR-010)
+- **[2026-06-09] Homepage redesign — colorful/playful landing page.** Replaced the logged-out `/` landing page (`LandingPage` in `(app)/page.tsx`) with a full 9-section multi-section page: Hero, How It Works, Featured Games, Multiplayer, Why Kids Love It, Educational Benefits, Perfect For, Leaderboard Preview, Final CTA. Palette: `#6D5DFC` / `#00D4FF` / `#FFB800` / `#32D583`, light (#FAFBFF) and dark (#0d0e1a) alternating sections. Animations added to `globals.css` (float keyframes). Authenticated dashboard unchanged. (ADR-011)
 
 ---
 

@@ -1,97 +1,124 @@
 @import "tailwindcss";
 
 :root {
-  --card: #fdfdfd;
-  --ring: #000000;
-  --input: #ebebeb;
-  --muted: #f5f5f5;
-  --accent: #e2ebff;
-  --border: #e7e7ee;
+  /* ── Backgrounds ─────────────────────────────── */
+  --background: #c8deff;
+  --card:       #ffffff;
+  --popover:    #ffffff;
+  --sidebar:    #d8eaff;
+  /* ── Foreground / Text ───────────────────────── */
+  --foreground:          #1A2E74;
+  --card-foreground:     #1A2E74;
+  --popover-foreground:  #1A2E74;
+  --sidebar-foreground:  #1A2E74;
+  --muted-foreground:    #4a62a0;
+  /* ── Primary: Brand Sky Blue ─────────────────── */
+  --primary:            #1AACE0;
+  --primary-foreground: #ffffff;
+  /* ── Secondary: light blue wash ─────────────── */
+  --secondary:            #d4e8ff;
+  --secondary-foreground: #1A2E74;
+  /* ── Accent: Brand Golden Yellow ─────────────── */
+  --accent:            #FFE878;
+  --accent-foreground: #7a5200;
+  /* ── Muted ───────────────────────────────────── */
+  --muted:            #dde8ff;
+  /* ── Borders, Inputs, Focus ──────────────────── */
+  --border: #60b8f0;
+  --input:  #d4e8ff;
+  --ring:   #1AACE0;
+  /* ── Destructive: Brand Pink ─────────────────── */
+  --destructive:            #F7267C;
+  --destructive-foreground: #ffffff;
+  /* ── Radius ──────────────────────────────────── */
   --radius: 1.4rem;
-  --chart-1: #4ac885;
-  --chart-2: #7033ff;
-  --chart-3: #fd822b;
-  --chart-4: #3276e4;
-  --chart-5: #747474;
-  --popover: #fcfcfc;
-  --primary: #7033ff;
-  --sidebar: #f5f8fb;
+  /* ── Charts — full brand palette ─────────────── */
+  --chart-1: #5ABB47;
+  --chart-2: #1AACE0;
+  --chart-3: #F9B233;
+  --chart-4: #F7267C;
+  --chart-5: #7B68EE;
+  /* ── Fonts ───────────────────────────────────── */
   --spacing: 0.27rem;
   --font-mono: IBM Plex Mono, monospace;
   --font-sans: Plus Jakarta Sans, sans-serif;
-  --secondary: #edf0f4;
-  --background: #fdfdfd;
   --font-serif: Lora, serif;
-  --foreground: #000000;
-  --destructive: #e54b4f;
-  --shadow-blur: 3px;
-  --shadow-color: hsl(0 0% 0%);
-  --sidebar-ring: #000000;
-  --shadow-spread: 0px;
   --letter-spacing: -0.025em;
-  --shadow-opacity: 0.16;
-  --sidebar-accent: #ebebeb;
-  --sidebar-border: #ebebeb;
-  --card-foreground: #000000;
+  /* ── Shadows ─────────────────────────────────── */
+  --shadow-blur:     4px;
+  --shadow-color:    hsl(210 80% 40%);
+  --shadow-spread:   0px;
+  --shadow-opacity:  0.18;
   --shadow-offset-x: 0px;
   --shadow-offset-y: 2px;
-  --sidebar-primary: #000000;
-  --muted-foreground: #525252;
-  --accent-foreground: #1e69dc;
-  --popover-foreground: #000000;
-  --primary-foreground: #ffffff;
-  --sidebar-foreground: #000000;
-  --secondary-foreground: #080808;
-  --destructive-foreground: #ffffff;
-  --sidebar-accent-foreground: #000000;
-  --sidebar-primary-foreground: #ffffff;
+  /* ── Sidebar ─────────────────────────────────── */
+  --sidebar-ring:                #1AACE0;
+  --sidebar-primary:             #1AACE0;
+  --sidebar-primary-foreground:  #ffffff;
+  --sidebar-accent:              #d4e8ff;
+  --sidebar-accent-foreground:   #1A2E74;
+  --sidebar-border:              #60b8f0;
 }
 
 .dark {
-  --card: #222327;
-  --ring: #8c5cff;
-  --input: #33353a;
-  --muted: #2a2c33;
-  --accent: #1e293b;
-  --border: #33353a;
+  /* ── Backgrounds: deep game-world ───────────── */
+  --background: #050a1a;
+  --card:       #0a1438;
+  --popover:    #0a1438;
+  --sidebar:    #060c24;
+  /* ── Foreground ──────────────────────────────── */
+  --foreground:          #e8f0ff;
+  --card-foreground:     #e8f0ff;
+  --popover-foreground:  #e8f0ff;
+  --sidebar-foreground:  #e8f0ff;
+  --muted-foreground:    #7090c8;
+  /* ── Primary: Brand Sky Blue ─────────────────── */
+  --primary:            #1AACE0;
+  --primary-foreground: #ffffff;
+  /* ── Secondary ───────────────────────────────── */
+  --secondary:            #102060;
+  --secondary-foreground: #e8f0ff;
+  /* ── Accent: Yellow ──────────────────────────── */
+  --accent:            #2a1e00;
+  --accent-foreground: #F9B233;
+  /* ── Muted ───────────────────────────────────── */
+  --muted:            #0c1840;
+  --muted-foreground: #7090c8;
+  /* ── Borders ─────────────────────────────────── */
+  --border: #2248b0;
+  --input:  #142060;
+  --ring:   #1AACE0;
+  /* ── Destructive ─────────────────────────────── */
+  --destructive:            #F7267C;
+  --destructive-foreground: #ffffff;
+  /* ── Radius ──────────────────────────────────── */
   --radius: 1.4rem;
-  --chart-1: #4ade80;
-  --chart-2: #8c5cff;
-  --chart-3: #fca5a5;
-  --chart-4: #5993f4;
-  --chart-5: #a0a0a0;
-  --popover: #222327;
-  --primary: #8c5cff;
-  --sidebar: #161618;
+  /* ── Charts ──────────────────────────────────── */
+  --chart-1: #5ABB47;
+  --chart-2: #1AACE0;
+  --chart-3: #F9B233;
+  --chart-4: #F7267C;
+  --chart-5: #9C8FFF;
+  /* ── Fonts ───────────────────────────────────── */
   --spacing: 0.27rem;
   --font-mono: IBM Plex Mono, monospace;
   --font-sans: Plus Jakarta Sans, sans-serif;
-  --secondary: #2a2c33;
-  --background: #1a1b1e;
   --font-serif: Lora, serif;
-  --foreground: #f0f0f0;
-  --destructive: #f87171;
-  --shadow-blur: 3px;
-  --shadow-color: hsl(0 0% 0%);
-  --sidebar-ring: #8c5cff;
-  --shadow-spread: 0px;
   --letter-spacing: -0.025em;
-  --shadow-opacity: 0.16;
-  --sidebar-accent: #2a2c33;
-  --sidebar-border: #33353a;
-  --card-foreground: #f0f0f0;
+  /* ── Shadows ─────────────────────────────────── */
+  --shadow-blur:     6px;
+  --shadow-color:    hsl(210 100% 60%);
+  --shadow-spread:   0px;
+  --shadow-opacity:  0.30;
   --shadow-offset-x: 0px;
   --shadow-offset-y: 2px;
-  --sidebar-primary: #8c5cff;
-  --muted-foreground: #a0a0a0;
-  --accent-foreground: #79c0ff;
-  --popover-foreground: #f0f0f0;
-  --primary-foreground: #ffffff;
-  --sidebar-foreground: #f0f0f0;
-  --secondary-foreground: #f0f0f0;
-  --destructive-foreground: #ffffff;
-  --sidebar-accent-foreground: #8c5cff;
-  --sidebar-primary-foreground: #ffffff;
+  /* ── Sidebar ─────────────────────────────────── */
+  --sidebar-ring:                #1AACE0;
+  --sidebar-primary:             #1AACE0;
+  --sidebar-primary-foreground:  #ffffff;
+  --sidebar-accent:              #102060;
+  --sidebar-accent-foreground:   #e8f0ff;
+  --sidebar-border:              #2248b0;
 }
 
 @theme inline {
@@ -145,35 +172,91 @@
   --font-serif: var(--font-serif);
 
   --radius-card: 24px;
-  --shadow-card: 0 10px 40px rgba(140, 92, 255, 0.15);
+  --shadow-card: 0 8px 40px rgba(26, 172, 224, 0.35), 0 0 0 1px rgba(26, 172, 224, 0.18);
 }
 
 html {
   scroll-behavior: smooth;
 }
 
+/* ─── Game-world gradient background ────────────────────────────────────────── */
+
 body {
-  background-color: var(--background);
+  background:
+    linear-gradient(150deg,
+      #a8d4ff 0%,
+      #c8a8ff 22%,
+      #ffaad4 46%,
+      #a8f0c0 70%,
+      #fff0a0 100%
+    );
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
   position: relative;
 }
 
+.dark body {
+  background:
+    linear-gradient(150deg,
+      #04081a 0%,
+      #0e0528 22%,
+      #04081a 46%,
+      #030a06 70%,
+      #0e0408 100%
+    );
+  background-attachment: fixed;
+}
+
+/* ─── Glass surfaces ─────────────────────────────────────────────────────────── */
+
 .bg-surface {
-  background-color: rgba(34, 35, 39, 0.8);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(2.2) brightness(1.04);
+  -webkit-backdrop-filter: blur(20px) saturate(2.2) brightness(1.04);
+  border: 1.5px solid rgba(26, 172, 224, 0.40);
+  box-shadow:
+    0 8px 32px rgba(26, 172, 224, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.dark .bg-surface {
+  background: rgba(8, 14, 52, 0.75);
+  backdrop-filter: blur(20px) saturate(2) brightness(1.06);
+  -webkit-backdrop-filter: blur(20px) saturate(2) brightness(1.06);
+  border: 1.5px solid rgba(26, 172, 224, 0.50);
+  box-shadow:
+    0 8px 36px rgba(26, 172, 224, 0.32),
+    inset 0 1px 0 rgba(26, 172, 224, 0.18);
 }
 
 .bg-surface-2 {
-  background-color: rgba(42, 44, 51, 0.85);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  background: rgba(240, 248, 255, 0.78);
+  backdrop-filter: blur(20px) saturate(2) brightness(1.04);
+  -webkit-backdrop-filter: blur(20px) saturate(2) brightness(1.04);
+  border: 1.5px solid rgba(26, 172, 224, 0.30);
+  box-shadow:
+    0 4px 20px rgba(26, 172, 224, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
 }
+
+.dark .bg-surface-2 {
+  background: rgba(12, 22, 70, 0.80);
+  backdrop-filter: blur(20px) saturate(2) brightness(1.04);
+  -webkit-backdrop-filter: blur(20px) saturate(2) brightness(1.04);
+  border: 1.5px solid rgba(26, 172, 224, 0.38);
+  box-shadow:
+    0 4px 20px rgba(26, 172, 224, 0.25),
+    inset 0 1px 0 rgba(26, 172, 224, 0.12);
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
 
 * {
   scrollbar-color: var(--border) transparent;
 }
+
+/* ─── Spatial navigation focus ──────────────────────────────────────────────── */
 
 [data-focusable] {
   transition:
@@ -190,4 +273,44 @@ body {
   box-shadow:
     0 0 0 3px var(--background),
     0 0 0 6px var(--ring);
+}
+
+/* ─── Playful Animations ────────────────────────────────────────────────────── */
+
+@keyframes kf-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes kf-float-alt {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50%       { transform: translateY(-8px) rotate(1.5deg); }
+}
+
+@keyframes kf-pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+
+.animate-float {
+  animation: kf-float 3.2s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: kf-float 3.8s ease-in-out 0.9s infinite;
+}
+
+.animate-float-slow {
+  animation: kf-float-alt 5s ease-in-out 1.5s infinite;
+}
+
+.animate-pulse-glow {
+  animation: kf-pulse-glow 2s ease-in-out infinite;
+}
+
+/* ─── GlowCard dark-mode override (beats inline style via !important) ───────── */
+
+.dark [data-glow] {
+  --backdrop: rgba(8, 14, 52, 0.84) !important;
+  --backup-border: rgba(26, 172, 224, 0.52) !important;
 }

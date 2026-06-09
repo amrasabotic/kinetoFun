@@ -66,14 +66,14 @@ export function TopBar() {
       >
         <div
           className={cn(
-            "relative flex h-14 items-center gap-4 overflow-hidden rounded-full border px-4 transition-all duration-300",
+            "relative flex h-14 items-center gap-4 overflow-hidden rounded-full border px-4 backdrop-blur-xl transition-all duration-300",
             scrolled
-              ? "border-white/[0.12] bg-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
-              : "border-white/[0.08] bg-white/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.25)] backdrop-blur-xl",
+              ? "border-white/20 bg-white/20 shadow-[0_8px_40px_rgba(26,46,116,0.25)] dark:bg-[#1A2E74]/40 dark:border-white/15"
+              : "border-white/15 bg-white/15 shadow-[0_4px_24px_rgba(26,46,116,0.15)] dark:bg-[#1A2E74]/30 dark:border-white/10",
           )}
         >
           {/* Glass top highlight */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
           {/* Logo */}
           <Link
             href="/"
@@ -100,8 +100,8 @@ export function TopBar() {
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 focus:outline-none",
                   isActive(pathname, item.href)
-                    ? "bg-white/[0.08] text-white"
-                    : "text-white/60 hover:text-white hover:[text-shadow:0_0_12px_rgba(34,229,111,0.5)]",
+                    ? "bg-[#1AACE0]/20 text-[#1A2E74] dark:bg-white/15 dark:text-white"
+                    : "text-[#1A2E74]/70 hover:text-[#1A2E74] dark:text-white/65 dark:hover:text-white hover:[text-shadow:0_0_12px_rgba(26,172,224,0.6)]",
                 )}
               >
                 {item.label}
@@ -118,8 +118,8 @@ export function TopBar() {
               data-focusable
               aria-label="Settings"
               className={cn(
-                "hidden items-center justify-center rounded-full p-2 text-white/50 transition-all duration-200 hover:bg-white/[0.06] hover:text-white md:flex",
-                isActive(pathname, "/settings") && "bg-white/[0.08] text-white",
+                "hidden items-center justify-center rounded-full p-2 text-[#1A2E74]/55 transition-all duration-200 hover:bg-[#1A2E74]/10 hover:text-[#1A2E74] dark:text-white/50 dark:hover:bg-white/[0.06] dark:hover:text-white md:flex",
+                isActive(pathname, "/settings") && "bg-[#1AACE0]/15 text-[#1A2E74] dark:bg-white/[0.08] dark:text-white",
               )}
             >
               <SettingsIcon />
@@ -129,10 +129,10 @@ export function TopBar() {
               <Link
                 href="/profile"
                 data-focusable
-                className="hidden items-center gap-2 rounded-full px-2 py-1 pr-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/[0.08] focus:outline-none md:flex"
+                className="hidden items-center gap-2 rounded-full px-2 py-1 pr-3 text-sm font-semibold text-[#1A2E74] transition-all duration-200 hover:bg-[#1A2E74]/10 dark:text-white dark:hover:bg-white/[0.08] focus:outline-none md:flex"
               >
                 <Avatar user={user} size="sm" />
-                <span className="hidden text-sm font-semibold text-white lg:block">
+                <span className="hidden text-sm font-semibold text-[#1A2E74] dark:text-white lg:block">
                   {user.displayName}
                 </span>
               </Link>
@@ -141,7 +141,7 @@ export function TopBar() {
                 <Link
                   href="/login"
                   data-focusable
-                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-white/70 transition-all duration-200 hover:text-white focus:outline-none md:block"
+                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-[#1A2E74]/70 transition-all duration-200 hover:text-[#1A2E74] dark:text-white/70 dark:hover:text-white focus:outline-none md:block"
                 >
                   Log in
                 </Link>
@@ -161,7 +161,7 @@ export function TopBar() {
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
               onClick={() => setMobileOpen((v) => !v)}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none md:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#1A2E74]/20 bg-[#1A2E74]/08 text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/15 hover:text-[#1A2E74] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-white/70 dark:hover:bg-white/[0.08] dark:hover:text-white focus:outline-none md:hidden"
             >
               {/* Animated bars → X */}
               <span className="relative flex h-4 w-4 flex-col items-center justify-between">
@@ -206,7 +206,7 @@ export function TopBar() {
       <div
         className={cn(
           "fixed inset-x-4 top-20 z-40 overflow-hidden rounded-3xl border border-white/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.6)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:hidden",
-          "bg-[rgba(8,12,22,0.97)] backdrop-blur-[24px]",
+          "bg-[rgba(10,26,80,0.98)] backdrop-blur-[24px]",
           mobileOpen
             ? "translate-y-0 opacity-100"
             : "-translate-y-4 opacity-0 pointer-events-none",
@@ -221,8 +221,8 @@ export function TopBar() {
               className={cn(
                 "flex items-center rounded-2xl px-5 py-3.5 text-base font-medium transition-all duration-200 focus:outline-none",
                 isActive(pathname, item.href)
-                  ? "bg-accent/10 text-accent"
-                  : "text-white/70 hover:bg-white/[0.05] hover:text-white",
+                  ? "bg-[#1AACE0]/20 text-[#1AACE0]"
+                  : "text-white/70 hover:bg-white/[0.08] hover:text-white",
               )}
             >
               {item.label}
@@ -235,8 +235,8 @@ export function TopBar() {
             className={cn(
               "flex items-center gap-3 rounded-2xl px-5 py-3.5 text-base font-medium transition-all duration-200 focus:outline-none",
               isActive(pathname, "/settings")
-                ? "bg-accent/10 text-accent"
-                : "text-white/70 hover:bg-white/[0.05] hover:text-white",
+                ? "bg-[#1AACE0]/20 text-[#1AACE0]"
+                : "text-white/70 hover:bg-white/[0.08] hover:text-white",
             )}
           >
             <SettingsIcon />

@@ -4,6 +4,7 @@ import { SessionProvider } from "@/features/auth/session-context";
 import { SpatialNavigation } from "@/components/navigation/SpatialNavigation";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { DottedSurface } from "@/components/ui/dotted-surface";
+import { BalloonBackground } from "@/components/ui/balloon-background";
 
 export const metadata: Metadata = {
   title: "KinetoFun — Play with a wave",
@@ -19,8 +20,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full font-sans">
-        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
           <DottedSurface />
+          <BalloonBackground />
           <SessionProvider>
             <SpatialNavigation>{children}</SpatialNavigation>
           </SessionProvider>

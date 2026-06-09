@@ -27,7 +27,7 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 		const AMOUNTY = 60;
 
 		const scene = new THREE.Scene();
-		scene.fog = new THREE.Fog(0x1a1b1e, 2000, 10000);
+		scene.fog = new THREE.Fog(resolvedTheme === 'dark' ? 0x04081a : 0xc0d8ff, 2000, 10000);
 
 		const camera = new THREE.PerspectiveCamera(
 			60,
@@ -54,8 +54,8 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 
 		const isDark = resolvedTheme === 'dark';
 		const dotColor = isDark
-			? { r: 140 / 255, g: 92 / 255, b: 255 / 255 }
-			: { r: 112 / 255, g: 51 / 255, b: 255 / 255 };
+			? { r: 26 / 255, g: 172 / 255, b: 224 / 255 }  /* brand sky blue */
+			: { r: 26 / 255, g: 46 / 255,  b: 116 / 255 }; /* brand navy */
 
 		for (let ix = 0; ix < AMOUNTX; ix++) {
 			for (let iy = 0; iy < AMOUNTY; iy++) {
@@ -73,7 +73,7 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 			size: 8,
 			vertexColors: true,
 			transparent: true,
-			opacity: isDark ? 0.55 : 0.35,
+			opacity: isDark ? 0.45 : 0.20,
 			sizeAttenuation: true,
 		});
 

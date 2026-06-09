@@ -119,3 +119,27 @@
 6. **Animated hero canvas.** `AnimatedHero` now clears to transparent (so the page backdrop shows through) instead of painting solid black; unhit text pixels off-white, hit pixels glow green, ball green (with glow), paddles purple. No behavioral change.
 **Rationale:** Because every component already consumes the `@theme` color tokens, swapping the tokens cascades the new look across all 9 pages with minimal per-file edits — keeping the change a re-skin, not a rewrite.
 **Verification:** `npm run build` passes (no new TS/lint errors; the 2 remaining lint errors in `session-context.tsx` are pre-existing and untouched).
+
+---
+
+## ADR-011 — Homepage redesign: colorful/playful landing page (Nintendo × Duolingo × Apple aesthetic)
+**Date:** 2026-06-09
+**Status:** Accepted
+**Decision:** Replaced the `LandingPage` function (logged-out `/` view) with a full 9-section multi-section landing page. The authenticated dashboard inside `HomePage` is **unchanged**. No other pages, routes, or shared components were modified.
+
+**Sections added (in order):**
+1. **Hero** — Full-viewport 3D robot (Spline) with gradient headline (`#6D5DFC→#00D4FF→#32D583`), live badge, stat chips, and floating desktop cards.
+2. **How It Works** — Light (#FAFBFF) background, 3 step cards with icon circles, grow-bar hover animation.
+3. **Featured Games** — White background, game cards grid with gradient cover badges and per-game accent glow on hover.
+4. **Multiplayer** — Deep navy gradient section with orbiting player-avatar visual and stat trio.
+5. **Why Kids Love It** — White section with 12 floating keyword chips, CSS float animation, hover scale.
+6. **Educational Benefits** — Light background, 4 icon cards with animated underline grow effect.
+7. **Perfect For** — White section, 3 pastel-gradient use-case cards (Schools / Hotels / Families) with feature checklists.
+8. **Leaderboard Preview** — Dark navy gradient, glass card, top-5 global rankings with colored scores.
+9. **Final CTA** — Vibrant `#6D5DFC→#00D4FF→#32D583` gradient with dot texture, white CTA buttons.
+
+**Globals.css additions:** `@keyframes kf-float`, `kf-float-alt`, `kf-pulse-glow`; utility classes `.animate-float`, `.animate-float-delay`, `.animate-float-slow`, `.animate-pulse-glow`.
+
+**Palette used inline (not replacing theme tokens):** Primary `#6D5DFC`, Cyan `#00D4FF`, Amber `#FFB800`/`#c97c00`, Green `#32D583`/`#1f9e5e`, Pink `#FF6B9D`/`#c0165e`. Light section bg `#FAFBFF`, text `#1a1a2e`/`#6b7280`. Dark section bg `#0d0e1a`/`#1a1a2e`.
+
+**Rationale:** Colors are applied directly on the homepage JSX (not via CSS variable swap) so no other pages are affected and the dark-mode TopBar remains readable. Build verified clean.
