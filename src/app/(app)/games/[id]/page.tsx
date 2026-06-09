@@ -18,8 +18,8 @@ export default function GameDetailPage() {
   if (!game) {
     return (
       <div className="flex flex-col items-center gap-4 py-24 text-center">
-        <h1 className="text-3xl font-bold text-white">Game not found</h1>
-        <p className="text-muted">
+        <h1 className="text-3xl font-bold text-foreground">Game not found</h1>
+        <p className="text-sm text-foreground/45">
           We couldn&apos;t find a game with that id.
         </p>
         <ButtonLink href="/library" variant="secondary">
@@ -35,7 +35,7 @@ export default function GameDetailPage() {
     .filter((g) => g.id !== game.id);
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10">
       {/* Hero */}
       <section
         className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${game.cover} p-8 sm:p-14`}
@@ -48,15 +48,15 @@ export default function GameDetailPage() {
           <h1 className="text-4xl font-black tracking-tight text-white drop-shadow sm:text-6xl">
             {game.title}
           </h1>
-          <p className="mt-3 text-lg text-zinc-100/90">{game.tagline}</p>
+          <p className="mt-3 text-lg text-white/80">{game.tagline}</p>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-zinc-200">
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-white/60">
             <StarRating rating={game.rating} />
-            <span aria-hidden>•</span>
+            <span aria-hidden>·</span>
             <span>{playersLabel(game.players)}</span>
-            <span aria-hidden>•</span>
+            <span aria-hidden>·</span>
             <span>{game.releaseYear}</span>
-            <span aria-hidden>•</span>
+            <span aria-hidden>·</span>
             <span>~{game.durationMinutes} min</span>
           </div>
 
@@ -73,13 +73,18 @@ export default function GameDetailPage() {
 
       <div className="grid gap-10 lg:grid-cols-3">
         {/* Description */}
-        <div className="space-y-4 lg:col-span-2">
-          <h2 className="text-2xl font-bold text-white">About</h2>
-          <p className="text-lg leading-relaxed text-zinc-300">
+        <div className="space-y-5 lg:col-span-2">
+          <div className="flex items-baseline gap-3">
+            <h2 className="text-lg font-bold text-foreground">About</h2>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
+              // {game.category}
+            </span>
+          </div>
+          <p className="text-base leading-relaxed text-foreground/70">
             {game.description}
           </p>
 
-          <dl className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <dl className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Stat label="Players" value={`${game.minPlayers}–${game.maxPlayers}`} />
             <Stat label="Category" value={game.category} />
             <Stat label="Released" value={String(game.releaseYear)} />
@@ -92,12 +97,13 @@ export default function GameDetailPage() {
         {/* Leaderboard */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white">Top scores</h2>
-            <ButtonLink
-              href="/leaderboard"
-              variant="ghost"
-              size="sm"
-            >
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-lg font-bold text-foreground">Top scores</h2>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
+                // global
+              </span>
+            </div>
+            <ButtonLink href="/leaderboard" variant="ghost" size="sm">
               See all
             </ButtonLink>
           </div>
@@ -105,18 +111,19 @@ export default function GameDetailPage() {
         </div>
       </div>
 
-      {related.length > 0 ? (
+      {related.length > 0 && (
         <GameRail title="More like this" games={related} />
-      ) : null}
+      )}
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3">
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-1 font-semibold text-white">{value}</dd>
+    <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 backdrop-blur-sm">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <dt className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40">{label}</dt>
+      <dd className="mt-1 font-semibold text-foreground">{value}</dd>
     </div>
   );
 }

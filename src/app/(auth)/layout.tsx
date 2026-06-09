@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 /** Minimal, focused chrome for the mock login / signup screens. */
 export default function AuthLayout({
@@ -15,12 +16,16 @@ export default function AuthLayout({
       <Link
         href="/"
         data-focusable
-        className="mb-10 flex items-center gap-2 rounded-lg text-3xl font-black tracking-tight text-white focus:outline-none"
+        className="mb-10 flex items-center rounded-lg focus:outline-none"
       >
-        <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-accent to-emerald-400 text-xl text-bg shadow-lg shadow-accent/30">
-          K
-        </span>
-        Kineto<span className="text-accent">Fun</span>
+        <Image
+          src="/logo.png"
+          alt="KinetoFun"
+          width={480}
+          height={160}
+          className="h-40 w-auto object-contain"
+          priority
+        />
       </Link>
 
       <div className="relative w-full max-w-md">{children}</div>

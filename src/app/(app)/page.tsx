@@ -9,7 +9,8 @@ import { GameRail } from "@/components/game/GameRail";
 import { ButtonLink } from "@/components/ui/Button";
 import { StarRating } from "@/components/ui/StarRating";
 import { Badge } from "@/components/ui/Badge";
-import { AnimatedHero } from "@/components/ui/animated-hero-section";
+import { InteractiveRobotSpline } from "@/components/blocks/interactive-3d-robot";
+import { ShimmerText } from "@/components/ui/shimmer-text";
 import { playersLabel } from "@/lib/format";
 import type { Game, GameCategory } from "@/types";
 
@@ -99,85 +100,151 @@ function FeaturedGamesSection() {
 
 const FEATURES = [
   {
-    icon: "✋",
+    index: "01",
+    tag: "INPUT",
     title: "Gesture Gaming",
     desc: "Wave your hands to control games — no controller needed. Powered by AI motion detection.",
-    tag: "Coming soon",
-    glow: "from-purple-600/20 to-fuchsia-600/20",
-    border: "border-purple-500/30",
+    badge: "Coming soon",
+    accent: "#a78bfa",
+    wide: true,
   },
   {
-    icon: "👥",
-    title: "Multiplayer Support",
+    index: "02",
+    tag: "SOCIAL",
+    title: "Multiplayer",
     desc: "Challenge friends locally or join global lobbies across dozens of titles.",
-    glow: "from-blue-600/20 to-cyan-600/20",
-    border: "border-blue-500/30",
+    accent: "#60a5fa",
+    wide: false,
   },
   {
-    icon: "🏆",
+    index: "03",
+    tag: "RANKINGS",
     title: "Leaderboards",
     desc: "Real-time global rankings. Climb the charts and earn your place among the elite.",
-    glow: "from-amber-600/20 to-orange-600/20",
-    border: "border-amber-500/30",
+    accent: "#fbbf24",
+    wide: false,
   },
   {
-    icon: "📺",
+    index: "04",
+    tag: "DISPLAY",
     title: "TV Optimized",
     desc: "Designed from the ground up for your living room — 4K crisp, couch-friendly navigation.",
-    glow: "from-green-600/20 to-emerald-600/20",
-    border: "border-green-500/30",
+    accent: "#34d399",
+    wide: true,
   },
   {
-    icon: "⚡",
-    title: "Fast Game Launching",
+    index: "05",
+    tag: "PERFORMANCE",
+    title: "Instant Launch",
     desc: "Zero installs. Click play and your game loads in seconds, right in the browser.",
-    glow: "from-yellow-600/20 to-lime-600/20",
-    border: "border-yellow-500/30",
+    accent: "#facc15",
+    wide: false,
   },
   {
-    icon: "🤖",
-    title: "AI Motion Controls",
+    index: "06",
+    tag: "AI",
+    title: "Motion AI",
     desc: "Next-gen gesture recognition trained on millions of movements. The future of input.",
-    tag: "Future",
-    glow: "from-rose-600/20 to-pink-600/20",
-    border: "border-rose-500/30",
+    badge: "Future",
+    accent: "#f472b6",
+    wide: false,
   },
-];
+] as const;
 
 function PlatformFeaturesSection() {
   return (
-    <section className="relative z-10 -mx-6 sm:-mx-10 bg-[#0c0c18] py-20">
+    <section className="relative z-10 -mx-6 sm:-mx-10 py-24">
       <div className="mx-auto max-w-[1600px] px-6 sm:px-10">
-        <div className="mb-12 text-center">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-purple-400">
-            Why KinetoFun
-          </p>
-          <h2 className="text-3xl font-black text-white sm:text-4xl">
-            Built for the Next Generation of Gaming
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-white/60">
-            Every feature engineered for the living room experience. Premium gaming without the hardware.
+
+        {/* Header */}
+        <div className="mb-16 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-3 font-mono text-xs font-medium uppercase tracking-[0.25em] text-white/30">
+              Why KinetoFun
+            </p>
+            <h2 className="text-4xl font-black leading-none tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Built for the<br />
+              <span className="text-white/30">Next Generation</span>
+            </h2>
+          </div>
+          <p className="max-w-xs text-sm leading-relaxed text-white/40 lg:text-right">
+            Every feature engineered for the living room experience.
+            Premium gaming without the hardware.
           </p>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              className={`group relative overflow-hidden rounded-2xl border ${f.border} bg-gradient-to-br ${f.glow} p-6 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-xl`}
-            >
-              <div className="mb-4 flex items-center gap-3">
-                <span className="text-3xl">{f.icon}</span>
-                {f.tag && (
-                  <span className="rounded-full border border-purple-500/50 bg-purple-500/20 px-2.5 py-0.5 text-xs font-semibold text-purple-300">
-                    {f.tag}
+
+        {/* Bento grid — alternating wide/narrow */}
+        <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f, i) => {
+            /* Row pattern: [wide, narrow] [narrow, wide] [wide, narrow] */
+            const isLastInRow = i % 3 === 2;
+            const spanClass = f.wide ? "lg:col-span-2" : "";
+            return (
+              <div
+                key={f.title}
+                className={`group relative overflow-hidden bg-white/[0.02] p-8 backdrop-blur-sm transition-all duration-500 hover:bg-white/[0.05] ${spanClass}`}
+                style={{ "--feature-accent": f.accent } as React.CSSProperties}
+              >
+                {/* Top accent line — grows on hover */}
+                <div
+                  className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 transition-transform duration-500 group-hover:scale-x-100"
+                  style={{ background: f.accent }}
+                />
+                {/* Static dim line always visible */}
+                <div
+                  className="absolute inset-x-0 top-0 h-px opacity-20"
+                  style={{ background: f.accent }}
+                />
+
+                {/* Giant background index */}
+                <span
+                  className="pointer-events-none absolute -right-4 -top-6 select-none font-mono text-[7rem] font-black leading-none opacity-[0.04] transition-opacity duration-500 group-hover:opacity-[0.07]"
+                  style={{ color: f.accent }}
+                >
+                  {f.index}
+                </span>
+
+                {/* Tag + badge row */}
+                <div className="mb-6 flex items-center gap-3">
+                  <span className="font-mono text-[10px] font-medium tracking-[0.2em] text-white/25">
+                    // {f.tag}
                   </span>
-                )}
+                  {"badge" in f && f.badge && (
+                    <span
+                      className="rounded-sm px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
+                      style={{
+                        background: `${f.accent}18`,
+                        color: f.accent,
+                        border: `1px solid ${f.accent}40`,
+                      }}
+                    >
+                      {f.badge}
+                    </span>
+                  )}
+                </div>
+
+                {/* Title */}
+                <h3 className="mb-3 text-2xl font-black tracking-tight text-white transition-colors duration-300">
+                  {f.title}
+                </h3>
+
+                {/* Description */}
+                <p className="max-w-sm text-sm leading-relaxed text-white/40 transition-colors duration-300 group-hover:text-white/60">
+                  {f.desc}
+                </p>
+
+                {/* Bottom accent dot */}
+                <div
+                  className="absolute bottom-6 right-6 h-1.5 w-1.5 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{ background: f.accent }}
+                />
               </div>
-              <h3 className="mb-2 text-xl font-bold text-white">{f.title}</h3>
-              <p className="text-sm leading-relaxed text-white/60">{f.desc}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {/* Bottom rule */}
+        <div className="mt-px h-px bg-white/[0.06]" />
       </div>
     </section>
   );
@@ -189,66 +256,130 @@ const STEPS = [
   {
     num: "01",
     title: "Connect Device",
-    desc: "Open KinetoFun on your TV, browser, or smart display. No downloads required.",
-    color: "text-purple-400",
-    border: "border-purple-500/40",
-    bg: "from-purple-600/10 to-transparent",
+    desc: "Open KinetoFun on your TV, browser, or smart display. No downloads, no installs — just a URL.",
+    accent: "#a78bfa",
+    stat: "0s",
+    statLabel: "setup time",
   },
   {
     num: "02",
     title: "Browse Games",
     desc: "Explore dozens of titles across every genre. Filter by players, category, or mood.",
-    color: "text-blue-400",
-    border: "border-blue-500/40",
-    bg: "from-blue-600/10 to-transparent",
+    accent: "#60a5fa",
+    stat: "50+",
+    statLabel: "titles",
   },
   {
     num: "03",
     title: "Launch Game",
-    desc: "Hit play. Your game streams instantly — no waiting, no installs, no friction.",
-    color: "text-emerald-400",
-    border: "border-emerald-500/40",
-    bg: "from-emerald-600/10 to-transparent",
+    desc: "Hit play. Your game streams instantly — no waiting, no friction, no friction.",
+    accent: "#34d399",
+    stat: "<3s",
+    statLabel: "load time",
   },
   {
     num: "04",
     title: "Play & Compete",
     desc: "Challenge friends, climb leaderboards, and earn your place in the hall of fame.",
-    color: "text-amber-400",
-    border: "border-amber-500/40",
-    bg: "from-amber-600/10 to-transparent",
+    accent: "#fbbf24",
+    stat: "∞",
+    statLabel: "replayability",
   },
-];
+] as const;
 
 function HowItWorksSection() {
   return (
-    <section className="relative z-10 -mx-6 sm:-mx-10 bg-[#09090f] py-20">
+    <section className="relative z-10 -mx-6 sm:-mx-10 py-24">
       <div className="mx-auto max-w-[1600px] px-6 sm:px-10">
-        <div className="mb-12 text-center">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-purple-400">
-            Get Started
+
+        {/* Header — consistent with PlatformFeatures */}
+        <div className="mb-20 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-white/25">
+              // Get Started
+            </p>
+            <h2 className="text-4xl font-black leading-none tracking-tight text-white sm:text-5xl lg:text-6xl">
+              How It<br />
+              <span className="text-white/25">Works</span>
+            </h2>
+          </div>
+          <p className="max-w-xs text-sm leading-relaxed text-white/35 lg:text-right">
+            Four steps from zero to playing. No hardware, no friction, no downloads.
           </p>
-          <h2 className="text-3xl font-black text-white sm:text-4xl">How It Works</h2>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((step, i) => (
-            <div key={step.num} className="relative flex flex-col">
-              {/* connector line */}
-              {i < STEPS.length - 1 && (
-                <div className="absolute left-full top-10 z-10 hidden w-6 border-t border-dashed border-white/20 lg:block" />
-              )}
+
+        {/* Steps — full-width rows */}
+        <div className="relative">
+          {/* Vertical gradient connector line */}
+          <div
+            className="pointer-events-none absolute bottom-0 left-[7px] top-0 w-px sm:left-[11px]"
+            style={{
+              background:
+                "linear-gradient(to bottom, #a78bfa, #60a5fa 33%, #34d399 66%, #fbbf24)",
+              opacity: 0.25,
+            }}
+          />
+
+          {STEPS.map((step) => (
+            <div
+              key={step.num}
+              className="group relative grid cursor-default grid-cols-1 items-center gap-6 border-t border-white/[0.06] py-10 pl-8 sm:grid-cols-[1fr_auto] sm:pl-12 lg:grid-cols-[260px_1fr_auto] lg:gap-16"
+            >
+              {/* Hover radial fill */}
               <div
-                className={`relative flex-1 overflow-hidden rounded-2xl border ${step.border} bg-gradient-to-br ${step.bg} p-6 transition-all duration-300 hover:scale-[1.02]`}
-              >
-                <span className={`text-5xl font-black ${step.color} opacity-30 select-none`}>
+                className="pointer-events-none absolute inset-0 -mx-6 opacity-0 transition-opacity duration-500 group-hover:opacity-100 sm:-mx-10"
+                style={{
+                  background: `radial-gradient(ellipse 60% 120% at 0% 50%, ${step.accent}0a, transparent 70%)`,
+                }}
+              />
+
+              {/* Connector dot on the vertical line */}
+              <div
+                className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 opacity-40 transition-all duration-300 group-hover:scale-125 group-hover:opacity-100"
+                style={{
+                  borderColor: step.accent,
+                  background: `${step.accent}20`,
+                  boxShadow: `0 0 0 0 ${step.accent}`,
+                }}
+              />
+
+              {/* Left: number + title */}
+              <div className="relative flex items-baseline gap-5">
+                <span
+                  className="font-mono text-[2.5rem] font-black leading-none opacity-15 transition-opacity duration-300 group-hover:opacity-35 lg:text-[3rem]"
+                  style={{ color: step.accent }}
+                >
                   {step.num}
                 </span>
-                <h3 className="mt-3 text-xl font-bold text-white">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/60">{step.desc}</p>
+                <h3 className="text-xl font-black tracking-tight text-white lg:text-2xl">
+                  {step.title}
+                </h3>
+              </div>
+
+              {/* Center: description */}
+              <p className="relative max-w-md text-sm leading-relaxed text-white/35 transition-colors duration-300 group-hover:text-white/65">
+                {step.desc}
+              </p>
+
+              {/* Right: stat */}
+              <div className="relative hidden flex-col items-end lg:flex">
+                <span
+                  className="font-mono text-3xl font-black leading-none tabular-nums opacity-20 transition-opacity duration-300 group-hover:opacity-70"
+                  style={{ color: step.accent }}
+                >
+                  {step.stat}
+                </span>
+                <span className="mt-1 font-mono text-[10px] uppercase tracking-widest text-white/20">
+                  {step.statLabel}
+                </span>
               </div>
             </div>
           ))}
+
+          {/* Closing rule */}
+          <div className="border-t border-white/[0.06]" />
         </div>
+
       </div>
     </section>
   );
@@ -257,40 +388,152 @@ function HowItWorksSection() {
 // ─── Section: Popular Categories ─────────────────────────────────────────────
 
 const CATEGORIES = [
-  { name: "Arcade", icon: "🕹️", color: "from-emerald-600 to-teal-700", count: 8 },
-  { name: "Sports", icon: "⚽", color: "from-orange-500 to-amber-600", count: 6 },
-  { name: "Racing", icon: "🏎️", color: "from-fuchsia-600 to-purple-700", count: 4 },
-  { name: "Puzzle", icon: "🧩", color: "from-cyan-500 to-blue-700", count: 7 },
-  { name: "Family", icon: "🎉", color: "from-pink-500 to-rose-600", count: 5 },
-  { name: "Multiplayer", icon: "👾", color: "from-violet-600 to-indigo-700", count: 9 },
-];
+  {
+    name: "Arcade",
+    color: "from-emerald-500 via-teal-600 to-cyan-700",
+    count: 8,
+    tags: ["Retro", "Fast-paced"],
+    wide: true,
+  },
+  {
+    name: "Sports",
+    color: "from-orange-500 via-amber-500 to-yellow-600",
+    count: 6,
+    tags: ["Competitive", "Teams"],
+    wide: false,
+  },
+  {
+    name: "Racing",
+    color: "from-fuchsia-600 via-purple-600 to-violet-700",
+    count: 4,
+    tags: ["Speed", "Precision"],
+    wide: false,
+  },
+  {
+    name: "Puzzle",
+    color: "from-cyan-500 via-sky-600 to-blue-700",
+    count: 7,
+    tags: ["Strategy", "Logic"],
+    wide: false,
+  },
+  {
+    name: "Family",
+    color: "from-pink-500 via-rose-500 to-red-600",
+    count: 5,
+    tags: ["Co-op", "All ages"],
+    wide: false,
+  },
+  {
+    name: "Multiplayer",
+    color: "from-violet-600 via-indigo-600 to-blue-700",
+    count: 9,
+    tags: ["Social", "Online"],
+    wide: true,
+  },
+] as const;
+
+/** Dot-grid texture applied via inline backgroundImage */
+const DOT_TEXTURE =
+  "radial-gradient(circle at 1.5px 1.5px, rgba(255,255,255,0.18) 1.5px, transparent 0)";
+
+function CategoryCard({
+  cat,
+}: {
+  cat: (typeof CATEGORIES)[number];
+}) {
+  return (
+    <Link
+      href="/login"
+      className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${cat.color} transition-all duration-500 hover:shadow-2xl hover:shadow-black/60 hover:brightness-110 ${cat.wide ? "col-span-2 aspect-[2.4/1]" : "aspect-square"}`}
+    >
+      {/* Dot-grid texture overlay */}
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{ backgroundImage: DOT_TEXTURE, backgroundSize: "22px 22px" }}
+      />
+
+      {/* Dark vignette at edges */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+
+      {/* Shimmer on hover */}
+      <div className="absolute inset-0 -translate-x-full skew-x-[-12deg] bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-[200%]" />
+
+      {/* Content */}
+      <div className="relative flex h-full flex-col justify-between p-5 sm:p-6">
+
+        {/* Top row: tags */}
+        <div className="flex flex-wrap gap-1.5">
+          {cat.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-white/20 bg-black/25 px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-white/70 backdrop-blur-sm"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        {/* Center: big name (wide cards only) */}
+        {cat.wide && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+            <span
+              className="select-none font-black leading-none text-white/[0.07] transition-all duration-500 group-hover:text-white/[0.12]"
+              style={{ fontSize: "clamp(4rem, 10vw, 9rem)", letterSpacing: "-0.04em" }}
+            >
+              {cat.name.toUpperCase()}
+            </span>
+          </div>
+        )}
+
+        {/* Bottom: name + count + arrow */}
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-xl font-black leading-none tracking-tight text-white sm:text-2xl">
+              {cat.name}
+            </p>
+            <p className="mt-1 font-mono text-xs text-white/50">
+              {cat.count} games
+            </p>
+          </div>
+          <div className="flex h-8 w-8 translate-x-1 items-center justify-center rounded-full border border-white/25 bg-black/20 opacity-0 backdrop-blur-sm transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+            <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 function PopularCategoriesSection() {
   return (
-    <section className="relative z-10 -mx-6 sm:-mx-10 bg-[#0c0c18] py-20">
+    <section className="relative z-10 -mx-6 sm:-mx-10 bg-[#0c0c18] py-24">
       <div className="mx-auto max-w-[1600px] px-6 sm:px-10">
-        <div className="mb-10">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-purple-400">
-            Explore
+
+        {/* Header */}
+        <div className="mb-14 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-white/25">
+              // Explore
+            </p>
+            <h2 className="text-4xl font-black leading-none tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Popular<br />
+              <span className="text-white/25">Categories</span>
+            </h2>
+          </div>
+          <p className="max-w-xs text-sm leading-relaxed text-white/35 lg:text-right">
+            Every genre. Every mood. Find your next obsession.
           </p>
-          <h2 className="text-3xl font-black text-white sm:text-4xl">Popular Categories</h2>
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+
+        {/* Bento grid: [wide][sq][sq] / [sq][sq][wide] */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
           {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.name}
-              href="/login"
-              className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${cat.color} p-6 text-center transition-all duration-300 hover:scale-[1.05] hover:shadow-xl`}
-            >
-              <div className="absolute inset-0 bg-black/20 transition-colors duration-300 group-hover:bg-black/10" />
-              <div className="relative">
-                <span className="text-4xl">{cat.icon}</span>
-                <p className="mt-2 font-bold text-white">{cat.name}</p>
-                <p className="mt-0.5 text-xs text-white/70">{cat.count} games</p>
-              </div>
-            </Link>
+            <CategoryCard key={cat.name} cat={cat} />
           ))}
         </div>
+
       </div>
     </section>
   );
@@ -621,27 +864,78 @@ function Footer() {
 function LandingPage() {
   return (
     <>
-      {/* Hero — fullscreen canvas animation + CTA */}
-      <section className="relative z-0 -mx-6 -mt-8 flex min-h-screen flex-col items-center justify-end pb-20 sm:-mx-10">
-        <AnimatedHero />
-        {/* CTA overlay */}
-        <div className="relative z-10 flex flex-col items-center gap-4 px-6 text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.3em] text-white/70">
-            Gesture-ready gaming for your TV
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <ButtonLink href="/login" size="lg">
-              Sign in to play
-            </ButtonLink>
-            <ButtonLink href="/library" size="lg" variant="secondary">
-              Browse games
-            </ButtonLink>
+      {/* Hero — interactive 3D robot + CTA */}
+      <section className="relative -mx-6 -mt-8 w-screen h-screen overflow-hidden sm:-mx-10">
+        {/* Robot: full-bleed background */}
+        <InteractiveRobotSpline
+          scene="https://prod.spline.design/PyzDhpQ9E5f1E3MT/scene.splinecode"
+          className="absolute inset-0 z-0 w-full h-full"
+        />
+
+        {/* Left gradient scrim — desktop: keeps left-panel text legible */}
+        <div
+          className="pointer-events-none absolute inset-0 z-10 hidden lg:block"
+          style={{
+            background:
+              "linear-gradient(to right, rgba(0,0,0,0.68) 0%, rgba(0,0,0,0.32) 42%, transparent 66%)",
+          }}
+        />
+
+        {/* Bottom gradient scrim — mobile/tablet: lifts bottom text off robot */}
+        <div
+          className="pointer-events-none absolute inset-0 z-10 lg:hidden"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.28) 45%, transparent 72%)",
+          }}
+        />
+
+        {/* CTA — vertically centered left panel on desktop, bottom panel on mobile */}
+        <div className="absolute inset-0 z-20 flex items-end lg:items-center">
+          <div className="w-full px-6 pb-24 sm:px-10 lg:w-[44%] lg:pb-0 lg:pl-14">
+
+            {/* Monospace eyebrow */}
+            <p className="mb-4 font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-white/40">
+              // Next-gen gaming
+            </p>
+
+            {/* Headline */}
+            <h1
+              className="flex flex-col font-black leading-none tracking-tight text-white"
+              style={{ fontSize: "clamp(2.8rem, 6vw, 5.5rem)" }}
+            >
+              <span>Play with</span>
+              <ShimmerText
+                className="text-white/30 font-black leading-none tracking-tight"
+                duration={2}
+                delay={1}
+              >
+                a wave.
+              </ShimmerText>
+            </h1>
+
+            {/* Subtext */}
+            <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/55 sm:text-base">
+              Gesture-ready gaming for your TV. No controllers, no installs —
+              just you and the screen.
+            </p>
+
+            {/* Buttons */}
+            <div className="mt-8 flex flex-wrap gap-3">
+              <ButtonLink href="/login" size="lg">
+                Sign in to play
+              </ButtonLink>
+              <ButtonLink href="/library" size="lg" variant="secondary">
+                Browse games
+              </ButtonLink>
+            </div>
           </div>
         </div>
+
         {/* Scroll hint */}
-        <div className="relative z-10 mt-8 flex flex-col items-center gap-1 text-white/30">
-          <span className="text-xs uppercase tracking-widest">Scroll</span>
-          <svg className="h-5 w-5 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="absolute bottom-8 left-1/2 z-20 -translate-x-1/2 flex flex-col items-center gap-1 text-white/35">
+          <span className="font-mono text-[10px] uppercase tracking-widest">Scroll</span>
+          <svg className="h-4 w-4 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>

@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 type BadgeTone = "default" | "accent" | "outline";
 
 const TONES: Record<BadgeTone, string> = {
-  default: "bg-surface-2 text-zinc-200",
-  accent: "bg-accent/15 text-accent ring-1 ring-accent/30",
-  outline: "border border-line text-muted",
+  default: "bg-white/[0.08] text-foreground/70",
+  accent: "bg-primary/15 text-primary ring-1 ring-primary/30",
+  outline: "border border-white/[0.12] text-foreground/50",
 };
 
 export function Badge({

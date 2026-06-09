@@ -11,7 +11,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useSession();
 
-  // Display preferences are mock-only for now (not persisted / not wired up).
   const [largeText, setLargeText] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -21,12 +20,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+    <div className="mx-auto max-w-3xl space-y-6">
+      <header className="space-y-1 pb-2">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-foreground/40">
+          // Preferences
+        </p>
+        <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
           Settings
         </h1>
-        <p className="text-muted">Manage your account and preferences.</p>
+        <p className="text-sm text-foreground/45">Manage your account and preferences.</p>
       </header>
 
       {/* Account */}
@@ -35,8 +37,8 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <Avatar user={user} size="lg" />
             <div className="flex-1">
-              <p className="text-lg font-bold text-white">{user.displayName}</p>
-              <p className="text-muted">{user.email}</p>
+              <p className="text-base font-bold text-foreground">{user.displayName}</p>
+              <p className="text-sm text-foreground/45">{user.email}</p>
             </div>
             <Button variant="danger" onClick={handleSignOut}>
               Sign out
@@ -44,7 +46,7 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <p className="text-muted">You&apos;re not signed in.</p>
+            <p className="text-sm text-foreground/45">You&apos;re not signed in.</p>
             <ButtonLink href="/login">Sign in</ButtonLink>
           </div>
         )}
@@ -58,6 +60,7 @@ export default function SettingsPage() {
           checked={largeText}
           onChange={setLargeText}
         />
+        <div className="h-px bg-white/[0.06]" />
         <Toggle
           label="Reduce motion"
           description="Minimize animations and transitions."
@@ -70,24 +73,24 @@ export default function SettingsPage() {
       <Section title="Input">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-semibold text-white">Gesture controls</p>
-            <p className="text-sm text-muted">
-              Camera-based hand tracking arrives with the hardware input layer
-              (Phase 4).
+            <p className="font-semibold text-foreground">Gesture controls</p>
+            <p className="text-sm text-foreground/45">
+              Camera-based hand tracking arrives with the hardware input layer (Phase 4).
             </p>
           </div>
-          <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">
+          <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.06] px-3 py-1 text-xs font-semibold text-foreground/50">
             Coming soon
           </span>
         </div>
+        <div className="h-px bg-white/[0.06]" />
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-semibold text-white">Keyboard navigation</p>
-            <p className="text-sm text-muted">
+            <p className="font-semibold text-foreground">Keyboard navigation</p>
+            <p className="text-sm text-foreground/45">
               Use arrow keys to move focus, Enter to select. Always on.
             </p>
           </div>
-          <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
+          <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
             Active
           </span>
         </div>
@@ -95,9 +98,11 @@ export default function SettingsPage() {
 
       {/* About */}
       <Section title="About">
-        <dl className="space-y-2 text-sm">
+        <dl className="space-y-3 text-sm">
           <Row label="App" value="KinetoFun" />
+          <div className="h-px bg-white/[0.06]" />
           <Row label="Version" value="0.1.0 (Phase 1 — Frontend)" />
+          <div className="h-px bg-white/[0.06]" />
           <Row label="Backend" value="Mock data (Supabase coming in Phase 2)" />
         </dl>
       </Section>
@@ -113,8 +118,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-4 rounded-2xl border border-line bg-surface p-6">
-      <h2 className="text-lg font-bold text-white">{title}</h2>
+    <section className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-xl">
+      {/* Top highlight */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+      {/* Primary glow */}
+      <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-primary/40 blur-sm" />
+      <h2 className="mb-5 text-xs font-semibold uppercase tracking-widest text-foreground/50">
+        {title}
+      </h2>
       <div className="space-y-4">{children}</div>
     </section>
   );
@@ -123,8 +134,8 @@ function Section({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
-      <dt className="text-muted">{label}</dt>
-      <dd className="font-medium text-white">{value}</dd>
+      <dt className="text-foreground/45">{label}</dt>
+      <dd className="font-medium text-foreground">{value}</dd>
     </div>
   );
 }
@@ -143,8 +154,8 @@ function Toggle({
   return (
     <div className="flex items-center justify-between gap-4">
       <div>
-        <p className="font-semibold text-white">{label}</p>
-        <p className="text-sm text-muted">{description}</p>
+        <p className="font-semibold text-foreground">{label}</p>
+        <p className="text-sm text-foreground/45">{description}</p>
       </div>
       <button
         type="button"
@@ -154,13 +165,15 @@ function Toggle({
         data-focusable
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative h-7 w-12 shrink-0 rounded-full transition focus:outline-none",
-          checked ? "bg-accent" : "bg-surface-2",
+          "relative h-7 w-12 shrink-0 rounded-full border transition-all duration-300 focus:outline-none",
+          checked
+            ? "border-primary/50 bg-primary shadow-[0_0_12px_rgba(140,92,255,0.4)]"
+            : "border-white/[0.10] bg-white/[0.06]",
         )}
       >
         <span
           className={cn(
-            "absolute top-1 h-5 w-5 rounded-full bg-white transition-all",
+            "absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300",
             checked ? "left-6" : "left-1",
           )}
         />

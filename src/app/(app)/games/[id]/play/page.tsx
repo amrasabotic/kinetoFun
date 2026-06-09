@@ -14,8 +14,6 @@ export default function GameLaunchPage() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [elapsed, setElapsed] = useState(0);
 
-  // Simulate a launch sequence, then a running session timer. This is pure UI
-  // — the real game runtime and lifecycle arrive in Phase 3.
   useEffect(() => {
     if (!game) return;
     const boot = setTimeout(() => setPhase("playing"), 1800);
@@ -31,7 +29,7 @@ export default function GameLaunchPage() {
   if (!game) {
     return (
       <div className="flex flex-col items-center gap-4 py-24 text-center">
-        <h1 className="text-3xl font-bold text-white">Game not found</h1>
+        <h1 className="text-3xl font-bold text-foreground">Game not found</h1>
         <ButtonLink href="/library" variant="secondary">
           Back to Library
         </ButtonLink>
@@ -46,13 +44,13 @@ export default function GameLaunchPage() {
     <div
       className={`relative flex min-h-[70vh] flex-col items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br ${game.cover} p-8 text-center`}
     >
-      <div className="absolute inset-0 bg-black/55" />
+      <div className="absolute inset-0 bg-black/60" />
 
       <div className="relative flex w-full max-w-xl flex-col items-center">
         {phase === "loading" ? (
           <>
-            <div className="h-14 w-14 animate-spin rounded-full border-4 border-white/30 border-t-white" />
-            <p className="mt-6 text-lg font-medium text-zinc-200">
+            <div className="h-14 w-14 animate-spin rounded-full border-4 border-white/20 border-t-primary shadow-[0_0_20px_rgba(140,92,255,0.4)]" />
+            <p className="mt-6 text-sm font-medium text-white/60">
               Launching…
             </p>
             <h1 className="mt-1 text-3xl font-black text-white sm:text-4xl">
@@ -61,24 +59,30 @@ export default function GameLaunchPage() {
           </>
         ) : (
           <>
-            <span className="inline-flex items-center gap-2 rounded-full bg-black/40 px-4 py-1.5 text-sm font-semibold text-emerald-300">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+            {/* Now playing badge */}
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/15 px-4 py-1.5 text-sm font-semibold text-primary backdrop-blur-sm">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
               Now playing
             </span>
+
             <h1 className="mt-4 text-4xl font-black text-white sm:text-5xl">
               {game.title}
             </h1>
-            <p className="mt-2 font-mono text-2xl tabular-nums text-zinc-200">
+
+            {/* Timer */}
+            <p className="mt-2 font-mono text-2xl tabular-nums text-primary/80">
               {mins}:{secs}
             </p>
 
-            <div className="mt-8 w-full rounded-2xl border border-white/15 bg-black/40 p-5 text-left">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-zinc-300">
-                Controls
+            {/* Controls card */}
+            <div className="relative mt-8 w-full overflow-hidden rounded-2xl border border-white/[0.10] bg-white/[0.06] p-5 text-left backdrop-blur-xl">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+              <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/40">
+                // Controls
               </h2>
-              <p className="mt-2 text-zinc-200">
+              <p className="mt-2 text-sm text-white/70">
                 Use your keyboard / controller for now.{" "}
-                <span className="text-accent-2">
+                <span className="text-primary/80">
                   Gesture controls arrive with the camera input layer (Phase 4).
                 </span>
               </p>
@@ -93,8 +97,8 @@ export default function GameLaunchPage() {
               </ButtonLink>
             </div>
 
-            <p className="mt-6 text-xs text-zinc-400">
-              Placeholder launch screen — no real gameplay yet.
+            <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-white/25">
+              // Placeholder — no real gameplay yet
             </p>
           </>
         )}

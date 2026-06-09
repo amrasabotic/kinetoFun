@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -76,14 +77,16 @@ export function TopBar() {
           <Link
             href="/"
             data-focusable
-            className="flex shrink-0 items-center gap-2 rounded-full px-1 text-xl font-black tracking-tight text-white focus:outline-none"
+            className="flex shrink-0 items-center rounded-full px-1 focus:outline-none"
           >
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-accent to-emerald-400 text-sm font-black text-bg shadow-[0_0_14px_rgba(34,229,111,0.45)]">
-              K
-            </span>
-            <span className="hidden sm:block">
-              Kineto<span className="text-accent">Fun</span>
-            </span>
+            <Image
+              src="/logo.png"
+              alt="KinetoFun"
+              width={280}
+              height={84}
+              className="h-20 w-auto object-contain"
+              priority
+            />
           </Link>
 
           {/* Desktop nav — centred in the remaining space */}

@@ -28,10 +28,10 @@ export default function LibraryPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+        <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
           Game Library
         </h1>
-        <p className="text-muted">
+        <p className="text-muted-foreground">
           {results.length} {results.length === 1 ? "game" : "games"} available
         </p>
       </header>
@@ -55,8 +55,8 @@ export default function LibraryPage() {
               className={cn(
                 "rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none",
                 filter === category
-                  ? "bg-accent text-white"
-                  : "bg-surface text-muted hover:bg-surface-2 hover:text-white",
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                  : "border border-border/50 bg-card/20 text-muted-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-card/40 hover:text-foreground",
               )}
             >
               {category}
@@ -66,8 +66,8 @@ export default function LibraryPage() {
       </div>
 
       {results.length === 0 ? (
-        <p className="rounded-2xl border border-line bg-surface p-12 text-center text-muted">
-          No games match “{query}”.
+        <p className="rounded-2xl border border-border/40 bg-card/10 p-12 text-center text-muted-foreground backdrop-blur-sm">
+          No games match &ldquo;{query}&rdquo;.
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">

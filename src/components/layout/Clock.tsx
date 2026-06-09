@@ -16,7 +16,7 @@ export function Clock() {
   if (!now) return <span className="w-14" />;
 
   return (
-    <time className="text-sm font-medium tabular-nums text-muted">
+    <time className="text-sm font-medium tabular-nums text-foreground/70">
       {now.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",

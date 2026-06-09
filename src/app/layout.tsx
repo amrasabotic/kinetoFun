@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/features/auth/session-context";
 import { SpatialNavigation } from "@/components/navigation/SpatialNavigation";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { DottedSurface } from "@/components/ui/dotted-surface";
 
 export const metadata: Metadata = {
   title: "KinetoFun — Play with a wave",
@@ -21,11 +17,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full bg-bg font-sans text-zinc-100">
-        <SessionProvider>
-          <SpatialNavigation>{children}</SpatialNavigation>
-        </SessionProvider>
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <body className="min-h-full font-sans">
+        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" disableTransitionOnChange>
+          <DottedSurface />
+          <SessionProvider>
+            <SpatialNavigation>{children}</SpatialNavigation>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
