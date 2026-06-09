@@ -66,13 +66,14 @@ export function TopBar() {
       >
         <div
           className={cn(
-            "flex h-14 items-center gap-4 rounded-full border px-4 transition-all duration-300",
-            "border-white/[0.08]",
+            "relative flex h-14 items-center gap-4 overflow-hidden rounded-full border px-4 transition-all duration-300",
             scrolled
-              ? "bg-[rgba(6,9,19,0.92)] shadow-[0_8px_40px_rgba(0,0,0,0.5)] backdrop-blur-[22px]"
-              : "bg-[rgba(10,15,25,0.72)] shadow-[0_4px_24px_rgba(0,0,0,0.35)] backdrop-blur-[14px]",
+              ? "border-white/[0.12] bg-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+              : "border-white/[0.08] bg-white/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.25)] backdrop-blur-xl",
           )}
         >
+          {/* Glass top highlight */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           {/* Logo */}
           <Link
             href="/"
@@ -128,7 +129,7 @@ export function TopBar() {
               <Link
                 href="/profile"
                 data-focusable
-                className="hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 pr-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/[0.08] focus:outline-none md:flex"
+                className="hidden items-center gap-2 rounded-full px-2 py-1 pr-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/[0.08] focus:outline-none md:flex"
               >
                 <Avatar user={user} size="sm" />
                 <span className="hidden text-sm font-semibold text-white lg:block">
