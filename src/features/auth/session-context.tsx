@@ -23,6 +23,8 @@ interface SessionState {
     password: string,
   ) => Promise<User>;
   logout: () => Promise<void>;
+  /** Revoke every session for the user ("sign out everywhere"). */
+  logoutAll: () => Promise<void>;
   /** Re-fetch the current user from the server. */
   refresh: () => Promise<void>;
 }
@@ -73,6 +75,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const logoutAll = useCallback(async () => {
+    await authService.logoutAll();
+    setUser(null);
+  }, []);
+
   const value = useMemo<SessionState>(
     () => ({
       user,
@@ -81,9 +88,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       login,
       signup,
       logout,
+      logoutAll,
       refresh,
     }),
-    [user, isLoading, login, signup, logout, refresh],
+    [user, isLoading, login, signup, logout, logoutAll, refresh],
   );
 
   return (

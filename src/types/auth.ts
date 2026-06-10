@@ -34,6 +34,8 @@ export interface JwtPayload {
   sub: string;
   email: string;
   name: string;
+  /** Server-side session id (row in `auth_sessions`); enables revocation. */
+  sid?: string;
   iat?: number;
   exp?: number;
 }

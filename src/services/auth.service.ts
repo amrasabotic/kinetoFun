@@ -101,9 +101,14 @@ export const authService = {
     return readUser(res);
   },
 
-  /** Clear the session cookie. */
+  /** Clear the session cookie (this device). */
   async logout(): Promise<void> {
     await fetch("/api/auth/logout", { method: "POST" });
+  },
+
+  /** Revoke every session for the user ("sign out everywhere"). */
+  async logoutAll(): Promise<void> {
+    await fetch("/api/auth/logout-all", { method: "POST" });
   },
 
   /** Restore the session from the cookie. Returns `null` when not signed in. */

@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-06-10 (score + game-session persistence — ADR-017/018)
+> Last updated: 2026-06-10 (auth hardening — ADR-019)
 
 ---
 
@@ -24,7 +24,8 @@
 - [x] **Score persistence** — done (`scores` repo + `/api/{scores,leaderboard,profile/stats}`; real leaderboards + profile stats; score entry on launch screen). See Done / ADR-017.
 - [x] **Game-session persistence** — done (`game_sessions` repo + `/api/sessions[/recent,/[id]]`; "Continue playing" rail is live; dashboard fully off mock). See Done / ADR-018.
 - [ ] Multiplayer sessions (`session_players` — reserved, single-player only so far)
-- [ ] Auth follow-ups: email verification, password reset, OAuth/social, refresh-token rotation, rate limiting on `/api/auth/*`
+- [x] **Auth hardening (no-dependency essentials)** — done: rate limiting on `/api/auth/*` + revocable sessions (`auth_sessions`, logout-everywhere). See Done / ADR-019.
+- [ ] Auth follow-ups (need email provider or more design): email verification, password reset, refresh-token rotation, OAuth/social, security headers/CSP, distributed rate-limit store
 
 ### Phase 3 — Game System
 - [ ] Game SDK structure
@@ -70,6 +71,7 @@ _None yet._
 - [x] **[2026-06-10] Game cover images (Supabase Storage).** Optional `coverImage` on `Game` (maps to `cover_image` column); all 4 cover sites render `next/image` when set, gradient fallback otherwise; `images.remotePatterns` configured. Bucket `game-covers` created. **Activate:** upload images + run the UPDATE SQL. (ADR-016)
 - [x] **[2026-06-10] Score persistence (real leaderboards + profile).** `scores-repository.ts` + `/api/scores` (write, auth), `/api/leaderboard` (public), `/api/profile/stats` (auth); `useLeaderboard`/`useProfileStats` hooks; leaderboard + profile pages off mock; score entry added to launch screen. Build clean; endpoints verified live (empty board, 401s). (ADR-017)
 - [x] **[2026-06-10] Game-session persistence ("Continue playing").** `sessions-repository.ts` + `/api/sessions`(+`/[id]`, `/recent`); session opened on launch, ended on save (clock-skew-safe `ended_at`); `useContinuePlaying` hook with cache invalidation; dashboard "Continue playing" rail live and fully off `@/mock`. Build clean; full authed flow verified end-to-end (create→recent→end), test users cleaned up. (ADR-018)
+- [x] **[2026-06-10] Auth hardening — rate limiting + revocable sessions.** In-memory sliding-window limits on login (5/15min per IP+email) + register (5/hr per IP) → `429`+`Retry-After`. Server-side revocation via `sid` claim + `auth_sessions` rows checked in the DAL: logout and "sign out everywhere" (`/api/auth/logout-all` + Settings button) now truly invalidate. Swappable session repo (Supabase / local file). Build clean; verified live (6th login→429; logout→me 401; cross-device logout-all→both 401); test users cleaned up. (ADR-019)
 - [x] **[2026-06-10] Supabase data layer connected (live).** Wired the app to a live Supabase Postgres project as database-only via `@supabase/supabase-js` (service-role, server-only, no Supabase Auth); `src/lib/supabase/server.ts` client; `SupabaseUserRepository` switched to the SDK; full schema (`supabase/schema.sql`) applied; `--use-system-ca` baked into npm scripts via `cross-env` for this TLS-intercepting machine. Verified end-to-end against the real project (register/me/login/duplicate; row persisted with scrypt hash; test rows deleted). (ADR-014)
 
 ---

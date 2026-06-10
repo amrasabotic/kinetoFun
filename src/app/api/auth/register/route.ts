@@ -6,9 +6,17 @@ import { getUserRepository } from "@/lib/auth/repository";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { toAuthUser } from "@/lib/auth/serialize";
+import { rateLimit, clientIp } from "@/lib/auth/rate-limit";
+import { tooManyRequests } from "@/lib/auth/http";
 import type { AuthError, AuthSuccess } from "@/types/auth";
 
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+
+  // Cap new-account creation per IP (5 per hour) to curb abuse / spam signups.
+  const gate = rateLimit(`register:ip:${ip}`, 5, 60 * 60 * 1000);
+  if (!gate.ok) return tooManyRequests(gate.retryAfterSec);
+
   let body: unknown;
   try {
     body = await request.json();
@@ -49,7 +57,10 @@ export async function POST(request: Request) {
     const record = await repo.create({ name, email, passwordHash });
     const user = toAuthUser(record);
 
-    await createSession(user);
+    await createSession(user, {
+      ip,
+      userAgent: request.headers.get("user-agent"),
+    });
     return NextResponse.json({ user } satisfies AuthSuccess, { status: 201 });
   } catch (err) {
     console.error("[auth] register failed:", err);

@@ -6,9 +6,19 @@ import { getUserRepository } from "@/lib/auth/repository";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { toAuthUser } from "@/lib/auth/serialize";
+import { rateLimit, rateLimitReset, clientIp } from "@/lib/auth/rate-limit";
+import { tooManyRequests } from "@/lib/auth/http";
 import type { AuthError, AuthSuccess } from "@/types/auth";
 
+const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+
+  // Broad per-IP cap first (cheap) — blunts credential-spraying across emails.
+  const ipGate = rateLimit(`login:ip:${ip}`, 20, WINDOW_MS);
+  if (!ipGate.ok) return tooManyRequests(ipGate.retryAfterSec);
+
   let body: unknown;
   try {
     body = await request.json();
@@ -32,6 +42,11 @@ export async function POST(request: Request) {
 
   const { email, password } = parsed.data;
 
+  // Tighter per-(IP, email) cap — the brute-force protection.
+  const idKey = `login:id:${ip}:${email.toLowerCase()}`;
+  const idGate = rateLimit(idKey, 5, WINDOW_MS);
+  if (!idGate.ok) return tooManyRequests(idGate.retryAfterSec);
+
   try {
     const record = await getUserRepository().findByEmail(email);
 
@@ -48,8 +63,12 @@ export async function POST(request: Request) {
       );
     }
 
+    rateLimitReset(idKey); // don't penalise a user who eventually succeeds
     const user = toAuthUser(record);
-    await createSession(user);
+    await createSession(user, {
+      ip,
+      userAgent: request.headers.get("user-agent"),
+    });
     return NextResponse.json({ user } satisfies AuthSuccess);
   } catch (err) {
     console.error("[auth] login failed:", err);

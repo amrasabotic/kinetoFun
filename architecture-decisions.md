@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-06-10 (ADR-018 — game-session persistence)
+> Last updated: 2026-06-10 (ADR-019 — auth hardening: rate limiting + revocable sessions)
 
 ---
 
@@ -299,3 +299,36 @@
 **Files:** `src/lib/data/sessions-repository.ts`; `src/app/api/sessions/{route,[id]/route,recent/route}.ts`; `src/services/sessions.service.ts`; `src/features/sessions/useContinuePlaying.ts`; updated `games/[id]/play/page.tsx` + `app/(app)/page.tsx` (removed the last `@/mock` import from the dashboard).
 
 **Verification:** `npm run build` clean (13→ now includes `/api/sessions`, `/api/sessions/[id]`, `/api/sessions/recent`). Live end-to-end with a cookie jar: register → create 2 sessions → `recent` lists both distinct games newest-first → `PATCH` end → `{ok:true}`. Unauthenticated → `401` on all three. Test users deleted afterward (cascade cleared sessions; 0 rows remain).
+
+---
+
+## ADR-019 — Auth hardening: rate limiting + revocable sessions
+**Date:** 2026-06-10
+**Status:** Accepted (hardens ADR-013; uses the `auth_sessions` table from ADR-014's schema — no migration needed)
+**Decision:** Before real users, added the two no-external-dependency protections that are painful to retrofit later: **rate limiting** on `/api/auth/*` and **server-side session revocation**. Deferred email-dependent flows (password reset, verification) and full refresh-token rotation.
+
+**Scope chosen by the user:** "no-dependency essentials" (rate limiting + generic errors + session revocation); **no email provider yet**, so reset/verification are out.
+
+### Rate limiting (`src/lib/auth/rate-limit.ts`)
+- In-memory sliding-window limiter (Map of key→hit timestamps, with a periodic sweep). **Login:** broad `login:ip:<ip>` 20/15min (anti-spray) + tight `login:id:<ip>:<email>` 5/15min (anti-brute-force), reset on success so legit users aren't penalised. **Register:** `register:ip:<ip>` 5/hour. Over limit → `429` + `Retry-After` (helper in `src/lib/auth/http.ts`).
+- **Trade-off:** per-instance state — correct for a single `next start` server. If ever scaled horizontally (serverless / multi-process), move to Redis or a Postgres table. Documented in the file.
+
+### Revocable sessions (the structural change)
+Previously the JWT was fully stateless: logout only cleared the cookie, so a copied token stayed valid for its 7-day life with no way to revoke. Now:
+1. **`sid` claim:** `createSession` mints a `sid` (uuid), persists a row in `auth_sessions` (id=sid, user_id, user_agent, ip, expires_at), and embeds `sid` in the JWT.
+2. **DAL enforces it:** `getCurrentUser` rejects a token whose `sid` row is missing or expired (and whose `user_id` ≠ `sub`). Since `/api/auth/me` and every protected data route go through the DAL, revocation is enforced everywhere. The **proxy stays optimistic** (stateless JWT check only, per Next 16 docs) — the authoritative check is the DAL.
+3. **Logout deletes the row** (`destroySession`); **"sign out everywhere"** deletes all rows for the user (`destroyAllSessions` → `POST /api/auth/logout-all` → Settings button).
+4. **Swappable repo** mirroring the user repo: `SupabaseSessionRepository` (`auth_sessions`) when configured, `LocalSessionRepository` (`.data/auth-sessions.json`) otherwise — so revocation works in local dev too.
+5. **Graceful degradation / back-compat:** if the session row can't be persisted, `createSession` issues a stateless token (no `sid`) so login still works; tokens minted before this change (no `sid`) skip the revocation check and simply expire. No forced logout of existing users.
+
+### Why NOT shorten the access token
+The scope mentioned "shorter token," but without refresh tokens a short access token just logs users out every few minutes. Kept the 7-day lifetime; **revocability** (not a short TTL) is the real security win here. A short access token + refresh rotation is the deferred follow-up.
+
+### Generic errors
+Already in place from ADR-013: login returns a single `Invalid email or password.` for both unknown-email and wrong-password, with a constant-time dummy hash to avoid timing leaks. Register's `409` still reveals an email is taken (deliberate UX trade-off; the main enumeration vector — login — is closed).
+
+**Files:** `rate-limit.ts`, `http.ts`, `session-repository.ts` (+ `repositories/{supabase,local}-session-repository.ts`) new; `jwt.ts`/`types/auth.ts` (sid), `session.ts` (create/destroy/destroyAll), `dal.ts` (revocation check), `login`/`register` routes (limits + session meta), `logout-all/route.ts` new; `auth.service.ts` + `session-context.tsx` + `settings/page.tsx` (sign-out-everywhere).
+
+**Verification:** `npm run build` clean. Live: 5 wrong logins → `401`, 6th/7th → `429`. Logout → `/api/auth/me` `401` (server-side revoked). Two devices → `logout-all` from one → both `401`. Test users deleted (cascade cleared sessions; `auth_sessions` = 0).
+
+**Deferred (need an email provider or more design):** password reset, email verification, refresh-token rotation, OAuth/social, security headers/CSP, breach-password check, distributed rate-limit store.

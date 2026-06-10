@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-06-10 (Scores + game-sessions persistence — ADR-017/018)
+> Last updated: 2026-06-10 (Auth hardening: rate limiting + revocable sessions — ADR-019)
 
 ---
 
@@ -25,7 +25,7 @@ Users will be able to:
 - **Frontend:** Next.js 16.2.7 (App Router) + React 19, TypeScript 5, Tailwind CSS v4, ESLint 9. `src/` dir, `@/*` import alias. (web-first, TV-oriented UI)
 - **Backend:** Custom Next.js Route Handlers (`/api/auth/*`) + **Supabase PostgreSQL — LIVE** (database only, **no Supabase Auth**) via the `@supabase/supabase-js` client (`src/lib/supabase/server.ts`, service-role, server-only) behind a swappable repository. Falls back to a local file store only if env is unset. Full schema in `supabase/schema.sql`.
 - **⚠️ Runtime needs the system CA:** this machine intercepts TLS, so Node must run with `--use-system-ca` to reach Supabase. Baked into the `dev`/`build`/`start` npm scripts via `cross-env` (ADR-007/ADR-014). Credentials live in `.env.local` (git-ignored).
-- **Auth:** **Custom JWT auth — implemented.** scrypt-hashed passwords, HS256 JWT (via `jose`) in an httpOnly cookie, `proxy.ts` route protection, server-side DAL. See ADR-013.
+- **Auth:** **Custom JWT auth — implemented + hardened.** scrypt-hashed passwords, HS256 JWT (via `jose`) in an httpOnly cookie, `proxy.ts` route protection, server-side DAL. **Hardened (ADR-019):** rate limiting on `/api/auth/*` and revocable sessions (`sid` claim + `auth_sessions` rows checked in the DAL; logout + "sign out everywhere" truly invalidate). See ADR-013 + ADR-019.
 - **⚠️ Next.js 16 conventions (this is a customized v16):** `middleware.ts` → **`proxy.ts`** (function `proxy`, Node.js runtime only); `cookies()`/`params`/`searchParams` are **async**; Turbopack is the default. Always read `node_modules/next/dist/docs/` before writing framework code (per AGENTS.md).
 - **Input (current):** Keyboard / mouse
 - **Input (future):** Raspberry Pi + camera + MediaPipe hand tracking
@@ -46,6 +46,7 @@ Users will be able to:
 - **[2026-06-10] Game cover images (Supabase Storage).** Optional `Game.coverImage` (maps to `cover_image` column); 4 cover sites render `next/image` when set, gradient fallback otherwise; `next.config` remote patterns; bucket `game-covers` created. Activate by uploading images + UPDATE SQL. (ADR-016)
 - **[2026-06-10] Score persistence — real leaderboards + profile stats.** `scores-repository.ts` → `/api/scores` (write, auth), `/api/leaderboard` (public, global or per-game), `/api/profile/stats` (auth); `useLeaderboard`/`useProfileStats` hooks; leaderboard + profile pages off mock; manual score entry on the launch screen. (ADR-017)
 - **[2026-06-10] Game-session persistence — "Continue playing".** `sessions-repository.ts` → `/api/sessions` (start), `/api/sessions/[id]` (end), `/api/sessions/recent`; session opened on launch + ended on save with a **clock-skew-safe `ended_at`**; `useContinuePlaying` (module-cached + invalidation). Dashboard is now fully off `@/mock`. (ADR-018)
+- **[2026-06-10] Auth hardening — rate limiting + revocable sessions.** In-memory sliding-window rate limits on login/register (`429`+`Retry-After`); server-side session revocation via a `sid` claim + `auth_sessions` rows enforced in the DAL; logout + "sign out everywhere" (`/api/auth/logout-all` + Settings button) truly invalidate; swappable session repo (Supabase / local file). Verified live; deferred email-dependent flows + refresh-token rotation. (ADR-019)
 - **[2026-06-10] Phase 2 — Custom JWT authentication (real, not mocked).** Replaced the mock session with a production-shaped auth layer: register/login/logout + `me` Route Handlers under `/api/auth/*`; scrypt password hashing (Node built-in); HS256 JWT via `jose` stored in an httpOnly+SameSite cookie; `src/proxy.ts` (Next 16's renamed middleware) for optimistic route protection; a server-side DAL (`getCurrentUser`/`requireUser`) for the authoritative check; a swappable `UserRepository` (Supabase Postgres via PostgREST when configured, local file store otherwise); `ProtectedRoute` wrapper; `SessionProvider` now restores via `/api/auth/me`. Build clean; full flow smoke-tested (register→me→login→logout, proxy redirects, forged-token rejection). (ADR-013)
 
 ---
@@ -76,9 +77,10 @@ src/
       login/page.tsx        # real login (async, error states, ?next redirect)
       signup/page.tsx       # real signup (async, field-level validation errors)
     api/auth/               # custom auth API (Route Handlers)
-      register/route.ts     # POST — create account + start session
-      login/route.ts        # POST — verify credentials + start session
-      logout/route.ts       # POST — clear session cookie
+      register/route.ts     # POST — create account + start session (rate-limited)
+      login/route.ts        # POST — verify credentials + start session (rate-limited)
+      logout/route.ts       # POST — clear cookie + revoke this session
+      logout-all/route.ts   # POST — revoke ALL sessions (sign out everywhere)
       me/route.ts           # GET  — validate token, return current user
     api/games/              # public games catalog API
       route.ts              # GET  — all games (from Supabase)
@@ -109,10 +111,12 @@ src/
   services/   auth.service, games.service, sessions.service — REAL (call /api/*)
               # leaderboard.service + profile.service mock files remain but are UNUSED by pages.
               # the BACKEND BOUNDARY. games.service = async fetchers + pure selectors.
-  lib/auth/   config, password (scrypt), jwt (jose/HS256), session (cookies),
-              validation (zod), dal (getCurrentUser/requireUser), serialize,
-              repository (+ repositories/supabase-user-repository [uses Supabase
-              client], local-user-repository [dev fallback])
+  lib/auth/   config, password (scrypt), jwt (jose/HS256 + sid claim), session
+              (cookies + revocable sessions), validation (zod), dal
+              (getCurrentUser/requireUser + revocation check), serialize,
+              rate-limit (in-memory sliding window), http (429 helper),
+              repository (+ repositories/{supabase,local}-user-repository),
+              session-repository (+ repositories/{supabase,local}-session-repository)
               # SERVER-ONLY. Never import from a Client Component.
   lib/data/   games-repository.ts       # SERVER-ONLY games reads (Supabase) → Game
               scores-repository.ts      # SERVER-ONLY leaderboards + profile stats + submitScore
@@ -197,7 +201,7 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 
 ## System Boundaries (NOT built yet)
 
-- **Auth is real and working AND wired to live Supabase** (✅ — register/login/logout/me, JWT cookie, hashing, route protection; users persist to Supabase Postgres, verified end-to-end). Email/password only (no OAuth/social, no email verification, no password reset, no refresh-token rotation yet).
+- **Auth is real, hardened, AND wired to live Supabase** (✅ — register/login/logout/me + logout-all, JWT cookie, hashing, route protection; users persist to Supabase Postgres, verified end-to-end). **Hardened (ADR-019):** rate limiting on `/api/auth/*`; revocable sessions via `sid` + `auth_sessions` (logout + sign-out-everywhere truly invalidate). Email/password only — **still deferred** (need an email provider): email verification, password reset, refresh-token rotation, OAuth/social.
 - **Supabase data layer is live** (✅ — `@supabase/supabase-js`, service-role, no Supabase Auth). Schema for `users/games/scores/game_sessions` (+ optional `session_players`, `auth_sessions`, `subscriptions`, `game_leaderboards` view) is applied. **`users`, `games`, `scores`, and `game_sessions` are all wired to the DB.**
 - **Games are served from Supabase** (✅ — seeded with 10 games via `supabase/seed_games.sql`). Read path: `useGames()` → `/api/games` → `@/lib/data/games-repository` → Supabase.
 - **Scores + leaderboards + profile stats are live** (✅ — ADR-017). Write via `POST /api/scores` (auth) from the launch screen; read via `useLeaderboard` → `/api/leaderboard` (public) and `useProfileStats` → `/api/profile/stats` (auth). `leaderboardService`/`profileService` mock files remain on disk but are no longer imported by pages.
@@ -211,5 +215,6 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 ### Phase 2 handoff notes
 - **To go live on Supabase:** copy `.env.example` → `.env.local`, set `JWT_SECRET` (`openssl rand -base64 32`), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; run `supabase/migrations/0001_auth.sql`. No code change — `getUserRepository()` auto-selects the Supabase repo when those env vars are present.
 - **Next features build on this without restructuring:** add `game_sessions`/`scores`/`subscriptions` tables + repositories alongside `users`; read identity from `getCurrentUser()` (DAL) in new Route Handlers; `JwtPayload.sub` is the stable user id for leaderboards/multiplayer.
-- Remaining game/profile/leaderboard `*.service.ts` modules still return mock data — swap their internals for Supabase/API calls (signatures may become `async`); UI should not need changes.
+- `games`/`scores`/`game_sessions`/`auth_sessions` are all live now. The only remaining mock service files are `leaderboard.service.ts` + `profile.service.ts` — **kept on disk but no longer imported by pages** (pages use `useLeaderboard`/`useProfileStats`). Safe to delete once nothing references them.
+- **Rate limiting is in-memory (per instance)** — fine for a single `next start` server. If you deploy serverless / multi-process, move `lib/auth/rate-limit.ts` to Redis or a Postgres table.
 - `src/types/auth.ts` is the contract the `users`/`sessions` tables map onto; `src/types/index.ts` is the contract for the rest.

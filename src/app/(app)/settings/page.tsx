@@ -18,16 +18,25 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useSession();
+  const { user, isAuthenticated, logout, logoutAll } = useSession();
 
   const [largeText, setLargeText] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [signingOutAll, setSigningOutAll] = useState(false);
 
   async function handleSignOut() {
-    if (signingOut) return;
+    if (signingOut || signingOutAll) return;
     setSigningOut(true);
     await logout();
+    router.replace("/login");
+    router.refresh();
+  }
+
+  async function handleSignOutEverywhere() {
+    if (signingOut || signingOutAll) return;
+    setSigningOutAll(true);
+    await logoutAll();
     router.replace("/login");
     router.refresh();
   }
@@ -53,14 +62,28 @@ function SettingsContent() {
               <p className="text-base font-bold text-foreground">{user.displayName}</p>
               <p className="text-sm text-foreground/45">{user.email}</p>
             </div>
-            <Button
-              variant="danger"
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className={cn(signingOut && "pointer-events-none opacity-60")}
-            >
-              {signingOut ? "Signing out…" : "Sign out"}
-            </Button>
+            <div className="flex flex-col gap-2 sm:items-end">
+              <Button
+                variant="danger"
+                onClick={handleSignOut}
+                disabled={signingOut || signingOutAll}
+                className={cn((signingOut || signingOutAll) && "pointer-events-none opacity-60")}
+              >
+                {signingOut ? "Signing out…" : "Sign out"}
+              </Button>
+              <button
+                type="button"
+                data-focusable
+                onClick={handleSignOutEverywhere}
+                disabled={signingOut || signingOutAll}
+                className={cn(
+                  "text-xs font-medium text-foreground/45 underline-offset-4 transition hover:text-foreground/70 hover:underline focus:outline-none",
+                  (signingOut || signingOutAll) && "pointer-events-none opacity-60",
+                )}
+              >
+                {signingOutAll ? "Signing out all devices…" : "Sign out of all devices"}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between">
@@ -121,7 +144,7 @@ function SettingsContent() {
           <div className="h-px bg-white/[0.06]" />
           <Row label="Version" value="0.1.0 (Phase 2 — Auth)" />
           <div className="h-px bg-white/[0.06]" />
-          <Row label="Auth" value="Custom JWT · httpOnly session" />
+          <Row label="Auth" value="Custom JWT · revocable httpOnly session" />
           <div className="h-px bg-white/[0.06]" />
           <Row label="Database" value="Supabase Postgres (local fallback)" />
         </dl>

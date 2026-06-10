@@ -9,6 +9,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getSessionPayload } from "./session";
+import { getSessionRepository } from "./session-repository";
 import { getUserRepository } from "./repository";
 import { toAuthUser } from "./serialize";
 import type { AuthUser } from "@/types/auth";
@@ -17,6 +18,14 @@ import type { AuthUser } from "@/types/auth";
 export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   const session = await getSessionPayload();
   if (!session?.sub) return null;
+
+  // Server-side revocation: a tracked session (one carrying a `sid`) must still
+  // exist and be unexpired. Tokens minted before session tracking have no sid
+  // and fall through to the stateless check (they expire on their own).
+  if (session.sid) {
+    const record = await getSessionRepository().findValid(session.sid);
+    if (!record || record.userId !== session.sub) return null;
+  }
 
   const record = await getUserRepository().findById(session.sub);
   return record ? toAuthUser(record) : null;
