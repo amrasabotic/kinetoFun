@@ -13,7 +13,7 @@
 ### Phase 1.x — Frontend polish (optional, future)
 - [ ] Persist display settings (large text / reduce motion) and actually apply them
 - [ ] Loading/skeleton states (will matter once services become async)
-- [ ] Real cover art instead of gradient placeholders
+- [x] **Real cover art instead of gradient placeholders** — infrastructure done (Supabase Storage bucket + coverImage field; gradients as fallback). See ADR-016. **To activate:** upload images to `game-covers` bucket, run the SQL UPDATE.
 - [ ] Favorites / wishlist
 - [ ] Per-rail "View all" deep links
 

@@ -135,7 +135,7 @@ src/
 - Page-local `useState` for search/filter/toggles. No global store needed yet.
 
 ### Mock data structure (`src/mock/`)
-- **`games.ts`** — `Game[]` (10 games). Covers are Tailwind gradient strings (no art). Fields: id, title, tagline, description, category, players (`single|multi|both`), min/maxPlayers, cover, accent, rating, releaseYear, durationMinutes, featured.
+- **`games.ts`** — `Game[]` (10 games). Covers are Tailwind gradient strings (used as fallback). Fields: id, title, tagline, description, category, players (`single|multi|both`), min/maxPlayers, cover, coverImage (optional), accent, rating, releaseYear, durationMinutes, featured.
 - **`users.ts`** — `User[]` (6 users) + `CURRENT_USER_ID` (`u-amra`). Fields: id, username, displayName, email, avatarColor (gradient), level, xp, joinedAt, bio.
 - **`scores.ts`** — flat `Score[]` (gameId, userId, score, achievedAt). Leaderboards are *derived* from these.
 - **`sessions.ts`** — `Session[]` play sessions (feeds "Continue playing" + recent activity).
@@ -185,6 +185,7 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 - **Auth is real and working AND wired to live Supabase** (✅ — register/login/logout/me, JWT cookie, hashing, route protection; users persist to Supabase Postgres, verified end-to-end). Email/password only (no OAuth/social, no email verification, no password reset, no refresh-token rotation yet).
 - **Supabase data layer is live** (✅ — `@supabase/supabase-js`, service-role, no Supabase Auth). Schema for `users/games/scores/game_sessions` (+ optional `session_players`, `auth_sessions`, `subscriptions`, `game_leaderboards` view) is applied. **`users` and `games` are wired to the DB**; `scores`/`game_sessions` repositories come later "based on real usage".
 - **Games are served from Supabase** (✅ — seeded with 10 games via `supabase/seed_games.sql`). Read path: `useGames()` → `/api/games` → `@/lib/data/games-repository` → Supabase. `leaderboardService` + `profileService` still read mock (`src/mock`). Profile stats for a real user show empty until score persistence lands.
+- **Game cover images (✅ — infrastructure done):** Supabase Storage bucket `game-covers` created; `Game.coverImage` optional field added (maps to `cover_image` DB column). All 4 render sites (GameCard, FeaturedGameCard, game detail, dashboard hero) now show images when `coverImage` is set, gradient fallback otherwise. `next/image` optimized with remote patterns configured. Next step: upload images to the bucket and wire them via SQL UPDATE.
 - No real score persistence — scores/sessions are static mock data.
 - No real game SDK or runtime — `/games/[id]/play` is a placeholder screen.
 - No multiplayer session handling (sessions are display-only mock records).

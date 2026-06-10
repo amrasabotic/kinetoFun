@@ -206,3 +206,51 @@
 **Scope:** only `games` moved to the DB. `leaderboardService` + `profileService` remain mock (next: `scores`/`game_sessions` repositories using this same pattern).
 
 **Verification:** `npm run build` clean (`/api/games`, `/api/games/[id]` dynamic). Against the live project: seeded 10 rows; `GET /api/games`→ 10 games in `Game` shape (featured-first), `GET /api/games/shadow-quest`→ the game, unknown id→ `404`.
+
+---
+
+## ADR-016 — Game cover images from Supabase Storage
+**Date:** 2026-06-10
+**Status:** Accepted (adds real images to ADR-015; builds on ADR-014 infrastructure)
+**Decision:** Added optional real images to game covers, served from Supabase Storage, with Tailwind gradient fallback when images are absent.
+
+**Structure:**
+- **Storage:** Public bucket `game-covers` in Supabase (created manually)
+- **DB:** New nullable `cover_image TEXT` column on `public.games`; maps to `Game.coverImage?: string` in code
+- **URLs:** `https://eyipksddjxhbjfjofktj.supabase.co/storage/v1/object/public/game-covers/{game-id}.jpg`
+- **Rendering:** All 4 cover sites (GameCard, FeaturedGameCard, detail hero, dashboard spotlight) now conditional:
+  - If `coverImage` is set → `next/image` (optimized, fill, object-cover)
+  - Else → Tailwind gradient `<div>` (original fallback, always works)
+
+**Why this way:**
+1. **Graceful degradation:** images optional; gradients always work. If bucket access fails or image isn't uploaded, the UI doesn't break.
+2. **Supabase Storage, not external URLs:** we own the images. All stored in the user's Supabase project, not locked to a third-party CDN.
+3. **next/image optimization:** adds `images.remotePatterns` config for the Supabase domain; Next.js handles responsive/WebP/lazy-load.
+
+**Activation (manual, done in Supabase dashboard):**
+1. Supabase → Storage → `game-covers` bucket → upload 10 images (filenames: `neon-drift.jpg`, `block-cascade.jpg`, …)
+2. Run SQL in Supabase SQL editor:
+   ```sql
+   UPDATE public.games SET cover_image = 
+     'https://eyipksddjxhbjfjofktj.supabase.co/storage/v1/object/public/game-covers/' || id || '.jpg'
+   WHERE cover_image IS NULL;
+   ```
+3. Refresh the app — images appear immediately
+
+**Files changed:**
+- `src/types/index.ts` — added `coverImage?: string` to `Game` interface
+- `src/lib/data/games-repository.ts` — map `cover_image` DB column → `coverImage` (undefined when null)
+- `next.config.ts` — added `images.remotePatterns` for Supabase Storage hostname
+- `src/components/game/GameCard.tsx` — conditional `<Image>` or gradient
+- `src/app/(app)/page.tsx` — FeaturedGameCard + hero spotlight (both conditional)
+- `src/app/(app)/games/[id]/page.tsx` — detail hero (conditional)
+- `supabase/seed_games.sql` — added `cover_image` column (all null; UPDATE populates after images uploaded)
+
+**Verification:** `npm run build` clean. API returns `cover` + `coverImage` (omitted when undefined). UI renders gradients; will show images once they're in the bucket and wired via SQL.
+
+**Scope:** only game covers. User avatars, screenshots, other media will use the same pattern later.
+
+**Why not:**
+- ~~Direct client Supabase (Images in a public bucket)~~ — adds a client dependency on Supabase that auth doesn't need; /api/games already goes server-side, images URL comes in the response
+- ~~External CDN~~ — we own the images, want no third-party lock-in, and Supabase Storage is free
+- ~~Multiple image sizes (srcset)~~ — next/image handles responsive automatically; no extra uploading needed

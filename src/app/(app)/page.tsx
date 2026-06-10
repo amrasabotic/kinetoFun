@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Tv, Gamepad2, Hand, Brain, Users, Zap, Target,
   GraduationCap, Building2, Home, Trophy, Star,
@@ -355,8 +356,19 @@ function FeaturedGameCard({ game }: { game: Game }) {
         boxShadow: "0 8px 32px rgba(26,172,224,0.18)",
       }}
     >
-      {/* Cover gradient */}
-      <div className={`relative aspect-[16/9] bg-gradient-to-br ${game.cover}`}>
+      {/* Cover image or gradient */}
+      <div className="relative aspect-[16/9] bg-gradient-to-br overflow-hidden">
+        {game.coverImage ? (
+          <Image
+            src={game.coverImage}
+            alt={game.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 400px, 450px"
+          />
+        ) : (
+          <div className={`absolute inset-0 bg-gradient-to-br ${game.cover}`} />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#1A2E74]/60 via-transparent to-transparent" />
 
         {/* Hover play button */}
@@ -1137,9 +1149,19 @@ export default function HomePage() {
     <div className="space-y-12">
       {/* Hero spotlight */}
       {spotlight ? (
-        <section
-          className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${spotlight.cover} p-8 sm:p-12`}
-        >
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br p-8 sm:p-12">
+          {spotlight.coverImage ? (
+            <Image
+              src={spotlight.coverImage}
+              alt={spotlight.title}
+              fill
+              className="absolute inset-0 object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+              priority
+            />
+          ) : (
+            <div className={`absolute inset-0 bg-gradient-to-br ${spotlight.cover}`} />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           <div className="relative max-w-2xl">
             <Badge tone="default" className="mb-4 bg-black/40">
