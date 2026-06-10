@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-06-10
+> Last updated: 2026-06-10 (score + game-session persistence — ADR-017/018)
 
 ---
 
@@ -21,9 +21,9 @@
 - [x] **JWT authentication system** — done (custom JWT, scrypt, httpOnly cookie, proxy, DAL, repository). See Done / ADR-013.
 - [x] **Supabase PostgreSQL integration** — done & LIVE (`@supabase/supabase-js`, service-role, no Supabase Auth; `users` persisting end-to-end; full schema applied). See Done / ADR-014.
 - [x] **Games catalog from Supabase** — done (`/api/games`, `useGames()`, repository; 10 games seeded). See Done / ADR-015.
-- [ ] Score persistence (add `scores` repository + `/api/scores`; reuse the games pattern; swap `leaderboardService` off mock)
-- [ ] Game-session persistence (`game_sessions`/`session_players`; powers "Continue playing" + multiplayer)
-- [ ] User sessions / game-session tracking (add `game_sessions` table; `sessions` table already in migration for token tracking)
+- [x] **Score persistence** — done (`scores` repo + `/api/{scores,leaderboard,profile/stats}`; real leaderboards + profile stats; score entry on launch screen). See Done / ADR-017.
+- [x] **Game-session persistence** — done (`game_sessions` repo + `/api/sessions[/recent,/[id]]`; "Continue playing" rail is live; dashboard fully off mock). See Done / ADR-018.
+- [ ] Multiplayer sessions (`session_players` — reserved, single-player only so far)
 - [ ] Auth follow-ups: email verification, password reset, OAuth/social, refresh-token rotation, rate limiting on `/api/auth/*`
 
 ### Phase 3 — Game System
@@ -67,6 +67,9 @@ _None yet._
 - [x] **[2026-06-09] Homepage redesign — colorful/playful landing page.** Full 9-section multi-section landing page for logged-out `/`. Nintendo × Duolingo × Apple aesthetic with alternating light/dark sections, float animations, colorful palette. Authenticated dashboard unchanged; build passes. (ADR-011)
 - [x] **[2026-06-10] Custom JWT authentication system.** Real auth replacing the mock: `/api/auth/{register,login,logout,me}` Route Handlers, scrypt password hashing, HS256 JWT (`jose`) in an httpOnly cookie, `src/proxy.ts` route protection (Next 16 middleware rename), server DAL, swappable `UserRepository` (Supabase / local file fallback), `ProtectedRoute`, real `SessionProvider`. Build clean; end-to-end flow + security cases smoke-tested. (ADR-013)
 - [x] **[2026-06-10] Games catalog served from Supabase.** `lib/data/games-repository.ts` + `/api/games`(+`/[id]`) + `useGames()` hook + pure selectors; all 5 game-consuming pages refactored off the mock `gamesService`; 10 games seeded (`supabase/seed_games.sql`). Build clean; `/api/games` verified returning Supabase rows. (ADR-015)
+- [x] **[2026-06-10] Game cover images (Supabase Storage).** Optional `coverImage` on `Game` (maps to `cover_image` column); all 4 cover sites render `next/image` when set, gradient fallback otherwise; `images.remotePatterns` configured. Bucket `game-covers` created. **Activate:** upload images + run the UPDATE SQL. (ADR-016)
+- [x] **[2026-06-10] Score persistence (real leaderboards + profile).** `scores-repository.ts` + `/api/scores` (write, auth), `/api/leaderboard` (public), `/api/profile/stats` (auth); `useLeaderboard`/`useProfileStats` hooks; leaderboard + profile pages off mock; score entry added to launch screen. Build clean; endpoints verified live (empty board, 401s). (ADR-017)
+- [x] **[2026-06-10] Game-session persistence ("Continue playing").** `sessions-repository.ts` + `/api/sessions`(+`/[id]`, `/recent`); session opened on launch, ended on save (clock-skew-safe `ended_at`); `useContinuePlaying` hook with cache invalidation; dashboard "Continue playing" rail live and fully off `@/mock`. Build clean; full authed flow verified end-to-end (create→recent→end), test users cleaned up. (ADR-018)
 - [x] **[2026-06-10] Supabase data layer connected (live).** Wired the app to a live Supabase Postgres project as database-only via `@supabase/supabase-js` (service-role, server-only, no Supabase Auth); `src/lib/supabase/server.ts` client; `SupabaseUserRepository` switched to the SDK; full schema (`supabase/schema.sql`) applied; `--use-system-ca` baked into npm scripts via `cross-env` for this TLS-intercepting machine. Verified end-to-end against the real project (register/me/login/duplicate; row persisted with scrypt hash; test rows deleted). (ADR-014)
 
 ---

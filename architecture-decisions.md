@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-06-10 (ADR-015 — games catalog from Supabase)
+> Last updated: 2026-06-10 (ADR-018 — game-session persistence)
 
 ---
 
@@ -254,3 +254,48 @@
 - ~~Direct client Supabase (Images in a public bucket)~~ — adds a client dependency on Supabase that auth doesn't need; /api/games already goes server-side, images URL comes in the response
 - ~~External CDN~~ — we own the images, want no third-party lock-in, and Supabase Storage is free
 - ~~Multiple image sizes (srcset)~~ — next/image handles responsive automatically; no extra uploading needed
+
+---
+
+## ADR-017 — Score persistence (real leaderboards + profile stats)
+**Date:** 2026-06-10
+**Status:** Accepted (extends ADR-014/015 to the `scores` table; supersedes the mock `leaderboardService`/`profileService` from ADR-008)
+**Decision:** Moved scores from in-memory mock to the live Supabase `scores` table, behind read APIs (leaderboards, profile stats) and a write API (score submission).
+
+**Paths:**
+- **Write:** play page → `POST /api/scores` (auth-required) → `submitScore()` → `scores` insert
+- **Leaderboard read:** `useLeaderboard(gameId|null)` → `GET /api/leaderboard[?gameId=]` → `listLeaderboardForGame` / `listGlobalLeaderboard`
+- **Profile read:** `useProfileStats()` → `GET /api/profile/stats` (auth-required) → `getUserStats`
+
+1. **Server repository** (`src/lib/data/scores-repository.ts`, server-only): joins `scores → users` for leaderboard entries; computes best-score-per-user then re-ranks in JS (simple, catalog/score volume is small). The Supabase nested-select types the joined `users` as an array, so we cast `as unknown as ScoreRow[]`.
+2. **Auth boundary:** writes and personal stats require a session — handlers call `getCurrentUser()` (DAL) and return `401` when absent. Leaderboard reads are public. `JwtPayload.sub` (the user id) is the author of every score.
+3. **Client hooks mirror `useGames`:** `useLeaderboard` caches per board key (`"global"` or a game id) at module level; `useProfileStats` fetches on mount and exposes `refresh()`. Pages show spinner / empty-state / error.
+4. **Profile enrichment client-side:** `/api/profile/stats` returns raw `Score[]`/`Session[]`; the profile page joins them to games from the cached `useGames()` catalog (no server-side game join needed).
+5. **Score entry:** the launch screen (`/games/[id]/play`) gained a numeric score input + "End & save score" button (placeholder until real gameplay exists in Phase 3).
+
+**Files:** `src/lib/data/scores-repository.ts`; `src/app/api/{leaderboard,scores,profile/stats}/route.ts`; `src/features/scores/{useLeaderboard,useProfileStats}.ts`; rewrote `leaderboard/page.tsx` + `profile/page.tsx` + `games/[id]/play/page.tsx`.
+
+**Verification:** `npm run build` clean. Live: `GET /api/leaderboard` → `{entries:[]}` (empty until scores exist); `POST /api/scores` + `GET /api/profile/stats` → `401` unauthenticated.
+
+**Scope:** `leaderboardService`/`profileService` mock files remain on disk but are no longer imported by pages. `game_sessions` handled separately (ADR-018).
+
+---
+
+## ADR-018 — Game-session persistence ("Continue playing")
+**Date:** 2026-06-10
+**Status:** Accepted (extends ADR-014 to `game_sessions`; supersedes the mock `sessions` from ADR-008 — the last mock data source on the dashboard)
+**Decision:** Record real play sessions in the Supabase `game_sessions` table; the dashboard "Continue playing" rail and profile activity now read live data.
+
+**Lifecycle:**
+- **Start:** launch screen mounts → `POST /api/sessions {gameId}` (best-effort; 401 when signed out is non-fatal) → inserts an `active` row, returns `sessionId`
+- **End:** "End & save score" → `PATCH /api/sessions/[id]` → sets `status='ended'`, `ended_at`
+- **Read:** dashboard → `useContinuePlaying(isAuthenticated)` → `GET /api/sessions/recent` → most-recent distinct `game_id`s
+
+1. **Best-effort tracking:** session start is fire-and-forget; if it fails (signed out / network) gameplay is unaffected. Ownership enforced on end (`user_id` match) — a user can only end their own session.
+2. **Clock-skew-safe `ended_at`:** the DB has a `CHECK (ended_at >= started_at)`. Setting `ended_at` from the Node clock violated it (host clock slightly behind Supabase + µs→ms precision loss on the read-back `started_at`). Fix: `endSession` reads the row's `started_at` and sets `ended_at = max(Date.now(), started_at_ms + 1000ms)`, guaranteeing the constraint regardless of skew. **This pattern applies to any future `ended_at`/`expires_at` writes.**
+3. **Module-cached hook with explicit invalidation:** `useContinuePlaying` caches the recent-id list at module level (like `useGames`); `invalidateContinuePlaying()` is called after creating/ending a session so the dashboard refetches on next mount. The hook takes an `enabled` flag so it no-ops (and shows nothing) when signed out.
+4. **`session_players`:** not used yet — single-player ownership via `game_sessions.user_id`. The normalized players table stays reserved for real multiplayer (Phase 3).
+
+**Files:** `src/lib/data/sessions-repository.ts`; `src/app/api/sessions/{route,[id]/route,recent/route}.ts`; `src/services/sessions.service.ts`; `src/features/sessions/useContinuePlaying.ts`; updated `games/[id]/play/page.tsx` + `app/(app)/page.tsx` (removed the last `@/mock` import from the dashboard).
+
+**Verification:** `npm run build` clean (13→ now includes `/api/sessions`, `/api/sessions/[id]`, `/api/sessions/recent`). Live end-to-end with a cookie jar: register → create 2 sessions → `recent` lists both distinct games newest-first → `PATCH` end → `{ok:true}`. Unauthenticated → `401` on all three. Test users deleted afterward (cascade cleared sessions; 0 rows remain).

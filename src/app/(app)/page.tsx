@@ -10,8 +10,8 @@ import {
   Camera, MessageCircle,
 } from "lucide-react";
 import { leaderboardService } from "@/services";
-import { sessions } from "@/mock";
 import { useGames } from "@/features/games/useGames";
+import { useContinuePlaying } from "@/features/sessions/useContinuePlaying";
 import { selectFeatured, selectByCategory } from "@/services/games.service";
 import { useSession } from "@/features/auth/session-context";
 import { GameRail } from "@/components/game/GameRail";
@@ -1114,24 +1114,15 @@ function LandingPage() {
 export default function HomePage() {
   const { user, isAuthenticated } = useSession();
   const { games, loading } = useGames();
+  const { gameIds: recentIds } = useContinuePlaying(isAuthenticated);
   const featured = selectFeatured(games);
   const spotlight = featured[0];
 
   const continuePlaying = useMemo<Game[]>(() => {
-    if (!user) return [];
-    const ids = new Set(
-      sessions
-        .filter((s) => s.players.includes(user.id))
-        .sort(
-          (a, b) =>
-            new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-        )
-        .map((s) => s.gameId),
-    );
-    return [...ids]
+    return recentIds
       .map((id) => games.find((g) => g.id === id))
       .filter((g): g is Game => Boolean(g));
-  }, [user, games]);
+  }, [recentIds, games]);
 
   if (!isAuthenticated || !user) {
     return <LandingPage />;

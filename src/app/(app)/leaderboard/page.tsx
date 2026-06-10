@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { leaderboardService } from "@/services";
+import { useState } from "react";
 import { useGames } from "@/features/games/useGames";
+import { useLeaderboard } from "@/features/scores/useLeaderboard";
 import { useSession } from "@/features/auth/session-context";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { cn } from "@/lib/utils";
@@ -14,18 +14,14 @@ export default function LeaderboardPage() {
   const { games: allGames } = useGames();
   const [selected, setSelected] = useState<string>(GLOBAL);
 
-  const entries = useMemo(
-    () =>
-      selected === GLOBAL
-        ? leaderboardService.global(10)
-        : leaderboardService.forGame(selected, 10),
-    [selected],
+  const { entries, loading, error } = useLeaderboard(
+    selected === GLOBAL ? null : selected,
   );
 
   const selectedTitle =
     selected === GLOBAL
       ? "Global best scores"
-      : `${allGames.find((g) => g.id === selected)?.title} leaderboard`;
+      : `${allGames.find((g) => g.id === selected)?.title ?? selected} leaderboard`;
 
   return (
     <div className="space-y-8">
@@ -56,7 +52,22 @@ export default function LeaderboardPage() {
 
       <section className="space-y-4">
         <h2 className="text-xl font-bold text-foreground">{selectedTitle}</h2>
-        <LeaderboardTable entries={entries} highlightUserId={user?.id} />
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+          </div>
+        ) : error ? (
+          <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45">
+            {error}
+          </p>
+        ) : entries.length === 0 ? (
+          <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45">
+            No scores yet — be the first to play!
+          </p>
+        ) : (
+          <LeaderboardTable entries={entries} highlightUserId={user?.id} />
+        )}
       </section>
     </div>
   );

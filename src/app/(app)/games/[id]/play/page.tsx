@@ -1,20 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useGames } from "@/features/games/useGames";
 import { findGame } from "@/services/games.service";
+import { startSession, endSession } from "@/services/sessions.service";
+import { invalidateContinuePlaying } from "@/features/sessions/useContinuePlaying";
 import { ButtonLink } from "@/components/ui/Button";
 
-type Phase = "loading" | "playing";
+type Phase = "loading" | "playing" | "submitting" | "done";
+
+async function postScore(gameId: string, score: number): Promise<void> {
+  const res = await fetch("/api/scores", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gameId, score }),
+  });
+  if (!res.ok && res.status !== 401) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? "Failed to submit score.");
+  }
+}
 
 export default function GameLaunchPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { games, loading } = useGames();
   const game = findGame(games, params.id);
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [elapsed, setElapsed] = useState(0);
+  const [scoreInput, setScoreInput] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const sessionStartedRef = useRef(false);
 
   useEffect(() => {
     if (!game) return;
@@ -22,11 +42,45 @@ export default function GameLaunchPage() {
     return () => clearTimeout(boot);
   }, [game]);
 
+  // Open a play session once, when the game first loads. Fire-and-forget:
+  // failure (e.g. signed out) just means no session is recorded.
+  useEffect(() => {
+    if (!game || sessionStartedRef.current) return;
+    sessionStartedRef.current = true;
+    startSession(game.id)
+      .then((id) => {
+        sessionIdRef.current = id;
+        if (id) invalidateContinuePlaying();
+      })
+      .catch(() => {
+        /* non-fatal — session tracking is best-effort */
+      });
+  }, [game]);
+
   useEffect(() => {
     if (phase !== "playing") return;
     const id = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(id);
   }, [phase]);
+
+  async function handleEndSession() {
+    if (!game) return;
+    const raw = parseInt(scoreInput.trim(), 10);
+    const score = Number.isFinite(raw) && raw >= 0 ? raw : 0;
+
+    setPhase("submitting");
+    setSubmitError(null);
+    try {
+      await postScore(game.id, score);
+      await endSession(sessionIdRef.current);
+      invalidateContinuePlaying();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Could not save score.");
+    } finally {
+      setPhase("done");
+      router.push(`/games/${game.id}`);
+    }
+  }
 
   if (loading) {
     return (
@@ -60,12 +114,15 @@ export default function GameLaunchPage() {
         {phase === "loading" ? (
           <>
             <div className="h-14 w-14 animate-spin rounded-full border-4 border-white/20 border-t-primary shadow-[0_0_20px_rgba(140,92,255,0.4)]" />
-            <p className="mt-6 text-sm font-medium text-white/60">
-              Launching…
-            </p>
+            <p className="mt-6 text-sm font-medium text-white/60">Launching…</p>
             <h1 className="mt-1 text-3xl font-black text-white sm:text-4xl">
               {game.title}
             </h1>
+          </>
+        ) : phase === "submitting" ? (
+          <>
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+            <p className="mt-4 text-sm text-white/60">Saving score…</p>
           </>
         ) : (
           <>
@@ -98,10 +155,38 @@ export default function GameLaunchPage() {
               </p>
             </div>
 
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <ButtonLink href={`/games/${game.id}`} size="lg" variant="secondary">
-                ✕ End session
-              </ButtonLink>
+            {/* Score entry */}
+            <div className="relative mt-6 w-full overflow-hidden rounded-2xl border border-white/[0.10] bg-white/[0.06] p-5 backdrop-blur-xl">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+              <label
+                htmlFor="score-input"
+                className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/40"
+              >
+                // Enter your score
+              </label>
+              <input
+                id="score-input"
+                ref={inputRef}
+                type="number"
+                min={0}
+                value={scoreInput}
+                onChange={(e) => setScoreInput(e.target.value)}
+                placeholder="0"
+                className="mt-2 w-full rounded-xl border border-white/[0.12] bg-black/30 px-4 py-2.5 font-mono text-xl font-bold tabular-nums text-white placeholder-white/20 focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/40"
+              />
+              {submitError && (
+                <p className="mt-2 text-xs text-red-400">{submitError}</p>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button
+                onClick={handleEndSession}
+                className="inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/20 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-primary/30 focus:outline-none"
+                data-focusable
+              >
+                ✓ End &amp; save score
+              </button>
               <ButtonLink href="/leaderboard" size="lg" variant="ghost">
                 View leaderboard
               </ButtonLink>

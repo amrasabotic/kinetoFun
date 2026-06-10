@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-06-10 (Games served from Supabase — ADR-015)
+> Last updated: 2026-06-10 (Scores + game-sessions persistence — ADR-017/018)
 
 ---
 
@@ -43,6 +43,9 @@ Users will be able to:
 - **[2026-06-08] Futuristic SaaS visual re-skin.** Re-skinned the UI (design language only — no content/layout/flow changes): deep-navy canvas, **neon-green** primary accent (was violet), purple/pink ambient glow, full-page grid + radial-glow backdrop, glassmorphism panels, green/glow buttons. Driven mostly by swapping `@theme` tokens in `globals.css`. (ADR-010)
 - **[2026-06-09] Homepage redesign — colorful/playful landing page.** Replaced the logged-out `/` landing page (`LandingPage` in `(app)/page.tsx`) with a full 9-section multi-section page: Hero, How It Works, Featured Games, Multiplayer, Why Kids Love It, Educational Benefits, Perfect For, Leaderboard Preview, Final CTA. Palette: `#6D5DFC` / `#00D4FF` / `#FFB800` / `#32D583`, light (#FAFBFF) and dark (#0d0e1a) alternating sections. Animations added to `globals.css` (float keyframes). Authenticated dashboard unchanged. (ADR-011)
 - **[2026-06-10] Games served from Supabase.** Wired the games catalog to the live DB: `lib/data/games-repository.ts` (server, Supabase client) → `/api/games` + `/api/games/[id]` (public) → `useGames()` client hook (module-cached) + pure selectors in `games.service`. Refactored all 5 consumers (library, home landing + dashboard, leaderboard, game detail, launch) off the old sync `gamesService`/mock. Seeded 10 games (`supabase/seed_games.sql`). Build clean; verified `/api/games` returns the 10 rows from Supabase. (ADR-015)
+- **[2026-06-10] Game cover images (Supabase Storage).** Optional `Game.coverImage` (maps to `cover_image` column); 4 cover sites render `next/image` when set, gradient fallback otherwise; `next.config` remote patterns; bucket `game-covers` created. Activate by uploading images + UPDATE SQL. (ADR-016)
+- **[2026-06-10] Score persistence — real leaderboards + profile stats.** `scores-repository.ts` → `/api/scores` (write, auth), `/api/leaderboard` (public, global or per-game), `/api/profile/stats` (auth); `useLeaderboard`/`useProfileStats` hooks; leaderboard + profile pages off mock; manual score entry on the launch screen. (ADR-017)
+- **[2026-06-10] Game-session persistence — "Continue playing".** `sessions-repository.ts` → `/api/sessions` (start), `/api/sessions/[id]` (end), `/api/sessions/recent`; session opened on launch + ended on save with a **clock-skew-safe `ended_at`**; `useContinuePlaying` (module-cached + invalidation). Dashboard is now fully off `@/mock`. (ADR-018)
 - **[2026-06-10] Phase 2 — Custom JWT authentication (real, not mocked).** Replaced the mock session with a production-shaped auth layer: register/login/logout + `me` Route Handlers under `/api/auth/*`; scrypt password hashing (Node built-in); HS256 JWT via `jose` stored in an httpOnly+SameSite cookie; `src/proxy.ts` (Next 16's renamed middleware) for optimistic route protection; a server-side DAL (`getCurrentUser`/`requireUser`) for the authoritative check; a swappable `UserRepository` (Supabase Postgres via PostgREST when configured, local file store otherwise); `ProtectedRoute` wrapper; `SessionProvider` now restores via `/api/auth/me`. Build clean; full flow smoke-tested (register→me→login→logout, proxy redirects, forged-token rejection). (ADR-013)
 
 ---
@@ -80,6 +83,13 @@ src/
     api/games/              # public games catalog API
       route.ts              # GET  — all games (from Supabase)
       [id]/route.ts         # GET  — one game by id
+    api/leaderboard/route.ts # GET  — global or ?gameId= board (public)
+    api/scores/route.ts     # POST — submit a score (auth)
+    api/profile/stats/route.ts # GET — current user's stats (auth)
+    api/sessions/           # play-session lifecycle
+      route.ts              # POST — start a session (auth)
+      [id]/route.ts         # PATCH — end a session (auth)
+      recent/route.ts       # GET  — recent game ids (auth)
   proxy.ts                  # Next 16 route protection (was middleware.ts)
   components/
     layout/   TopBar.tsx, Clock.tsx
@@ -94,7 +104,10 @@ src/
     auth/     session-context.tsx       # SessionProvider + useSession (REAL: restores via /api/auth/me)
               ProtectedRoute.tsx        # client guard for auth-only pages
     games/    useGames.ts               # client hook: fetches /api/games (module-cached)
-  services/   auth.service + games.service — REAL (call /api/*); leaderboard + profile — mock
+    scores/   useLeaderboard.ts (per-board cache), useProfileStats.ts
+    sessions/ useContinuePlaying.ts     # module-cached + invalidateContinuePlaying()
+  services/   auth.service, games.service, sessions.service — REAL (call /api/*)
+              # leaderboard.service + profile.service mock files remain but are UNUSED by pages.
               # the BACKEND BOUNDARY. games.service = async fetchers + pure selectors.
   lib/auth/   config, password (scrypt), jwt (jose/HS256), session (cookies),
               validation (zod), dal (getCurrentUser/requireUser), serialize,
@@ -102,6 +115,8 @@ src/
               client], local-user-repository [dev fallback])
               # SERVER-ONLY. Never import from a Client Component.
   lib/data/   games-repository.ts       # SERVER-ONLY games reads (Supabase) → Game
+              scores-repository.ts      # SERVER-ONLY leaderboards + profile stats + submitScore
+              sessions-repository.ts    # SERVER-ONLY create/end/listRecent game_sessions
   lib/supabase/ server.ts  # getSupabaseAdmin() — service-role client, DATABASE ONLY
   mock/       games.ts, users.ts, scores.ts, sessions.ts, index.ts
   types/      index.ts                  # Game, User, Score, Session, LeaderboardEntry
@@ -183,12 +198,13 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 ## System Boundaries (NOT built yet)
 
 - **Auth is real and working AND wired to live Supabase** (✅ — register/login/logout/me, JWT cookie, hashing, route protection; users persist to Supabase Postgres, verified end-to-end). Email/password only (no OAuth/social, no email verification, no password reset, no refresh-token rotation yet).
-- **Supabase data layer is live** (✅ — `@supabase/supabase-js`, service-role, no Supabase Auth). Schema for `users/games/scores/game_sessions` (+ optional `session_players`, `auth_sessions`, `subscriptions`, `game_leaderboards` view) is applied. **`users` and `games` are wired to the DB**; `scores`/`game_sessions` repositories come later "based on real usage".
-- **Games are served from Supabase** (✅ — seeded with 10 games via `supabase/seed_games.sql`). Read path: `useGames()` → `/api/games` → `@/lib/data/games-repository` → Supabase. `leaderboardService` + `profileService` still read mock (`src/mock`). Profile stats for a real user show empty until score persistence lands.
-- **Game cover images (✅ — infrastructure done):** Supabase Storage bucket `game-covers` created; `Game.coverImage` optional field added (maps to `cover_image` DB column). All 4 render sites (GameCard, FeaturedGameCard, game detail, dashboard hero) now show images when `coverImage` is set, gradient fallback otherwise. `next/image` optimized with remote patterns configured. Next step: upload images to the bucket and wire them via SQL UPDATE.
-- No real score persistence — scores/sessions are static mock data.
-- No real game SDK or runtime — `/games/[id]/play` is a placeholder screen.
-- No multiplayer session handling (sessions are display-only mock records).
+- **Supabase data layer is live** (✅ — `@supabase/supabase-js`, service-role, no Supabase Auth). Schema for `users/games/scores/game_sessions` (+ optional `session_players`, `auth_sessions`, `subscriptions`, `game_leaderboards` view) is applied. **`users`, `games`, `scores`, and `game_sessions` are all wired to the DB.**
+- **Games are served from Supabase** (✅ — seeded with 10 games via `supabase/seed_games.sql`). Read path: `useGames()` → `/api/games` → `@/lib/data/games-repository` → Supabase.
+- **Scores + leaderboards + profile stats are live** (✅ — ADR-017). Write via `POST /api/scores` (auth) from the launch screen; read via `useLeaderboard` → `/api/leaderboard` (public) and `useProfileStats` → `/api/profile/stats` (auth). `leaderboardService`/`profileService` mock files remain on disk but are no longer imported by pages.
+- **Game sessions are live** (✅ — ADR-018). "Continue playing" rail + profile activity read real `game_sessions`; session opened on launch (`POST /api/sessions`), ended on save (`PATCH /api/sessions/[id]`); `useContinuePlaying` → `/api/sessions/recent`. The dashboard no longer imports `@/mock`.
+- **Game cover images (✅ — infrastructure done, ADR-016):** Storage bucket `game-covers` created; `Game.coverImage` optional (maps to `cover_image` column); all 4 cover sites use `next/image` when set, gradient fallback otherwise. Next step: upload images + run the UPDATE SQL.
+- No real game SDK or runtime — `/games/[id]/play` is a placeholder screen (score is entered manually).
+- No multiplayer yet — `game_sessions.user_id` is single-player owner; `session_players` reserved for Phase 3.
 - No Raspberry Pi / camera / MediaPipe gesture input. (Spatial-navigation primitive exists and is the seam the gesture layer will plug into.)
 - No paywall / purchasing.
 

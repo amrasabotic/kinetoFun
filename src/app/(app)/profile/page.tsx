@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useSession } from "@/features/auth/session-context";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
-import { profileService } from "@/services";
+import { useProfileStats } from "@/features/scores/useProfileStats";
+import { useGames } from "@/features/games/useGames";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { ScoreList } from "@/components/profile/ScoreList";
@@ -19,10 +21,27 @@ export default function ProfilePage() {
 
 function ProfileContent() {
   const { user } = useSession();
-  // Guaranteed by ProtectedRoute; this keeps the type non-null below.
+  const { stats, loading, error } = useProfileStats();
+  const { games } = useGames();
+
   if (!user) return null;
 
-  const stats = profileService.getStats(user.id);
+  // Enrich scores + sessions with game objects from the cached catalog.
+  const enrichedStats = useMemo(() => {
+    if (!stats) return null;
+    return {
+      ...stats,
+      recentScores: stats.recentScores.map((s) => ({
+        ...s,
+        game: games.find((g) => g.id === s.gameId),
+      })),
+      recentSessions: stats.recentSessions.map((s) => ({
+        ...s,
+        game: games.find((g) => g.id === s.gameId),
+      })),
+    };
+  }, [stats, games]);
+
   const xpIntoLevel = user.xp % 1000;
   const xpPct = Math.round((xpIntoLevel / 1000) * 100);
 
@@ -30,7 +49,6 @@ function ProfileContent() {
     <div className="space-y-6">
       {/* Profile header */}
       <section className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.04] p-8 backdrop-blur-xl sm:flex sm:items-center sm:gap-6">
-        {/* Top highlight */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
         <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-primary/40 blur-sm" />
 
@@ -51,7 +69,6 @@ function ProfileContent() {
             Member since {formatDate(user.joinedAt)}
           </p>
 
-          {/* Level / XP bar */}
           <div className="mt-4 max-w-sm">
             <div className="flex items-center justify-between text-sm">
               <span className="font-semibold text-foreground">Level {user.level}</span>
@@ -72,72 +89,84 @@ function ProfileContent() {
       </section>
 
       {/* Stats */}
-      <section className="grid grid-cols-3 gap-4">
-        <StatCard label="Games played" value={stats.gamesPlayed} />
-        <StatCard label="Sessions" value={stats.totalSessions} />
-        <StatCard label="Best score" value={stats.bestScore.toLocaleString()} />
-      </section>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+        </div>
+      ) : error ? (
+        <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45">
+          {error}
+        </p>
+      ) : enrichedStats ? (
+        <>
+          <section className="grid grid-cols-3 gap-4">
+            <StatCard label="Games played" value={enrichedStats.gamesPlayed} />
+            <StatCard label="Sessions" value={enrichedStats.totalSessions} />
+            <StatCard label="Best score" value={enrichedStats.bestScore.toLocaleString()} />
+          </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent scores */}
-        <section className="space-y-3">
-          <div className="flex items-baseline gap-3">
-            <h2 className="text-lg font-bold text-foreground">Recent scores</h2>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
-              // latest runs
-            </span>
-          </div>
-          <ScoreList scores={stats.recentScores} />
-        </section>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Recent scores */}
+            <section className="space-y-3">
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-lg font-bold text-foreground">Recent scores</h2>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
+                  // latest runs
+                </span>
+              </div>
+              <ScoreList scores={enrichedStats.recentScores} />
+            </section>
 
-        {/* Recent sessions */}
-        <section className="space-y-3">
-          <div className="flex items-baseline gap-3">
-            <h2 className="text-lg font-bold text-foreground">Recent activity</h2>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
-              // sessions
-            </span>
+            {/* Recent sessions */}
+            <section className="space-y-3">
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-lg font-bold text-foreground">Recent activity</h2>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
+                  // sessions
+                </span>
+              </div>
+              {enrichedStats.recentSessions.length === 0 ? (
+                <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45 backdrop-blur-xl">
+                  No sessions yet.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {enrichedStats.recentSessions.map((session) => (
+                    <li key={session.id}>
+                      <Link
+                        href={session.game ? `/games/${session.game.id}` : "#"}
+                        data-focusable
+                        className="flex items-center gap-4 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 backdrop-blur-sm transition-all duration-200 hover:bg-white/[0.07] hover:border-white/[0.12] focus:outline-none"
+                      >
+                        <span
+                          className={`h-10 w-10 shrink-0 rounded-lg bg-gradient-to-br ${
+                            session.game?.cover ?? "from-zinc-600 to-zinc-800"
+                          }`}
+                        />
+                        <span className="flex-1 min-w-0">
+                          <span className="block truncate font-semibold text-foreground">
+                            {session.game?.title ?? "Unknown game"}
+                          </span>
+                          <span className="block text-xs text-foreground/45">
+                            {session.players.length} player
+                            {session.players.length > 1 ? "s" : ""} ·{" "}
+                            {relativeTime(session.startedAt)}
+                          </span>
+                        </span>
+                        {session.status === "active" && (
+                          <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                            Active
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
-          {stats.recentSessions.length === 0 ? (
-            <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45 backdrop-blur-xl">
-              No sessions yet.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {stats.recentSessions.map((session) => (
-                <li key={session.id}>
-                  <Link
-                    href={session.game ? `/games/${session.game.id}` : "#"}
-                    data-focusable
-                    className="flex items-center gap-4 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 backdrop-blur-sm transition-all duration-200 hover:bg-white/[0.07] hover:border-white/[0.12] focus:outline-none"
-                  >
-                    <span
-                      className={`h-10 w-10 shrink-0 rounded-lg bg-gradient-to-br ${
-                        session.game?.cover ?? "from-zinc-600 to-zinc-800"
-                      }`}
-                    />
-                    <span className="flex-1 min-w-0">
-                      <span className="block truncate font-semibold text-foreground">
-                        {session.game?.title ?? "Unknown game"}
-                      </span>
-                      <span className="block text-xs text-foreground/45">
-                        {session.players.length} player
-                        {session.players.length > 1 ? "s" : ""} ·{" "}
-                        {relativeTime(session.startedAt)}
-                      </span>
-                    </span>
-                    {session.status === "active" && (
-                      <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                        Active
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+        </>
+      ) : null}
     </div>
   );
 }
