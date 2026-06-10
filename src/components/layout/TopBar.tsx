@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/features/auth/session-context";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { Clock } from "./Clock";
+import { User, Settings, ChevronDown } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -21,24 +22,83 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function SettingsIcon() {
+// ─── Profile dropdown ─────────────────────────────────────────────────────────
+
+function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSession>["user"]> }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Close on outside click or Escape.
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent | KeyboardEvent) {
+      if (e instanceof KeyboardEvent) {
+        if (e.key === "Escape") setOpen(false);
+        return;
+      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    document.addEventListener("keydown", handle);
+    return () => {
+      document.removeEventListener("mousedown", handle);
+      document.removeEventListener("keydown", handle);
+    };
+  }, [open]);
+
+  const ITEMS = [
+    { href: "/profile", label: "Profile", Icon: User },
+    { href: "/settings", label: "Settings", Icon: Settings },
+  ];
+
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
+    <div ref={ref} className="relative hidden md:flex">
+      <button
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 rounded-full px-2 py-1 pr-3 text-sm font-semibold text-[#1A2E74] transition-all duration-200 hover:bg-[#1A2E74]/10 dark:text-white dark:hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1AACE0]/60"
+      >
+        <Avatar user={user} size="sm" />
+        <span className="hidden text-sm font-semibold text-[#1A2E74] dark:text-white lg:block">
+          {user.displayName}
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-[#1A2E74]/50 transition-transform duration-200 dark:text-white/40",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {/* Dropdown panel */}
+      <div
+        className={cn(
+          "absolute right-0 top-full mt-2 w-44 origin-top-right overflow-hidden rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(26,46,116,0.22)]",
+          "bg-white/90 backdrop-blur-xl dark:bg-[#0a1438]/95 dark:border-white/[0.08]",
+          "transition-all duration-200",
+          open ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0",
+        )}
+      >
+        {ITEMS.map(({ href, label, Icon }) => (
+          <button
+            key={href}
+            type="button"
+            onClick={() => { setOpen(false); router.push(href); }}
+            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-[#1A2E74]/80 transition-colors duration-150 hover:bg-[#1AACE0]/10 hover:text-[#1A2E74] dark:text-white/65 dark:hover:bg-white/[0.07] dark:hover:text-white first:rounded-t-2xl last:rounded-b-2xl focus:outline-none focus-visible:bg-[#1AACE0]/10"
+          >
+            <Icon className="h-4 w-4 shrink-0 opacity-60" />
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
+
+// ─── TopBar ───────────────────────────────────────────────────────────────────
 
 export function TopBar() {
   const pathname = usePathname();
@@ -66,7 +126,7 @@ export function TopBar() {
       >
         <div
           className={cn(
-            "relative flex h-14 items-center gap-4 overflow-hidden rounded-full border px-4 backdrop-blur-xl transition-all duration-300",
+            "relative flex h-14 items-center gap-4 rounded-full border px-4 backdrop-blur-xl transition-all duration-300",
             scrolled
               ? "border-white/20 bg-white/20 shadow-[0_8px_40px_rgba(26,46,116,0.25)] dark:bg-[#1A2E74]/40 dark:border-white/15"
               : "border-white/15 bg-white/15 shadow-[0_4px_24px_rgba(26,46,116,0.15)] dark:bg-[#1A2E74]/30 dark:border-white/10",
@@ -74,6 +134,7 @@ export function TopBar() {
         >
           {/* Glass top highlight */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+
           {/* Logo */}
           <Link
             href="/"
@@ -113,29 +174,8 @@ export function TopBar() {
           <div className="ml-auto flex items-center gap-2">
             <Clock />
 
-            <Link
-              href="/settings"
-              data-focusable
-              aria-label="Settings"
-              className={cn(
-                "hidden items-center justify-center rounded-full p-2 text-[#1A2E74]/55 transition-all duration-200 hover:bg-[#1A2E74]/10 hover:text-[#1A2E74] dark:text-white/50 dark:hover:bg-white/[0.06] dark:hover:text-white md:flex",
-                isActive(pathname, "/settings") && "bg-[#1AACE0]/15 text-[#1A2E74] dark:bg-white/[0.08] dark:text-white",
-              )}
-            >
-              <SettingsIcon />
-            </Link>
-
             {isAuthenticated && user ? (
-              <Link
-                href="/profile"
-                data-focusable
-                className="hidden items-center gap-2 rounded-full px-2 py-1 pr-3 text-sm font-semibold text-[#1A2E74] transition-all duration-200 hover:bg-[#1A2E74]/10 dark:text-white dark:hover:bg-white/[0.08] focus:outline-none md:flex"
-              >
-                <Avatar user={user} size="sm" />
-                <span className="hidden text-sm font-semibold text-[#1A2E74] dark:text-white lg:block">
-                  {user.displayName}
-                </span>
-              </Link>
+              <ProfileDropdown user={user} />
             ) : (
               <>
                 <Link
@@ -228,32 +268,35 @@ export function TopBar() {
               {item.label}
             </Link>
           ))}
-
-          <Link
-            href="/settings"
-            data-focusable
-            className={cn(
-              "flex items-center gap-3 rounded-2xl px-5 py-3.5 text-base font-medium transition-all duration-200 focus:outline-none",
-              isActive(pathname, "/settings")
-                ? "bg-[#1AACE0]/20 text-[#1AACE0]"
-                : "text-white/70 hover:bg-white/[0.08] hover:text-white",
-            )}
-          >
-            <SettingsIcon />
-            Settings
-          </Link>
         </nav>
 
         <div className="border-t border-white/[0.06] px-4 py-4">
           {isAuthenticated && user ? (
-            <Link
-              href="/profile"
-              data-focusable
-              className="flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.05] hover:text-white focus:outline-none"
-            >
-              <Avatar user={user} size="sm" />
-              <span>{user.displayName}</span>
-            </Link>
+            <div className="flex flex-col gap-1">
+              {/* Profile header row */}
+              <div className="flex items-center gap-3 px-5 py-3 text-sm font-semibold text-white">
+                <Avatar user={user} size="sm" />
+                <span>{user.displayName}</span>
+              </div>
+              {/* Profile link */}
+              <Link
+                href="/profile"
+                data-focusable
+                className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none"
+              >
+                <User className="h-4 w-4 opacity-60" />
+                Profile
+              </Link>
+              {/* Settings link */}
+              <Link
+                href="/settings"
+                data-focusable
+                className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none"
+              >
+                <Settings className="h-4 w-4 opacity-60" />
+                Settings
+              </Link>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               <Link
