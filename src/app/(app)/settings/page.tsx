@@ -3,20 +3,33 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/features/auth/session-context";
+import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
+  return (
+    <ProtectedRoute>
+      <SettingsContent />
+    </ProtectedRoute>
+  );
+}
+
+function SettingsContent() {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useSession();
 
   const [largeText, setLargeText] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
-  function handleSignOut() {
-    logout();
-    router.push("/login");
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    await logout();
+    router.replace("/login");
+    router.refresh();
   }
 
   return (
@@ -40,8 +53,13 @@ export default function SettingsPage() {
               <p className="text-base font-bold text-foreground">{user.displayName}</p>
               <p className="text-sm text-foreground/45">{user.email}</p>
             </div>
-            <Button variant="danger" onClick={handleSignOut}>
-              Sign out
+            <Button
+              variant="danger"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className={cn(signingOut && "pointer-events-none opacity-60")}
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
             </Button>
           </div>
         ) : (
@@ -101,9 +119,11 @@ export default function SettingsPage() {
         <dl className="space-y-3 text-sm">
           <Row label="App" value="KinetoFun" />
           <div className="h-px bg-white/[0.06]" />
-          <Row label="Version" value="0.1.0 (Phase 1 — Frontend)" />
+          <Row label="Version" value="0.1.0 (Phase 2 — Auth)" />
           <div className="h-px bg-white/[0.06]" />
-          <Row label="Backend" value="Mock data (Supabase coming in Phase 2)" />
+          <Row label="Auth" value="Custom JWT · httpOnly session" />
+          <div className="h-px bg-white/[0.06]" />
+          <Row label="Database" value="Supabase Postgres (local fallback)" />
         </dl>
       </Section>
     </div>

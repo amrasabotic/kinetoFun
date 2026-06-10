@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSession } from "@/features/auth/session-context";
+import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { profileService } from "@/services";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
@@ -9,17 +10,17 @@ import { ScoreList } from "@/components/profile/ScoreList";
 import { formatDate, relativeTime } from "@/lib/format";
 
 export default function ProfilePage() {
-  const { user, isAuthenticated } = useSession();
+  return (
+    <ProtectedRoute>
+      <ProfileContent />
+    </ProtectedRoute>
+  );
+}
 
-  if (!isAuthenticated || !user) {
-    return (
-      <div className="flex flex-col items-center gap-4 py-24 text-center">
-        <h1 className="text-3xl font-bold text-foreground">You&apos;re signed out</h1>
-        <p className="text-sm text-foreground/45">Sign in to view your profile and scores.</p>
-        <ButtonLink href="/login">Sign in</ButtonLink>
-      </div>
-    );
-  }
+function ProfileContent() {
+  const { user } = useSession();
+  // Guaranteed by ProtectedRoute; this keeps the type non-null below.
+  if (!user) return null;
 
   const stats = profileService.getStats(user.id);
   const xpIntoLevel = user.xp % 1000;

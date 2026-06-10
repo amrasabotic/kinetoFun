@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { gamesService } from "@/services";
+import { useGames } from "@/features/games/useGames";
+import { selectCategories, searchGames } from "@/services/games.service";
 import { GameCard } from "@/components/game/GameCard";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/utils";
@@ -10,20 +11,21 @@ import type { GameCategory } from "@/types";
 type Filter = "All" | GameCategory;
 
 export default function LibraryPage() {
+  const { games, loading } = useGames();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("All");
 
   const categories = useMemo<Filter[]>(
-    () => ["All", ...gamesService.categories()],
-    [],
+    () => ["All", ...selectCategories(games)],
+    [games],
   );
 
   const results = useMemo(() => {
-    const searched = gamesService.search(query);
+    const searched = searchGames(games, query);
     return filter === "All"
       ? searched
       : searched.filter((g) => g.category === filter);
-  }, [query, filter]);
+  }, [games, query, filter]);
 
   return (
     <div className="space-y-8">
@@ -32,7 +34,9 @@ export default function LibraryPage() {
           Game Library
         </h1>
         <p className="text-muted-foreground">
-          {results.length} {results.length === 1 ? "game" : "games"} available
+          {loading
+            ? "Loading games…"
+            : `${results.length} ${results.length === 1 ? "game" : "games"} available`}
         </p>
       </header>
 
@@ -65,7 +69,16 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {results.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div
+              key={i}
+              className="aspect-[3/4] animate-pulse rounded-2xl border border-border/40 bg-card/20"
+            />
+          ))}
+        </div>
+      ) : results.length === 0 ? (
         <p className="rounded-2xl border border-border/40 bg-card/10 p-12 text-center text-muted-foreground backdrop-blur-sm">
           No games match &ldquo;{query}&rdquo;.
         </p>

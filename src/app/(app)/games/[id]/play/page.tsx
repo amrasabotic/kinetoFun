@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { gamesService } from "@/services";
+import { useGames } from "@/features/games/useGames";
+import { findGame } from "@/services/games.service";
 import { ButtonLink } from "@/components/ui/Button";
 
 type Phase = "loading" | "playing";
 
 export default function GameLaunchPage() {
   const params = useParams<{ id: string }>();
-  const game = gamesService.getById(params.id);
+  const { games, loading } = useGames();
+  const game = findGame(games, params.id);
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [elapsed, setElapsed] = useState(0);
@@ -25,6 +27,14 @@ export default function GameLaunchPage() {
     const id = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(id);
   }, [phase]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+      </div>
+    );
+  }
 
   if (!game) {
     return (

@@ -1,23 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
+import { AuthRequestError } from "@/services/auth.service";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
+import { cn } from "@/lib/utils";
 
-export default function LoginPage() {
+/** Only allow relative, in-app redirect targets (no open redirects). */
+function safeNext(raw: string | null): string {
+  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useSession();
-  const [email, setEmail] = useState("amrasabo@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    login(email, password);
-    router.push("/");
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    try {
+      await login(email, password);
+      router.replace(safeNext(searchParams.get("next")));
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof AuthRequestError
+          ? err.message
+          : "Couldn't sign in. Please try again.",
+      );
+      setPending(false);
+    }
   }
 
   return (
@@ -55,19 +78,29 @@ export default function LoginPage() {
           placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
           icon={<Lock className="h-4 w-4" />}
         />
 
-        <Button type="submit" fullWidth size="lg" className="mt-2">
-          Sign in
+        {error && (
+          <p
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
+          >
+            {error}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          fullWidth
+          size="lg"
+          disabled={pending}
+          className={cn("mt-2", pending && "pointer-events-none opacity-60")}
+        >
+          {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-
-      {/* Hint */}
-      <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-center text-xs text-foreground/35">
-        Mock auth — any credentials work. Use a known email to load that
-        player&apos;s data.
-      </div>
 
       <p className="mt-6 text-center text-sm text-foreground/45">
         New here?{" "}
@@ -80,5 +113,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="h-96" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

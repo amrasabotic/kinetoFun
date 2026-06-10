@@ -21,8 +21,10 @@ export interface Game {
   players: GamePlayers;
   minPlayers: number;
   maxPlayers: number;
-  /** Tailwind gradient classes used as a placeholder cover (no real art yet). */
+  /** Tailwind gradient classes — used as fallback when coverImage is absent. */
   cover: string;
+  /** Supabase Storage URL for the real cover image (optional; gradient used when absent). */
+  coverImage?: string;
   /** Accent color token used for detail/launch screens. */
   accent: string;
   rating: number; // 0 - 5

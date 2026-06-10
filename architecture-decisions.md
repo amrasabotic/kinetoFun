@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-06-08
+> Last updated: 2026-06-10 (ADR-015 — games catalog from Supabase)
 
 ---
 
@@ -143,3 +143,66 @@
 **Palette used inline (not replacing theme tokens):** Primary `#6D5DFC`, Cyan `#00D4FF`, Amber `#FFB800`/`#c97c00`, Green `#32D583`/`#1f9e5e`, Pink `#FF6B9D`/`#c0165e`. Light section bg `#FAFBFF`, text `#1a1a2e`/`#6b7280`. Dark section bg `#0d0e1a`/`#1a1a2e`.
 
 **Rationale:** Colors are applied directly on the homepage JSX (not via CSS variable swap) so no other pages are affected and the dark-mode TopBar remains readable. Build verified clean.
+
+---
+
+## ADR-013 — Custom JWT authentication system (Phase 2)
+**Date:** 2026-06-10
+**Status:** Accepted (implements ADR-002 / ADR-003; replaces the ADR-008/ADR-009 mock session)
+**Decision:** Build a real, production-shaped authentication layer using custom JWTs, with Supabase PostgreSQL as the database only (no Supabase Auth), structured so it scales into game sessions, leaderboards, multiplayer identity, and subscriptions without restructuring.
+
+**Architecture**
+1. **API:** Route Handlers under `src/app/api/auth/` — `POST register`, `POST login`, `POST logout`, `GET me`. Web `Request`/`Response`; never cached.
+2. **Passwords:** Node built-in `crypto.scrypt` (memory-hard, salted, self-describing `scrypt$N$r$p$salt$hash`). Chosen over `bcrypt` to avoid a native build on Windows and an extra dependency; constant-time compare via `timingSafeEqual`.
+3. **Tokens:** HS256 JWT via `jose` (the library the in-repo Next docs recommend). Claims: `sub` (user id), `email`, `name`, `iat`, `exp`; issuer/audience pinned and verified; `alg` pinned (rejects `none`/swapped alg). 7-day lifetime.
+4. **Session storage:** httpOnly + `SameSite=lax` cookie (`kf_auth`), `Secure` in production. The task's preferred option; no token in client JS (so no XSS token theft, no localStorage).
+5. **Route protection:** `src/proxy.ts` — **Next 16 renamed `middleware` → `proxy`** (function `proxy`, Node.js runtime only). Optimistic cookie check only (no DB), per docs: redirects unauthenticated users off `/profile`/`/settings` (with `?next=`) and signed-in users off `/login`/`/signup`.
+6. **Authoritative check:** server-side DAL (`getCurrentUser`/`requireUser`, React `cache`-memoized) verifies the JWT **and** loads the user from the DB. Used by `GET /api/auth/me` and available to Server Components/Actions.
+7. **Persistence:** `UserRepository` interface with two implementations, auto-selected by env: `SupabaseUserRepository` (Supabase Postgres via the PostgREST data API + service-role key, dependency-free `fetch`) when `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` are set; otherwise `LocalUserRepository` (file-backed `.data/auth-users.json`) so the app is fully functional with zero setup. Schema in `supabase/migrations/0001_auth.sql` (`users` + optional `sessions`).
+8. **Frontend:** `SessionProvider`/`useSession` rewritten to be real (async `login`/`signup`/`logout`, `isLoading`, auto-restore via `/api/auth/me`); `ProtectedRoute` wrapper; `services/auth.service.ts` is the client API boundary and maps `AuthUser` → the rich UI `User` (`toAppUser`) so all existing screens keep working unchanged.
+
+**Dependencies:** added `jose` only. Reused already-present `zod`. No `bcrypt`/`pg`/`@supabase/supabase-js` (kept the footprint minimal and install-reliable on this TLS-intercepting machine — see ADR-007).
+
+**Secret handling:** `JWT_SECRET` resolved **lazily** at request time (not module load) so `next build` — which runs with `NODE_ENV=production` but no runtime env — doesn't throw. Required (≥32 chars) in production; insecure dev fallback with a loud warning otherwise. See `.env.example`.
+
+**Next.js 16 notes that shaped this (per `node_modules/next/dist/docs`, AGENTS.md mandate):** `middleware`→`proxy` (no Edge runtime for proxy); `cookies()`/`params`/`searchParams` are async; `useSearchParams` needs a Suspense boundary (login/signup wrap their form); Turbopack is the default build.
+
+**Verification:** `npm run build` passes (TypeScript clean; all `/api/auth/*` routes dynamic, Proxy detected). Smoke-tested end-to-end against `next start`: register→201+cookie, me→200, duplicate→409, weak password→400 w/ field errors, login wrong→401, login ok→200, me w/o cookie→401, proxy `/profile` unauth→307 `/login?next=`, proxy `/login` authed→307 `/`, logout clears cookie, tampered/garbage token→401, password persisted as scrypt hash (never plaintext).
+
+**Trade-offs / known limits:** email+password only (no OAuth, email verification, password reset, refresh-token rotation, or `/api/auth/*` rate limiting yet — listed in roadmap). Lint shows the project's pre-existing baseline noise (`react/jsx-no-comment-textnodes`, `react-hooks/set-state-in-effect`) under Next 16's flat config; the gate remains `npm run build` (per ADR-010). Profile/leaderboard data is still mock, so a freshly-registered real user shows empty stats until score persistence lands.
+
+---
+
+## ADR-014 — Supabase data layer connected (database only, no Supabase Auth)
+**Date:** 2026-06-10
+**Status:** Accepted (implements ADR-002; the persistence side of ADR-013)
+**Decision:** Connected the app to a live Supabase Postgres project as the **database layer only**. Authentication stays the custom JWT system (ADR-013); Supabase Auth is **not** used.
+
+1. **Client:** added `@supabase/supabase-js`. `src/lib/supabase/server.ts` exposes `getSupabaseAdmin()` — a lazy, cached, **server-only** client created with the **service-role** key and `auth: { persistSession:false, autoRefreshToken:false }`. Never imported by Client Components; the service-role key is never sent to the browser.
+2. **Repository:** `SupabaseUserRepository` now uses the Supabase client (`.from('users').select/insert/...`) instead of raw `fetch`/PostgREST. The `UserRepository` interface is unchanged, so the auth layer is untouched and the local file-store fallback still applies when env is absent.
+3. **Schema:** full schema lives in `supabase/schema.sql` (run in the Supabase SQL editor) — `users`, `games`, `scores`, `game_sessions` (+ `session_players`), plus optional `auth_sessions`, `subscriptions`, and a `game_leaderboards` view. Maps onto `src/types`. RLS is enabled on every table with no policies; the service-role key bypasses RLS, so only the server can read/write. **Naming:** the play-sessions table is `game_sessions` (not `sessions`) to disambiguate from `auth_sessions`.
+4. **Env / config:** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (and public `NEXT_PUBLIC_SUPABASE_*` for future browser use) in `.env.local` (git-ignored; `.env.example` documents them). `getUserRepository()` auto-selects Supabase when both are set.
+5. **TLS / runtime:** this machine intercepts TLS, so Node must run with `--use-system-ca` to reach Supabase over HTTPS (curl fails; Node with the flag succeeds). Baked into the `dev`/`build`/`start` scripts via **`cross-env`** so it works regardless of the OS shell (npm `script-shell` is unset → cmd.exe on Windows). Extends ADR-007 from install-time to runtime.
+
+**Scope restraint (per the user's card):** "keep schema minimal and extend later based on real usage" — so only `users` is wired in code (real usage = auth). `games`/`scores`/`game_sessions` repositories are deliberately **not** pre-built; they get added with the same pattern when those features move off mock data.
+
+**Verification:** `npm run build` clean. Live end-to-end against the real Supabase project: register→`201` (row persisted; `created_at` has Postgres µs+offset precision), `me`→`200` (read back by id), login correct→`200` / wrong→`401`, duplicate email→`409` (case-insensitive `lower(email)` unique index). Confirmed the stored `password_hash` is a scrypt digest (130 chars, never plaintext) by reading the row directly via the service key; **test rows were then deleted** to leave the project clean.
+
+---
+
+## ADR-015 — Games catalog served from Supabase
+**Date:** 2026-06-10
+**Status:** Accepted (extends ADR-014 to the `games` table; supersedes the mock `gamesService` from ADR-008)
+**Decision:** Moved the games catalog from the in-memory mock to the live Supabase `games` table, behind a public read API.
+
+**Read path:** `useGames()` (client hook) → `GET /api/games` (Route Handler) → `@/lib/data/games-repository.ts` (server, Supabase client) → Postgres. Plus `GET /api/games/[id]` for single lookups.
+
+1. **Why an API + client hook (not direct client Supabase, not Server Components):** the consuming pages (home landing + dashboard, library, game detail, launch, leaderboard) are large `"use client"` components with search/filter/spatial-nav. A server-only API keeps the service-role key off the browser; the `useGames()` hook (module-level cache + in-flight dedupe) fetches the small catalog once and shares it across navigations. This mirrors the auth pattern and avoided risky server/client restructuring of the 1100-line landing/dashboard page.
+2. **Service shape:** `games.service.ts` is now `fetchGames`/`fetchGame` (async) + **pure selectors** (`selectFeatured`, `selectByCategory`, `selectCategories`, `searchGames`, `findGame`) that operate on a `Game[]`. Pages call `useGames()` for `{ games, loading }` and derive views with the selectors — stable imports, no unstable-ref memo bugs.
+3. **Mapping:** the repository maps snake_case rows → the `Game` type (`min_players`→`minPlayers`, `rating` coerced to number, etc.). `games.id` is a text slug (matches the former mock ids), so `continuePlaying` (still mock `sessions`) keeps resolving.
+4. **Loading UX:** library shows skeleton tiles; detail/launch/dashboard show a spinner; the landing "Featured" section shows placeholder cards — all collapse to instant after the first fetch (cache).
+5. **Seed:** `supabase/seed_games.sql` (idempotent upsert) with the 10 original games; also seeded live via the service key for immediate display.
+
+**Scope:** only `games` moved to the DB. `leaderboardService` + `profileService` remain mock (next: `scores`/`game_sessions` repositories using this same pattern).
+
+**Verification:** `npm run build` clean (`/api/games`, `/api/games/[id]` dynamic). Against the live project: seeded 10 rows; `GET /api/games`→ 10 games in `Game` shape (featured-first), `GET /api/games/shadow-quest`→ the game, unknown id→ `404`.

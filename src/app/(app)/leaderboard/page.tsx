@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { gamesService, leaderboardService } from "@/services";
+import { leaderboardService } from "@/services";
+import { useGames } from "@/features/games/useGames";
 import { useSession } from "@/features/auth/session-context";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { cn } from "@/lib/utils";
@@ -10,8 +11,8 @@ const GLOBAL = "global";
 
 export default function LeaderboardPage() {
   const { user } = useSession();
+  const { games: allGames } = useGames();
   const [selected, setSelected] = useState<string>(GLOBAL);
-  const allGames = gamesService.list();
 
   const entries = useMemo(
     () =>

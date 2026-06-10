@@ -1,7 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useParams } from "next/navigation";
-import { gamesService, leaderboardService } from "@/services";
+import { leaderboardService } from "@/services";
+import { useGames } from "@/features/games/useGames";
+import { findGame, selectByCategory } from "@/services/games.service";
 import { useSession } from "@/features/auth/session-context";
 import { ButtonLink } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -13,7 +16,16 @@ import { playersLabel } from "@/lib/format";
 export default function GameDetailPage() {
   const params = useParams<{ id: string }>();
   const { user } = useSession();
-  const game = gamesService.getById(params.id);
+  const { games, loading } = useGames();
+  const game = findGame(games, params.id);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+      </div>
+    );
+  }
 
   if (!game) {
     return (
@@ -30,16 +42,26 @@ export default function GameDetailPage() {
   }
 
   const topScores = leaderboardService.forGame(game.id, 5);
-  const related = gamesService
-    .byCategory(game.category)
-    .filter((g) => g.id !== game.id);
+  const related = selectByCategory(games, game.category).filter(
+    (g) => g.id !== game.id,
+  );
 
   return (
     <div className="space-y-10">
       {/* Hero */}
-      <section
-        className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${game.cover} p-8 sm:p-14`}
-      >
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br p-8 sm:p-14">
+        {game.coverImage ? (
+          <Image
+            src={game.coverImage}
+            alt={game.title}
+            fill
+            className="absolute inset-0 object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1000px"
+            priority
+          />
+        ) : (
+          <div className={`absolute inset-0 bg-gradient-to-br ${game.cover}`} />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
         <div className="relative max-w-2xl">
           <Badge tone="accent" className="mb-4">

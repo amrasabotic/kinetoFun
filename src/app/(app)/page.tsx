@@ -8,8 +8,10 @@ import {
   Heart, BookOpen, Check, X, Play,
   Camera, MessageCircle,
 } from "lucide-react";
-import { gamesService, leaderboardService } from "@/services";
-import { sessions, games as allGames } from "@/mock";
+import { leaderboardService } from "@/services";
+import { sessions } from "@/mock";
+import { useGames } from "@/features/games/useGames";
+import { selectFeatured, selectByCategory } from "@/services/games.service";
 import { useSession } from "@/features/auth/session-context";
 import { GameRail } from "@/components/game/GameRail";
 import { ButtonLink } from "@/components/ui/Button";
@@ -293,7 +295,8 @@ function HowItWorksSection() {
 // ─── Section 3: Featured Games ────────────────────────────────────────────────
 
 function FeaturedGamesSection() {
-  const featured = gamesService.featured();
+  const { games } = useGames();
+  const featured = selectFeatured(games);
   return (
     <section className="relative z-10 -mx-6 sm:-mx-10 py-24">
       <div className="mx-auto max-w-[1600px] px-6 sm:px-10">
@@ -323,9 +326,16 @@ function FeaturedGamesSection() {
 
         {/* Scrollable card row / grid */}
         <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 [scrollbar-width:none] sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
-          {featured.map((game) => (
-            <FeaturedGameCard key={game.id} game={game} />
-          ))}
+          {featured.length > 0
+            ? featured.map((game) => (
+                <FeaturedGameCard key={game.id} game={game} />
+              ))
+            : Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-72 w-72 flex-none animate-pulse rounded-3xl border border-[#1AACE0]/20 bg-[#1A2E74]/5 sm:w-auto"
+                />
+              ))}
         </div>
       </div>
     </section>
@@ -1091,7 +1101,8 @@ function LandingPage() {
 
 export default function HomePage() {
   const { user, isAuthenticated } = useSession();
-  const featured = gamesService.featured();
+  const { games, loading } = useGames();
+  const featured = selectFeatured(games);
   const spotlight = featured[0];
 
   const continuePlaying = useMemo<Game[]>(() => {
@@ -1106,12 +1117,20 @@ export default function HomePage() {
         .map((s) => s.gameId),
     );
     return [...ids]
-      .map((id) => allGames.find((g) => g.id === id))
+      .map((id) => games.find((g) => g.id === id))
       .filter((g): g is Game => Boolean(g));
-  }, [user]);
+  }, [user, games]);
 
   if (!isAuthenticated || !user) {
     return <LandingPage />;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+      </div>
+    );
   }
 
   return (
@@ -1168,12 +1187,12 @@ export default function HomePage() {
         <GameRail
           key={category}
           title={category}
-          games={gamesService.byCategory(category)}
+          games={selectByCategory(games, category)}
           subtitle="View all"
         />
       ))}
 
-      <GameRail title="All games" games={gamesService.list()} />
+      <GameRail title="All games" games={games} />
     </div>
   );
 }

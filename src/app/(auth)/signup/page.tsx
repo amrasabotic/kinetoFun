@@ -1,24 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { User, Mail, Lock } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
+import { AuthRequestError } from "@/services/auth.service";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
+import { cn } from "@/lib/utils";
 
-export default function SignupPage() {
+/** Only allow relative, in-app redirect targets (no open redirects). */
+function safeNext(raw: string | null): string {
+  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+}
+
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signup } = useSession();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [fields, setFields] = useState<Record<string, string[]>>({});
+  const [pending, setPending] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    signup(displayName, email, password);
-    router.push("/");
+    if (pending) return;
+    setError(null);
+    setFields({});
+    setPending(true);
+    try {
+      await signup(displayName, email, password);
+      router.replace(safeNext(searchParams.get("next")));
+      router.refresh();
+    } catch (err) {
+      if (err instanceof AuthRequestError) {
+        setError(err.message);
+        setFields(err.fields ?? {});
+      } else {
+        setError("Couldn't create your account. Please try again.");
+      }
+      setPending(false);
+    }
   }
 
   return (
@@ -57,26 +83,49 @@ export default function SignupPage() {
           required
           icon={<Mail className="h-4 w-4" />}
         />
-        <TextField
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          icon={<Lock className="h-4 w-4" />}
-        />
+        <div className="space-y-2">
+          <TextField
+            label="Password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            icon={<Lock className="h-4 w-4" />}
+          />
+          {fields.password ? (
+            <ul className="space-y-1 pl-1 text-xs text-destructive">
+              {fields.password.map((msg) => (
+                <li key={msg}>• {msg}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="pl-1 text-xs text-foreground/35">
+              At least 8 characters, with a letter and a number.
+            </p>
+          )}
+        </div>
 
-        <Button type="submit" fullWidth size="lg" className="mt-2">
-          Create account
+        {error && (
+          <p
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
+          >
+            {error}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          fullWidth
+          size="lg"
+          disabled={pending}
+          className={cn("mt-2", pending && "pointer-events-none opacity-60")}
+        >
+          {pending ? "Creating account…" : "Create account"}
         </Button>
       </form>
-
-      {/* Hint */}
-      <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-center text-xs text-foreground/35">
-        Mock sign-up — no data is stored. Your session lives in the browser
-        only.
-      </div>
 
       <p className="mt-6 text-center text-sm text-foreground/45">
         Already have an account?{" "}
@@ -89,5 +138,13 @@ export default function SignupPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="h-96" />}>
+      <SignupForm />
+    </Suspense>
   );
 }

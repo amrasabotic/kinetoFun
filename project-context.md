@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-06-09 (Homepage redesign — colorful/playful landing page — ADR-011)
+> Last updated: 2026-06-10 (Games served from Supabase — ADR-015)
 
 ---
 
@@ -23,8 +23,10 @@ Users will be able to:
 ## Current System Architecture
 
 - **Frontend:** Next.js 16.2.7 (App Router) + React 19, TypeScript 5, Tailwind CSS v4, ESLint 9. `src/` dir, `@/*` import alias. (web-first, TV-oriented UI)
-- **Backend:** Supabase (PostgreSQL) — *not yet integrated*
-- **Auth:** JWT-based — *not yet integrated*
+- **Backend:** Custom Next.js Route Handlers (`/api/auth/*`) + **Supabase PostgreSQL — LIVE** (database only, **no Supabase Auth**) via the `@supabase/supabase-js` client (`src/lib/supabase/server.ts`, service-role, server-only) behind a swappable repository. Falls back to a local file store only if env is unset. Full schema in `supabase/schema.sql`.
+- **⚠️ Runtime needs the system CA:** this machine intercepts TLS, so Node must run with `--use-system-ca` to reach Supabase. Baked into the `dev`/`build`/`start` npm scripts via `cross-env` (ADR-007/ADR-014). Credentials live in `.env.local` (git-ignored).
+- **Auth:** **Custom JWT auth — implemented.** scrypt-hashed passwords, HS256 JWT (via `jose`) in an httpOnly cookie, `proxy.ts` route protection, server-side DAL. See ADR-013.
+- **⚠️ Next.js 16 conventions (this is a customized v16):** `middleware.ts` → **`proxy.ts`** (function `proxy`, Node.js runtime only); `cookies()`/`params`/`searchParams` are **async**; Turbopack is the default. Always read `node_modules/next/dist/docs/` before writing framework code (per AGENTS.md).
 - **Input (current):** Keyboard / mouse
 - **Input (future):** Raspberry Pi + camera + MediaPipe hand tracking
 - **Runtime:** Node v24.16.0
@@ -40,6 +42,8 @@ Users will be able to:
 - **[2026-06-08] Phase 1 — Frontend (TV portal UI).** Full mock-data UI: 9 pages, shared component library, mock session/auth, spatial (arrow-key/remote) navigation, service boundary layer. See **Frontend Architecture** below. Build + route smoke tests pass.
 - **[2026-06-08] Futuristic SaaS visual re-skin.** Re-skinned the UI (design language only — no content/layout/flow changes): deep-navy canvas, **neon-green** primary accent (was violet), purple/pink ambient glow, full-page grid + radial-glow backdrop, glassmorphism panels, green/glow buttons. Driven mostly by swapping `@theme` tokens in `globals.css`. (ADR-010)
 - **[2026-06-09] Homepage redesign — colorful/playful landing page.** Replaced the logged-out `/` landing page (`LandingPage` in `(app)/page.tsx`) with a full 9-section multi-section page: Hero, How It Works, Featured Games, Multiplayer, Why Kids Love It, Educational Benefits, Perfect For, Leaderboard Preview, Final CTA. Palette: `#6D5DFC` / `#00D4FF` / `#FFB800` / `#32D583`, light (#FAFBFF) and dark (#0d0e1a) alternating sections. Animations added to `globals.css` (float keyframes). Authenticated dashboard unchanged. (ADR-011)
+- **[2026-06-10] Games served from Supabase.** Wired the games catalog to the live DB: `lib/data/games-repository.ts` (server, Supabase client) → `/api/games` + `/api/games/[id]` (public) → `useGames()` client hook (module-cached) + pure selectors in `games.service`. Refactored all 5 consumers (library, home landing + dashboard, leaderboard, game detail, launch) off the old sync `gamesService`/mock. Seeded 10 games (`supabase/seed_games.sql`). Build clean; verified `/api/games` returns the 10 rows from Supabase. (ADR-015)
+- **[2026-06-10] Phase 2 — Custom JWT authentication (real, not mocked).** Replaced the mock session with a production-shaped auth layer: register/login/logout + `me` Route Handlers under `/api/auth/*`; scrypt password hashing (Node built-in); HS256 JWT via `jose` stored in an httpOnly+SameSite cookie; `src/proxy.ts` (Next 16's renamed middleware) for optimistic route protection; a server-side DAL (`getCurrentUser`/`requireUser`) for the authoritative check; a swappable `UserRepository` (Supabase Postgres via PostgREST when configured, local file store otherwise); `ProtectedRoute` wrapper; `SessionProvider` now restores via `/api/auth/me`. Build clean; full flow smoke-tested (register→me→login→logout, proxy redirects, forged-token rejection). (ADR-013)
 
 ---
 
@@ -66,8 +70,17 @@ src/
       settings/page.tsx     # Settings
     (auth)/                 # route group: minimal chrome (no TopBar)
       layout.tsx
-      login/page.tsx        # mock login
-      signup/page.tsx       # mock signup
+      login/page.tsx        # real login (async, error states, ?next redirect)
+      signup/page.tsx       # real signup (async, field-level validation errors)
+    api/auth/               # custom auth API (Route Handlers)
+      register/route.ts     # POST — create account + start session
+      login/route.ts        # POST — verify credentials + start session
+      logout/route.ts       # POST — clear session cookie
+      me/route.ts           # GET  — validate token, return current user
+    api/games/              # public games catalog API
+      route.ts              # GET  — all games (from Supabase)
+      [id]/route.ts         # GET  — one game by id
+  proxy.ts                  # Next 16 route protection (was middleware.ts)
   components/
     layout/   TopBar.tsx, Clock.tsx
     navigation/ SpatialNavigation.tsx   # global arrow-key focus movement
@@ -78,11 +91,21 @@ src/
               StarRating.tsx, TextField.tsx,
               animated-hero-section.tsx (AnimatedHero — canvas Pong landing)
   features/
-    auth/     session-context.tsx       # SessionProvider + useSession (mock)
-  services/   games | leaderboard | profile | auth (.service.ts) + index.ts
-              # the BACKEND BOUNDARY — returns mock data today, becomes API in Phase 2
+    auth/     session-context.tsx       # SessionProvider + useSession (REAL: restores via /api/auth/me)
+              ProtectedRoute.tsx        # client guard for auth-only pages
+    games/    useGames.ts               # client hook: fetches /api/games (module-cached)
+  services/   auth.service + games.service — REAL (call /api/*); leaderboard + profile — mock
+              # the BACKEND BOUNDARY. games.service = async fetchers + pure selectors.
+  lib/auth/   config, password (scrypt), jwt (jose/HS256), session (cookies),
+              validation (zod), dal (getCurrentUser/requireUser), serialize,
+              repository (+ repositories/supabase-user-repository [uses Supabase
+              client], local-user-repository [dev fallback])
+              # SERVER-ONLY. Never import from a Client Component.
+  lib/data/   games-repository.ts       # SERVER-ONLY games reads (Supabase) → Game
+  lib/supabase/ server.ts  # getSupabaseAdmin() — service-role client, DATABASE ONLY
   mock/       games.ts, users.ts, scores.ts, sessions.ts, index.ts
   types/      index.ts                  # Game, User, Score, Session, LeaderboardEntry
+              auth.ts                   # AuthUser, UserRecord, JwtPayload, request/response DTOs
   lib/        utils.ts (cn), format.ts  # score/date/players formatters
 ```
 
@@ -106,8 +129,9 @@ src/
 - **Button / ButtonLink** — variants (primary/secondary/ghost/danger), sizes; `ButtonLink` wraps `next/link`.
 - **LeaderboardTable, ScoreList, Avatar, StarRating, Badge, TextField** — presentational building blocks.
 
-### State management (mock, in-memory)
-- **`SessionProvider` (`features/auth/session-context.tsx`)** — React Context. **Starts logged-out** (so a fresh visitor sees the animated hero landing); persists to `localStorage` (`kinetofun.session`) and restores a returning user on mount. Exposes `user`, `isAuthenticated`, `login`, `signup`, `logout`. No real auth. The `/login` form pre-fills the demo email for one-click sign-in.
+### State management
+- **`SessionProvider` (`features/auth/session-context.tsx`)** — React Context, now **real**. On mount it calls `GET /api/auth/me` to restore the session from the httpOnly cookie (auto session-restore). Exposes `user`, `isAuthenticated`, `isLoading`, async `login`/`signup`/`logout`, and `refresh`. The JWT lives in a cookie (not `localStorage`), so there is no token in JS. Maps the canonical `AuthUser` onto the rich UI `User` via `toAppUser` (fills display/game defaults like level/xp/avatar until those are stored).
+- **`ProtectedRoute`** — wraps auth-only pages (`/profile`, `/settings`); shows a loader during restore, then redirects unauthenticated users to `/login?next=…`. Belt-and-suspenders with `proxy.ts`.
 - Page-local `useState` for search/filter/toggles. No global store needed yet.
 
 ### Mock data structure (`src/mock/`)
@@ -158,15 +182,17 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 
 ## System Boundaries (NOT built yet)
 
-- No Supabase integration (all data is in-memory mock; see `src/mock`).
-- No real authentication — login/signup are **UI + mock session only** (no password check, no token; session persists in `localStorage`).
+- **Auth is real and working AND wired to live Supabase** (✅ — register/login/logout/me, JWT cookie, hashing, route protection; users persist to Supabase Postgres, verified end-to-end). Email/password only (no OAuth/social, no email verification, no password reset, no refresh-token rotation yet).
+- **Supabase data layer is live** (✅ — `@supabase/supabase-js`, service-role, no Supabase Auth). Schema for `users/games/scores/game_sessions` (+ optional `session_players`, `auth_sessions`, `subscriptions`, `game_leaderboards` view) is applied. **`users` and `games` are wired to the DB**; `scores`/`game_sessions` repositories come later "based on real usage".
+- **Games are served from Supabase** (✅ — seeded with 10 games via `supabase/seed_games.sql`). Read path: `useGames()` → `/api/games` → `@/lib/data/games-repository` → Supabase. `leaderboardService` + `profileService` still read mock (`src/mock`). Profile stats for a real user show empty until score persistence lands.
 - No real score persistence — scores/sessions are static mock data.
 - No real game SDK or runtime — `/games/[id]/play` is a placeholder screen.
 - No multiplayer session handling (sessions are display-only mock records).
 - No Raspberry Pi / camera / MediaPipe gesture input. (Spatial-navigation primitive exists and is the seam the gesture layer will plug into.)
 - No paywall / purchasing.
 
-### Phase 1 → Phase 2 handoff notes
-- Swap `src/services/*.service.ts` internals for Supabase/API calls (signatures may become `async`); UI should not need changes.
-- Replace `authService` + `SessionProvider` mock with real JWT auth.
-- `src/types` are the contract Supabase tables/queries should map onto.
+### Phase 2 handoff notes
+- **To go live on Supabase:** copy `.env.example` → `.env.local`, set `JWT_SECRET` (`openssl rand -base64 32`), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; run `supabase/migrations/0001_auth.sql`. No code change — `getUserRepository()` auto-selects the Supabase repo when those env vars are present.
+- **Next features build on this without restructuring:** add `game_sessions`/`scores`/`subscriptions` tables + repositories alongside `users`; read identity from `getCurrentUser()` (DAL) in new Route Handlers; `JwtPayload.sub` is the stable user id for leaderboards/multiplayer.
+- Remaining game/profile/leaderboard `*.service.ts` modules still return mock data — swap their internals for Supabase/API calls (signatures may become `async`); UI should not need changes.
+- `src/types/auth.ts` is the contract the `users`/`sessions` tables map onto; `src/types/index.ts` is the contract for the rest.

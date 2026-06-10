@@ -1,0 +1,34 @@
+// Data Access Layer — the *secure* auth check.
+//
+// Unlike the proxy (which does a fast, optimistic cookie check), the DAL verifies
+// the session AND loads the user from the database. This is the function server
+// code should call when it needs the real, current user. Results are memoized
+// per request with React `cache`, so calling it in several places in one render
+// hits the DB once.
+
+import { cache } from "react";
+import { redirect } from "next/navigation";
+import { getSessionPayload } from "./session";
+import { getUserRepository } from "./repository";
+import { toAuthUser } from "./serialize";
+import type { AuthUser } from "@/types/auth";
+
+/** Verify the session and load the current user, or `null` if not signed in. */
+export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
+  const session = await getSessionPayload();
+  if (!session?.sub) return null;
+
+  const record = await getUserRepository().findById(session.sub);
+  return record ? toAuthUser(record) : null;
+});
+
+/**
+ * Require an authenticated user. For Server Components / Server Actions:
+ * redirects to `/login` when there is no valid session. (Route Handlers should
+ * return a 401 instead — use `getCurrentUser` there.)
+ */
+export const requireUser = cache(async (): Promise<AuthUser> => {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  return user;
+});
