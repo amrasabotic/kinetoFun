@@ -9,7 +9,7 @@ import { useSession } from "@/features/auth/session-context";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { Clock } from "./Clock";
-import { User, Settings, ChevronDown } from "lucide-react";
+import { User, Settings, ChevronDown, LogOut } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -28,6 +28,7 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { logout } = useSession();
 
   // Close on outside click or Escape.
   useEffect(() => {
@@ -47,19 +48,30 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
     };
   }, [open]);
 
-  const ITEMS = [
-    { href: "/profile", label: "Profile", Icon: User },
+  const NAV_ITEMS = [
+    { href: "/profile",  label: "Profile",  Icon: User     },
     { href: "/settings", label: "Settings", Icon: Settings },
   ];
 
+  async function handleLogout() {
+    setOpen(false);
+    await logout();
+    router.push("/");
+  }
+
   return (
     <div ref={ref} className="relative hidden md:flex">
+      {/* Trigger */}
       <button
         type="button"
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full px-2 py-1 pr-3 text-sm font-semibold text-[#1A2E74] transition-all duration-200 hover:bg-[#1A2E74]/10 dark:text-white dark:hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1AACE0]/60"
+        className={cn(
+          "flex items-center gap-2 rounded-full px-2 py-1 pr-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1AACE0]/60",
+          "text-[#1A2E74] hover:bg-[#1AACE0]/12 dark:text-white dark:hover:bg-white/[0.08]",
+          open && "bg-[#1AACE0]/12 dark:bg-white/[0.08]",
+        )}
       >
         <Avatar user={user} size="sm" />
         <span className="hidden text-sm font-semibold text-[#1A2E74] dark:text-white lg:block">
@@ -67,7 +79,7 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
         </span>
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 text-[#1A2E74]/50 transition-transform duration-200 dark:text-white/40",
+            "h-3.5 w-3.5 text-[#1A2E74]/40 transition-transform duration-300 dark:text-white/35",
             open && "rotate-180",
           )}
         />
@@ -76,23 +88,46 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
       {/* Dropdown panel */}
       <div
         className={cn(
-          "absolute right-0 top-full mt-2 w-44 origin-top-right overflow-hidden rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(26,46,116,0.22)]",
-          "bg-white/90 backdrop-blur-xl dark:bg-[#0a1438]/95 dark:border-white/[0.08]",
-          "transition-all duration-200",
-          open ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0",
+          "absolute right-0 top-[calc(100%+10px)] z-50 w-52 overflow-hidden",
+          "rounded-2xl border border-[#1AACE0]/20 dark:border-white/[0.08]",
+          "bg-white/80 backdrop-blur-2xl dark:bg-[#080f2e]/90",
+          "shadow-[0_16px_48px_rgba(26,46,116,0.28),0_0_0_1px_rgba(26,172,224,0.08)]",
+          "transition-all duration-200 ease-out",
+          open ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1.5 scale-[0.97] opacity-0",
         )}
       >
-        {ITEMS.map(({ href, label, Icon }) => (
+        {/* User identity header */}
+        <div className="border-b border-[#1AACE0]/10 px-4 py-3.5 dark:border-white/[0.06]">
+          <p className="truncate text-[13px] font-bold text-[#1A2E74] dark:text-white">{user.displayName}</p>
+          <p className="truncate text-[11px] text-[#5B72A8] dark:text-white/40">{user.email ?? "Signed in"}</p>
+        </div>
+
+        {/* Nav items */}
+        <div className="px-1.5 py-1.5">
+          {NAV_ITEMS.map(({ href, label, Icon }) => (
+            <button
+              key={href}
+              type="button"
+              onClick={() => { setOpen(false); router.push(href); }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#1A2E74]/75 transition-colors duration-150 hover:bg-[#1AACE0]/10 hover:text-[#1A2E74] dark:text-white/60 dark:hover:bg-white/[0.07] dark:hover:text-white focus:outline-none focus-visible:bg-[#1AACE0]/10"
+            >
+              <Icon className="h-4 w-4 shrink-0 text-[#1AACE0]/70 dark:text-[#1AACE0]/60" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Divider + sign-out */}
+        <div className="border-t border-[#1AACE0]/10 px-1.5 pb-1.5 pt-1 dark:border-white/[0.06]">
           <button
-            key={href}
             type="button"
-            onClick={() => { setOpen(false); router.push(href); }}
-            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-[#1A2E74]/80 transition-colors duration-150 hover:bg-[#1AACE0]/10 hover:text-[#1A2E74] dark:text-white/65 dark:hover:bg-white/[0.07] dark:hover:text-white first:rounded-t-2xl last:rounded-b-2xl focus:outline-none focus-visible:bg-[#1AACE0]/10"
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#F7267C]/80 transition-colors duration-150 hover:bg-[#F7267C]/10 hover:text-[#F7267C] focus:outline-none focus-visible:bg-[#F7267C]/10"
           >
-            <Icon className="h-4 w-4 shrink-0 opacity-60" />
-            {label}
+            <LogOut className="h-4 w-4 shrink-0 text-[#F7267C]/60" />
+            Sign out
           </button>
-        ))}
+        </div>
       </div>
     </div>
   );
@@ -102,7 +137,8 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
 
 export function TopBar() {
   const pathname = usePathname();
-  const { user, isAuthenticated } = useSession();
+  const router = useRouter();
+  const { user, isAuthenticated, logout } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -273,10 +309,13 @@ export function TopBar() {
         <div className="border-t border-white/[0.06] px-4 py-4">
           {isAuthenticated && user ? (
             <div className="flex flex-col gap-1">
-              {/* Profile header row */}
-              <div className="flex items-center gap-3 px-5 py-3 text-sm font-semibold text-white">
+              {/* Identity row */}
+              <div className="flex items-center gap-3 px-5 py-3">
                 <Avatar user={user} size="sm" />
-                <span>{user.displayName}</span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-white">{user.displayName}</p>
+                  <p className="truncate text-[11px] text-white/40">{user.email ?? "Signed in"}</p>
+                </div>
               </div>
               {/* Profile link */}
               <Link
@@ -284,7 +323,7 @@ export function TopBar() {
                 data-focusable
                 className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none"
               >
-                <User className="h-4 w-4 opacity-60" />
+                <User className="h-4 w-4 text-[#1AACE0]/70" />
                 Profile
               </Link>
               {/* Settings link */}
@@ -293,9 +332,18 @@ export function TopBar() {
                 data-focusable
                 className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none"
               >
-                <Settings className="h-4 w-4 opacity-60" />
+                <Settings className="h-4 w-4 text-[#1AACE0]/70" />
                 Settings
               </Link>
+              {/* Sign out */}
+              <button
+                type="button"
+                onClick={async () => { setMobileOpen(false); await logout(); router.push("/"); }}
+                className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-[#F7267C]/80 transition-all duration-200 hover:bg-[#F7267C]/10 hover:text-[#F7267C] focus:outline-none"
+              >
+                <LogOut className="h-4 w-4 text-[#F7267C]/60" />
+                Sign out
+              </button>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
