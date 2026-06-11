@@ -9,9 +9,9 @@ import {
   Heart, BookOpen, Check, X, Play,
   Camera, MessageCircle,
 } from "lucide-react";
-import { leaderboardService } from "@/services";
 import { useGames } from "@/features/games/useGames";
 import { useContinuePlaying } from "@/features/sessions/useContinuePlaying";
+import { useLeaderboard } from "@/features/scores/useLeaderboard";
 import { selectFeatured, selectByCategory } from "@/services/games.service";
 import { useSession } from "@/features/auth/session-context";
 import { GameRail } from "@/components/game/GameRail";
@@ -854,7 +854,7 @@ function PerfectForSection() {
 // ─── Section 8: Leaderboard Preview ──────────────────────────────────────────
 
 function LeaderboardPreviewSection() {
-  const topPlayers = leaderboardService.global(5);
+  const { entries: topPlayers, loading } = useLeaderboard();
   const fallbackGradients = [
     "from-[#1AACE0] to-[#1A2E74]",
     "from-[#5ABB47] to-[#1A2E74]",
@@ -895,7 +895,11 @@ function LeaderboardPreviewSection() {
               boxShadow: "0 8px 40px rgba(26,172,224,0.18)",
             }}
           >
-            {topPlayers.map((entry, i) => (
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <p className="text-white/50">Loading leaderboard...</p>
+              </div>
+            ) : topPlayers.map((entry, i) => (
               <div
                 key={entry.user.id}
                 className={`flex items-center gap-4 px-6 py-4 transition-colors duration-200 hover:bg-white/[0.05] ${
@@ -1017,10 +1021,10 @@ function FinalCtaSection() {
 
 function Footer() {
   const socials = [
-    { Icon: X, label: "X / Twitter" },
-    { Icon: Play, label: "YouTube" },
-    { Icon: Camera, label: "Instagram" },
-    { Icon: MessageCircle, label: "Discord" },
+    { Icon: X, label: "X / Twitter", href: "#" },
+    { Icon: Play, label: "YouTube", href: "#" },
+    { Icon: Camera, label: "Instagram", href: "#" },
+    { Icon: MessageCircle, label: "Discord", href: "#" },
   ];
 
   return (
@@ -1032,16 +1036,19 @@ function Footer() {
             <p className="mb-1 text-xl font-black text-white">KinetoFun</p>
             <p className="text-sm text-white/40">Gesture-ready gaming for your TV.</p>
             <div className="mt-4 flex gap-3">
-              {socials.map(({ Icon, label }) => {
+              {socials.map(({ Icon, label, href }) => {
                 const I = Icon;
                 return (
-                  <button
+                  <a
                     key={label}
+                    href={href}
                     aria-label={label}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/45 transition-all hover:border-white/30 hover:text-white"
                   >
                     <I className="h-4 w-4" />
-                  </button>
+                  </a>
                 );
               })}
             </div>
@@ -1051,9 +1058,14 @@ function Footer() {
             <p className="mb-3 text-xs font-bold uppercase tracking-widest" style={{ color: "#1AACE0" }}>
               Games
             </p>
-            {["Browse Library", "Featured", "New Releases", "Multiplayer"].map((link) => (
-              <Link key={link} href="/login" className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
-                {link}
+            {[
+              { label: "Browse Library", href: "/library" },
+              { label: "Featured", href: "/library" },
+              { label: "New Releases", href: "/library" },
+              { label: "Multiplayer", href: "/library" },
+            ].map(({ label, href }) => (
+              <Link key={label} href={href} className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
+                {label}
               </Link>
             ))}
           </div>
@@ -1062,9 +1074,14 @@ function Footer() {
             <p className="mb-3 text-xs font-bold uppercase tracking-widest" style={{ color: "#5ABB47" }}>
               Platform
             </p>
-            {["Leaderboard", "Profile", "Settings", "How It Works"].map((link) => (
-              <Link key={link} href="/login" className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
-                {link}
+            {[
+              { label: "Leaderboard", href: "/leaderboard" },
+              { label: "Profile", href: "/profile" },
+              { label: "Settings", href: "/settings" },
+              { label: "How It Works", href: "/" },
+            ].map(({ label, href }) => (
+              <Link key={label} href={href} className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
+                {label}
               </Link>
             ))}
           </div>
@@ -1073,10 +1090,15 @@ function Footer() {
             <p className="mb-3 text-xs font-bold uppercase tracking-widest" style={{ color: "#F9B233" }}>
               Legal
             </p>
-            {["Privacy Policy", "Terms of Service", "Cookie Policy", "Contact"].map((link) => (
-              <button key={link} className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
-                {link}
-              </button>
+            {[
+              { label: "Privacy Policy", href: "/privacy" },
+              { label: "Terms of Service", href: "/terms" },
+              { label: "Cookie Policy", href: "/cookies" },
+              { label: "Contact", href: "/contact" },
+            ].map(({ label, href }) => (
+              <Link key={label} href={href} className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
+                {label}
+              </Link>
             ))}
           </div>
         </div>
@@ -1202,6 +1224,7 @@ export default function HomePage() {
           title={category}
           games={selectByCategory(games, category)}
           subtitle="View all"
+          viewAllHref={`/library?category=${category.toLowerCase()}`}
         />
       ))}
 

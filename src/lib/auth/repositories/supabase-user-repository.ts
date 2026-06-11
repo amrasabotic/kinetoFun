@@ -49,4 +49,18 @@ export class SupabaseUserRepository implements UserRepository {
     if (error) throw new Error(`[supabase] create: ${error.message}`);
     return data as UserRecord;
   }
+
+  async update(
+    id: string,
+    updates: Partial<{ username: string; bio: string; avatar_color: string }>,
+  ): Promise<UserRecord> {
+    const { data, error } = await getSupabaseAdmin()
+      .from(TABLE)
+      .update(updates)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(`[supabase] update: ${error.message}`);
+    return data as UserRecord;
+  }
 }

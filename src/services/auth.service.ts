@@ -36,13 +36,14 @@ export function toAppUser(authUser: AuthUser): User {
   const localPart = authUser.email.split("@")[0] ?? "player";
   return {
     id: authUser.id,
-    username: localPart.toLowerCase().replace(/[^a-z0-9_]/g, "") || "player",
+    username: authUser.username ?? (localPart.toLowerCase().replace(/[^a-z0-9_]/g, "") || "player"),
     displayName: authUser.name,
     email: authUser.email,
-    avatarColor: gradientFor(authUser.id),
+    avatarColor: authUser.avatarColor ?? gradientFor(authUser.id),
     level: 1,
     xp: 0,
     joinedAt: authUser.createdAt,
+    bio: authUser.bio,
     role: authUser.role,
   };
 }

@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { leaderboardService } from "@/services";
 import { useGames } from "@/features/games/useGames";
+import { useLeaderboard } from "@/features/scores/useLeaderboard";
 import { findGame, selectByCategory } from "@/services/games.service";
 import { useSession } from "@/features/auth/session-context";
 import { ButtonLink } from "@/components/ui/Button";
@@ -18,6 +18,7 @@ export default function GameDetailPage() {
   const { user } = useSession();
   const { games, loading } = useGames();
   const game = findGame(games, params.id);
+  const { entries: topScores } = useLeaderboard(game?.id ?? null);
 
   if (loading) {
     return (
@@ -40,8 +41,6 @@ export default function GameDetailPage() {
       </div>
     );
   }
-
-  const topScores = leaderboardService.forGame(game.id, 5);
   const related = selectByCategory(games, game.category).filter(
     (g) => g.id !== game.id,
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { GameCard } from "./GameCard";
@@ -16,10 +17,12 @@ export function GameRail({
   title,
   games,
   subtitle,
+  viewAllHref,
 }: {
   title: string;
   games: Game[];
   subtitle?: string;
+  viewAllHref?: string;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -60,7 +63,11 @@ export function GameRail({
         <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
           {title}
         </h2>
-        {subtitle ? (
+        {subtitle && viewAllHref ? (
+          <Link href={viewAllHref} className="text-sm text-muted transition-colors hover:text-primary">
+            {subtitle}
+          </Link>
+        ) : subtitle ? (
           <span className="text-sm text-muted">{subtitle}</span>
         ) : null}
       </div>

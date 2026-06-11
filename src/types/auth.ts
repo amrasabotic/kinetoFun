@@ -15,6 +15,9 @@ export interface AuthUser {
   name: string;
   role: 'user' | 'admin' | 'superadmin';
   createdAt: string; // ISO timestamp
+  username?: string;
+  bio?: string;
+  avatarColor?: string;
 }
 
 /**
@@ -29,6 +32,9 @@ export interface UserRecord {
   name: string;
   role: 'user' | 'admin' | 'superadmin';
   created_at: string;
+  username?: string;
+  bio?: string;
+  avatar_color?: string;
 }
 
 /** Claims embedded in the signed JWT. `sub` is the user id. */

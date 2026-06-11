@@ -12,5 +12,8 @@ export function toAuthUser(record: UserRecord): AuthUser {
     name: record.name,
     role: record.role ?? "user",
     createdAt: record.created_at,
+    ...(record.username && { username: record.username }),
+    ...(record.bio && { bio: record.bio }),
+    ...(record.avatar_color && { avatarColor: record.avatar_color }),
   };
 }

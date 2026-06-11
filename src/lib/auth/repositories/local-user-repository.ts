@@ -54,4 +54,16 @@ export class LocalUserRepository implements UserRepository {
     await writeAll(rows);
     return record;
   }
+
+  async update(
+    id: string,
+    updates: Partial<{ username: string; bio: string; avatar_color: string }>,
+  ): Promise<UserRecord> {
+    const rows = await readAll();
+    const idx = rows.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error(`[local] update: User not found (id=${id})`);
+    rows[idx] = { ...rows[idx], ...updates };
+    await writeAll(rows);
+    return rows[idx];
+  }
 }

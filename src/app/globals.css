@@ -355,3 +355,21 @@ body {
     transform: none;
   }
 }
+
+/* ─── Display Settings ──────────────────────────────────────────────────────── */
+
+html[data-large-text] {
+  font-size: 18px;
+}
+
+html[data-large-text] h1,
+html[data-large-text] h2,
+html[data-large-text] h3 {
+  font-size: 1.2em;
+}
+
+html[data-reduce-motion] * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

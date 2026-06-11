@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/features/auth/session-context";
+import { useSettings } from "@/features/settings/useSettings";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -18,12 +19,16 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const router = useRouter();
-  const { user, isAuthenticated, logout, logoutAll } = useSession();
-
-  const [largeText, setLargeText] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const { user, isAuthenticated, logout, logoutAll, refresh } = useSession();
+  const { settings, updateSettings } = useSettings();
   const [signingOut, setSigningOut] = useState(false);
   const [signingOutAll, setSigningOutAll] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editUsername, setEditUsername] = useState(user?.username || "");
+  const [editBio, setEditBio] = useState(user?.bio || "");
+  const [editAvatarColor, setEditAvatarColor] = useState(user?.avatarColor || "");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   async function handleSignOut() {
     if (signingOut || signingOutAll) return;
@@ -41,6 +46,41 @@ function SettingsContent() {
     router.refresh();
   }
 
+  async function handleSaveProfile() {
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
+    setProfileError(null);
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: editUsername.trim(),
+          bio: editBio.trim(),
+          avatarColor: editAvatarColor,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save profile");
+      }
+      await refresh();
+      setEditingProfile(false);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Failed to save profile");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  function handleCancelEdit() {
+    setEditingProfile(false);
+    setEditUsername(user?.username || "");
+    setEditBio(user?.bio || "");
+    setEditAvatarColor(user?.avatarColor || "");
+    setProfileError(null);
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header className="space-y-1 pb-2">
@@ -56,34 +96,130 @@ function SettingsContent() {
       {/* Account */}
       <Section title="Account">
         {isAuthenticated && user ? (
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <Avatar user={user} size="lg" />
-            <div className="flex-1">
-              <p className="text-base font-bold text-foreground">{user.displayName}</p>
-              <p className="text-sm text-foreground/45">{user.email}</p>
-            </div>
-            <div className="flex flex-col gap-2 sm:items-end">
-              <Button
-                variant="danger"
-                onClick={handleSignOut}
-                disabled={signingOut || signingOutAll}
-                className={cn((signingOut || signingOutAll) && "pointer-events-none opacity-60")}
-              >
-                {signingOut ? "Signing out…" : "Sign out"}
-              </Button>
-              <button
-                type="button"
-                data-focusable
-                onClick={handleSignOutEverywhere}
-                disabled={signingOut || signingOutAll}
-                className={cn(
-                  "text-xs font-medium text-foreground/45 underline-offset-4 transition hover:text-foreground/70 hover:underline focus:outline-none",
-                  (signingOut || signingOutAll) && "pointer-events-none opacity-60",
+          <div className="space-y-6">
+            {editingProfile ? (
+              <div className="space-y-4">
+                {profileError && (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                    {profileError}
+                  </div>
                 )}
-              >
-                {signingOutAll ? "Signing out all devices…" : "Sign out of all devices"}
-              </button>
-            </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-foreground">
+                    Display name
+                  </label>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    maxLength={50}
+                    className="w-full rounded-lg border border-white/[0.10] bg-white/[0.06] px-3 py-2 text-sm text-foreground placeholder-foreground/45 transition focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    placeholder="Your name"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-foreground">
+                    Bio
+                  </label>
+                  <textarea
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    className="w-full rounded-lg border border-white/[0.10] bg-white/[0.06] px-3 py-2 text-sm text-foreground placeholder-foreground/45 transition focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    placeholder="Tell us about yourself"
+                  />
+                  <p className="mt-1 text-xs text-foreground/40">{editBio.length}/500</p>
+                </div>
+                <div>
+                  <label className="mb-3 block text-sm font-semibold text-foreground">
+                    Avatar color
+                  </label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {[
+                      "from-[#1AACE0] to-[#1A2E74]",
+                      "from-[#5ABB47] to-[#1A2E74]",
+                      "from-[#F9B233] to-[#F7267C]",
+                      "from-[#F7267C] to-[#1A2E74]",
+                      "from-[#1AACE0] to-[#5ABB47]",
+                      "from-purple-500 to-pink-500",
+                    ].map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setEditAvatarColor(color)}
+                        className={cn(
+                          `h-10 w-10 rounded-lg bg-gradient-to-br transition-all ${color}`,
+                          editAvatarColor === color && "ring-2 ring-primary ring-offset-2",
+                        )}
+                        aria-label={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={isSavingProfile}
+                    className={cn(isSavingProfile && "pointer-events-none opacity-60")}
+                  >
+                    {isSavingProfile ? "Saving…" : "Save changes"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={handleCancelEdit}
+                    disabled={isSavingProfile}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <Avatar user={user} size="lg" />
+                  <div className="flex-1">
+                    <p className="text-base font-bold text-foreground">{user.displayName}</p>
+                    <p className="text-sm text-foreground/45">{user.email}</p>
+                    {user.bio && <p className="mt-1 text-sm text-foreground/60">{user.bio}</p>}
+                  </div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setEditUsername(user.username || "");
+                      setEditBio(user.bio || "");
+                      setEditAvatarColor(user.avatarColor || "");
+                      setEditingProfile(true);
+                    }}
+                  >
+                    Edit profile
+                  </Button>
+                </div>
+                <div className="h-px bg-white/[0.06]" />
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    variant="danger"
+                    onClick={handleSignOut}
+                    disabled={signingOut || signingOutAll}
+                    className={cn((signingOut || signingOutAll) && "pointer-events-none opacity-60")}
+                  >
+                    {signingOut ? "Signing out…" : "Sign out"}
+                  </Button>
+                  <button
+                    type="button"
+                    data-focusable
+                    onClick={handleSignOutEverywhere}
+                    disabled={signingOut || signingOutAll}
+                    className={cn(
+                      "text-xs font-medium text-foreground/45 underline-offset-4 transition hover:text-foreground/70 hover:underline focus:outline-none",
+                      (signingOut || signingOutAll) && "pointer-events-none opacity-60",
+                    )}
+                  >
+                    {signingOutAll ? "Signing out all devices…" : "Sign out of all devices"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-between">
@@ -98,15 +234,15 @@ function SettingsContent() {
         <Toggle
           label="Large UI text"
           description="Increase text size for big-screen, across-the-room reading."
-          checked={largeText}
-          onChange={setLargeText}
+          checked={settings.largeText}
+          onChange={(checked) => updateSettings({ largeText: checked })}
         />
         <div className="h-px bg-white/[0.06]" />
         <Toggle
           label="Reduce motion"
           description="Minimize animations and transitions."
-          checked={reduceMotion}
-          onChange={setReduceMotion}
+          checked={settings.reduceMotion}
+          onChange={(checked) => updateSettings({ reduceMotion: checked })}
         />
       </Section>
 

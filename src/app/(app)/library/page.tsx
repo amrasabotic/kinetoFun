@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useGames } from "@/features/games/useGames";
 import { selectCategories, searchGames } from "@/services/games.service";
 import { GameCard } from "@/components/game/GameCard";
@@ -12,8 +13,19 @@ type Filter = "All" | GameCategory;
 
 export default function LibraryPage() {
   const { games, loading } = useGames();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("All");
+
+  useEffect(() => {
+    const category = searchParams.get("category");
+    if (category) {
+      const normalized = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+      if (["Action", "Adventure", "Puzzle", "Sports"].includes(normalized)) {
+        setFilter(normalized as GameCategory);
+      }
+    }
+  }, [searchParams]);
 
   const categories = useMemo<Filter[]>(
     () => ["All", ...selectCategories(games)],
