@@ -44,6 +44,8 @@ export interface User {
   xp: number;
   joinedAt: string; // ISO date
   bio?: string;
+  /** Access role. Optional on the UI type (mock users omit it). */
+  role?: "user" | "admin" | "superadmin";
 }
 
 export interface Score {

@@ -64,3 +64,55 @@ export async function getGameById(id: string): Promise<Game | null> {
   if (error) throw new Error(`[supabase] getGameById: ${error.message}`);
   return data ? toGame(data as GameRow) : null;
 }
+
+// ── Admin writes ─────────────────────────────────────────────────────────────
+
+/** Map a UI `Game` onto the snake_case DB columns (for insert/update). */
+function toGameRow(game: Game): Record<string, unknown> {
+  return {
+    id: game.id,
+    title: game.title,
+    tagline: game.tagline,
+    description: game.description,
+    category: game.category,
+    players: game.players,
+    min_players: game.minPlayers,
+    max_players: game.maxPlayers,
+    cover: game.cover,
+    cover_image: game.coverImage ?? null,
+    accent: game.accent,
+    rating: game.rating,
+    release_year: game.releaseYear,
+    duration_minutes: game.durationMinutes,
+    featured: game.featured ?? false,
+  };
+}
+
+export async function createGame(game: Game): Promise<Game> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("games")
+    .insert(toGameRow(game))
+    .select("*")
+    .single();
+  if (error) throw new Error(`[supabase] createGame: ${error.message}`);
+  return toGame(data as GameRow);
+}
+
+export async function updateGame(id: string, game: Game): Promise<Game> {
+  // `id` is the slug primary key — keep it stable; update everything else.
+  const { id: _omit, ...row } = toGameRow(game) as { id: string } & Record<string, unknown>;
+  void _omit;
+  const { data, error } = await getSupabaseAdmin()
+    .from("games")
+    .update(row)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw new Error(`[supabase] updateGame: ${error.message}`);
+  return toGame(data as GameRow);
+}
+
+export async function deleteGame(id: string): Promise<void> {
+  const { error } = await getSupabaseAdmin().from("games").delete().eq("id", id);
+  if (error) throw new Error(`[supabase] deleteGame: ${error.message}`);
+}

@@ -13,6 +13,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  role: 'user' | 'admin' | 'superadmin';
   createdAt: string; // ISO timestamp
 }
 
@@ -26,6 +27,7 @@ export interface UserRecord {
   email: string;
   password_hash: string;
   name: string;
+  role: 'user' | 'admin' | 'superadmin';
   created_at: string;
 }
 
@@ -34,6 +36,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   name: string;
+  role?: 'user' | 'admin' | 'superadmin';
   /** Server-side session id (row in `auth_sessions`); enables revocation. */
   sid?: string;
   iat?: number;

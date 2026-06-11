@@ -43,6 +43,7 @@ export function toAppUser(authUser: AuthUser): User {
     level: 1,
     xp: 0,
     joinedAt: authUser.createdAt,
+    role: authUser.role,
   };
 }
 

@@ -41,3 +41,23 @@ export const requireUser = cache(async (): Promise<AuthUser> => {
   if (!user) redirect("/login");
   return user;
 });
+
+/**
+ * Require an admin or superadmin user. For Server Components:
+ * redirects to `/` when the user lacks admin privileges.
+ */
+export const requireAdmin = cache(async (): Promise<AuthUser> => {
+  const user = await getCurrentUser();
+  if (!user || !["admin", "superadmin"].includes(user.role)) redirect("/");
+  return user;
+});
+
+/**
+ * Require a superadmin user. For Server Components:
+ * redirects to `/` when the user is not superadmin.
+ */
+export const requireSuperAdmin = cache(async (): Promise<AuthUser> => {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "superadmin") redirect("/");
+  return user;
+});

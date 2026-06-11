@@ -30,8 +30,13 @@ function LoginForm() {
     setError(null);
     setPending(true);
     try {
-      await login(email, password);
-      router.replace(safeNext(searchParams.get("next")));
+      const user = await login(email, password);
+      // SuperAdmins land in the admin console, not the player home.
+      const next =
+        user.role === "superadmin"
+          ? "/superadmin/dashboard"
+          : safeNext(searchParams.get("next"));
+      router.replace(next);
       router.refresh();
     } catch (err) {
       setError(

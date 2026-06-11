@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-06-10 (ADR-019 — auth hardening: rate limiting + revocable sessions)
+> Last updated: 2026-06-11 (ADR-021 — SuperAdmin console redesign + /superadmin routing)
 
 ---
 
@@ -332,3 +332,66 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 **Verification:** `npm run build` clean. Live: 5 wrong logins → `401`, 6th/7th → `429`. Logout → `/api/auth/me` `401` (server-side revoked). Two devices → `logout-all` from one → both `401`. Test users deleted (cascade cleared sessions; `auth_sessions` = 0).
 
 **Deferred (need an email provider or more design):** password reset, email verification, refresh-token rotation, OAuth/social, security headers/CSP, breach-password check, distributed rate-limit store.
+
+---
+
+## ADR-020 — Admin panel + role-based access control
+**Date:** 2026-06-10
+**Status:** Accepted (builds on ADR-013/019 auth; extends the `users` table)
+**Decision:** Added an in-app admin panel (`/admin` route group) for user management, games management, and analytics, gated by a `role` column on `users`. One admin UI tier; `superadmin` differs from `admin` only by being able to change roles + delete users.
+
+**Roles:** `users.role` ∈ `{'user','admin','superadmin'}` (migration `0003_user_roles.sql`, default `'user'`, CHECK constraint). Role flows: DB → `UserRecord` → `toAuthUser` → embedded as a JWT `role` claim on login + surfaced on the UI `User` (optional field) via `toAppUser`.
+
+**Two-layer enforcement (the key design point):**
+1. **Proxy (optimistic, stateless):** reads `role` from the JWT claim; redirects non-admins away from `/admin` pages fast, no DB hit. Because it's JWT-based, a newly-promoted user must **re-login** before the proxy lets them reach `/admin` pages.
+2. **DAL + API (authoritative, DB):** `requireAdmin`/`requireSuperAdmin` (Server Components, redirect) and `getAdminUser`/`getSuperAdminUser` (Route Handlers, 403) both go through `getCurrentUser`, which loads the **current** role from the DB. So API authorization reflects a role change **immediately**, no re-login. Verified live: promote in DB → `/api/admin/*` flips 403→200 on the same cookie.
+
+**API (`/api/admin/*`), all guarded:**
+- `users` GET (admin); `users/[id]` PATCH role + DELETE (**superadmin only**). Self-guards: can't change or delete your own account via the API (prevents a sole superadmin self-lockout) — the UI also hides those controls for the current row.
+- `games` GET + POST, `games/[id]` PUT + DELETE (admin). Writes added to `games-repository.ts` (`createGame`/`updateGame`/`deleteGame` + a `toGameRow` reverse mapper); shared `game-schema.ts` (zod) for create/update. Editing/creating reflects instantly in the public `/api/games` (verified).
+- `analytics` GET (admin): counts (`head:true, count:'exact'`) for users / new-7d / sessions / active / scores, plus top games by session count (in-JS group-by).
+
+**UI:** `(admin)` route group with its own `layout.tsx` (server, calls `requireAdmin` as defence-in-depth) + sidebar; client pages for dashboard / users / games (tables + inline game form). `AdminNav` client component for active states. Admin link added to TopBar (dropdown + mobile) only when `user.role` is admin/superadmin. Data lives in `src/lib/data/admin-repository.ts` (users + analytics; games reuse `games-repository.ts`).
+
+**Why same-app `/admin` (not a separate app):** one deployment, shared auth/session, no duplicated infra. Risk of admin code in the player bundle is mitigated because all admin data access is server-only (route handlers + server layout); client admin pages only call the guarded APIs.
+
+**Files:** `0003_user_roles.sql`; `types/auth.ts` + `types/index.ts` (role); `jwt.ts`/`serialize.ts`/`session.ts` (role claim); `dal.ts` (requireAdmin/SuperAdmin) + `lib/auth/admin.ts` (API guards); `proxy.ts` (/admin gate); `lib/data/{admin-repository,game-schema}.ts` + games-repo writes; `app/api/admin/{users,users/[id],games,games/[id],analytics}/route.ts`; `app/(admin)/{layout,admin/page,admin/users/page,admin/games/page}.tsx`; `components/admin/AdminNav.tsx`; `TopBar.tsx`.
+
+**Activation:** run `0003_user_roles.sql` (done) → it sets `amrasabo@gmail.com` to superadmin → **log out + back in** so the JWT carries `role` → visit `/admin`.
+
+**Verification:** `npm run build` clean (all `/admin` + `/api/admin/*` routes registered). Live: role=user → 403 on admin APIs; after DB promote → 200 (same cookie); games create/update/delete reflected in public `/api/games`; bad game id → 422; PATCH/DELETE self → 400; analytics returns real counts. Test user + test games deleted afterward.
+
+**Deferred:** soft-deactivate (an `active` column instead of hard delete), audit log of admin actions, per-tenant/venue scoping (the eventual admin-vs-superadmin multi-org split), pagination on the users/games tables.
+
+---
+
+## ADR-021 — SuperAdmin console redesign + `/superadmin` routing
+**Date:** 2026-06-11
+**Status:** Accepted (redesigns ADR-020's UI; **no backend/API/auth-logic changes**)
+**Decision:** Replaced the basic `/admin` UI with a premium light "SaaS console" at **`/superadmin/{dashboard,users,games}`** (route group `(superadmin)`), and added role-based routing so superadmins land in the console. The `/api/admin/*` endpoints, repositories, RBAC model, and auth are unchanged — this is a presentation + routing layer.
+
+**Routing:**
+1. **Login redirect** (`(auth)/login/page.tsx`): on success, `role === 'superadmin'` → `/superadmin/dashboard`, else existing `?next`/home flow.
+2. **Proxy** (`proxy.ts`): `/superadmin/*` requires the superadmin JWT-role claim (optimistic; non-super → `/`, unauthed → `/login?next=`). A signed-in superadmin is also bounced from `/` and `/login` → `/superadmin/dashboard` (their home is the console). Regular users' flow is untouched.
+3. **Layout** (`(superadmin)/layout.tsx`): `requireSuperAdmin()` (DB-authoritative) as defence-in-depth.
+
+**Design system (deliberately NOT the app's themeable tokens):** a fixed light palette so the console stays consistent regardless of the public app's dark/light toggle — off-white `#F8FAFC` canvas, white elevated cards (`border-slate-200` + soft shadow), slate neutrals, restrained **violet-600** accent (on-brand with the app's purple primary), colored tints per KPI. All in `src/components/superadmin/`.
+
+**Reusable components:** `ui.tsx` (Card, StatCard, Skeleton, Badge, InitialsAvatar, EmptyState, AdminButton, Pagination, TableSkeleton), `SuperAdminShell` (collapse state persisted to localStorage + mobile drawer + body-scroll lock), `Sidebar` (floating, collapsible to icon-rail with hover tooltips, active indicator), `Topbar` (breadcrumb+title from pathname, search w/ ⌘K chrome, notifications dropdown with empty state, profile dropdown → Profile/Settings/Logout), `ActionMenu` (row "⋯" dropdown), `ConfirmDialog` (animated, RAF-driven enter — no plugin dependency).
+
+**Pages (client, fetch the unchanged `/api/admin/*`):**
+- **Dashboard:** welcome, 4 KPI cards (Total Users w/ +this-week trend, Total Games, Active Sessions w/ live dot, Total Plays), Platform Activity feed (derived from recent registrations — no new API), Quick Actions, Top Games. Skeleton loaders.
+- **Users:** 3 summary cards, search + role filter + sort, sortable table (avatar initials, role/status badges, joined), client pagination (8/pg), `ActionMenu` → Edit role (dialog) / Delete (ConfirmDialog). Self-row guarded (matches API self-guards). Empty + loading states.
+- **Games:** 3 summary cards, search + category filter + sort, table w/ cover thumbnails (`next/image` when `coverImage`, gradient fallback), rating + featured badges, pagination, create/edit in an elegant modal (the full game form), delete confirm.
+
+**Responsive:** desktop floating sidebar (collapsible); `<lg` becomes a slide-over drawer (hamburger in topbar, tap-scrim to dismiss, closes on navigation). Mobile-first toolbars, horizontal-scroll tables.
+
+**Removed:** the old `(admin)` route group + `components/admin/AdminNav.tsx`. `requireAdmin` (dal) is now unused but kept as a library helper; `getAdminUser` still guards the games/analytics APIs (so a plain `admin` role keeps API access even though the `/superadmin` *pages* are superadmin-only).
+
+**Trade-off — superadmin can't see the public home at `/`:** the proxy traps exact `/` → `/superadmin/dashboard` (per the request). Other public routes (`/library`, etc.) remain reachable by direct URL. Easy to relax by dropping the `pathname === '/'` clause.
+
+**Files:** `proxy.ts`, `(auth)/login/page.tsx`, `components/layout/TopBar.tsx` (link → `/superadmin/dashboard`, superadmin-only); new `src/components/superadmin/*` (8 files) + `src/app/(superadmin)/layout.tsx` + `superadmin/{dashboard,users,games}/page.tsx`.
+
+**Verification:** `npm run build` clean (3 `/superadmin/*` routes registered; `/api/admin/*` unchanged). Live redirect matrix verified: unauthed `/superadmin/*` → `/login?next=`; regular user → `/superadmin/dashboard` → `/` and `/` stays 200; superadmin → dashboard 200, `/` and `/login` → `/superadmin/dashboard`. Test user cleaned up.
+
+**Follow-up — device cover upload (2026-06-11):** the Games modal now uploads cover images **from the device** instead of pasting a URL. New `CoverUpload` component (drag-drop + file picker, preview, 5MB/PNG·JPG·WEBP·GIF limit) → `POST /api/admin/games/upload-cover` (admin-guarded) stores the file in the public `game-covers` bucket via the **service-role Storage client** (`${randomUUID}.${ext}`, bypasses Storage RLS) and returns the public URL saved to `cover_image`. The gradient input remains as the fallback. Verified live: no-auth → 403, upload → 201 with a reachable public URL, unsupported type → 422; test object + user removed.

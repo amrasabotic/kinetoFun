@@ -10,6 +10,7 @@ export function toAuthUser(record: UserRecord): AuthUser {
     id: record.id,
     email: record.email,
     name: record.name,
+    role: record.role ?? "user",
     createdAt: record.created_at,
   };
 }

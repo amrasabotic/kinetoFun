@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-06-10 (auth hardening — ADR-019)
+> Last updated: 2026-06-11 (SuperAdmin console redesign — ADR-021)
 
 ---
 
@@ -25,7 +25,10 @@
 - [x] **Game-session persistence** — done (`game_sessions` repo + `/api/sessions[/recent,/[id]]`; "Continue playing" rail is live; dashboard fully off mock). See Done / ADR-018.
 - [ ] Multiplayer sessions (`session_players` — reserved, single-player only so far)
 - [x] **Auth hardening (no-dependency essentials)** — done: rate limiting on `/api/auth/*` + revocable sessions (`auth_sessions`, logout-everywhere). See Done / ADR-019.
+- [x] **Admin panel + RBAC** — done: `role` column (user/admin/superadmin); guarded `/api/admin/*`; two-layer enforcement (proxy JWT + DAL DB). See Done / ADR-020.
+- [x] **SuperAdmin console redesign + routing** — done: premium light SaaS UI at `/superadmin/*` (replaces `/admin`); role-based login redirect; collapsible sidebar + mobile drawer; redesigned dashboard/users/games. API unchanged. See Done / ADR-021.
 - [ ] Auth follow-ups (need email provider or more design): email verification, password reset, refresh-token rotation, OAuth/social, security headers/CSP, distributed rate-limit store
+- [ ] Admin follow-ups: soft-deactivate (active column), audit log, table pagination, per-venue scoping (admin vs superadmin multi-org split)
 
 ### Phase 3 — Game System
 - [ ] Game SDK structure
@@ -72,6 +75,8 @@ _None yet._
 - [x] **[2026-06-10] Score persistence (real leaderboards + profile).** `scores-repository.ts` + `/api/scores` (write, auth), `/api/leaderboard` (public), `/api/profile/stats` (auth); `useLeaderboard`/`useProfileStats` hooks; leaderboard + profile pages off mock; score entry added to launch screen. Build clean; endpoints verified live (empty board, 401s). (ADR-017)
 - [x] **[2026-06-10] Game-session persistence ("Continue playing").** `sessions-repository.ts` + `/api/sessions`(+`/[id]`, `/recent`); session opened on launch, ended on save (clock-skew-safe `ended_at`); `useContinuePlaying` hook with cache invalidation; dashboard "Continue playing" rail live and fully off `@/mock`. Build clean; full authed flow verified end-to-end (create→recent→end), test users cleaned up. (ADR-018)
 - [x] **[2026-06-10] Auth hardening — rate limiting + revocable sessions.** In-memory sliding-window limits on login (5/15min per IP+email) + register (5/hr per IP) → `429`+`Retry-After`. Server-side revocation via `sid` claim + `auth_sessions` rows checked in the DAL: logout and "sign out everywhere" (`/api/auth/logout-all` + Settings button) now truly invalidate. Swappable session repo (Supabase / local file). Build clean; verified live (6th login→429; logout→me 401; cross-device logout-all→both 401); test users cleaned up. (ADR-019)
+- [x] **[2026-06-10] Admin panel + role-based access control.** `role` column on `users` (migration 0003); `/admin` route group (analytics dashboard, user management, games CRUD) + guarded `/api/admin/*`. Two-layer enforcement: proxy reads JWT role (optimistic, needs re-login after promote), DAL/API reads DB role (authoritative, immediate). Superadmin-only role changes + user delete, with self-lockout guards. Admin link in TopBar for admins. Build clean; verified live (403→200 after promote on same cookie; games CRUD reflected in public API; self-guards 400; analytics real counts); test data cleaned up. (ADR-020)
+- [x] **[2026-06-11] SuperAdmin console redesign + `/superadmin` routing.** Replaced the basic `/admin` UI with a premium light SaaS console at `/superadmin/{dashboard,users,games}` (route group `(superadmin)`, removed old `(admin)`). Role-based routing: login sends superadmins to the console; proxy gates `/superadmin/*` (superadmin-only) and bounces them from `/`+`/login`. Reusable `components/superadmin/*` (shell, collapsible sidebar + mobile drawer, topbar w/ search/notifications/profile, ActionMenu, ConfirmDialog, ui primitives); redesigned dashboard (KPIs/activity/quick-actions), users (search/filter/sort/paginate/dialogs), games (thumbnails/filters/modal). **No backend/API/auth changes.** Build clean; redirect matrix verified live; test user cleaned up. (ADR-021)
 - [x] **[2026-06-10] Supabase data layer connected (live).** Wired the app to a live Supabase Postgres project as database-only via `@supabase/supabase-js` (service-role, server-only, no Supabase Auth); `src/lib/supabase/server.ts` client; `SupabaseUserRepository` switched to the SDK; full schema (`supabase/schema.sql`) applied; `--use-system-ca` baked into npm scripts via `cross-env` for this TLS-intercepting machine. Verified end-to-end against the real project (register/me/login/duplicate; row persisted with scrypt hash; test rows deleted). (ADR-014)
 
 ---

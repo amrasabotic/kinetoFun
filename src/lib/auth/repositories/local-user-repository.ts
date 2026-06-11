@@ -47,6 +47,7 @@ export class LocalUserRepository implements UserRepository {
       email: input.email.toLowerCase(),
       name: input.name,
       password_hash: input.passwordHash,
+      role: "user",
       created_at: new Date().toISOString(),
     };
     rows.push(record);

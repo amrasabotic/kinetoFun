@@ -19,13 +19,14 @@ function encodedKey(): Uint8Array {
 
 /** Sign a session token. Always includes the user id (`sub`) and an expiry. */
 export async function signToken(
-  claims: { sub: string; email: string; name: string; sid?: string },
+  claims: { sub: string; email: string; name: string; role?: string; sid?: string },
   maxAgeSeconds: number = authConfig.maxAgeSeconds,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return new SignJWT({
     email: claims.email,
     name: claims.name,
+    ...(claims.role ? { role: claims.role } : {}),
     ...(claims.sid ? { sid: claims.sid } : {}),
   })
     .setProtectedHeader({ alg: ALG })
@@ -56,6 +57,9 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
       sub: payload.sub,
       email: typeof payload.email === "string" ? payload.email : "",
       name: typeof payload.name === "string" ? payload.name : "",
+      role: ["admin", "superadmin"].includes(payload.role as string)
+        ? (payload.role as "admin" | "superadmin")
+        : "user",
       sid: typeof payload.sid === "string" ? payload.sid : undefined,
       iat: payload.iat,
       exp: payload.exp,

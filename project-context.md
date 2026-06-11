@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-06-10 (Auth hardening: rate limiting + revocable sessions — ADR-019)
+> Last updated: 2026-06-11 (SuperAdmin console redesign + /superadmin routing — ADR-021)
 
 ---
 
@@ -47,6 +47,8 @@ Users will be able to:
 - **[2026-06-10] Score persistence — real leaderboards + profile stats.** `scores-repository.ts` → `/api/scores` (write, auth), `/api/leaderboard` (public, global or per-game), `/api/profile/stats` (auth); `useLeaderboard`/`useProfileStats` hooks; leaderboard + profile pages off mock; manual score entry on the launch screen. (ADR-017)
 - **[2026-06-10] Game-session persistence — "Continue playing".** `sessions-repository.ts` → `/api/sessions` (start), `/api/sessions/[id]` (end), `/api/sessions/recent`; session opened on launch + ended on save with a **clock-skew-safe `ended_at`**; `useContinuePlaying` (module-cached + invalidation). Dashboard is now fully off `@/mock`. (ADR-018)
 - **[2026-06-10] Auth hardening — rate limiting + revocable sessions.** In-memory sliding-window rate limits on login/register (`429`+`Retry-After`); server-side session revocation via a `sid` claim + `auth_sessions` rows enforced in the DAL; logout + "sign out everywhere" (`/api/auth/logout-all` + Settings button) truly invalidate; swappable session repo (Supabase / local file). Verified live; deferred email-dependent flows + refresh-token rotation. (ADR-019)
+- **[2026-06-10] Admin panel + role-based access control.** `role` column on `users` (`user`/`admin`/`superadmin`, migration 0003); guarded `/api/admin/*`. Two-layer enforcement: proxy reads the JWT `role` claim (optimistic — needs re-login after a promote), DAL/API read the DB role (`getAdminUser`/`getSuperAdminUser` → 403) so authorization is immediate. Superadmin-only role changes + user delete, with self-lockout guards. (ADR-020)
+- **[2026-06-11] SuperAdmin console redesign + `/superadmin` routing.** Premium light SaaS console replacing the basic `/admin` UI: route group `(superadmin)` at `/superadmin/{dashboard,users,games}`, reusable `components/superadmin/*` (shell + collapsible sidebar + mobile drawer + topbar + ActionMenu + ConfirmDialog + ui primitives). Role-based routing (login redirect + proxy gating `/superadmin/*` and bouncing superadmins from `/`/`/login`). Dashboard (KPIs/activity/quick-actions), users + games tables (search/filter/sort/paginate, dialogs/modals, skeletons, empty states). **No backend/API/auth changes** — pages call the unchanged `/api/admin/*`. (ADR-021)
 - **[2026-06-10] Phase 2 — Custom JWT authentication (real, not mocked).** Replaced the mock session with a production-shaped auth layer: register/login/logout + `me` Route Handlers under `/api/auth/*`; scrypt password hashing (Node built-in); HS256 JWT via `jose` stored in an httpOnly+SameSite cookie; `src/proxy.ts` (Next 16's renamed middleware) for optimistic route protection; a server-side DAL (`getCurrentUser`/`requireUser`) for the authoritative check; a swappable `UserRepository` (Supabase Postgres via PostgREST when configured, local file store otherwise); `ProtectedRoute` wrapper; `SessionProvider` now restores via `/api/auth/me`. Build clean; full flow smoke-tested (register→me→login→logout, proxy redirects, forged-token rejection). (ADR-013)
 
 ---
@@ -76,6 +78,11 @@ src/
       layout.tsx
       login/page.tsx        # real login (async, error states, ?next redirect)
       signup/page.tsx       # real signup (async, field-level validation errors)
+    (superadmin)/           # route group: SUPERADMIN ONLY (premium SaaS console)
+      layout.tsx            # requireSuperAdmin() gate → <SuperAdminShell>
+      superadmin/dashboard/page.tsx  # KPIs, activity feed, quick actions
+      superadmin/users/page.tsx      # user mgmt (search/filter/sort/paginate/dialogs)
+      superadmin/games/page.tsx      # games CRUD (thumbnails/filters/modal)
     api/auth/               # custom auth API (Route Handlers)
       register/route.ts     # POST — create account + start session (rate-limited)
       login/route.ts        # POST — verify credentials + start session (rate-limited)
@@ -85,6 +92,12 @@ src/
     api/games/              # public games catalog API
       route.ts              # GET  — all games (from Supabase)
       [id]/route.ts         # GET  — one game by id
+    api/admin/              # admin API (all guarded by getAdminUser/getSuperAdminUser → 403)
+      users/route.ts        # GET   — list users (admin)
+      users/[id]/route.ts   # PATCH role + DELETE (superadmin; self-guards)
+      games/route.ts        # GET + POST (admin)
+      games/[id]/route.ts   # PUT + DELETE (admin)
+      analytics/route.ts    # GET   — platform stats (admin)
     api/leaderboard/route.ts # GET  — global or ?gameId= board (public)
     api/scores/route.ts     # POST — submit a score (auth)
     api/profile/stats/route.ts # GET — current user's stats (auth)
@@ -94,11 +107,14 @@ src/
       recent/route.ts       # GET  — recent game ids (auth)
   proxy.ts                  # Next 16 route protection (was middleware.ts)
   components/
-    layout/   TopBar.tsx, Clock.tsx
+    layout/   TopBar.tsx (admin link for admins), Clock.tsx
     navigation/ SpatialNavigation.tsx   # global arrow-key focus movement
     game/     GameCard.tsx, GameRail.tsx
     leaderboard/ LeaderboardTable.tsx
     profile/  ScoreList.tsx
+    superadmin/ SuperAdminShell, Sidebar, Topbar, ActionMenu, ConfirmDialog,
+              ui.tsx (Card/StatCard/Skeleton/Badge/InitialsAvatar/EmptyState/
+              AdminButton/Pagination/TableSkeleton)  # premium console design system
     ui/       Button.tsx (Button + ButtonLink), Badge.tsx, Avatar.tsx,
               StarRating.tsx, TextField.tsx,
               animated-hero-section.tsx (AnimatedHero — canvas Pong landing)
@@ -111,16 +127,19 @@ src/
   services/   auth.service, games.service, sessions.service — REAL (call /api/*)
               # leaderboard.service + profile.service mock files remain but are UNUSED by pages.
               # the BACKEND BOUNDARY. games.service = async fetchers + pure selectors.
-  lib/auth/   config, password (scrypt), jwt (jose/HS256 + sid claim), session
-              (cookies + revocable sessions), validation (zod), dal
-              (getCurrentUser/requireUser + revocation check), serialize,
+  lib/auth/   config, password (scrypt), jwt (jose/HS256 + sid + role claims),
+              session (cookies + revocable sessions), validation (zod), dal
+              (getCurrentUser/requireUser/requireAdmin/requireSuperAdmin + revocation),
+              admin (getAdminUser/getSuperAdminUser → for API 403s), serialize,
               rate-limit (in-memory sliding window), http (429 helper),
               repository (+ repositories/{supabase,local}-user-repository),
               session-repository (+ repositories/{supabase,local}-session-repository)
               # SERVER-ONLY. Never import from a Client Component.
-  lib/data/   games-repository.ts       # SERVER-ONLY games reads (Supabase) → Game
+  lib/data/   games-repository.ts       # SERVER-ONLY games reads + admin CRUD (Supabase) → Game
               scores-repository.ts      # SERVER-ONLY leaderboards + profile stats + submitScore
               sessions-repository.ts    # SERVER-ONLY create/end/listRecent game_sessions
+              admin-repository.ts       # SERVER-ONLY users list/role/delete + analytics
+              game-schema.ts            # zod schema for admin game create/update
   lib/supabase/ server.ts  # getSupabaseAdmin() — service-role client, DATABASE ONLY
   mock/       games.ts, users.ts, scores.ts, sessions.ts, index.ts
   types/      index.ts                  # Game, User, Score, Session, LeaderboardEntry
@@ -206,6 +225,7 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 - **Games are served from Supabase** (✅ — seeded with 10 games via `supabase/seed_games.sql`). Read path: `useGames()` → `/api/games` → `@/lib/data/games-repository` → Supabase.
 - **Scores + leaderboards + profile stats are live** (✅ — ADR-017). Write via `POST /api/scores` (auth) from the launch screen; read via `useLeaderboard` → `/api/leaderboard` (public) and `useProfileStats` → `/api/profile/stats` (auth). `leaderboardService`/`profileService` mock files remain on disk but are no longer imported by pages.
 - **Game sessions are live** (✅ — ADR-018). "Continue playing" rail + profile activity read real `game_sessions`; session opened on launch (`POST /api/sessions`), ended on save (`PATCH /api/sessions/[id]`); `useContinuePlaying` → `/api/sessions/recent`. The dashboard no longer imports `@/mock`.
+- **SuperAdmin console is live** (✅ — ADR-020 backend + ADR-021 redesign). `users.role` (`user`/`admin`/`superadmin`, migration 0003); premium light SaaS UI at **`/superadmin/{dashboard,users,games}`** (route group `(superadmin)`; the old `/admin` group was removed) + guarded **`/api/admin/*`** (unchanged contracts). Enforcement: proxy reads JWT role (optimistic — promoted users must re-login to reach `/superadmin` pages; superadmins are bounced from `/`+`/login` → `/superadmin/dashboard`), DAL/API read DB role (immediate). Superadmin-only role changes + user delete (with self-lockout guards). `amrasabo@gmail.com` is superadmin.
 - **Game cover images (✅ — infrastructure done, ADR-016):** Storage bucket `game-covers` created; `Game.coverImage` optional (maps to `cover_image` column); all 4 cover sites use `next/image` when set, gradient fallback otherwise. Next step: upload images + run the UPDATE SQL.
 - No real game SDK or runtime — `/games/[id]/play` is a placeholder screen (score is entered manually).
 - No multiplayer yet — `game_sessions.user_id` is single-player owner; `session_players` reserved for Phase 3.

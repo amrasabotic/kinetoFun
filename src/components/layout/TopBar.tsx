@@ -9,7 +9,7 @@ import { useSession } from "@/features/auth/session-context";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { Clock } from "./Clock";
-import { User, Settings, ChevronDown, LogOut } from "lucide-react";
+import { User, Settings, ChevronDown, LogOut, Shield } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -48,9 +48,11 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
     };
   }, [open]);
 
+  const isSuperAdmin = user.role === "superadmin";
   const NAV_ITEMS = [
     { href: "/profile",  label: "Profile",  Icon: User     },
     { href: "/settings", label: "Settings", Icon: Settings },
+    ...(isSuperAdmin ? [{ href: "/superadmin/dashboard", label: "Admin Console", Icon: Shield }] : []),
   ];
 
   async function handleLogout() {
@@ -335,6 +337,17 @@ export function TopBar() {
                 <Settings className="h-4 w-4 text-[#1AACE0]/70" />
                 Settings
               </Link>
+              {/* Admin console link (superadmins only) */}
+              {user.role === "superadmin" && (
+                <Link
+                  href="/superadmin/dashboard"
+                  data-focusable
+                  className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none"
+                >
+                  <Shield className="h-4 w-4 text-[#1AACE0]/70" />
+                  Admin Console
+                </Link>
+              )}
               {/* Sign out */}
               <button
                 type="button"
