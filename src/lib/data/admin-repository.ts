@@ -11,6 +11,7 @@ export interface AdminUser {
   level: number;
   xp: number;
   createdAt: string;
+  active: boolean;
 }
 
 interface AdminUserRow {
@@ -21,6 +22,7 @@ interface AdminUserRow {
   level: number | null;
   xp: number | null;
   created_at: string;
+  active: boolean | null;
 }
 
 function toAdminUser(row: AdminUserRow): AdminUser {
@@ -32,16 +34,28 @@ function toAdminUser(row: AdminUserRow): AdminUser {
     level: row.level ?? 1,
     xp: row.xp ?? 0,
     createdAt: row.created_at,
+    active: row.active ?? true,
   };
 }
 
 export async function listAllUsers(): Promise<AdminUser[]> {
   const { data, error } = await getSupabaseAdmin()
     .from("users")
-    .select("id, email, name, role, level, xp, created_at")
+    .select("id, email, name, role, level, xp, created_at, active")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`[supabase] listAllUsers: ${error.message}`);
   return (data as AdminUserRow[]).map(toAdminUser);
+}
+
+export async function setUserActive(id: string, active: boolean): Promise<AdminUser> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("users")
+    .update({ active })
+    .eq("id", id)
+    .select("id, email, name, role, level, xp, created_at, active")
+    .single();
+  if (error) throw new Error(`[supabase] setUserActive: ${error.message}`);
+  return toAdminUser(data as AdminUserRow);
 }
 
 export async function updateUserRole(
@@ -52,7 +66,7 @@ export async function updateUserRole(
     .from("users")
     .update({ role })
     .eq("id", id)
-    .select("id, email, name, role, level, xp, created_at")
+    .select("id, email, name, role, level, xp, created_at, active")
     .single();
   if (error) throw new Error(`[supabase] updateUserRole: ${error.message}`);
   return toAdminUser(data as AdminUserRow);

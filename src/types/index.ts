@@ -99,6 +99,7 @@ export interface User {
   bio?: string;
   /** Access role. Optional on the UI type (mock users omit it). */
   role?: "user" | "admin" | "superadmin";
+  active?: boolean;
 }
 
 export interface Score {

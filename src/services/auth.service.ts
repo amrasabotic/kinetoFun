@@ -45,6 +45,7 @@ export function toAppUser(authUser: AuthUser): User {
     joinedAt: authUser.createdAt,
     bio: authUser.bio,
     role: authUser.role,
+    active: authUser.active ?? true,
   };
 }
 

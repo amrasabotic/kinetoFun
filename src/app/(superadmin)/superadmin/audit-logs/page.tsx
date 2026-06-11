@@ -24,8 +24,11 @@ import {
   TableSkeleton,
   SearchInput,
   Select,
+  Pagination,
 } from "@/components/superadmin/ui";
 import { auditMeta } from "@/components/superadmin/audit";
+
+const PAGE_SIZE = 50;
 
 interface Summary {
   today: number;
@@ -73,6 +76,8 @@ export default function AuditLogsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [admins, setAdmins] = useState<AdminOption[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +95,11 @@ export default function AuditLogsPage() {
     return () => clearTimeout(t);
   }, [query]);
 
+  // Reset to page 1 whenever any filter changes.
+  useEffect(() => {
+    setPage(1);
+  }, [entity, adminId, debounced, dateFilter]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -100,12 +110,15 @@ export default function AuditLogsPage() {
       if (debounced) params.set("search", debounced);
       const from = fromForDate(dateFilter);
       if (from) params.set("from", from);
+      params.set("page", String(page));
+      params.set("limit", String(PAGE_SIZE));
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load audit logs.");
       const json = await res.json();
       setLogs(json.logs as AuditLog[]);
       setSummary(json.summary as Summary);
       setTotal(json.total as number);
+      setTotalPages(json.totalPages as number);
       // Keep the admin filter options stable (only grow the known set).
       setAdmins((prev) => {
         const map = new Map(prev.map((a) => [a.id, a.name]));
@@ -117,7 +130,7 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [entity, adminId, debounced, dateFilter]);
+  }, [entity, adminId, debounced, dateFilter, page]);
 
   useEffect(() => {
     void load();
@@ -276,11 +289,8 @@ export default function AuditLogsPage() {
           </div>
         )}
 
-        {!loading && logs.length > 0 && (
-          <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">
-            Showing {logs.length} of {total} {total === 1 ? "entry" : "entries"}
-            {logs.length < total && " (most recent)"}
-          </div>
+        {!loading && total > 0 && (
+          <Pagination page={page} totalPages={totalPages} total={total} onPage={setPage} />
         )}
       </Card>
 

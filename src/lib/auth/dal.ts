@@ -28,7 +28,8 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   }
 
   const record = await getUserRepository().findById(session.sub);
-  return record ? toAuthUser(record) : null;
+  if (!record || record.active === false) return null;
+  return toAuthUser(record);
 });
 
 /**

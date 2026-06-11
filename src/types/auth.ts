@@ -18,6 +18,7 @@ export interface AuthUser {
   username?: string;
   bio?: string;
   avatarColor?: string;
+  active?: boolean;
 }
 
 /**
@@ -35,6 +36,7 @@ export interface UserRecord {
   username?: string;
   bio?: string;
   avatar_color?: string;
+  active?: boolean;
 }
 
 /** Claims embedded in the signed JWT. `sub` is the user id. */

@@ -11,6 +11,8 @@ import {
   SlidersHorizontal,
   Trash2,
   Pencil,
+  UserX,
+  UserCheck,
 } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
 import { formatDate } from "@/lib/format";
@@ -37,6 +39,7 @@ interface AdminUser {
   level: number;
   xp: number;
   createdAt: string;
+  active: boolean;
 }
 
 type RoleFilter = "all" | "user" | "admin" | "superadmin";
@@ -150,6 +153,25 @@ export default function UsersPage() {
       alert(err instanceof Error ? err.message : "Failed to delete user.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function toggleActive(u: AdminUser) {
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: !u.active }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? "Failed to update user.");
+      }
+      setUsers((prev) =>
+        prev.map((usr) => (usr.id === u.id ? { ...usr, active: !u.active } : usr)),
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update user.");
     }
   }
 
@@ -274,10 +296,17 @@ export default function UsersPage() {
                         </Badge>
                       </td>
                       <td className="px-5 py-3">
-                        <Badge tone="emerald">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          Active
-                        </Badge>
+                        {u.active !== false ? (
+                          <Badge tone="emerald">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge tone="rose">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                            Suspended
+                          </Badge>
+                        )}
                       </td>
                       <td className="px-5 py-3 text-slate-500">{formatDate(u.createdAt)}</td>
                       <td className="px-5 py-3 text-right">
@@ -291,6 +320,18 @@ export default function UsersPage() {
                                 icon: <Pencil className="h-4 w-4" />,
                                 onClick: () => setManage(u),
                               },
+                              u.active !== false
+                                ? {
+                                    label: "Suspend user",
+                                    icon: <UserX className="h-4 w-4" />,
+                                    danger: true,
+                                    onClick: () => toggleActive(u),
+                                  }
+                                : {
+                                    label: "Reactivate user",
+                                    icon: <UserCheck className="h-4 w-4" />,
+                                    onClick: () => toggleActive(u),
+                                  },
                               {
                                 label: "Delete user",
                                 icon: <Trash2 className="h-4 w-4" />,

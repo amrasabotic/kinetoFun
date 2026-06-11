@@ -66,6 +66,7 @@ export interface AuditQuery {
   to?: string;
   search?: string;
   limit?: number;
+  offset?: number;
 }
 
 export interface AuditPage {
@@ -77,13 +78,14 @@ export interface AuditPage {
 
 export async function listAuditLogs(query: AuditQuery = {}): Promise<AuditPage> {
   const db = getSupabaseAdmin();
-  const limit = Math.min(query.limit ?? 200, 500);
+  const limit = Math.min(query.limit ?? 50, 200);
+  const offset = query.offset ?? 0;
 
   let q = db
     .from("audit_logs")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (query.entityType) q = q.eq("entity_type", query.entityType);
   if (query.adminId) q = q.eq("admin_id", query.adminId);
@@ -98,7 +100,7 @@ export async function listAuditLogs(query: AuditQuery = {}): Promise<AuditPage> 
   if (error) throw new Error(`[supabase] listAuditLogs: ${error.message}`);
   const logs = (data as AuditRow[]).map(toAuditLog);
 
-  // Distinct admins across the (most recent) log set — enough for the filter.
+  // Distinct admins across the current page — accumulated client-side across pages.
   const seen = new Map<string, string>();
   for (const l of logs) if (l.adminId) seen.set(l.adminId, l.adminName);
   const admins = Array.from(seen, ([id, name]) => ({ id, name }));
