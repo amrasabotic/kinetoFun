@@ -395,3 +395,34 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 **Verification:** `npm run build` clean (3 `/superadmin/*` routes registered; `/api/admin/*` unchanged). Live redirect matrix verified: unauthed `/superadmin/*` → `/login?next=`; regular user → `/superadmin/dashboard` → `/` and `/` stays 200; superadmin → dashboard 200, `/` and `/login` → `/superadmin/dashboard`. Test user cleaned up.
 
 **Follow-up — device cover upload (2026-06-11):** the Games modal now uploads cover images **from the device** instead of pasting a URL. New `CoverUpload` component (drag-drop + file picker, preview, 5MB/PNG·JPG·WEBP·GIF limit) → `POST /api/admin/games/upload-cover` (admin-guarded) stores the file in the public `game-covers` bucket via the **service-role Storage client** (`${randomUUID}.${ext}`, bypasses Storage RLS) and returns the public URL saved to `cover_image`. The gradient input remains as the fallback. Verified live: no-auth → 403, upload → 201 with a reachable public URL, unsupported type → 422; test object + user removed.
+
+---
+
+## ADR-022 — SuperAdmin platform expansion (Categories, enhanced Games, Analytics, Audit Logs)
+
+**Date:** 2026-06-11
+**Status:** Accepted — implemented, build verified. **Requires running `supabase/migrations/0004_categories_games_audit.sql` against the live DB.**
+
+**Context.** The `/superadmin` console (ADR-020/021) covered users + basic games. This ADR evolves it into a scalable platform admin: a managed **Categories** taxonomy, **enhanced Games** (status/difficulty/age/featured/play-count + bulk actions), an **Analytics** dashboard (charts), and an **Audit log**. Hard constraint: preserve all existing auth, APIs, and public read paths.
+
+**Database (migration 0004 + idempotent schema.sql).**
+- New `categories` table (id, name, slug, description, icon[lucide name], image, sort_order, is_active, timestamps). **Seeded from the 6 legacy `game_category` enum values** so nothing changes for current games.
+- `games` gains `category_id` (FK → categories, `on delete set null`), `status` (`game_status` enum draft/published/**archived**, **default `published`** so seeded games stay visible), `difficulty` (`game_difficulty`), `age_group`, `short_description`, `thumbnail`, `play_count`. Migration backfills `category_id` from the enum and `play_count` from `game_sessions` history.
+- **Legacy `games.category` enum is KEPT and kept in sync** — the public site still filters on it. This dual-key design is the deliberate non-breaking compromise (a brand-new custom category that isn't one of the 6 leaves the enum at its prior value; the game still lists because the public API selects by `status`, not enum).
+- New `audit_logs` table (admin_id, admin_name, action, entity_type, entity_id, details jsonb, created_at).
+
+**Public read path change (intentional).** `listGames()`/`getGameById()` now filter `status = 'published'` → **draft/archived games are hidden from normal users**. Admin uses the new `listAllGames()`. ⚠️ This means the app **breaks against an un-migrated DB** (the `status` column won't exist) — the migration must be applied.
+
+**Repositories.** `categories-repository` (CRUD, `gamesCount` via one grouped query, `countGamesInCategory`/`moveGames`/`deleteGamesInCategory`, `reorderCategories`), `audit-repository` (`recordAudit` — best-effort, never throws; `listAuditLogs` w/ filters; `getAuditSummary`), `games-repository` extended (new fields, `listAllGames`, `bulkSetStatus`/`bulkSetCategory`/`bulkDeleteGames`), `admin-repository.getAnalytics` rebuilt (category counts, status counts, played-today, 14-day userGrowth + playsPerDay series, top games by play_count).
+
+**API (all under the unchanged `/api/admin/*` guard pattern → `getAdminUser()` 403).** `categories` (GET/POST), `categories/[id]` (PATCH; DELETE with **safeguards**: returns `409 category_has_games` unless `?strategy=move&target=` or `?strategy=delete-games`), `categories/reorder` (POST), `audit-logs` (GET filters+summary), `games/bulk` (POST publish/archive/draft/delete/category). **Audit logging wired into every write** (categories, games create/update/publish/archive/delete + bulk, user role/delete) via `void recordAudit(...)` — fire-and-forget so logging can't break the action.
+
+**UI (premium light SaaS, same design system).** Sidebar reordered → Dashboard · Users · **Categories** · Games · **Audit Logs**. New reusable primitives in `superadmin/ui.tsx` (`Select`, `SearchInput`, `ViewToggle`, `Switch`, `Segmented`), `superadmin/charts.tsx` (dependency-free SVG `AreaChart` w/ draw-in animation + hover readout, `BarList`), `superadmin/icons.tsx` (`CategoryIcon` renders any lucide name + searchable `IconPicker`), `superadmin/audit.tsx` (`auditMeta`/`auditSentence` action describers). Chart/entrance keyframes added to `globals.css` (no styled-jsx).
+- **Categories page:** 4 summary cards, search + status filter, **table & card views** (`ViewToggle`), drag-to-reorder rows (HTML5 DnD, persisted), enable/disable, create/edit modal (auto-slug, IconPicker, optional image via reused `CoverUpload`, Switch), **delete safeguard modal** (move-games / delete-games / cancel).
+- **Games page (enhanced, no features lost):** 4 summary cards, search + category/status/difficulty/age filters + Newest/Most-played/Alphabetical sort, **row multi-select + bulk action bar** (Publish/Archive/Category/Delete w/ confirm), play-count column, status+featured badges; richer create/edit modal (short description, DB category select that syncs the enum, difficulty/age/status `Segmented`, featured `Switch`, thumbnail upload) keeping all original fields.
+- **Dashboard:** 6 overview metrics, two `AreaChart`s (user growth, plays over time), **Recent Activity** (audit logs + recent sign-ups merged), Top Games + Most-Popular `BarList`, Quick Actions (Add Category/Game, Manage Users, Audit Logs).
+- **Audit Logs page:** 4 summary cards, debounced search + entity/admin/date filters (server-side), table with action/admin/entity/when, click-through detail modal (pretty-printed JSON details).
+
+**Verification.** `tsc --noEmit` clean; `npm run build` clean — new routes registered (`/superadmin/{categories,audit-logs}`, `/api/admin/{categories,categories/[id],categories/reorder,audit-logs,games/bulk}`). ESLint `set-state-in-effect` findings match the pre-existing data-loading pattern in the users/games pages (Next 16 doesn't lint during build). **Not yet exercised against the live DB** (migration 0004 pending).
+
+**Follow-ups / deferred.** Show featured games on the public homepage; surface draft/archived preview for admins (currently `getGameById` is published-only); paginate audit logs server-side (capped at 500 now); category image bucket reuses `game-covers`.

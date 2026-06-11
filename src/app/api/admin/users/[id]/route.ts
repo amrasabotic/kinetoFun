@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSuperAdminUser } from "@/lib/auth/admin";
 import { updateUserRole, deleteUser } from "@/lib/data/admin-repository";
+import { recordAudit } from "@/lib/data/audit-repository";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,14 @@ export async function PATCH(
 
   try {
     const user = await updateUserRole(id, parsed.data.role);
+    void recordAudit({
+      adminId: admin.id,
+      adminName: admin.name,
+      action: "user.role_updated",
+      entityType: "user",
+      entityId: user.id,
+      details: { email: user.email, role: user.role },
+    });
     return NextResponse.json({ user });
   } catch (err) {
     console.error("[api] PATCH /api/admin/users/[id]:", err);
@@ -76,6 +85,14 @@ export async function DELETE(
 
   try {
     await deleteUser(id);
+    void recordAudit({
+      adminId: admin.id,
+      adminName: admin.name,
+      action: "user.deleted",
+      entityType: "user",
+      entityId: id,
+      details: {},
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[api] DELETE /api/admin/users/[id]:", err);

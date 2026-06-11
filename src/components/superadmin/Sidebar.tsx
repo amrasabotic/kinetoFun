@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
+  FolderTree,
   Gamepad2,
+  ScrollText,
   ChevronLeft,
   Sparkles,
   type LucideIcon,
@@ -22,7 +24,9 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/superadmin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/superadmin/users", label: "Users", Icon: Users },
+  { href: "/superadmin/categories", label: "Categories", Icon: FolderTree },
   { href: "/superadmin/games", label: "Games", Icon: Gamepad2 },
+  { href: "/superadmin/audit-logs", label: "Audit Logs", Icon: ScrollText },
 ];
 
 export interface AdminIdentity {

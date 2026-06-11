@@ -20,7 +20,9 @@ import type { AdminIdentity } from "./Sidebar";
 const TITLES: Record<string, string> = {
   "/superadmin/dashboard": "Dashboard",
   "/superadmin/users": "Users",
+  "/superadmin/categories": "Categories",
   "/superadmin/games": "Games",
+  "/superadmin/audit-logs": "Audit Logs",
 };
 
 function titleFor(pathname: string): string {

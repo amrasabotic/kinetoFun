@@ -3,8 +3,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/auth/admin";
-import { listGames, createGame } from "@/lib/data/games-repository";
+import { listAllGames, createGame } from "@/lib/data/games-repository";
 import { gameSchema, toGameInput } from "@/lib/data/game-schema";
+import { recordAudit } from "@/lib/data/audit-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ export async function GET() {
   }
 
   try {
-    return NextResponse.json({ games: await listGames() });
+    // Admin sees every game (draft/archived included).
+    return NextResponse.json({ games: await listAllGames() });
   } catch (err) {
     console.error("[api] GET /api/admin/games:", err);
     return NextResponse.json({ error: "Failed to load games." }, { status: 500 });
@@ -45,6 +47,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const game = await createGame(toGameInput(parsed.data));
+    void recordAudit({
+      adminId: admin.id,
+      adminName: admin.name,
+      action: "game.created",
+      entityType: "game",
+      entityId: game.id,
+      details: { title: game.title, status: game.status, category: game.category },
+    });
     return NextResponse.json({ game }, { status: 201 });
   } catch (err) {
     console.error("[api] POST /api/admin/games:", err);

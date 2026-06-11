@@ -314,3 +314,44 @@ body {
   --backdrop: rgba(8, 14, 52, 0.84) !important;
   --backup-border: rgba(26, 172, 224, 0.52) !important;
 }
+
+/* ─── SuperAdmin chart + entrance micro-interactions ─────────────────────────── */
+
+@keyframes kf-chart-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes kf-chart-fade {
+  to { opacity: 1; }
+}
+
+@keyframes kf-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.kf-chart-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: kf-chart-draw 0.9s ease-out forwards;
+}
+
+.kf-chart-area {
+  opacity: 0;
+  animation: kf-chart-fade 0.6s ease-out 0.3s forwards;
+}
+
+.kf-rise {
+  animation: kf-rise 0.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kf-chart-line,
+  .kf-chart-area,
+  .kf-rise {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+  }
+}

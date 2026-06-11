@@ -28,7 +28,8 @@
 - [x] **Admin panel + RBAC** — done: `role` column (user/admin/superadmin); guarded `/api/admin/*`; two-layer enforcement (proxy JWT + DAL DB). See Done / ADR-020.
 - [x] **SuperAdmin console redesign + routing** — done: premium light SaaS UI at `/superadmin/*` (replaces `/admin`); role-based login redirect; collapsible sidebar + mobile drawer; redesigned dashboard/users/games. API unchanged. See Done / ADR-021.
 - [ ] Auth follow-ups (need email provider or more design): email verification, password reset, refresh-token rotation, OAuth/social, security headers/CSP, distributed rate-limit store
-- [ ] Admin follow-ups: soft-deactivate (active column), audit log, table pagination, per-venue scoping (admin vs superadmin multi-org split)
+- [x] **SuperAdmin platform expansion** — done: Categories management, enhanced Games (status/difficulty/age/featured/play-count + bulk), Analytics dashboard (charts), Audit logs. Migration 0004 required. See Done / ADR-022.
+- [ ] Admin follow-ups: soft-deactivate (active column), per-venue scoping (admin vs superadmin multi-org split), surface featured games on public homepage, server-side audit pagination
 
 ### Phase 3 — Game System
 - [ ] Game SDK structure
@@ -57,6 +58,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-06-11] SuperAdmin platform expansion (Categories, enhanced Games, Analytics, Audit Logs).** Managed `categories` taxonomy (CRUD, reorder, enable/disable, delete safeguards, table/card views, icon picker); enhanced Games (status draft/published/archived, difficulty, age group, featured, short description, thumbnail, play count; bulk publish/archive/delete/recategorize; richer filters + sort); Analytics dashboard (6 metrics, user-growth + plays-over-time area charts, top/most-popular games, merged recent-activity feed, quick actions); Audit logs (`audit_logs` table + best-effort `recordAudit` wired into all admin writes; filterable page + detail modal). Migration 0004 adds `categories`/`audit_logs` + games columns and keeps the legacy `category` enum in sync. Public reads now show **published-only** games. Build clean; **migration 0004 must be run on the live DB.** (ADR-022)
 - [x] **[2026-06-08] Project foundation.** Scaffolded Next.js (App Router) + TS + Tailwind + ESLint via `create-next-app@latest`; git init with `main`/`dev`; tracking files on `main`, scaffold on `dev`; production build verified. (ADR-007)
 - [x] **[2026-06-08] TV interface shell / layout.** Root + `(app)`/`(auth)` route-group layouts, sticky `TopBar` with live clock, dark console theme. (ADR-008)
 - [x] **[2026-06-08] Navigation system (focus-based, remote-friendly).** Global arrow-key spatial navigation over `[data-focusable]` elements — the seam for the future gesture layer. (ADR-008)

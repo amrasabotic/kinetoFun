@@ -6,7 +6,7 @@
 // NOT use the app's themeable tokens so the admin stays light + consistent.
 
 import type { ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Card ─────────────────────────────────────────────────────────────────────
@@ -265,6 +265,181 @@ export function Pagination({
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Select (styled native dropdown) ──────────────────────────────────────────
+
+export function Select({
+  value,
+  onChange,
+  options,
+  icon,
+  className,
+  "aria-label": ariaLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  icon?: ReactNode;
+  className?: string;
+  "aria-label"?: string;
+}) {
+  return (
+    <div className={cn("relative", className)}>
+      {icon && (
+        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+          {icon}
+        </span>
+      )}
+      <select
+        aria-label={ariaLabel}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          "h-10 w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-white py-0 pr-8 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20",
+          icon ? "pl-8" : "pl-3",
+        )}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronRight className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rotate-90 text-slate-400" />
+    </div>
+  );
+}
+
+// ── Search input ─────────────────────────────────────────────────────────────
+
+export function SearchInput({
+  value,
+  onChange,
+  placeholder = "Search…",
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative", className)}>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder-slate-400 transition focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+      />
+    </div>
+  );
+}
+
+// ── View toggle (table / card) ───────────────────────────────────────────────
+
+export function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: "table" | "card";
+  onChange: (v: "table" | "card") => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-0.5">
+      {(["table", "card"] as const).map((v) => {
+        const Icon = v === "table" ? List : LayoutGrid;
+        const active = view === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            aria-label={`${v} view`}
+            aria-pressed={active}
+            onClick={() => onChange(v)}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-md transition",
+              active
+                ? "bg-violet-50 text-violet-600 shadow-sm"
+                : "text-slate-400 hover:text-slate-600",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Switch ───────────────────────────────────────────────────────────────────
+
+export function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
+        checked ? "bg-violet-600" : "bg-slate-200",
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200",
+          checked ? "translate-x-[22px]" : "translate-x-0.5",
+        )}
+      />
+    </button>
+  );
+}
+
+// ── Segmented control ────────────────────────────────────────────────────────
+
+export function Segmented<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: ReactNode }[];
+}) {
+  return (
+    <div className="grid auto-cols-fr grid-flow-col gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            aria-pressed={active}
+            className={cn(
+              "flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition",
+              active
+                ? "bg-white text-violet-700 shadow-sm ring-1 ring-slate-200"
+                : "text-slate-500 hover:text-slate-700",
+            )}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

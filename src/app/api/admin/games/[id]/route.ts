@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/auth/admin";
 import { updateGame, deleteGame } from "@/lib/data/games-repository";
 import { gameSchema, toGameInput } from "@/lib/data/game-schema";
+import { recordAudit } from "@/lib/data/audit-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,20 @@ export async function PUT(
 
   try {
     const game = await updateGame(id, toGameInput(parsed.data));
+    const action =
+      game.status === "published"
+        ? "game.published"
+        : game.status === "archived"
+          ? "game.archived"
+          : "game.updated";
+    void recordAudit({
+      adminId: admin.id,
+      adminName: admin.name,
+      action,
+      entityType: "game",
+      entityId: game.id,
+      details: { title: game.title, status: game.status },
+    });
     return NextResponse.json({ game });
   } catch (err) {
     console.error("[api] PUT /api/admin/games/[id]:", err);
@@ -56,6 +71,14 @@ export async function DELETE(
 
   try {
     await deleteGame(id);
+    void recordAudit({
+      adminId: admin.id,
+      adminName: admin.name,
+      action: "game.deleted",
+      entityType: "game",
+      entityId: id,
+      details: {},
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[api] DELETE /api/admin/games/[id]:", err);

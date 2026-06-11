@@ -34,7 +34,7 @@ export default function GameDetailPage() {
         <p className="text-sm text-foreground/45">
           We couldn&apos;t find a game with that id.
         </p>
-        <ButtonLink href="/library" variant="secondary">
+        <ButtonLink href="/library" variant="primary">
           Back to Library
         </ButtonLink>
       </div>
