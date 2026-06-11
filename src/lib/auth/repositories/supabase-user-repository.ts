@@ -52,7 +52,7 @@ export class SupabaseUserRepository implements UserRepository {
 
   async update(
     id: string,
-    updates: Partial<{ username: string; bio: string; avatar_color: string }>,
+    updates: Partial<{ name: string; username: string; bio: string; avatar_color: string }>,
   ): Promise<UserRecord> {
     const { data, error } = await getSupabaseAdmin()
       .from(TABLE)

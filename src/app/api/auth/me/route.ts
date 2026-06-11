@@ -45,7 +45,24 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const updates: Partial<{ username: string; bio: string; avatar_color: string }> = {};
+  const updates: Partial<{ name: string; username: string; bio: string; avatar_color: string }> = {};
+
+  if (typeof body.name === "string") {
+    const trimmed = body.name.trim();
+    if (trimmed.length === 0) {
+      return NextResponse.json(
+        { error: "Display name cannot be empty." } satisfies AuthError,
+        { status: 400 },
+      );
+    }
+    if (trimmed.length > 100) {
+      return NextResponse.json(
+        { error: "Display name is too long (max 100 chars)." } satisfies AuthError,
+        { status: 400 },
+      );
+    }
+    updates.name = trimmed;
+  }
 
   if (typeof body.username === "string") {
     const trimmed = body.username.trim();

@@ -57,7 +57,7 @@ export class LocalUserRepository implements UserRepository {
 
   async update(
     id: string,
-    updates: Partial<{ username: string; bio: string; avatar_color: string }>,
+    updates: Partial<{ name: string; username: string; bio: string; avatar_color: string }>,
   ): Promise<UserRecord> {
     const rows = await readAll();
     const idx = rows.findIndex((r) => r.id === id);

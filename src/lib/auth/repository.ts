@@ -26,7 +26,7 @@ export interface UserRepository {
   findByEmail(email: string): Promise<UserRecord | null>;
   findById(id: string): Promise<UserRecord | null>;
   create(input: NewUser): Promise<UserRecord>;
-  update(id: string, updates: Partial<{ username: string; bio: string; avatar_color: string }>): Promise<UserRecord>;
+  update(id: string, updates: Partial<{ name: string; username: string; bio: string; avatar_color: string }>): Promise<UserRecord>;
 }
 
 let cached: UserRepository | null = null;

@@ -24,6 +24,7 @@ function SettingsContent() {
   const [signingOut, setSigningOut] = useState(false);
   const [signingOutAll, setSigningOutAll] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState(user?.displayName || "");
   const [editUsername, setEditUsername] = useState(user?.username || "");
   const [editBio, setEditBio] = useState(user?.bio || "");
   const [editAvatarColor, setEditAvatarColor] = useState(user?.avatarColor || "");
@@ -55,6 +56,7 @@ function SettingsContent() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: editDisplayName.trim(),
           username: editUsername.trim(),
           bio: editBio.trim(),
           avatarColor: editAvatarColor,
@@ -75,6 +77,7 @@ function SettingsContent() {
 
   function handleCancelEdit() {
     setEditingProfile(false);
+    setEditDisplayName(user?.displayName || "");
     setEditUsername(user?.username || "");
     setEditBio(user?.bio || "");
     setEditAvatarColor(user?.avatarColor || "");
@@ -110,12 +113,27 @@ function SettingsContent() {
                   </label>
                   <input
                     type="text"
+                    value={editDisplayName}
+                    onChange={(e) => setEditDisplayName(e.target.value)}
+                    maxLength={100}
+                    className="w-full rounded-lg border border-white/[0.10] bg-white/[0.06] px-3 py-2 text-sm text-foreground placeholder-foreground/45 transition focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    placeholder="Your name"
+                  />
+                  <p className="mt-1 text-xs text-foreground/40">Shown everywhere as your name</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-foreground">
+                    Username / @handle
+                  </label>
+                  <input
+                    type="text"
                     value={editUsername}
                     onChange={(e) => setEditUsername(e.target.value)}
                     maxLength={50}
                     className="w-full rounded-lg border border-white/[0.10] bg-white/[0.06] px-3 py-2 text-sm text-foreground placeholder-foreground/45 transition focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    placeholder="Your name"
+                    placeholder="optional_handle"
                   />
+                  <p className="mt-1 text-xs text-foreground/40">Optional — shown as @handle on your profile</p>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-foreground">
@@ -186,6 +204,7 @@ function SettingsContent() {
                   <Button
                     variant="secondary"
                     onClick={() => {
+                      setEditDisplayName(user.displayName || "");
                       setEditUsername(user.username || "");
                       setEditBio(user.bio || "");
                       setEditAvatarColor(user.avatarColor || "");
