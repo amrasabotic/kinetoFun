@@ -346,7 +346,7 @@ function FeaturedGamesSection() {
 function FeaturedGameCard({ game }: { game: Game }) {
   return (
     <Link
-      href="/login"
+      href={`/games/${game.id}`}
       data-focusable
       className="group relative w-72 flex-none snap-start overflow-hidden rounded-3xl transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] sm:w-auto"
       style={{
@@ -928,7 +928,7 @@ function LeaderboardPreviewSection() {
 
           <div className="mt-8 text-center">
             <Link
-              href="/login"
+              href="/leaderboard"
               data-focusable
               className="inline-flex h-14 items-center gap-2 rounded-2xl px-8 text-base font-black text-white transition hover:brightness-110 hover:scale-[1.02] active:scale-100 select-none focus:outline-none"
               style={{

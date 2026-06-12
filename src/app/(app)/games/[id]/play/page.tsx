@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "@/features/auth/session-context";
+import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { useGames } from "@/features/games/useGames";
 import { findGame } from "@/services/games.service";
 import { startSession, endSession } from "@/services/sessions.service";
@@ -26,6 +27,14 @@ async function postScore(gameId: string, score: number): Promise<number> {
 }
 
 export default function GameLaunchPage() {
+  return (
+    <ProtectedRoute>
+      <GameLaunchContent />
+    </ProtectedRoute>
+  );
+}
+
+function GameLaunchContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { refresh } = useSession();
