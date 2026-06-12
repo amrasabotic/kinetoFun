@@ -66,4 +66,15 @@ export class LocalUserRepository implements UserRepository {
     await writeAll(rows);
     return rows[idx];
   }
+
+  async addXp(id: string, amount: number): Promise<{ xp: number; level: number }> {
+    const rows = await readAll();
+    const idx = rows.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error(`[local] addXp: User not found (id=${id})`);
+    const newXp = (rows[idx].xp ?? 0) + amount;
+    const newLevel = Math.floor(newXp / 1000) + 1;
+    rows[idx] = { ...rows[idx], xp: newXp, level: newLevel };
+    await writeAll(rows);
+    return { xp: newXp, level: newLevel };
+  }
 }

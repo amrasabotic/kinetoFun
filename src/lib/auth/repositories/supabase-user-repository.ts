@@ -63,4 +63,14 @@ export class SupabaseUserRepository implements UserRepository {
     if (error) throw new Error(`[supabase] update: ${error.message}`);
     return data as UserRecord;
   }
+
+  async addXp(id: string, amount: number): Promise<{ xp: number; level: number }> {
+    const { data, error } = await getSupabaseAdmin().rpc("increment_user_xp", {
+      user_id: id,
+      xp_delta: amount,
+    });
+    if (error) throw new Error(`[supabase] addXp: ${error.message}`);
+    if (!data || data.length === 0) throw new Error("[supabase] addXp: no result returned");
+    return { xp: data[0].xp, level: data[0].level };
+  }
 }

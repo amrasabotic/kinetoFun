@@ -15,6 +15,8 @@ export function toAuthUser(record: UserRecord): AuthUser {
     ...(record.username && { username: record.username }),
     ...(record.bio && { bio: record.bio }),
     ...(record.avatar_color && { avatarColor: record.avatar_color }),
+    ...(record.xp !== undefined && { xp: record.xp }),
+    ...(record.level !== undefined && { level: record.level }),
     // Propagate active=false explicitly so the DAL can block deactivated users.
     ...(record.active === false && { active: false }),
   };

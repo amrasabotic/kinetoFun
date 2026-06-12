@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "@/features/auth/session-context";
 import { useGames } from "@/features/games/useGames";
 import { findGame } from "@/services/games.service";
 import { startSession, endSession } from "@/services/sessions.service";
@@ -10,7 +11,7 @@ import { ButtonLink } from "@/components/ui/Button";
 
 type Phase = "loading" | "playing" | "submitting" | "done";
 
-async function postScore(gameId: string, score: number): Promise<void> {
+async function postScore(gameId: string, score: number): Promise<number> {
   const res = await fetch("/api/scores", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -20,11 +21,14 @@ async function postScore(gameId: string, score: number): Promise<void> {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? "Failed to submit score.");
   }
+  const json = await res.json().catch(() => ({}));
+  return (json as { xpEarned?: number }).xpEarned ?? 0;
 }
 
 export default function GameLaunchPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { refresh } = useSession();
   const { games, loading } = useGames();
   const game = findGame(games, params.id);
 
@@ -32,6 +36,7 @@ export default function GameLaunchPage() {
   const [elapsed, setElapsed] = useState(0);
   const [scoreInput, setScoreInput] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [xpEarned, setXpEarned] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionIdRef = useRef<string | null>(null);
   const sessionStartedRef = useRef(false);
@@ -71,16 +76,27 @@ export default function GameLaunchPage() {
     setPhase("submitting");
     setSubmitError(null);
     try {
-      await postScore(game.id, score);
+      const earned = await postScore(game.id, score);
+      setXpEarned(earned);
       await endSession(sessionIdRef.current);
       invalidateContinuePlaying();
+      // Refresh the session to update XP/level in the profile
+      await refresh();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Could not save score.");
     } finally {
       setPhase("done");
-      router.push(`/games/${game.id}`);
     }
   }
+
+  // Auto-redirect after showing the done state for 2 seconds
+  useEffect(() => {
+    if (phase !== "done") return;
+    const timeout = setTimeout(() => {
+      if (game) router.push(`/games/${game.id}`);
+    }, 2000);
+    return () => clearTimeout(timeout);
+  }, [phase, game, router]);
 
   if (loading) {
     return (
@@ -123,6 +139,19 @@ export default function GameLaunchPage() {
           <>
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
             <p className="mt-4 text-sm text-white/60">Saving score…</p>
+          </>
+        ) : phase === "done" ? (
+          <>
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 border border-primary/40">
+                <span className="text-3xl">✓</span>
+              </div>
+              <h1 className="text-3xl font-bold text-white">Score saved!</h1>
+              {xpEarned > 0 && (
+                <p className="text-xl font-semibold text-primary">+{xpEarned} XP earned</p>
+              )}
+              <p className="text-sm text-white/60">Returning to game…</p>
+            </div>
           </>
         ) : (
           <>

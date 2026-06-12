@@ -126,3 +126,11 @@ export interface LeaderboardEntry {
   score: number;
   gameId: string;
 }
+
+export interface ProfileStats {
+  gamesPlayed: number;
+  totalSessions: number;
+  bestScore: number;
+  recentScores: Score[];
+  recentSessions: Session[];
+}

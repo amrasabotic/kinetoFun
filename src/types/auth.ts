@@ -37,6 +37,8 @@ export interface UserRecord {
   bio?: string;
   avatar_color?: string;
   active?: boolean;
+  xp?: number;
+  level?: number;
 }
 
 /** Claims embedded in the signed JWT. `sub` is the user id. */

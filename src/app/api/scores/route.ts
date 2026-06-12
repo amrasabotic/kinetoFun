@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { submitScore } from "@/lib/data/scores-repository";
+import { getUserRepository } from "@/lib/auth/repository";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const score = await submitScore(user.id, parsed.data.gameId, parsed.data.score);
-    return NextResponse.json({ score }, { status: 201 });
+
+    // Award XP: formula = max(10, floor(score / 10))
+    const xpEarned = Math.max(10, Math.floor(parsed.data.score / 10));
+    console.log(`[api] Awarding ${xpEarned} XP to user ${user.id}`);
+    try {
+      await getUserRepository().addXp(user.id, xpEarned);
+      console.log(`[api] XP awarded successfully`);
+    } catch (xpErr) {
+      console.error("[api] Failed to award XP:", xpErr);
+      // Don't fail the entire request if XP award fails — score is still valid
+    }
+
+    return NextResponse.json({ score, xpEarned }, { status: 201 });
   } catch (err) {
     console.error("[api] POST /api/scores:", err);
     return NextResponse.json({ error: "Failed to submit score." }, { status: 500 });

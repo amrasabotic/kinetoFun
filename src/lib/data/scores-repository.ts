@@ -1,8 +1,7 @@
 // Server-only scores/sessions data access (Supabase).
 // Mirrors the pattern in games-repository.ts.
 
-import type { LeaderboardEntry, Score, Session, User } from "@/types";
-import type { ProfileStats } from "@/services/profile.service";
+import type { LeaderboardEntry, Score, Session, User, ProfileStats } from "@/types";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 // ── DB row shapes ────────────────────────────────────────────────────────────

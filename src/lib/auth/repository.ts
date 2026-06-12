@@ -27,6 +27,7 @@ export interface UserRepository {
   findById(id: string): Promise<UserRecord | null>;
   create(input: NewUser): Promise<UserRecord>;
   update(id: string, updates: Partial<{ name: string; username: string; bio: string; avatar_color: string }>): Promise<UserRecord>;
+  addXp(id: string, amount: number): Promise<{ xp: number; level: number }>;
 }
 
 let cached: UserRepository | null = null;
