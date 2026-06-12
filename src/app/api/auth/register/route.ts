@@ -8,6 +8,7 @@ import { createSession } from "@/lib/auth/session";
 import { toAuthUser } from "@/lib/auth/serialize";
 import { rateLimit, clientIp } from "@/lib/auth/rate-limit";
 import { tooManyRequests } from "@/lib/auth/http";
+import { getSettings } from "@/lib/data/settings-repository";
 import type { AuthError, AuthSuccess } from "@/types/auth";
 
 export async function POST(request: Request) {
@@ -16,6 +17,19 @@ export async function POST(request: Request) {
   // Cap new-account creation per IP (5 per hour) to curb abuse / spam signups.
   const gate = rateLimit(`register:ip:${ip}`, 5, 60 * 60 * 1000);
   if (!gate.ok) return tooManyRequests(gate.retryAfterSec);
+
+  // Check platform registration toggle. Fail open if settings table isn't available yet.
+  try {
+    const { registrationOpen } = await getSettings();
+    if (!registrationOpen) {
+      return NextResponse.json(
+        { error: "Registration is currently closed. Please check back later." } satisfies AuthError,
+        { status: 403 },
+      );
+    }
+  } catch {
+    // Settings table may not exist yet — allow registration rather than breaking sign-up.
+  }
 
   let body: unknown;
   try {
