@@ -85,7 +85,7 @@ export default function GameDetailPage() {
             <ButtonLink href={`/games/${game.id}/play`} size="lg">
               ▶ Play now
             </ButtonLink>
-            <ButtonLink href="/library" size="lg" variant="secondary">
+            <ButtonLink href="/library" size="lg" variant="secondary" className="border-white/40 bg-white/15 text-white hover:bg-white/25">
               Back to Library
             </ButtonLink>
           </div>

@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   Tv, Gamepad2, Hand, Brain, Users, Zap, Target,
   GraduationCap, Building2, Home, Trophy, Star,
   Heart, BookOpen, Check, X, Play,
-  Camera, MessageCircle,
+  Camera, MessageCircle, ChevronUp,
 } from "lucide-react";
 import { useGames } from "@/features/games/useGames";
 import { useContinuePlaying } from "@/features/sessions/useContinuePlaying";
@@ -113,7 +113,7 @@ function HeroSection() {
           </h1>
 
           {/* Sub */}
-          <p className="mt-5 max-w-sm text-sm leading-relaxed sm:text-base" style={{ color: "#5B72A8" }}>
+          <p className="mt-5 max-w-sm text-sm leading-relaxed sm:text-base" style={{ color: "#2C4280" }}>
             Gesture-ready gaming for your TV. No controllers, no installs —
             just you, your screen, and a wave of your hand.
           </p>
@@ -618,11 +618,11 @@ function WhyKidsLoveItSection() {
               key={chip.text}
               className="inline-flex cursor-default select-none items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-transform duration-200 hover:scale-110 animate-float"
               style={{
-                background: `${chip.color}15`,
+                background: `rgba(255,255,255,0.88)`,
                 color: chip.color,
                 animationDelay: chip.delay,
-                border: `1.5px solid ${chip.color}35`,
-                boxShadow: `0 4px 16px ${chip.color}20`,
+                border: `1.5px solid ${chip.color}70`,
+                boxShadow: `0 4px 16px ${chip.color}30`,
               }}
             >
               <span className="text-lg">{chip.emoji}</span>
@@ -1028,7 +1028,7 @@ function Footer() {
   ];
 
   return (
-    <footer className="relative z-10 -mx-6 sm:-mx-10 border-t border-white/5 py-12" style={{ background: "#091440" }}>
+    <footer className="relative z-10 -mx-6 sm:-mx-10 -mb-8 border-t border-white/5 py-12" style={{ background: "#091440" }}>
       <div className="mx-auto max-w-[1600px] px-6 sm:px-10">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
 
@@ -1112,6 +1112,35 @@ function Footer() {
   );
 }
 
+// ─── Back to Top ─────────────────────────────────────────────────────────────
+
+function BackToTop() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <button
+      type="button"
+      aria-label="Back to top"
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      className={`fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 hover:brightness-110 hover:scale-110 active:scale-100 focus:outline-none ${
+        visible ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"
+      }`}
+      style={{
+        background: "linear-gradient(135deg, #1AACE0 0%, #1A2E74 100%)",
+        boxShadow: "0 8px 24px rgba(26,172,224,0.40)",
+      }}
+    >
+      <ChevronUp className="h-5 w-5" />
+    </button>
+  );
+}
+
 // ─── Landing page (logged-out) ────────────────────────────────────────────────
 
 function LandingPage() {
@@ -1127,6 +1156,7 @@ function LandingPage() {
       <LeaderboardPreviewSection />
       <FinalCtaSection />
       <Footer />
+      <BackToTop />
     </>
   );
 }
@@ -1204,6 +1234,7 @@ export default function HomePage() {
                 href={`/games/${spotlight.id}`}
                 size="lg"
                 variant="secondary"
+                className="border-white/40 bg-white/15 text-white hover:bg-white/25"
               >
                 More info
               </ButtonLink>
