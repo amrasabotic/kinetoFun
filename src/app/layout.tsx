@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Toaster } from "sonner";
 import { SessionProvider } from "@/features/auth/session-context";
 import { SpatialNavigation } from "@/components/navigation/SpatialNavigation";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -26,6 +27,7 @@ export default function RootLayout({
           <SessionProvider>
             <SpatialNavigation>{children}</SpatialNavigation>
           </SessionProvider>
+          <Toaster position="bottom-right" richColors />
         </ThemeProvider>
       </body>
     </html>

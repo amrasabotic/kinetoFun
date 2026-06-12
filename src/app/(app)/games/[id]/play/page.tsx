@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useSession } from "@/features/auth/session-context";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { useGames } from "@/features/games/useGames";
@@ -92,7 +93,9 @@ function GameLaunchContent() {
       // Refresh the session to update XP/level in the profile
       await refresh();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Could not save score.");
+      const msg = err instanceof Error ? err.message : "Could not save score.";
+      setSubmitError(msg);
+      toast.error("Could not save score. Please try again.");
     } finally {
       setPhase("done");
     }

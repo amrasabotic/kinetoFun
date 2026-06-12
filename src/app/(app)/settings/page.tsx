@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useSession } from "@/features/auth/session-context";
 import { useSettings } from "@/features/settings/useSettings";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
@@ -68,8 +69,11 @@ function SettingsContent() {
       }
       await refresh();
       setEditingProfile(false);
+      toast.success("Profile updated!");
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Failed to save profile");
+      const msg = err instanceof Error ? err.message : "Failed to save profile";
+      setProfileError(msg);
+      toast.error(msg);
     } finally {
       setIsSavingProfile(false);
     }
@@ -254,14 +258,14 @@ function SettingsContent() {
           label="Large UI text"
           description="Increase text size for big-screen, across-the-room reading."
           checked={settings.largeText}
-          onChange={(checked) => updateSettings({ largeText: checked })}
+          onChange={(checked) => { updateSettings({ largeText: checked }); toast("Display settings saved", { duration: 1500 }); }}
         />
         <div className="h-px bg-white/[0.06]" />
         <Toggle
           label="Reduce motion"
           description="Minimize animations and transitions."
           checked={settings.reduceMotion}
-          onChange={(checked) => updateSettings({ reduceMotion: checked })}
+          onChange={(checked) => { updateSettings({ reduceMotion: checked }); toast("Display settings saved", { duration: 1500 }); }}
         />
       </Section>
 
