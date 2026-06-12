@@ -19,6 +19,8 @@ export interface AuthUser {
   bio?: string;
   avatarColor?: string;
   active?: boolean;
+  xp?: number;
+  level?: number;
 }
 
 /**
