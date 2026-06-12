@@ -63,6 +63,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (record.active === false) {
+      return NextResponse.json(
+        { error: "This account has been suspended." } satisfies AuthError,
+        { status: 401 },
+      );
+    }
+
     rateLimitReset(idKey); // don't penalise a user who eventually succeeds
     const user = toAuthUser(record);
     await createSession(user, {
