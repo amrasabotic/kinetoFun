@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { Suspense, useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useGames } from "@/features/games/useGames";
 import { selectCategories, searchGames } from "@/services/games.service";
@@ -11,7 +11,7 @@ import type { GameCategory } from "@/types";
 
 type Filter = "All" | GameCategory;
 
-export default function LibraryPage() {
+function LibraryContent() {
   const { games, loading } = useGames();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
@@ -102,5 +102,13 @@ export default function LibraryPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense>
+      <LibraryContent />
+    </Suspense>
   );
 }
