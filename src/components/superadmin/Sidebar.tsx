@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -9,7 +10,6 @@ import {
   Gamepad2,
   ScrollText,
   ChevronLeft,
-  Sparkles,
   Trophy,
   CreditCard,
   Settings,
@@ -80,8 +80,8 @@ export function Sidebar({
 
       {/* Brand */}
       <div className={cn("flex items-center gap-3 px-1.5 py-2", isCollapsed && "justify-center")}>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-sm shadow-violet-600/30">
-          <Sparkles className="h-[18px] w-[18px]" />
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl">
+          <Image src="/logo.png" alt="KinetoFun" width={56} height={56} className="h-14 w-14 object-contain" />
         </span>
         {!isCollapsed && (
           <div className="min-w-0">
