@@ -13,7 +13,7 @@ import { User, Settings, ChevronDown, LogOut, Shield } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Home" },
-  { href: "/library", label: "Library" },
+  { href: "/library", label: "Games" },
   { href: "/leaderboard", label: "Leaderboard" },
 ];
 
