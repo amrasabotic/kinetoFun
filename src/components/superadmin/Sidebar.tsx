@@ -10,6 +10,8 @@ import {
   ScrollText,
   ChevronLeft,
   Sparkles,
+  Trophy,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,8 @@ const NAV: NavItem[] = [
   { href: "/superadmin/users", label: "Users", Icon: Users },
   { href: "/superadmin/categories", label: "Categories", Icon: FolderTree },
   { href: "/superadmin/games", label: "Games", Icon: Gamepad2 },
+  { href: "/superadmin/leaderboards", label: "Leaderboards", Icon: Trophy },
+  { href: "/superadmin/subscriptions", label: "Subscriptions", Icon: CreditCard },
   { href: "/superadmin/audit-logs", label: "Audit Logs", Icon: ScrollText },
 ];
 

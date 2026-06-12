@@ -13,7 +13,7 @@ interface AuditRow {
   admin_id: string | null;
   admin_name: string;
   action: string;
-  entity_type: "category" | "game" | "user";
+  entity_type: "category" | "game" | "user" | "score" | "subscription";
   entity_id: string | null;
   details: Record<string, unknown> | null;
   created_at: string;
@@ -36,7 +36,7 @@ export interface AuditEvent {
   adminId: string | null;
   adminName: string;
   action: string;
-  entityType: "category" | "game" | "user";
+  entityType: "category" | "game" | "user" | "score" | "subscription";
   entityId?: string | null;
   details?: Record<string, unknown>;
 }
@@ -59,7 +59,7 @@ export async function recordAudit(event: AuditEvent): Promise<void> {
 }
 
 export interface AuditQuery {
-  entityType?: "category" | "game" | "user";
+  entityType?: "category" | "game" | "user" | "score" | "subscription";
   adminId?: string;
   /** ISO timestamps for an inclusive lower / exclusive upper bound. */
   from?: string;

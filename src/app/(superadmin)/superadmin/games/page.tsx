@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   Gamepad2,
   Sparkles,
@@ -17,6 +18,7 @@ import {
   X,
   SlidersHorizontal,
   ArrowUpDown,
+  BarChart2,
 } from "lucide-react";
 import type {
   Game,
@@ -83,6 +85,7 @@ const STATUS_TONE: Record<GameStatus, "emerald" | "amber" | "slate"> = {
 };
 
 export default function GamesPage() {
+  const router = useRouter();
   const [games, setGames] = useState<Game[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -484,6 +487,11 @@ export default function GamesPage() {
                               label: "Edit game",
                               icon: <Pencil className="h-4 w-4" />,
                               onClick: () => setEditing({ game: { ...g }, isNew: false }),
+                            },
+                            {
+                              label: "Analytics",
+                              icon: <BarChart2 className="h-4 w-4" />,
+                              onClick: () => router.push(`/superadmin/games/${g.id}/analytics`),
                             },
                             {
                               label: "Delete game",

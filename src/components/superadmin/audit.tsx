@@ -21,6 +21,8 @@ import {
   UserCog,
   UserX,
   Activity,
+  CreditCard,
+  RotateCcw,
 } from "lucide-react";
 import type { AuditLog } from "@/types";
 
@@ -55,6 +57,10 @@ const MAP: Record<string, AuditMeta> = {
   "user.role_updated": { icon: <UserCog className={ICON} />, tint: "sky", label: "Updated user role" },
   "user.deleted": { icon: <UserX className={ICON} />, tint: "rose", label: "Deleted user" },
   "user.registered": { icon: <Gamepad2 className={ICON} />, tint: "sky", label: "Registered" },
+  "leaderboard.score_deleted": { icon: <Trash2 className={ICON} />, tint: "rose", label: "Deleted score" },
+  "leaderboard.reset": { icon: <RotateCcw className={ICON} />, tint: "rose", label: "Reset leaderboard" },
+  "subscription.granted": { icon: <CreditCard className={ICON} />, tint: "emerald", label: "Granted pro subscription" },
+  "subscription.revoked": { icon: <CreditCard className={ICON} />, tint: "amber", label: "Revoked subscription" },
 };
 
 export function auditMeta(action: string): AuditMeta {
@@ -103,6 +109,14 @@ export function auditSentence(log: Pick<AuditLog, "action" | "details" | "entity
       return `Deleted a user account`;
     case "user.registered":
       return `${name ?? "A new user"} registered an account`;
+    case "leaderboard.score_deleted":
+      return `Deleted a score from leaderboard`;
+    case "leaderboard.reset":
+      return `Reset leaderboard for a game`;
+    case "subscription.granted":
+      return `Granted pro subscription to ${name ?? "a user"}`;
+    case "subscription.revoked":
+      return `Revoked subscription for ${name ?? "a user"}`;
     default:
       return auditMeta(log.action).label;
   }

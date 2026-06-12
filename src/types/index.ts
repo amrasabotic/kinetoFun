@@ -80,7 +80,7 @@ export interface AuditLog {
   adminName: string;
   /** Dotted action key, e.g. "category.created", "game.published". */
   action: string;
-  entityType: "category" | "game" | "user";
+  entityType: "category" | "game" | "user" | "score" | "subscription";
   entityId: string | null;
   details: Record<string, unknown>;
   createdAt: string; // ISO date
@@ -125,6 +125,17 @@ export interface LeaderboardEntry {
   user: User;
   score: number;
   gameId: string;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  plan: string;
+  status: string;
+  provider: string | null;
+  currentPeriodEnd: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProfileStats {
