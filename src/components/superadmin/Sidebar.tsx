@@ -12,6 +12,7 @@ import {
   Sparkles,
   Trophy,
   CreditCard,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ const NAV: NavItem[] = [
   { href: "/superadmin/games", label: "Games", Icon: Gamepad2 },
   { href: "/superadmin/leaderboards", label: "Leaderboards", Icon: Trophy },
   { href: "/superadmin/subscriptions", label: "Subscriptions", Icon: CreditCard },
+  { href: "/superadmin/settings", label: "Settings", Icon: Settings },
   { href: "/superadmin/audit-logs", label: "Audit Logs", Icon: ScrollText },
 ];
 

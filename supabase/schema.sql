@@ -262,6 +262,26 @@ from (
   group by game_id, user_id
 ) ranked;
 
+-- ── platform_settings  (single-row superadmin config) ───────────────────────
+create table if not exists public.platform_settings (
+  id                       integer     primary key default 1 check (id = 1),
+  maintenance_mode         boolean     not null default false,
+  maintenance_message      text        not null default 'We''re performing scheduled maintenance. We''ll be back shortly.',
+  announcement_active      boolean     not null default false,
+  announcement_text        text        not null default '',
+  announcement_type        text        not null default 'info'
+                             check (announcement_type in ('info', 'warning', 'success')),
+  registration_open        boolean     not null default true,
+  featured_section_title   text        not null default 'Featured Games',
+  max_leaderboard_entries  integer     not null default 10 check (max_leaderboard_entries > 0 and max_leaderboard_entries <= 100),
+  default_difficulty_filter text       not null default 'all'
+                             check (default_difficulty_filter in ('all', 'easy', 'medium', 'hard')),
+  updated_at               timestamptz not null default now(),
+  updated_by               uuid        references public.users (id) on delete set null
+);
+
+insert into public.platform_settings (id) values (1) on conflict do nothing;
+
 -- ── Row Level Security ───────────────────────────────────────────────────────
 -- The server uses the SERVICE ROLE key, which bypasses RLS. Enabling RLS with no
 -- policies makes every table unreachable with the public anon key (locked down).
@@ -275,4 +295,5 @@ alter table public.scores          enable row level security;
 alter table public.game_sessions   enable row level security;
 alter table public.session_players enable row level security;
 alter table public.auth_sessions   enable row level security;
-alter table public.subscriptions   enable row level security;
+alter table public.subscriptions        enable row level security;
+alter table public.platform_settings    enable row level security;

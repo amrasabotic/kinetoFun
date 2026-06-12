@@ -23,6 +23,7 @@ import {
   Activity,
   CreditCard,
   RotateCcw,
+  Settings,
 } from "lucide-react";
 import type { AuditLog } from "@/types";
 
@@ -61,6 +62,7 @@ const MAP: Record<string, AuditMeta> = {
   "leaderboard.reset": { icon: <RotateCcw className={ICON} />, tint: "rose", label: "Reset leaderboard" },
   "subscription.granted": { icon: <CreditCard className={ICON} />, tint: "emerald", label: "Granted pro subscription" },
   "subscription.revoked": { icon: <CreditCard className={ICON} />, tint: "amber", label: "Revoked subscription" },
+  "settings.updated": { icon: <Settings className={ICON} />, tint: "violet", label: "Updated platform settings" },
 };
 
 export function auditMeta(action: string): AuditMeta {
@@ -117,6 +119,8 @@ export function auditSentence(log: Pick<AuditLog, "action" | "details" | "entity
       return `Granted pro subscription to ${name ?? "a user"}`;
     case "subscription.revoked":
       return `Revoked subscription for ${name ?? "a user"}`;
+    case "settings.updated":
+      return `Updated platform settings`;
     default:
       return auditMeta(log.action).label;
   }
