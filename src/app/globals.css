@@ -179,16 +179,17 @@ html {
   scroll-behavior: smooth;
 }
 
-/* ─── Game-world gradient background ────────────────────────────────────────── */
+/* ─── Unified global background ─────────────────────────────────────────────── */
+/* One calm, soft sky-blue → white gradient behind the whole platform. The         */
+/* background stays quiet on every page; playfulness lives in the foreground UI.    */
 
 body {
   background:
-    linear-gradient(150deg,
-      #a8d4ff 0%,
-      #c8a8ff 22%,
-      #ffaad4 46%,
-      #a8f0c0 70%,
-      #fff0a0 100%
+    linear-gradient(175deg,
+      #E7F2FF 0%,
+      #F1F8FF 45%,
+      #F8FCFF 75%,
+      #FFFFFF 100%
     );
   background-attachment: fixed;
   color: var(--foreground);
@@ -198,12 +199,10 @@ body {
 
 .dark body {
   background:
-    linear-gradient(150deg,
-      #04081a 0%,
-      #0e0528 22%,
-      #04081a 46%,
-      #030a06 70%,
-      #0e0408 100%
+    linear-gradient(175deg,
+      #0a1430 0%,
+      #070e22 55%,
+      #05091a 100%
     );
   background-attachment: fixed;
 }
@@ -352,6 +351,64 @@ body {
     animation: none;
     stroke-dashoffset: 0;
     opacity: 1;
+    transform: none;
+  }
+}
+
+/* ─── ABCmouse-style landing: scoped rounded typography ─────────────────────── */
+/* Only the logged-out homepage opts into these fonts (via .landing-root /        */
+/* .font-display). The rest of the app keeps its existing type system untouched.  */
+
+.landing-root {
+  font-family: "Nunito", var(--font-sans), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: "Baloo 2", "Nunito", var(--font-sans), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+}
+
+/* ─── Landing playful animations ────────────────────────────────────────────── */
+
+@keyframes kf-wiggle {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50%      { transform: rotate(2.5deg); }
+}
+
+@keyframes kf-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+
+@keyframes kf-drift {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(26px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes kf-spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes kf-grow-up {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+.animate-wiggle    { animation: kf-wiggle 3.4s ease-in-out infinite; }
+.animate-bob       { animation: kf-bob 4s ease-in-out infinite; }
+.animate-drift     { animation: kf-drift 14s ease-in-out infinite; }
+.animate-spin-slow { animation: kf-spin-slow 22s linear infinite; }
+.animate-grow-up   { transform-origin: bottom; animation: kf-grow-up 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-wiggle,
+  .animate-bob,
+  .animate-drift,
+  .animate-spin-slow,
+  .animate-grow-up {
+    animation: none;
     transform: none;
   }
 }

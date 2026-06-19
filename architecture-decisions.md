@@ -426,3 +426,47 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 **Verification.** `tsc --noEmit` clean; `npm run build` clean — new routes registered (`/superadmin/{categories,audit-logs}`, `/api/admin/{categories,categories/[id],categories/reorder,audit-logs,games/bulk}`). ESLint `set-state-in-effect` findings match the pre-existing data-loading pattern in the users/games pages (Next 16 doesn't lint during build). **Not yet exercised against the live DB** (migration 0004 pending).
 
 **Follow-ups / deferred.** Show featured games on the public homepage; surface draft/archived preview for admins (currently `getGameById` is published-only); paginate audit logs server-side (capped at 500 now); category image bucket reuses `game-covers`.
+
+---
+
+## ADR-023 — Homepage redesign: ABCmouse-style child-learning landing page
+
+**Date:** 2026-06-19
+**Status:** Accepted — implemented, build + type-check + runtime-200 verified.
+
+**Context.** Product direction for the logged-out `/` landing shifted toward a bright, playful, **child-education** positioning modeled on ABCmouse (rounded shapes, soft gradients, "learning world" sections, gamified feel). Hard constraint: **UI/presentation only** — no change to game logic, hooks, APIs, auth, routes, or the authenticated dashboard.
+
+**Scope (what changed).**
+- **`src/app/(app)/page.tsx`** — the logged-out `LandingPage` was rebuilt from the previous 9-section "gesture-gaming" marketing page into a **10-section ABCmouse flow**: (1) Hero — mascot (`/kid.gif`) left, headline + CTA right, sky gradient + drifting CSS clouds + floating ABC/123/★ bubbles; (2) Category strip — floating pill card (Reading/Math/Science/Art & Colors/Music → `/library`); (3) Educational Excellence — centered heading + browser-frame preview mockup; (4) Feature grid — 4 alternating left/right blocks; (5) Proven Results — playful CSS bar chart + claim chips; (6) Learning System — 4 circular-icon tiles; (7) Tickets & Rewards — gift/coins illustration; (8) Testimonials — 3 cards on warm gradient; (9) Feature icon strip — 4 pastel badges; (10) Final CTA — deep-blue cloud sky, confetti, `Try FREE for 30 Days`. Footer + BackToTop retained (lightly restyled). `WaveDivider` SVGs bleed each section into the next.
+- **`src/app/layout.tsx`** — added Google Fonts **Baloo 2 + Nunito** via `<link>` (React 19 hoists them to `<head>`).
+- **`src/app/globals.css`** — added **scoped** `.landing-root` (Nunito body) + `.font-display` (Baloo 2 headings) classes and a few keyframes (`kf-wiggle/bob/drift/spin-slow/grow-up`) with a `prefers-reduced-motion` guard.
+
+**Key decisions / trade-offs.**
+- **No functionality touched.** The page still branches on `useSession()`; the **entire authenticated dashboard is byte-for-byte unchanged**. Both live data hooks are preserved *inside the new design* so no feature is lost: `useGames()`/`selectFeatured()` render real games as the "All-New Worlds to Learn and Explore" block, and `useLeaderboard()` powers a "Star Learners This Week" card inside Proven Results.
+- **Palette is landing-scoped, not global.** Adopted the ABCmouse spec palette (`#2F80FF/#FFD84D/#FF8A3D/#5BD97B/#FF5FA2/#8A5CFF` on `#EAF4FF`) as **inline constants in the page** (the same approach the old landing used). The global `globals.css` theme tokens (sky-blue `#1AACE0` brand set) are **untouched**, so every other page/route keeps its existing look.
+- **Fonts via `<link>`, not `next/font`.** `next/font/google` self-hosts by **fetching font files at build time**; this machine intercepts TLS, so a build-time fetch is a real failure risk. A runtime `<link>` keeps the build network-independent. ESLint emits a `no-page-custom-font` *warning* (false-positive here — the link lives in the root layout, so it is app-wide), which does not fail the build.
+- **Copy adapted, not copied.** ABCmouse-specific claims were re-branded to KinetoFun (e.g., "KinetoFun doubles early learning gains…") rather than reproducing a competitor's verbatim brand claims.
+- **Illustrations are CSS/SVG/emoji** (clouds, blobs, browser-frame mockup, gift "treasure", floating icon bubbles) — no new raster assets needed; only the existing `/kid.gif` is reused as the hero mascot.
+
+**Verification.** `npx eslint` on the changed files → **0 errors** (2 warnings: pre-existing `<img>` for `kid.gif`, and the font-link advisory). `npx tsc --noEmit` clean. `npm run build` clean (homepage `/` compiles). Ran `next start` + `curl /` → **HTTP 200** with the new server-rendered copy ("Path to Success", "Try FREE for 30 Days", "Tickets") present.
+
+**Supersedes** the visual layer of **ADR-011** (the 2026-06-09 colorful 9-section landing) for the logged-out homepage. Authenticated dashboard behavior is unchanged.
+
+---
+
+## ADR-024 — Unified calm global background (remove balloons / dotted surface / rainbow)
+
+**Date:** 2026-06-19
+**Status:** Accepted — implemented, build + type-check + runtime-200 verified.
+
+**Context.** The platform layered three competing background systems behind every page: a full-screen **`BalloonBackground`** (canvas — 30 animated, mouse-poppable balloons), a **`DottedSurface`** (three.js animated dot wave), and a **rainbow body gradient** (`#a8d4ff→#c8a8ff→#ffaad4→#a8f0c0→#fff0a0`). The result felt like "separate mini-designs" and the background competed with content. Goal: one calm, minimal, kid-friendly background everywhere; keep playfulness in the **foreground** UI only. Constraint: visual/background only — no layout or behavior changes.
+
+**Decision.**
+- **Removed the two global decorative layers.** Deleted `src/components/ui/balloon-background.tsx` and `src/components/ui/dotted-surface.tsx` and their mounts in `app/layout.tsx` (they were referenced nowhere else). `three` is now an unused dependency (left installed; harmless).
+- **Single global background = one soft gradient in `globals.css`.** `body` → `linear-gradient(175deg,#E7F2FF,#F1F8FF,#F8FCFF,#FFFFFF)` (sky-blue → very soft white), `background-attachment: fixed`. `.dark body` → calm deep-navy gradient (`#0a1430→#070e22→#05091a`). This is the lone source; pages with glass `.bg-surface` cards (dashboard, library, profile, leaderboard, settings, game screens) now sit on the calm wash with no per-page background.
+- **Auth pages** (`(auth)/layout.tsx`): removed the two ambient `blur-[140px]` glow blobs (one referenced an undefined `bg-accent-2`) so login/signup show the clean global gradient.
+- **Landing** (`(app)/page.tsx`): removed all free-floating decorative **clouds** (hero ×3, results ×1, CTA ×2), the hero **sun-glow** radial, and the final-CTA **confetti** dots (+ the now-unused `Cloud` component). Kept content illustrations (mascot blob, illustration-attached icon bubbles, preview/gift emoji) — those are foreground "UI playfulness," not background decoration. The landing's on-palette section bands (sky / white / warm testimonials / blue CTA) remain as content blocks, not page background.
+
+**Deliberately left as-is.** The **SuperAdmin console** (`SuperAdminShell` → opaque `bg-[#F8FAFC]`) keeps its own premium light-SaaS surface — it's a back-office tool, already calm/consistent, and the redesign brief targets user-facing pages (home, dashboard, game, profile, auth). Forcing the kid gradient there would degrade ADR-021's deliberate design.
+
+**Verification.** `eslint` on changed files → 0 errors (2 pre-existing warnings). `tsc --noEmit` clean. `npm run build` clean. `next start` + curl: `/` and `/login` → **200**; `/` HTML now contains **no `<canvas>`** (balloons gone) and still renders the landing copy.
