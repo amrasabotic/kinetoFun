@@ -779,7 +779,13 @@ function RewardsSection() {
             className="relative flex h-72 w-72 items-center justify-center rounded-[46%_54%_50%_50%/54%_50%_50%_46%] animate-float-slow sm:h-80 sm:w-80"
             style={{ background: "linear-gradient(135deg,#FFE3F2,#E9DCFF)" }}
           >
-            <div className="text-[10rem] leading-none drop-shadow-lg animate-bob">🎁</div>
+            <div className="relative w-full h-full flex items-center justify-center animate-bob">
+ <img
+    src="/rewards.png"
+    alt="rewards"
+    className="w-11/12 h-11/12 object-contain drop-shadow-lg"
+  />
+  </div>
             {/* spilling rewards */}
             <FloatBubble bg={C.yellow} rotate={-12} className="left-[2%] top-[14%] h-14 w-14 text-2xl">🪙</FloatBubble>
             <FloatBubble bg={C.pink} rotate={10} delay="0.4s" className="right-[2%] top-[8%] h-14 w-14 text-2xl">🎟️</FloatBubble>
@@ -921,11 +927,11 @@ function FinalCtaSection() {
     >
       <div className="relative z-10 mx-auto max-w-3xl px-6 text-center sm:px-10">
         {/* celebratory characters */}
-        <div className="mb-6 flex items-end justify-center gap-2 text-5xl sm:text-6xl">
+        {/* <div className="mb-6 flex items-end justify-center gap-2 text-5xl sm:text-6xl">
           <span className="animate-float" style={{ animationDelay: "0s" }}>🧒</span>
           <span className="animate-float-delay text-6xl sm:text-7xl">🎉</span>
           <span className="animate-float" style={{ animationDelay: "0.5s" }}>👧</span>
-        </div>
+        </div> */}
 
         <h2 className="font-display text-[2.2rem] leading-[1.08] text-white drop-shadow sm:text-6xl">
           Ready to Play? The Adventure Starts Now.
