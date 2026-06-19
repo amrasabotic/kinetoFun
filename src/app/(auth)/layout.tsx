@@ -12,7 +12,7 @@ export default function AuthLayout({
 
       {/* ── Wave background — same bezier shape as homepage WaveDivider, two layers ── */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 leading-[0]" aria-hidden>
-        {/* Back layer — soft purple */}
+        {/* Back layer — soft blue, matching homepage hero gradient */}
         <svg
           className="block w-full"
           style={{ height: "160px" }}
@@ -20,11 +20,11 @@ export default function AuthLayout({
           preserveAspectRatio="none"
         >
           <path
-            fill="rgba(138,92,255,0.09)"
+            fill="rgba(47,128,255,0.10)"
             d="M0,76 C160,160 320,160 480,107 C680,40 760,14 960,68 C1120,110 1280,148 1440,85 L1440,160 L0,160 Z"
           />
         </svg>
-        {/* Front layer — soft pink */}
+        {/* Front layer — lighter sky blue, matching homepage #E3F0FF tone */}
         <svg
           className="absolute bottom-0 block w-full"
           style={{ height: "110px" }}
@@ -32,7 +32,7 @@ export default function AuthLayout({
           preserveAspectRatio="none"
         >
           <path
-            fill="rgba(255,95,162,0.11)"
+            fill="rgba(214,232,255,0.85)"
             d="M0,52 C160,110 320,110 480,74 C680,28 760,9 960,47 C1120,76 1280,102 1440,59 L1440,110 L0,110 Z"
           />
         </svg>
