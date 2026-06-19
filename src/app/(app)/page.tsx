@@ -141,13 +141,13 @@ function HeroSection() {
 
         {/* ── Text (right on desktop, first on mobile so the CTA shows early) ── */}
         <div className="w-full text-center lg:order-2 lg:w-1/2 lg:text-left">
-          <span
+          {/* <span
             className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-extrabold shadow-sm"
             style={{ color: C.blue }}
           >
             <Sparkles className="h-4 w-4" style={{ color: C.yellow }} />
             GAME-BASED LEARNING · AGES 2–8
-          </span>
+          </span> */}
 
           <h1 className="font-display text-[2.6rem] leading-[1.04] sm:text-6xl lg:text-[4.2rem]" style={{ color: C.ink }}>
             Play Real Games.{" "}
@@ -216,7 +216,7 @@ function HeroSection() {
             {/* Mascot card */}
             {/* <div className="relative overflow-hidden rounded-[2.4rem] border-[6px] border-white bg-white/70 shadow-[0_30px_70px_rgba(47,128,255,0.3)]"> */}
               {/* <img src="/kid.gif" alt="A happy child learning and playing" className="h-auto w-full" /> */}
-              <img src="/kineto-hero.png" alt="A happy child learning and playing" className="h-auto w-full scale-230 origin-center"  />
+              <img src="/kineto-hero.png" alt="A happy child learning and playing" className="h-auto w-full scale-230 origin-center pointer-events-none"  />
 
             {/* </div> */}
 
