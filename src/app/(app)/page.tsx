@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   Sparkles, ShieldCheck, ArrowRight, Play, BookOpen, Palette, Map, Rocket,
   Star, TrendingUp, BadgeCheck, Users, Trophy, Activity, Compass, Gamepad2,
-  Gift, Ticket, Quote, ChevronUp, X, Camera, MessageCircle,
+  Gift, Ticket, Quote, ChevronUp, ChevronLeft, ChevronRight, X, Camera, MessageCircle,
 } from "lucide-react";
 import { useGames } from "@/features/games/useGames";
 import { useContinuePlaying } from "@/features/sessions/useContinuePlaying";
@@ -619,14 +619,57 @@ function ProvenResultsSection() {
 
 // ─── Section 6: Learning system overview ──────────────────────────────────────
 
-const LEARNING_TILES: { Icon: LucideIcon; title: string; desc: string; color: string }[] = [
-  { Icon: Activity, title: "Track Every Level Up", desc: "See which worlds your child conquered, which skills they've earned, and what's unlocking next.", color: C.blue },
-  { Icon: Compass,  title: "Levels That Adapt to Them", desc: "Games adjust difficulty in real time — staying challenging without frustrating. Always in the zone.", color: C.green },
-  { Icon: Gamepad2, title: "Tap, Play, Master", desc: "Drag, match, tap, build — real game mechanics that burn skills into memory through repetition that doesn't feel like repetition.", color: C.pink },
-  { Icon: ShieldCheck, title: "Safe & Ad-Free", desc: "Zero ads, zero strangers, zero random videos. Just a walled game world built for kids.", color: C.purple },
+const LEARNING_TILES: { Icon: LucideIcon; title: string; desc: string; color: string; image: string }[] = [
+  { Icon: Activity,    title: "Track Every Level Up",      desc: "See which worlds your child conquered, which skills they've earned, and what's unlocking next.", color: C.blue,   image: "/first-game.png" },
+  { Icon: Compass,     title: "Levels That Adapt to Them", desc: "Games adjust difficulty in real time — staying challenging without frustrating. Always in the zone.", color: C.green,  image: "/second-game.png" },
+  { Icon: Gamepad2,    title: "Tap, Play, Master",         desc: "Drag, match, tap, build — real game mechanics that burn skills into memory through repetition that doesn't feel like repetition.", color: C.pink,   image: "/third-game.png" },
+  { Icon: ShieldCheck, title: "Safe & Ad-Free",            desc: "Zero ads, zero strangers, zero random videos. Just a walled game world built for kids.", color: C.purple, image: "/fourth-game.png" },
 ];
 
 function LearningSystemSection() {
+  const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const total = LEARNING_TILES.length;
+
+  const navigate = (newIdx: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setVisible(false);
+    timerRef.current = setTimeout(() => {
+      setIdx(newIdx);
+      setVisible(true);
+      timerRef.current = null;
+    }, 180);
+  };
+
+  const prev = () => navigate((idx - 1 + total) % total);
+  const next = () => navigate((idx + 1) % total);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setVisible(false);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          setIdx((i) => (i - 1 + LEARNING_TILES.length) % LEARNING_TILES.length);
+          setVisible(true);
+        }, 180);
+      }
+      if (e.key === "ArrowRight") {
+        setVisible(false);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          setIdx((i) => (i + 1) % LEARNING_TILES.length);
+          setVisible(true);
+        }, 180);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const tile = LEARNING_TILES[idx];
+
   return (
     <section className="relative -mx-6 overflow-hidden bg-white py-20 sm:-mx-10 sm:py-28">
       <div className="relative z-10 mx-auto max-w-[1600px] px-6 sm:px-10">
@@ -639,24 +682,81 @@ function LearningSystemSection() {
           highlightColor={C.green}
           subtitle="Every game, every world, every reward — all designed so play becomes progress."
         />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {LEARNING_TILES.map(({ Icon, title, desc, color }) => (
-            <div
-              key={title}
-              className="group rounded-[2rem] border-2 border-[#EEF4FE] bg-white p-7 text-center shadow-[0_10px_30px_rgba(47,128,255,0.1)] transition-transform duration-300 hover:-translate-y-2"
-            >
+
+        {/* ── Single-card carousel ── */}
+        <div className="relative mx-auto max-w-xl">
+
+          {/* Left arrow */}
+          <button
+            type="button"
+            aria-label="Previous"
+            onClick={prev}
+            className="absolute -left-5 top-[40%] z-10 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#EEF4FE] bg-white shadow-[0_4px_16px_rgba(47,128,255,0.18)] transition-all duration-200 hover:scale-110 hover:border-[#C8DCFF] focus:outline-none sm:-left-8"
+            style={{ color: C.blue }}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          {/* Card */}
+          <div
+            className="overflow-hidden rounded-[2rem] border-2 border-[#EEF4FE] bg-white shadow-[0_10px_30px_rgba(47,128,255,0.13)]"
+            style={{ transition: "opacity 0.18s ease", opacity: visible ? 1 : 0 }}
+          >
+            {/* Game image */}
+            <div className="relative aspect-video w-full overflow-hidden">
+              <Image
+                src={tile.image}
+                alt={tile.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 600px"
+              />
+              {/* colour tint bar at bottom */}
               <div
-                className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-110"
-                style={{ background: `${color}1f` }}
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-md" style={{ background: color }}>
-                  <Icon className="h-7 w-7" />
-                </div>
-              </div>
-              <h3 className="font-display text-lg font-extrabold" style={{ color: C.ink }}>{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: C.inkSoft }}>{desc}</p>
+                className="absolute inset-x-0 bottom-0 h-1.5"
+                style={{ background: tile.color }}
+              />
             </div>
-          ))}
+
+            {/* Text body */}
+            <div className="p-7 text-center">
+              <h3 className="font-display text-xl font-extrabold" style={{ color: C.ink }}>
+                {tile.title}
+              </h3>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed" style={{ color: C.inkSoft }}>
+                {tile.desc}
+              </p>
+            </div>
+          </div>
+
+          {/* Right arrow */}
+          <button
+            type="button"
+            aria-label="Next"
+            onClick={next}
+            className="absolute -right-5 top-[40%] z-10 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#EEF4FE] bg-white shadow-[0_4px_16px_rgba(47,128,255,0.18)] transition-all duration-200 hover:scale-110 hover:border-[#C8DCFF] focus:outline-none sm:-right-8"
+            style={{ color: C.blue }}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          {/* Dot indicators */}
+          <div className="mt-6 flex items-center justify-center gap-2">
+            {LEARNING_TILES.map((t, i) => (
+              <button
+                key={t.title}
+                type="button"
+                aria-label={`Go to card ${i + 1}`}
+                onClick={() => navigate(i)}
+                className="rounded-full transition-all duration-300 focus:outline-none"
+                style={{
+                  width: i === idx ? 28 : 8,
+                  height: 8,
+                  background: i === idx ? tile.color : "#D0DCF0",
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
       <WaveDivider color="#F1ECFF" />
