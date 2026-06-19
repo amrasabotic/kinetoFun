@@ -166,8 +166,8 @@ export function TopBar() {
           className={cn(
             "relative flex h-14 items-center gap-4 rounded-full border px-4 backdrop-blur-xl transition-all duration-300",
             scrolled
-              ? "border-white/45 bg-white/72 shadow-[0_8px_40px_rgba(26,46,116,0.28)] dark:bg-[#1A2E74]/40 dark:border-white/15"
-              : "border-white/35 bg-white/55 shadow-[0_4px_24px_rgba(26,46,116,0.18)] dark:bg-[#1A2E74]/30 dark:border-white/10",
+              ? "border-[#1A2E74]/20 bg-white/92 shadow-[0_8px_40px_rgba(26,46,116,0.32)] dark:bg-[#1A2E74]/50 dark:border-white/15"
+              : "border-[#1A2E74]/12 bg-white/82 shadow-[0_4px_24px_rgba(26,46,116,0.22)] dark:bg-[#1A2E74]/35 dark:border-white/10",
           )}
         >
           {/* Glass top highlight */}
@@ -200,7 +200,7 @@ export function TopBar() {
                   "relative rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 focus:outline-none",
                   isActive(pathname, item.href)
                     ? "text-[#1A2E74] dark:text-white"
-                    : "text-[#1A2E74]/70 hover:text-[#1A2E74] dark:text-white/65 dark:hover:text-white hover:[text-shadow:0_0_12px_rgba(26,172,224,0.6)]",
+                    : "text-[#1A2E74]/85 hover:text-[#1A2E74] dark:text-white/70 dark:hover:text-white hover:[text-shadow:0_0_12px_rgba(26,172,224,0.6)]",
                 )}
               >
                 {isActive(pathname, item.href) && (
@@ -224,7 +224,7 @@ export function TopBar() {
                 <Link
                   href="/login"
                   data-focusable
-                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-[#1A2E74]/70 transition-all duration-200 hover:text-[#1A2E74] dark:text-white/70 dark:hover:text-white focus:outline-none md:block"
+                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-[#1A2E74]/85 transition-all duration-200 hover:text-[#1A2E74] dark:text-white/75 dark:hover:text-white focus:outline-none md:block"
                 >
                   Log in
                 </Link>

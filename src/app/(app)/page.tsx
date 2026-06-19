@@ -1093,7 +1093,7 @@ function LandingPage() {
       <HeroSection />
       {/* <CategoryStrip /> */}
       <EducationalExcellenceSection />
-      <FeatureGridSection />
+      {/* <FeatureGridSection /> */}
       <ProvenResultsSection />
       <LearningSystemSection />
       <RewardsSection />
