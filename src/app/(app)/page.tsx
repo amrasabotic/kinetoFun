@@ -326,7 +326,7 @@ function EducationalExcellenceSection() {
           </div>
         </div>
       </div>
-      <WaveDivider color="#FFFFFF" />
+      <WaveDivider color="#E3F0FF" />
     </section>
   );
 }
