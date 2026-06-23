@@ -29,9 +29,9 @@ export function GameCard({
     >
       {/* ── Cover ───────────────────────────────────────────────── */}
       <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br">
-        {game.coverImage ? (
+        {(game.coverImage || game.thumbnail) ? (
           <Image
-            src={game.coverImage}
+            src={game.coverImage || game.thumbnail!}
             alt={game.title}
             fill
             className="object-cover"

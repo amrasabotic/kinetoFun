@@ -49,9 +49,9 @@ export default function GameDetailPage() {
     <div className="space-y-10">
       {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br p-8 sm:p-14">
-        {game.coverImage ? (
+        {(game.coverImage || game.thumbnail) ? (
           <Image
-            src={game.coverImage}
+            src={game.coverImage || game.thumbnail!}
             alt={game.title}
             fill
             className="absolute inset-0 object-cover"

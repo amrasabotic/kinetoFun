@@ -841,18 +841,11 @@ function GameFormModal({
 
           {/* Media */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Thumbnail" full>
+            <Field label="Game image" full>
               <CoverUpload
                 value={form.thumbnail}
                 gradient={form.cover}
                 onChange={(url) => set("thumbnail", url)}
-              />
-            </Field>
-            <Field label="Cover image" full>
-              <CoverUpload
-                value={form.coverImage}
-                gradient={form.cover}
-                onChange={(url) => set("coverImage", url)}
               />
             </Field>
             <Field label="Cover gradient (fallback Tailwind classes)" full>

@@ -123,6 +123,7 @@ create table if not exists public.games (
   max_players       integer         not null default 1 check (max_players >= min_players),
   cover             text            not null default '',  -- Tailwind gradient classes
   thumbnail         text,
+  cover_image       text,
   accent            text            not null default '',
   rating            numeric(2,1)    not null default 0 check (rating >= 0 and rating <= 5),
   release_year      integer,
