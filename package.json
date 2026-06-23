@@ -6,7 +6,9 @@
     "dev": "cross-env NODE_OPTIONS=--use-system-ca next dev",
     "build": "cross-env NODE_OPTIONS=--use-system-ca next build",
     "start": "cross-env NODE_OPTIONS=--use-system-ca next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:games": "node scripts/build-games.js",
+    "build:game": "node scripts/build-games.js"
   },
   "dependencies": {
     "@splinetool/react-spline": "^4.1.0",
