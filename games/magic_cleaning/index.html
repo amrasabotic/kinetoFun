@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magic Cleaning ✨</title>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;font-family:'Nunito',sans-serif;overflow:hidden;width:100vw;height:100vh}
+#app{position:relative;width:100vw;height:100vh}
+video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+
+/* CANVAS */
+#bgCanvas,#dirtCanvas,#fxCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+
+/* SCREENS */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50}
+.screen.hidden{display:none}
+
+#menuScreen{background:linear-gradient(135deg,#667eea,#764ba2)}
+#levelScreen{background:linear-gradient(135deg,#f093fb,#f5576c)}
+#resultScreen{background:rgba(0,0,0,0.8);backdrop-filter:blur(8px)}
+
+.title{font-family:'Fredoka One',cursive;font-size:clamp(2.5rem,7vw,5rem);color:#fff;text-shadow:3px 3px 0 rgba(0,0,0,.2);animation:float 3s ease-in-out infinite;margin-bottom:.2em}
+.subtitle{color:rgba(255,255,255,.8);font-size:clamp(.9rem,2vw,1.3rem);margin-bottom:2.5rem}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+/* BUTTONS */
+.btn{position:relative;background:#fff;border:none;border-radius:50px;padding:.9rem 2.5rem;font-family:'Nunito',sans-serif;font-size:clamp(1rem,2.2vw,1.3rem);font-weight:800;color:#764ba2;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.2);min-width:240px;overflow:hidden;margin:.5rem;transition:transform .1s}
+.btn .bar{position:absolute;left:0;top:0;height:100%;width:0%;background:linear-gradient(90deg,#FFD700,#FF6B6B);opacity:.4;pointer-events:none;border-radius:50px;transition:width .04s linear}
+.btn span{position:relative;z-index:1}
+.btn.lit{box-shadow:0 0 0 4px #FFD700,0 6px 20px rgba(0,0,0,.3)}
+.btn.white-txt span{color:#fff}
+
+/* LEVEL CARDS */
+.cards{display:flex;gap:1.2rem;flex-wrap:wrap;justify-content:center;max-width:860px}
+.card{position:relative;background:#fff;border-radius:18px;padding:1.4rem 1.8rem;width:190px;text-align:center;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.15);overflow:hidden}
+.card .bar{position:absolute;left:0;top:0;height:100%;width:0%;background:linear-gradient(135deg,#f093fb,#f5576c);opacity:.3;pointer-events:none;transition:width .04s linear}
+.card .inner{position:relative;z-index:1}
+.card .emo{font-size:2.8rem;margin-bottom:.4rem}
+.card .cname{font-family:'Fredoka One',cursive;font-size:1.15rem;color:#333}
+.card .cdiff{font-size:.8rem;color:#888;margin-top:.2rem}
+.card.lit{box-shadow:0 0 0 4px #FFD700}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;width:100%;padding:.8rem 1.2rem;display:none;align-items:center;justify-content:space-between;z-index:60;pointer-events:none}
+.pill{background:rgba(0,0,0,.6);backdrop-filter:blur(6px);border-radius:50px;padding:.45rem 1.1rem;color:#fff;font-weight:800;font-size:clamp(.85rem,1.8vw,1.1rem)}
+#timerBar{position:absolute;top:0;left:0;height:5px;background:#4CAF50;z-index:61;transition:width .5s linear}
+
+/* RESULT */
+.rbox{background:#fff;border-radius:28px;padding:2.5rem 3rem;text-align:center;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.remo{font-size:4.5rem;margin-bottom:.6rem}
+.rtitle{font-family:'Fredoka One',cursive;font-size:2.5rem;margin-bottom:.4rem}
+.rmsg{color:#666;margin-bottom:1.5rem}
+.rstats{display:flex;gap:2rem;justify-content:center;margin-bottom:1.5rem}
+.snum{font-family:'Fredoka One',cursive;font-size:2.2rem;color:#764ba2}
+.slbl{font-size:.8rem;color:#999}
+.rbtns{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap}
+
+/* CURSOR */
+#cursor{position:absolute;pointer-events:none;transform:translate(-50%,-50%);z-index:200;display:none;transition:width .08s,height .08s}
+
+/* LOADING */
+#loader{position:absolute;inset:0;z-index:300;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;color:#fff;font-family:'Fredoka One',cursive;font-size:2rem}
+.spin{width:56px;height:56px;border:5px solid rgba(255,255,255,.2);border-top-color:#FFD700;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* HINT */
+#hint{position:absolute;bottom:1.2rem;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);color:#fff;padding:.5rem 1.3rem;border-radius:50px;font-size:.9rem;z-index:250;pointer-events:none;white-space:nowrap}
+
+/* DEBUG */
+#dbg{position:absolute;bottom:3.5rem;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#0f0;font:11px monospace;padding:3px 10px;border-radius:20px;z-index:300;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div id="loader"><div class="spin"></div>Loading Magic ✨</div>
+
+<!-- CANVASES -->
+<canvas id="bgCanvas"></canvas>
+<canvas id="dirtCanvas"></canvas>
+<canvas id="fxCanvas"></canvas>
+
+<!-- TIMER BAR -->
+<div id="timerBar"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="pill">⏱️ <span id="hudT">30</span>s</div>
+  <div class="pill">🧹 <span id="hudP">0</span>%</div>
+  <div class="pill" id="hudM">🏠 Room</div>
+</div>
+
+<!-- MENU -->
+<div id="menuScreen" class="screen hidden">
+  <h1 class="title">✨ Magic Cleaning ✨</h1>
+  <p class="subtitle">Wipe the dirt away with your hand!</p>
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <button class="btn" data-act="play"><div class="bar"></div><span>🎮 Play Game</span></button>
+    <button class="btn" data-act="levels"><div class="bar"></div><span>🗺️ Choose Map</span></button>
+  </div>
+</div>
+
+<!-- LEVELS -->
+<div id="levelScreen" class="screen hidden">
+  <h2 style="font-family:'Fredoka One',cursive;font-size:clamp(1.8rem,4vw,3rem);color:#fff;margin-bottom:2rem">🗺️ Choose Your Map</h2>
+  <div class="cards" id="cards"></div>
+  <button class="btn white-txt" data-act="menu" style="margin-top:1.5rem;background:rgba(255,255,255,.2);border:2px solid #fff">
+    <div class="bar"></div><span>← Back</span>
+  </button>
+</div>
+
+<!-- RESULT -->
+<div id="resultScreen" class="screen hidden">
+  <div class="rbox">
+    <div class="remo" id="rEmo">🎉</div>
+    <div class="rtitle" id="rTitle">You Win!</div>
+    <div class="rmsg" id="rMsg">Amazing!</div>
+    <div class="rstats">
+      <div><div class="snum" id="rTime">0s</div><div class="slbl">Time Left</div></div>
+      <div><div class="snum" id="rPct">0%</div><div class="slbl">Cleaned</div></div>
+      <div><div class="snum" id="rStars">⭐⭐⭐</div><div class="slbl">Rating</div></div>
+    </div>
+    <div class="rbtns">
+      <button class="btn" data-act="restart"><div class="bar"></div><span>🔄 Retry</span></button>
+      <button class="btn" data-act="menu"><div class="bar"></div><span>🏠 Menu</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
+
+<!-- HINT -->
+<div id="hint">☝️ Point finger at button &amp; hold to select • 🖐️ Open hand to wipe</div>
+
+<!-- DEBUG -->
+<div id="dbg">Starting camera...</div>
+
+<video id="vid" playsinline muted></video>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// MAPS
+// ─────────────────────────────────────────────
+const MAPS = [
+  {
+    id:'room', name:'Messy Room', emoji:'🛋️', diff:'Easy', time:45,
+    dirt:'#7a5c10', count:20, sizeMin:50, sizeMax:110,
+    bg(c,W,H){
+      // wall
+      const wg=c.createLinearGradient(0,0,0,H*.62);
+      wg.addColorStop(0,'#EEE0CC');wg.addColorStop(1,'#D9C4A8');
+      c.fillStyle=wg;c.fillRect(0,0,W,H*.62);
+      // wallpaper lines
+      c.strokeStyle='rgba(180,145,100,.25)';c.lineWidth=1;
+      for(let x=0;x<W;x+=55){c.beginPath();c.moveTo(x,0);c.lineTo(x,H*.62);c.stroke()}
+      for(let y=0;y<H*.62;y+=55){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke()}
+      // floor
+      c.fillStyle='#C8A882';c.fillRect(0,H*.6,W,H*.4);
+      // baseboard
+      c.fillStyle='#B8966A';c.fillRect(0,H*.59,W,8);
+      // sofa
+      c.fillStyle='#7B3F1E';c.beginPath();c.roundRect(W*.04,H*.41,W*.4,H*.22,10);c.fill();
+      c.fillStyle='#9B5432';c.beginPath();c.roundRect(W*.05,H*.37,W*.38,H*.1,8);c.fill();
+      c.fillStyle='#C07840';
+      c.beginPath();c.roundRect(W*.06,H*.39,W*.09,H*.08,5);c.fill();
+      c.beginPath();c.roundRect(W*.28,H*.39,W*.09,H*.08,5);c.fill();
+      // window
+      c.fillStyle='#A8D8F0';c.beginPath();c.roundRect(W*.62,H*.05,W*.27,H*.27,6);c.fill();
+      c.strokeStyle='#F0EAD6';c.lineWidth=7;c.strokeRect(W*.62,H*.05,W*.27,H*.27);
+      c.lineWidth=2.5;
+      c.beginPath();c.moveTo(W*.755,H*.05);c.lineTo(W*.755,H*.32);c.stroke();
+      c.beginPath();c.moveTo(W*.62,H*.185);c.lineTo(W*.89,H*.185);c.stroke();
+    }
+  },
+  {
+    id:'kitchen', name:'Dirty Kitchen', emoji:'🍳', diff:'Medium', time:35,
+    dirt:'#4a2e1a', count:25, sizeMin:35, sizeMax:80,
+    bg(c,W,H){
+      c.fillStyle='#F0F0F0';c.fillRect(0,0,W,H);
+      c.strokeStyle='rgba(190,190,190,.6)';c.lineWidth=1;
+      for(let x=0;x<W;x+=48)for(let y=0;y<H;y+=48)c.strokeRect(x,y,48,48);
+      // counter
+      c.fillStyle='#37474F';c.fillRect(0,H*.52,W,H*.48);
+      c.fillStyle='#546E7A';c.fillRect(0,H*.5,W,H*.04);
+      // top cabinets
+      c.fillStyle='#795548';
+      [[.02,.02,.32,.27],[.36,.02,.32,.27],[.7,.02,.28,.27]].forEach(([x,y,w,h])=>{
+        c.beginPath();c.roundRect(W*x,H*y,W*w,H*h,5);c.fill();
+      });
+      c.fillStyle='#BCAAA4';
+      [.18,.52,.84].forEach(x=>{c.beginPath();c.roundRect(W*x-W*.02,H*.155,W*.04,5,2);c.fill()});
+      // stove
+      c.fillStyle='#212121';c.beginPath();c.roundRect(W*.3,H*.52,W*.4,H*.22,6);c.fill();
+      c.strokeStyle='#EF5350';c.lineWidth=3;
+      [[.38,.6],[.55,.6],[.38,.69],[.55,.69]].forEach(([x,y])=>{
+        c.beginPath();c.arc(W*x,H*y,11,0,Math.PI*2);c.stroke();
+      });
+      // sink
+      c.fillStyle='#90A4AE';c.beginPath();c.roundRect(W*.05,H*.52,W*.22,H*.16,5);c.fill();
+      c.fillStyle='#607D8B';c.beginPath();c.roundRect(W*.07,H*.54,W*.18,H*.12,4);c.fill();
+      c.fillStyle='#455A64';c.fillRect(W*.154,H*.5,5,H*.04);
+    }
+  },
+  {
+    id:'garden', name:'Muddy Garden', emoji:'🌻', diff:'Hard', time:28,
+    dirt:'#3e2010', count:30, sizeMin:30, sizeMax:70,
+    bg(c,W,H){
+      const sg=c.createLinearGradient(0,0,0,H);
+      sg.addColorStop(0,'#87CEEB');sg.addColorStop(.65,'#B0E2F5');
+      c.fillStyle=sg;c.fillRect(0,0,W,H);
+      // clouds
+      const cloud=(x,y,s)=>{
+        c.fillStyle='rgba(255,255,255,.85)';
+        [0,.4,-.25,.8,-.15,1.2,0,1.6,.05,2,.1].forEach((_,i,a)=>{
+          if(i%2)return;
+          c.beginPath();c.arc(x+a[i]*s,y+a[i+1]*s,s*.4,0,Math.PI*2);c.fill();
+        });
+      };
+      cloud(W*.06,H*.1,42);cloud(W*.48,H*.07,52);cloud(W*.76,H*.11,36);
+      // sun
+      c.fillStyle='#FFD700';
+      for(let a=0;a<12;a++){c.save();c.translate(W*.88,H*.1);c.rotate(a*Math.PI/6);c.fillRect(-2.5,-52,5,16);c.restore()}
+      c.beginPath();c.arc(W*.88,H*.1,36,0,Math.PI*2);c.fill();
+      // grass
+      c.fillStyle='#4CAF50';c.fillRect(0,H*.6,W,H*.06);
+      // ground
+      c.fillStyle='#5D4037';c.fillRect(0,H*.63,W,H*.37);
+      // flowers
+      const flower=(x,y,col)=>{
+        c.fillStyle='#388E3C';c.fillRect(x-2,y,4,28);
+        c.fillStyle=col;
+        for(let a=0;a<5;a++){c.save();c.translate(x,y);c.rotate(a*Math.PI*2/5);c.beginPath();c.ellipse(0,-12,6,10,0,0,Math.PI*2);c.fill();c.restore()}
+        c.fillStyle='#FFD700';c.beginPath();c.arc(x,y,7,0,Math.PI*2);c.fill();
+      };
+      flower(W*.14,H*.57,'#E91E63');flower(W*.33,H*.55,'#FF5722');
+      flower(W*.6,H*.56,'#FF9800');flower(W*.8,H*.54,'#9C27B0');
+    }
+  },
+  {
+    id:'bath', name:'Grubby Bathroom', emoji:'🛁', diff:'Expert', time:22,
+    dirt:'#1a2a2a', count:35, sizeMin:25, sizeMax:60,
+    bg(c,W,H){
+      c.fillStyle='#ECEFF1';c.fillRect(0,0,W,H);
+      c.strokeStyle='rgba(176,190,197,.65)';c.lineWidth=1.5;
+      for(let x=0;x<W;x+=48)for(let y=0;y<H;y+=48){
+        c.strokeRect(x,y,48,48);
+        if((Math.floor(x/48)+Math.floor(y/48))%8===0){c.fillStyle='rgba(100,181,246,.12)';c.fillRect(x+1,y+1,46,46)}
+      }
+      // tub
+      c.fillStyle='#FAFAFA';c.beginPath();c.roundRect(W*.04,H*.44,W*.55,H*.32,18);c.fill();
+      c.strokeStyle='#B0BEC5';c.lineWidth=3;c.beginPath();c.roundRect(W*.04,H*.44,W*.55,H*.32,18);c.stroke();
+      c.fillStyle='rgba(100,181,246,.2)';c.beginPath();c.roundRect(W*.07,H*.57,W*.49,H*.16,10);c.fill();
+      // faucet
+      c.fillStyle='#B0BEC5';c.fillRect(W*.28,H*.4,7,H*.07);
+      c.beginPath();c.roundRect(W*.24,H*.4,W*.1,7,3);c.fill();
+      // toilet
+      c.fillStyle='#FAFAFA';
+      c.beginPath();c.roundRect(W*.68,H*.5,W*.28,H*.28,14);c.fill();
+      c.beginPath();c.roundRect(W*.66,H*.44,W*.32,H*.1,8);c.fill();
+      c.strokeStyle='#CFD8DC';c.lineWidth=2;
+      c.beginPath();c.roundRect(W*.68,H*.5,W*.28,H*.28,14);c.stroke();
+    }
+  }
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let state      = 'loading';
+let currentMap = MAPS[0];
+let timer      = 0;
+let timerInt   = null;
+let totalDirt  = 0;
+let cleaned    = 0;
+let hx = -1, hy = -1, handSeen = false, wiping = false;
+
+// Gesture hover
+let hovEl = null, hovStart = 0, hovFill = 0;
+const HOLD_MS = 1300;
+const WIPE_R  = 50;
+
+// ─────────────────────────────────────────────
+// CANVASES
+// ─────────────────────────────────────────────
+const bgC  = document.getElementById('bgCanvas');
+const bgX  = bgC.getContext('2d');
+const dtC  = document.getElementById('dirtCanvas');
+const dtX  = dtC.getContext('2d', {willReadFrequently: true});
+const fxC  = document.getElementById('fxCanvas');
+const fxX  = fxC.getContext('2d');
+
+function setSize(){
+  [bgC,dtC,fxC].forEach(c=>{c.width=innerWidth;c.height=innerHeight});
+}
+setSize();
+window.addEventListener('resize', ()=>{ setSize(); if(state==='playing') startGame(); });
+
+// ─────────────────────────────────────────────
+// SCREENS
+// ─────────────────────────────────────────────
+function show(id){
+  ['menuScreen','levelScreen','resultScreen'].forEach(s=>document.getElementById(s).classList.add('hidden'));
+  if(id) document.getElementById(id).classList.remove('hidden');
+  const hud = document.getElementById('hud');
+  hud.style.display = id ? 'none' : 'flex';
+  state = id ? id.replace('Screen','') : 'playing';
+  document.getElementById('hint').textContent =
+    state==='playing' ? '🖐️ Open hand to wipe dirt!' : '☝️ Point & hold finger on a button to select';
+}
+
+// ─────────────────────────────────────────────
+// LEVEL CARDS
+// ─────────────────────────────────────────────
+function buildCards(){
+  const C = document.getElementById('cards');
+  C.innerHTML='';
+  const dcolors={Easy:'#4CAF50',Medium:'#FF9800',Hard:'#F44336',Expert:'#9C27B0'};
+  MAPS.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='card';d.dataset.act='map';d.dataset.id=m.id;
+    d.innerHTML=`<div class="bar"></div><div class="inner">
+      <div class="emo">${m.emoji}</div>
+      <div class="cname">${m.name}</div>
+      <div class="cdiff" style="color:${dcolors[m.diff]}">${m.diff} · ${m.time}s</div>
+    </div>`;
+    C.appendChild(d);
+  });
+}
+
+// ─────────────────────────────────────────────
+// GAME START
+// ─────────────────────────────────────────────
+function startGame(){
+  const map = currentMap;
+  const W=dtC.width, H=dtC.height;
+
+  // Draw background
+  bgX.clearRect(0,0,W,H);
+  map.bg(bgX,W,H);
+
+  // Draw dirt on dtC
+  dtX.clearRect(0,0,W,H);
+  drawDirt(map, W, H);
+
+  // Count opaque pixels = total dirt
+  const id = dtX.getImageData(0,0,W,H);
+  totalDirt=0;
+  for(let i=3;i<id.data.length;i+=4) if(id.data[i]>10) totalDirt++;
+  cleaned=0;
+
+  // Timer
+  clearInterval(timerInt);
+  timer=map.time;
+  updateHUD();
+  timerInt=setInterval(()=>{
+    if(state!=='playing') return;
+    if(--timer<=0){ clearInterval(timerInt); endGame(false); }
+    updateHUD();
+  },1000);
+
+  document.getElementById('hudM').textContent=`${map.emoji} ${map.name}`;
+
+  // FX canvas clear
+  fxX.clearRect(0,0,W,H);
+  sparkles.length=0;
+}
+
+function drawDirt(map, W, H){
+  dtX.fillStyle = map.dirt;
+  for(let i=0;i<map.count;i++){
+    const x = Math.random()*W*.9+W*.05;
+    const y = Math.random()*H*.85+H*.05;
+    const r = map.sizeMin + Math.random()*(map.sizeMax-map.sizeMin);
+    const type = Math.random()<.5 ? 'blob' : 'splat';
+    dtX.globalAlpha = .75 + Math.random()*.2;
+    if(type==='blob'){
+      dtX.beginPath();
+      const pts=7+Math.floor(Math.random()*4);
+      for(let j=0;j<=pts;j++){
+        const a=(j/pts)*Math.PI*2;
+        const jr=r*(.55+Math.random()*.7);
+        const px=x+Math.cos(a)*jr, py=y+Math.sin(a)*jr*.75;
+        j===0?dtX.moveTo(px,py):dtX.lineTo(px,py);
+      }
+      dtX.closePath();dtX.fill();
+    } else {
+      const arms=5+Math.floor(Math.random()*4);
+      dtX.beginPath();
+      for(let j=0;j<=arms*2;j++){
+        const a=(j/(arms*2))*Math.PI*2;
+        const rad=j%2===0?r*.55:r*.2;
+        const px=x+Math.cos(a)*rad, py=y+Math.sin(a)*rad*.7;
+        j===0?dtX.moveTo(px,py):dtX.lineTo(px,py);
+      }
+      dtX.closePath();dtX.fill();
+      dtX.globalAlpha*=.7;
+      for(let j=0;j<4;j++){
+        const a2=Math.random()*Math.PI*2, d2=r*.6+Math.random()*r*.3;
+        dtX.beginPath();dtX.arc(x+Math.cos(a2)*d2,y+Math.sin(a2)*d2,Math.random()*9+3,0,Math.PI*2);dtX.fill();
+      }
+    }
+  }
+  dtX.globalAlpha=1;
+}
+
+// ─────────────────────────────────────────────
+// WIPE  — the key function
+// ─────────────────────────────────────────────
+function wipeAt(x,y){
+  const ix = Math.max(0, Math.round(x - WIPE_R));
+  const iy = Math.max(0, Math.round(y - WIPE_R));
+  const iw = Math.min(dtC.width  - ix, WIPE_R * 2);
+  const ih = Math.min(dtC.height - iy, WIPE_R * 2);
+  if(iw<=0||ih<=0) return;
+
+  // Count dirty pixels in region BEFORE erase
+  const before = dtX.getImageData(ix, iy, iw, ih);
+  let dBefore = 0;
+  for(let i=3; i<before.data.length; i+=4) if(before.data[i]>10) dBefore++;
+
+  // Erase using destination-out
+  dtX.save();
+  dtX.globalCompositeOperation = 'destination-out';
+  dtX.globalAlpha = 1;
+  const g = dtX.createRadialGradient(x,y,0, x,y,WIPE_R);
+  g.addColorStop(0,   'rgba(0,0,0,1)');
+  g.addColorStop(0.7, 'rgba(0,0,0,1)');
+  g.addColorStop(1,   'rgba(0,0,0,0)');
+  dtX.fillStyle = g;
+  dtX.beginPath();
+  dtX.arc(x, y, WIPE_R, 0, Math.PI*2);
+  dtX.fill();
+  dtX.restore();
+
+  // Count dirty pixels AFTER — difference = newly cleaned
+  const after = dtX.getImageData(ix, iy, iw, ih);
+  let dAfter = 0;
+  for(let i=3; i<after.data.length; i+=4) if(after.data[i]>10) dAfter++;
+
+  cleaned += Math.max(0, dBefore - dAfter);
+  const pct = totalDirt > 0 ? cleaned / totalDirt : 0;
+  if(pct >= 0.95){ clearInterval(timerInt); endGame(true); }
+
+  if(Math.random()<.4) addSparkle(x,y);
+  updateHUD();
+}
+
+// ─────────────────────────────────────────────
+// SPARKLES
+// ─────────────────────────────────────────────
+const sparkles=[];
+function addSparkle(x,y){
+  for(let i=0;i<4;i++) sparkles.push({
+    x:x+(Math.random()-.5)*40, y:y+(Math.random()-.5)*40,
+    vx:(Math.random()-.5)*5, vy:-Math.random()*6-2,
+    life:1, r:Math.random()*7+3,
+    col:['#FFD700','#FF6B6B','#87CEEB','#98FB98','#FFB6C1'][Math.floor(Math.random()*5)]
+  });
+}
+function tickSparkles(){
+  fxX.clearRect(0,0,fxC.width,fxC.height);
+  for(let i=sparkles.length-1;i>=0;i--){
+    const s=sparkles[i];
+    fxX.globalAlpha=s.life;fxX.fillStyle=s.col;
+    fxX.beginPath();fxX.arc(s.x,s.y,s.r*s.life,0,Math.PI*2);fxX.fill();
+    s.x+=s.vx;s.y+=s.vy;s.life-=.045;
+    if(s.life<=0) sparkles.splice(i,1);
+  }
+  fxX.globalAlpha=1;
+  // wipe glow
+  if(state==='playing' && wiping && handSeen){
+    fxX.save();
+    fxX.globalCompositeOperation='screen';
+    const g=fxX.createRadialGradient(hx,hy,0,hx,hy,WIPE_R*2);
+    g.addColorStop(0,'rgba(255,230,80,.3)');g.addColorStop(1,'rgba(0,0,0,0)');
+    fxX.fillStyle=g;fxX.beginPath();fxX.arc(hx,hy,WIPE_R*2,0,Math.PI*2);fxX.fill();
+    fxX.restore();
+  }
+}
+setInterval(tickSparkles, 16);
+
+// ─────────────────────────────────────────────
+// HUD
+// ─────────────────────────────────────────────
+function updateHUD(){
+  document.getElementById('hudT').textContent=timer;
+  const pct=totalDirt>0?Math.min(100,Math.round(cleaned/totalDirt*100)):0;
+  document.getElementById('hudP').textContent=pct;
+  const r=timer/currentMap.time;
+  const tb=document.getElementById('timerBar');
+  tb.style.width=(r*100)+'%';
+  tb.style.background=r>.5?'#4CAF50':r>.25?'#FF9800':'#F44336';
+}
+
+// ─────────────────────────────────────────────
+// END GAME
+// ─────────────────────────────────────────────
+function endGame(won){
+  state='result';
+  const pct=totalDirt>0?Math.min(100,Math.round(cleaned/totalDirt*100)):0;
+  const stars=won?(timer>currentMap.time*.6?'⭐⭐⭐':timer>currentMap.time*.3?'⭐⭐':'⭐'):'💀';
+  document.getElementById('rEmo').textContent=won?'🎉':'😢';
+  document.getElementById('rTitle').textContent=won?'Sparkling Clean!':'Time\'s Up!';
+  document.getElementById('rMsg').textContent=won?'Amazing job!':'So close! Try again!';
+  document.getElementById('rTime').textContent=timer+'s';
+  document.getElementById('rPct').textContent=pct+'%';
+  document.getElementById('rStars').textContent=stars;
+  show('resultScreen');
+}
+
+// ─────────────────────────────────────────────
+// GESTURE HOVER BUTTONS
+// ─────────────────────────────────────────────
+function getHoverable(){
+  const out=[];
+  document.querySelectorAll('.btn,.card').forEach(el=>{
+    if(el.closest('.hidden')) return;
+    out.push({el, r:el.getBoundingClientRect(), act:el.dataset.act, id:el.dataset.id});
+  });
+  return out;
+}
+
+function doHover(px,py){
+  let hit=null;
+  for(const b of getHoverable()){
+    if(px>=b.r.left&&px<=b.r.right&&py>=b.r.top&&py<=b.r.bottom){hit=b;break;}
+  }
+  const now=Date.now();
+
+  if(hovEl && (!hit||hit.el!==hovEl.el)){
+    hovEl.el.classList.remove('lit');
+    const bar=hovEl.el.querySelector('.bar');
+    if(bar) bar.style.width='0%';
+    hovEl=null; hovFill=0;
+  }
+
+  if(!hit) return;
+  if(!hovEl){ hovEl=hit; hovStart=now; hovFill=0; }
+
+  const elapsed=now-hovStart;
+  hovFill=Math.min(1,elapsed/HOLD_MS);
+  const bar=hovEl.el.querySelector('.bar');
+  if(bar) bar.style.width=(hovFill*100)+'%';
+  hovEl.el.classList.add('lit');
+
+  if(elapsed>=HOLD_MS){
+    const act=hovEl.act, id=hovEl.id;
+    hovEl.el.classList.remove('lit');
+    if(bar) bar.style.width='0%';
+    hovEl=null; hovFill=0;
+    doAction(act,id);
+  }
+}
+
+function doAction(act,id){
+  switch(act){
+    case 'play':
+      show(null); startGame(); break;
+    case 'levels':
+      buildCards(); show('levelScreen'); break;
+    case 'menu':
+      show('menuScreen'); break;
+    case 'map':
+      currentMap=MAPS.find(m=>m.id===id)||MAPS[0];
+      show(null); startGame(); break;
+    case 'restart':
+      show(null); startGame(); break;
+  }
+}
+
+// ─────────────────────────────────────────────
+// CURSOR
+// ─────────────────────────────────────────────
+const cursor=document.getElementById('cursor');
+function setCursor(x,y,open){
+  cursor.style.display='block';
+  cursor.style.left=x+'px';
+  cursor.style.top=y+'px';
+  if(open){
+    cursor.style.width='80px';cursor.style.height='80px';
+    cursor.style.background='radial-gradient(circle,rgba(255,240,100,.95) 0%,rgba(255,160,20,.6) 50%,transparent 100%)';
+    cursor.style.borderRadius='50%';
+    cursor.style.border='3px solid rgba(255,200,0,.8)';
+    cursor.style.boxShadow='0 0 24px rgba(255,220,0,.7)';
+  } else {
+    cursor.style.width='36px';cursor.style.height='36px';
+    cursor.style.background='radial-gradient(circle,rgba(100,200,255,.95) 0%,rgba(30,100,255,.5) 60%,transparent 100%)';
+    cursor.style.borderRadius='50%';
+    cursor.style.border='2px solid rgba(100,180,255,.9)';
+    cursor.style.boxShadow='0 0 14px rgba(80,160,255,.8)';
+  }
+}
+
+// ─────────────────────────────────────────────
+// MEDIAPIPE
+// ─────────────────────────────────────────────
+function fingerExtended(lm, tip, pip){ return lm[tip].y < lm[pip].y; }
+
+function onResults(res){
+  const dbg=document.getElementById('dbg');
+  if(!res.multiHandLandmarks||res.multiHandLandmarks.length===0){
+    handSeen=false; wiping=false; cursor.style.display='none';
+    dbg.textContent='No hand visible';
+    // Clear hover
+    if(hovEl){ hovEl.el.classList.remove('lit'); const b=hovEl.el.querySelector('.bar'); if(b)b.style.width='0%'; hovEl=null; }
+    return;
+  }
+
+  handSeen=true;
+  const lm=res.multiHandLandmarks[0];
+  const W=innerWidth, H=innerHeight;
+
+  // Index fingertip coords (mirrored)
+  const ix=(1-lm[8].x)*W;
+  const iy=lm[8].y*H;
+  // Palm/wrist center (mirrored)
+  const wx=(1-lm[0].x)*W;
+  const wy=lm[0].y*H;
+
+  // Finger extension
+  const idxUp  = fingerExtended(lm,8,6);
+  const midUp  = fingerExtended(lm,12,10);
+  const ringUp = fingerExtended(lm,16,14);
+  const pinkUp = fingerExtended(lm,20,18);
+  const numUp  = (idxUp?1:0)+(midUp?1:0)+(ringUp?1:0)+(pinkUp?1:0);
+
+  // Open hand = 3+ fingers up = wipe mode
+  wiping = numUp >= 3;
+
+  // Use PALM center for wiping (more natural)
+  // Use index tip for menu pointing
+  if(wiping){
+    hx=wx; hy=wy;
+  } else {
+    hx=ix; hy=iy;
+  }
+
+  setCursor(hx, hy, wiping);
+  dbg.textContent=`fingers:${numUp} x:${Math.round(hx)} y:${Math.round(hy)} ${wiping?'WIPE':'POINT'}`;
+
+  if(state==='playing'){
+    if(wiping) wipeAt(hx, hy);
+  } else {
+    doHover(ix, iy);  // always use index tip for menu
+  }
+}
+
+// ─────────────────────────────────────────────
+// CAMERA BOOT
+// ─────────────────────────────────────────────
+const vid=document.getElementById('vid');
+
+function boot(){
+  const hands=new Hands({
+    locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`
+  });
+  hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.65,minTrackingConfidence:.55});
+  hands.onResults(onResults);
+
+  const cam=new Camera(vid,{
+    onFrame:async()=>{ await hands.send({image:vid}); },
+    width:640, height:480
+  });
+  cam.start().then(()=>{
+    document.getElementById('loader').style.display='none';
+    buildCards();
+    show('menuScreen');
+  }).catch(e=>{
+    document.getElementById('loader').innerHTML='<div style="font-size:1rem;color:#f88;padding:2rem;text-align:center">Camera access denied.<br>Please allow camera and reload.</div>';
+    console.error(e);
+  });
+}
+
+window.addEventListener('load', boot);
+</script>
+</body>
+</html>

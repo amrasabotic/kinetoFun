@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rock Paper Scissors – Hand Gesture</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap');
+    :root {
+      --bg: #0d0d14; --surface: #15151f; --border: #2a2a3d;
+      --accent: #7c6aff; --accent2: #ff6a9b;
+      --win: #4fffb0; --lose: #ff4f6a; --tie: #ffd24f;
+      --text: #e8e8f0; --muted: #7070a0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; padding: 24px 16px; gap: 20px;
+    }
+    header { text-align: center; }
+    header h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    header p { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+
+    .arena {
+      display: flex; gap: 24px; align-items: flex-start;
+      flex-wrap: wrap; justify-content: center; width: 100%; max-width: 960px;
+    }
+
+    /* ── Camera ── */
+    .cam-panel {
+      position: relative; border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden; background: #000; flex-shrink: 0;
+    }
+    .cam-panel video, .cam-panel canvas {
+      display: block; width: 360px; height: 270px;
+      object-fit: cover; transform: scaleX(-1);
+    }
+    .cam-panel canvas { position: absolute; top: 0; left: 0; }
+
+    .gesture-badge {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+      border: 1px solid var(--border); border-radius: 999px;
+      padding: 6px 18px; font-family: 'Space Mono', monospace;
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.05em;
+      white-space: nowrap; transition: color 0.2s;
+    }
+
+    .countdown-overlay {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.65); font-family: 'Space Mono', monospace;
+      font-size: 5rem; font-weight: 700; color: var(--accent);
+      pointer-events: none; opacity: 0; transition: opacity 0.15s;
+    }
+    .countdown-overlay.visible { opacity: 1; }
+
+    /* ── Game panel ── */
+    .game-panel {
+      flex: 1; min-width: 260px; max-width: 380px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .score-row { display: flex; gap: 10px; }
+    .score-card {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px; text-align: center;
+    }
+    .score-card .label {
+      font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px;
+    }
+    .score-card .num { font-family: 'Space Mono', monospace; font-size: 2rem; font-weight: 700; line-height: 1; }
+    .score-card.you .num { color: var(--accent); }
+    .score-card.cpu .num { color: var(--accent2); }
+    .score-card.tie .num { color: var(--tie); }
+
+    .vs-display {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .choice-slot { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .choice-emoji {
+      font-size: 3.2rem; line-height: 1;
+      filter: drop-shadow(0 0 10px rgba(124,106,255,0.4));
+    }
+    .choice-emoji.pop { animation: pop 0.35s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes pop { 0% { transform: scale(0.4); } 100% { transform: scale(1); } }
+    .choice-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .vs-sep { font-family: 'Space Mono', monospace; font-size: 1rem; color: var(--border); font-weight: 700; }
+
+    .result-banner {
+      border-radius: 12px; padding: 14px; text-align: center;
+      font-family: 'Space Mono', monospace; font-size: 1.25rem; font-weight: 700;
+      letter-spacing: 0.05em; transition: background 0.25s, color 0.25s;
+      background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+      min-height: 56px; display: flex; align-items: center; justify-content: center;
+    }
+    .result-banner.win  { background: rgba(79,255,176,0.12); border-color: var(--win);  color: var(--win); }
+    .result-banner.lose { background: rgba(255,79,106,0.12); border-color: var(--lose); color: var(--lose); }
+    .result-banner.tie  { background: rgba(255,210,79,0.12); border-color: var(--tie);  color: var(--tie); }
+
+    /* Play button — also acts as gesture hover target */
+    .play-btn {
+      position: relative;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none; border-radius: 12px; padding: 16px; color: #fff;
+      font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700;
+      letter-spacing: 0.04em; cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+      width: 100%; overflow: hidden;
+    }
+    .play-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .play-btn:active { transform: translateY(0); }
+    .play-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    /* Dwell fill bar */
+    .play-btn .dwell-bar {
+      position: absolute; left: 0; top: 0; height: 100%;
+      width: 0%; background: rgba(255,255,255,0.25);
+      transition: none; pointer-events: none; border-radius: 12px;
+    }
+
+    .instructions {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      font-size: 0.82rem; color: var(--muted); line-height: 1.8;
+    }
+    .instructions strong { color: var(--text); }
+
+    .status-bar {
+      font-size: 0.78rem; color: var(--muted);
+      text-align: center; font-family: 'Space Mono', monospace;
+    }
+    .status-bar span { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Rock · Paper · Scissors</h1>
+  <p>Use ☝️ one finger to hover &amp; activate the button</p>
+</header>
+
+<div class="arena">
+  <div class="cam-panel">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="overlay"></canvas>
+    <div class="gesture-badge" id="gestureBadge">✋ Waiting…</div>
+    <div class="countdown-overlay" id="countdownOverlay"></div>
+  </div>
+
+  <div class="game-panel">
+    <div class="score-row">
+      <div class="score-card you"><div class="label">You</div><div class="num" id="scoreYou">0</div></div>
+      <div class="score-card tie"><div class="label">Tie</div><div class="num" id="scoreTie">0</div></div>
+      <div class="score-card cpu"><div class="label">CPU</div><div class="num" id="scoreCpu">0</div></div>
+    </div>
+
+    <div class="vs-display">
+      <div class="choice-slot">
+        <div class="choice-emoji" id="yourEmoji">✋</div>
+        <div class="choice-label">Your Move</div>
+      </div>
+      <div class="vs-sep">VS</div>
+      <div class="choice-slot">
+        <div class="choice-emoji" id="cpuEmoji">🤖</div>
+        <div class="choice-label">CPU Move</div>
+      </div>
+    </div>
+
+    <div class="result-banner" id="resultBanner">Make your move!</div>
+
+    <button class="play-btn" id="playBtn" disabled>
+      <div class="dwell-bar" id="dwellBar"></div>
+      ▶ Play Round — show ☝️ to start
+    </button>
+
+    <div class="instructions">
+      <strong>☝️ One finger</strong> — hover button to activate (hold 1.5s)<br>
+      <strong>✊ Rock</strong> — closed fist<br>
+      <strong>✋ Paper</strong> — open hand, all fingers up<br>
+      <strong>✌️ Scissors</strong> — index + middle up, rest down
+    </div>
+
+    <div class="status-bar" id="statusBar">Loading hand tracker…</div>
+  </div>
+</div>
+
+<script type="module">
+import { GestureRecognizer, FilesetResolver, DrawingUtils }
+  from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm';
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const video       = document.getElementById('video');
+const overlay     = document.getElementById('overlay');
+const ctx         = overlay.getContext('2d');
+const badge       = document.getElementById('gestureBadge');
+const cntDown     = document.getElementById('countdownOverlay');
+const yourEmoji   = document.getElementById('yourEmoji');
+const cpuEmoji    = document.getElementById('cpuEmoji');
+const resultBanner= document.getElementById('resultBanner');
+const playBtn     = document.getElementById('playBtn');
+const dwellBar    = document.getElementById('dwellBar');
+const statusBar   = document.getElementById('statusBar');
+const scoreYouEl  = document.getElementById('scoreYou');
+const scoreTieEl  = document.getElementById('scoreTie');
+const scoreCpuEl  = document.getElementById('scoreCpu');
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const EMOJIS  = { rock:'✊', paper:'✋', scissors:'✌️', none:'❓', point:'☝️' };
+const CHOICES = ['rock','paper','scissors'];
+const DWELL_MS = 1500; // hold ☝️ over button for this long to activate
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let gestureRecognizer = null;
+let drawingUtils      = null;
+let currentGesture    = 'none'; // 'rock'|'paper'|'scissors'|'point'|'none'
+let scores            = { you:0, tie:0, cpu:0 };
+let busy              = false;
+
+// Dwell tracking
+let dwellStart  = null;   // timestamp when ☝️ hover began
+let dwellActive = false;
+
+// ── Gesture detection ─────────────────────────────────────────────────────────
+// Returns: 'point' | 'rock' | 'paper' | 'scissors' | 'none'
+function detectGesture(landmarks, gestureName) {
+  if (!landmarks || landmarks.length < 21) {
+    // fallback to model name only
+    return mapName(gestureName);
+  }
+
+  const lm = landmarks;
+  const indexUp  = lm[8].y  < lm[6].y;
+  const middleUp = lm[12].y < lm[10].y;
+  const ringUp   = lm[16].y < lm[14].y;
+  const pinkyUp  = lm[20].y < lm[18].y;
+  const upCount  = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
+
+  // ☝️ pointing: only index up
+  if (indexUp && !middleUp && !ringUp && !pinkyUp) return 'point';
+  // ✊ rock: no fingers up
+  if (upCount === 0) return 'rock';
+  // ✋ paper: 3+ fingers up
+  if (upCount >= 3) return 'paper';
+  // ✌️ scissors: index + middle
+  if (indexUp && middleUp && !ringUp && !pinkyUp) return 'scissors';
+
+  return mapName(gestureName);
+}
+
+function mapName(name) {
+  if (!name) return 'none';
+  const n = name.toLowerCase();
+  if (n === 'closed_fist')  return 'rock';
+  if (n === 'open_palm')    return 'paper';
+  if (n === 'victory')      return 'scissors';
+  if (n === 'pointing_up')  return 'point';
+  return 'none';
+}
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+async function initCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' }
+    });
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    overlay.width  = video.videoWidth;
+    overlay.height = video.videoHeight;
+    overlay.style.width  = '360px';
+    overlay.style.height = '270px';
+    video.style.width  = '360px';
+    video.style.height = '270px';
+    return true;
+  } catch(e) {
+    statusBar.innerHTML = '<span style="color:var(--lose)">Camera access denied.</span>';
+    return false;
+  }
+}
+
+// ── MediaPipe init ────────────────────────────────────────────────────────────
+async function initRecognizer() {
+  try {
+    const vision = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+    );
+    gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/latest/gesture_recognizer.task',
+        delegate: 'CPU'
+      },
+      runningMode: 'VIDEO',
+      numHands: 1
+    });
+    drawingUtils = new DrawingUtils(ctx);
+    statusBar.innerHTML = 'Ready! <span>Show ☝️ over the button to start</span>';
+    playBtn.disabled = false;
+  } catch(e) {
+    statusBar.innerHTML = `<span style="color:var(--lose)">Failed: ${e.message}</span>`;
+    console.error(e);
+  }
+}
+
+// ── Render loop ───────────────────────────────────────────────────────────────
+function renderLoop() {
+  if (!gestureRecognizer || video.readyState < 2) {
+    requestAnimationFrame(renderLoop); return;
+  }
+
+  const now = performance.now();
+  const results = gestureRecognizer.recognizeForVideo(video, now);
+
+  ctx.save();
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  ctx.translate(overlay.width, 0);
+  ctx.scale(-1, 1);
+
+  let lm0 = null, gName = null;
+  if (results.landmarks?.length) {
+    lm0 = results.landmarks[0];
+    for (const lm of results.landmarks) {
+      drawingUtils.drawConnectors(lm, GestureRecognizer.HAND_CONNECTIONS,
+        { color: 'rgba(124,106,255,0.55)', lineWidth: 2 });
+      drawingUtils.drawLandmarks(lm,
+        { color: '#ff6a9b', lineWidth: 1, radius: 3 });
+    }
+  }
+  if (results.gestures?.length) gName = results.gestures[0][0].categoryName;
+  ctx.restore();
+
+  currentGesture = detectGesture(lm0, gName);
+
+  // Update badge
+  if (currentGesture !== 'none') {
+    badge.textContent = EMOJIS[currentGesture] + ' ' + currentGesture.toUpperCase();
+    badge.style.color = currentGesture === 'point' ? 'var(--tie)' : '#fff';
+  } else {
+    badge.textContent = '✋ Waiting…';
+    badge.style.color = 'var(--muted)';
+  }
+
+  // ── Dwell-click: ☝️ held over Play button triggers playRound ──
+  if (!busy && !playBtn.disabled) {
+    const isPointing = currentGesture === 'point';
+    if (isPointing) {
+      if (!dwellActive) { dwellActive = true; dwellStart = performance.now(); }
+      const elapsed = performance.now() - dwellStart;
+      const pct = Math.min(elapsed / DWELL_MS * 100, 100);
+      dwellBar.style.transition = 'none';
+      dwellBar.style.width = pct + '%';
+      if (elapsed >= DWELL_MS) {
+        resetDwell();
+        playRound();
+      }
+    } else {
+      resetDwell();
+    }
+  }
+
+  requestAnimationFrame(renderLoop);
+}
+
+function resetDwell() {
+  dwellActive = false;
+  dwellStart  = null;
+  dwellBar.style.transition = 'width 0.2s';
+  dwellBar.style.width = '0%';
+}
+
+// ── Game logic ────────────────────────────────────────────────────────────────
+function cpuChoice() { return CHOICES[Math.floor(Math.random() * 3)]; }
+
+function judge(you, cpu) {
+  if (you === cpu) return 'tie';
+  if ((you==='rock'&&cpu==='scissors')||(you==='scissors'&&cpu==='paper')||(you==='paper'&&cpu==='rock')) return 'win';
+  return 'lose';
+}
+
+async function playRound() {
+  if (busy) return;
+  busy = true;
+  playBtn.disabled = true;
+  resultBanner.className = 'result-banner';
+  resultBanner.textContent = 'Get ready…';
+
+  // Countdown 3 → 1 → snap
+  for (let i = 3; i >= 1; i--) {
+    cntDown.textContent = i;
+    cntDown.classList.add('visible');
+    await sleep(800);
+  }
+  cntDown.textContent = '✊';
+  await sleep(400);
+  cntDown.classList.remove('visible');
+
+  // Only count RPS gestures — ignore 'point' and 'none'
+  const snap = ['rock','paper','scissors'].includes(currentGesture) ? currentGesture : 'none';
+  const cpu  = cpuChoice();
+
+  pop(yourEmoji, snap !== 'none' ? EMOJIS[snap] : '❓');
+  pop(cpuEmoji,  EMOJIS[cpu]);
+
+  if (snap === 'none') {
+    resultBanner.textContent = '❓ No gesture detected!';
+    resultBanner.className = 'result-banner';
+  } else {
+    const outcome = judge(snap, cpu);
+    scores[outcome === 'win' ? 'you' : outcome === 'lose' ? 'cpu' : 'tie']++;
+    scoreYouEl.textContent = scores.you;
+    scoreTieEl.textContent = scores.tie;
+    scoreCpuEl.textContent = scores.cpu;
+
+    const msgs = {
+      win:  ['You win! 🎉','Nice one! ✨','Crushed it! 💪'],
+      lose: ['CPU wins 🤖','Better luck! 😅','Gotcha! 💀'],
+      tie:  ["It's a tie! 🤝",'Draw! 🔁','Same brain? 🧠']
+    };
+    resultBanner.textContent = msgs[outcome][Math.floor(Math.random()*3)];
+    resultBanner.className = 'result-banner ' + outcome;
+  }
+
+  await sleep(800);
+  busy = false;
+  playBtn.disabled = false;
+  statusBar.innerHTML = 'Show <span>☝️</span> over the button to play again';
+}
+
+function pop(el, text) {
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.textContent = text;
+  el.classList.add('pop');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+playBtn.addEventListener('click', playRound); // still clickable with mouse
+(async () => {
+  const ok = await initCamera();
+  if (!ok) return;
+  renderLoop();
+  await initRecognizer();
+})();
+</script>
+</body>
+</html>

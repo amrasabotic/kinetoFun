@@ -1,1139 +1,549 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Monster Dodge — Hand Gesture Edition</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;user-select:none;}
-    html,body{width:100%;height:100%;overflow:hidden;background:#000;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
-    #gc{display:block;position:fixed;inset:0;width:100vw;height:100vh;}
-    #cam-wrap{
-      position:fixed;bottom:14px;right:14px;width:160px;height:120px;
-      border-radius:12px;overflow:hidden;border:2px solid rgba(255,255,255,.25);
-      z-index:500;background:#111;
-    }
-    #cam-wrap video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;}
-    #hcv{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);}
-    #cam-lbl{position:absolute;top:5px;left:7px;font-size:9px;
-      color:rgba(255,255,255,.6);font-weight:700;letter-spacing:.5px;}
-    #loading{position:fixed;inset:0;background:#050010;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;gap:16px;z-index:1000;}
-    #loading h1{color:#fff;font-size:28px;font-weight:800;letter-spacing:2px;}
-    #loading p{color:rgba(255,255,255,.7);font-size:14px;text-align:center;
-      max-width:280px;line-height:1.6;}
-    .spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.1);
-      border-top-color:#ff4466;border-radius:50%;animation:sp .8s linear infinite;}
-    @keyframes sp{to{transform:rotate(360deg);}}
-    #lmsg{color:rgba(255,255,255,.4);font-size:12px;}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧟 Monster Dodge</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: #07071a;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+}
+#game-canvas {
+  display: block;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+}
+#cam-canvas { display: none; }
+#gesture-bar {
+  position: fixed;
+  bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px; padding: 7px 20px;
+  font-size: 14px; color: #fff;
+  pointer-events: none; z-index: 10;
+  white-space: nowrap;
+}
+#hud {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between;
+  padding: 12px 18px; z-index: 10; pointer-events: none;
+}
+.hud-pill {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px; padding: 6px 16px;
+  font-size: 14px; font-weight: 600; color: #fff;
+}
+</style>
 </head>
 <body>
-
-<div id="loading">
-  <h1>⚔ MONSTER DODGE</h1>
-  <div class="spin"></div>
-  <p>Loading hand tracking…<br>Please allow camera access.</p>
-  <div id="lmsg"></div>
+<canvas id="cam-canvas"></canvas>
+<canvas id="game-canvas"></canvas>
+<div id="hud" style="display:none">
+  <div class="hud-pill" id="hud-score">Score: 0</div>
+  <div class="hud-pill" id="hud-lives">❤️❤️❤️</div>
+  <div class="hud-pill" id="hud-level">Lv 1</div>
 </div>
+<div id="gesture-bar">⏳ Loading…</div>
 
-<canvas id="gc"></canvas>
-
-<div id="cam-wrap">
-  <video id="vid" playsinline></video>
-  <canvas id="hcv"></canvas>
-  <div id="cam-lbl">HANDS</div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
 <script>
-/* ═══════════════════════════════════════════════════════════════════════
-   1. CANVAS
-═══════════════════════════════════════════════════════════════════════ */
-const cv = document.getElementById('gc');
-const cx = cv.getContext('2d');
-let W, H;
-function resize(){ W = cv.width = window.innerWidth; H = cv.height = window.innerHeight; }
-resize();
-window.addEventListener('resize', resize);
+(function(){
+'use strict';
 
-/* ═══════════════════════════════════════════════════════════════════════
-   2. AUDIO  (Web Audio API only — no files)
-═══════════════════════════════════════════════════════════════════════ */
-let AC;
-function getAC(){ if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)(); return AC; }
+const GW = 960, GH = 540;
+const LANES = 3, LANE_W = GW/LANES;
+const ROW_Y = [GH*0.22, GH*0.52, GH*0.80];
+const ROW_LABELS = ['HIGH','MID','LOW'];
+const PLAYER_SIZE = 54, MON_SIZE = 48, COIN_SIZE = 34;
+const CAM_W = 640, CAM_H = 480;
+const RAISE_FRAMES = 40;
+const TPOSE_FRAMES = 45;
 
-function beep(freq,dur,type='sine',vol=0.3,delay=0){
-  try{
-    const a=getAC(),o=a.createOscillator(),g=a.createGain();
-    o.connect(g);g.connect(a.destination);
-    o.type=type;o.frequency.value=freq;
-    g.gain.setValueAtTime(vol,a.currentTime+delay);
-    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+delay+dur);
-    o.start(a.currentTime+delay);o.stop(a.currentTime+delay+dur+0.05);
-  }catch(e){}
+let phase = 'loading'; // loading | start | calibrating | playing | paused | over
+let gs = null, highScore = 0, animId = null;
+let poseResults = null, videoEl = null;
+let raiseTimer = 0, tposeTimer = 0;
+
+const gameCanvas = document.getElementById('game-canvas');
+const camCanvas  = document.getElementById('cam-canvas');
+gameCanvas.width  = GW; gameCanvas.height = GH;
+camCanvas.width   = CAM_W; camCanvas.height = CAM_H;
+const ctx    = gameCanvas.getContext('2d');
+const camCtx = camCanvas.getContext('2d');
+
+const $g = id => document.getElementById(id);
+
+// ── draw a frame immediately so canvas is never blank ──
+function drawLoading(msg) {
+  ctx.fillStyle = '#07071a';
+  ctx.fillRect(0,0,GW,GH);
+  drawBgStars();
+  ctx.fillStyle = '#e8e8f0';
+  ctx.font = 'bold 28px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🧟 Monster Dodge', GW/2, GH/2 - 30);
+  ctx.fillStyle = 'rgba(232,232,240,0.55)';
+  ctx.font = '16px system-ui';
+  ctx.fillText(msg, GW/2, GH/2 + 14);
 }
 
-function sfxSuccess()  { [523,659,784].forEach((f,i)=>beep(f,0.18,'sine',0.22,i*0.06)); }
-function sfxFail()     { beep(110,0.5,'sawtooth',0.28); }
-function sfxCombo()    { [784,880,988,1047].forEach((f,i)=>beep(f,0.14,'triangle',0.2,i*0.07)); }
-function sfxCountdown(){ beep(660,0.12,'sine',0.3); }
-function sfxGo()       { beep(880,0.2,'sine',0.4);beep(1100,0.25,'sine',0.35,0.15); }
-function sfxBlock()    { beep(200,0.12,'square',0.25);beep(160,0.18,'square',0.2,0.1); }
-function sfxDodge()    { beep(900,0.08,'sine',0.2);beep(1100,0.1,'sine',0.15,0.08); }
-function sfxSpecial()  { [440,550,660,880].forEach((f,i)=>beep(f,0.2,'triangle',0.28,i*0.05)); }
-function sfxHurt()     { beep(80,0.35,'sawtooth',0.4); }
-function sfxIncoming() { beep(440,0.05,'sine',0.08); }
-
-/* ═══════════════════════════════════════════════════════════════════════
-   3. CONSTANTS & CONFIG
-═══════════════════════════════════════════════════════════════════════ */
-const LANE_X       = [0.22, 0.5, 0.78];  // fraction of W
-const PLAYER_Y_F   = 0.78;
-const HIT_Y_F      = 0.67;               // window opens when monster passes here
-const MISS_Y_F     = 0.84;               // miss if not handled by here
-const LIVES_MAX    = 3;
-const CALIB_DUR    = 3000;               // ms
-const DWELL        = 900;                // ms to hold hover
-
-const MTYPES = {
-  HIGH:    {color:'#4dc8ff',glow:'#0088cc',symbol:'✋',label:'DODGE',   gesture:'palm',     spd:0.10,sz:34},
-  STRONG:  {color:'#ff4444',glow:'#cc1100',symbol:'✊',label:'BLOCK',   gesture:'fist',     spd:0.08,sz:40},
-  FAST:    {color:'#ffe04d',glow:'#cc8800',symbol:'👋',label:'SWIPE',   gesture:'swipe',    spd:0.17,sz:30},
-  SPECIAL: {color:'#cc88ff',glow:'#8833cc',symbol:'✌️',label:'SPECIAL', gesture:'twohands', spd:0.07,sz:48},
-};
-const MKEYS = Object.keys(MTYPES);
-
-// Gesture tuning
-const SMOOTH_N      = 10;     // landmark history frames
-const DEBOUNCE_MS   = 380;    // min ms between same gesture
-const SWIPE_WIN_MS  = 380;    // velocity window
-const SWIPE_THRESH  = 0.10;   // normalized screen-width per window
-const FIST_RATIO    = 1.45;   // tipDist < mcpDist * FIST_RATIO → curled
-const PALM_RATIO    = 1.85;   // tipDist > mcpDist * PALM_RATIO → extended
-
-/* ═══════════════════════════════════════════════════════════════════════
-   4. GESTURE ENGINE
-   Handles: landmark smoothing, fist / palm / swipe / two-hand detection,
-   per-gesture debounce, calibration baseline.
-═══════════════════════════════════════════════════════════════════════ */
-let handCount     = 0;
-let smoothedHands = [null, null];
-let lmHistory     = [[], []];   // ring buffers of raw landmark arrays
-let wristTrail    = [];         // [{x:0-1, t:ms}] for swipe velocity
-let calibSamples  = [];
-let calibBaseline = null;       // {wx, wy} neutral wrist position (unused in detection but set for future use)
-
-const debounceTs  = {};         // gesture → last trigger ms
-
-function canTrigger(name){
-  const now=Date.now();
-  if(!debounceTs[name]||now-debounceTs[name]>DEBOUNCE_MS){ debounceTs[name]=now; return true; }
-  return false;
-}
-
-function pushHistory(idx, lm){
-  lmHistory[idx].push(lm);
-  if(lmHistory[idx].length>SMOOTH_N) lmHistory[idx].shift();
-}
-
-function getSmoothed(idx){
-  const h=lmHistory[idx];
-  if(!h.length) return null;
-  return Array.from({length:21},(_,li)=>({
-    x: h.reduce((s,f)=>s+f[li].x,0)/h.length,
-    y: h.reduce((s,f)=>s+f[li].y,0)/h.length,
-    z: h.reduce((s,f)=>s+f[li].z,0)/h.length,
-  }));
-}
-
-// Distance-ratio fist: tipToWrist < mcpToWrist * FIST_RATIO for ≥3 fingers
-function isFist(lm){
-  if(!lm) return false;
-  const w=lm[0];
-  const pairs=[[8,5],[12,9],[16,13],[20,17]];
-  let curled=0;
-  for(const [ti,mi] of pairs){
-    const td=Math.hypot(lm[ti].x-w.x,lm[ti].y-w.y);
-    const md=Math.hypot(lm[mi].x-w.x,lm[mi].y-w.y);
-    if(md>0.01 && td<md*FIST_RATIO) curled++;
-  }
-  return curled>=3;
-}
-
-// Distance-ratio open palm: tipToWrist > mcpToWrist * PALM_RATIO for ≥3 fingers
-function isPalm(lm){
-  if(!lm) return false;
-  const w=lm[0];
-  const pairs=[[8,5],[12,9],[16,13],[20,17]];
-  let ext=0;
-  for(const [ti,mi] of pairs){
-    const td=Math.hypot(lm[ti].x-w.x,lm[ti].y-w.y);
-    const md=Math.hypot(lm[mi].x-w.x,lm[mi].y-w.y);
-    if(md>0.01 && td>md*PALM_RATIO) ext++;
-  }
-  return ext>=3;
-}
-
-// Velocity-based swipe on mirrored wrist X (screen space 0–1)
-function checkSwipe(){
-  if(wristTrail.length<3) return null;
-  const now=Date.now();
-  const recent=wristTrail.filter(p=>now-p.t<SWIPE_WIN_MS);
-  if(recent.length<3) return null;
-  const dx=recent[recent.length-1].x - recent[0].x;
-  const dt=recent[recent.length-1].t - recent[0].t;
-  if(dt<80) return null;
-  if(dx < -SWIPE_THRESH) return 'swipeLeft';
-  if(dx >  SWIPE_THRESH) return 'swipeRight';
-  return null;
-}
-
-// Active gestures this frame, populated in onHandResults
-let activeGestures = new Set();
-let gestureFlash   = null;   // {name, t} for visual echo above player
-
-function flashGesture(name){ gestureFlash={name,t:Date.now()}; }
-
-/* ═══════════════════════════════════════════════════════════════════════
-   5. MEDIAPIPE HANDS
-═══════════════════════════════════════════════════════════════════════ */
-const vidEl = document.getElementById('vid');
-const hcv   = document.getElementById('hcv');
-const hctx  = hcv.getContext('2d');
-let mpCam   = null;
-let mpHands = null;
-
-function onHandResults(res){
-  hcv.width  = hcv.offsetWidth  || 160;
-  hcv.height = hcv.offsetHeight || 120;
-  hctx.clearRect(0,0,hcv.width,hcv.height);
-
-  activeGestures.clear();
-  const lms = res.multiHandLandmarks || [];
-  handCount  = lms.length;
-
-  // Clear history for disappeared hands
-  for(let i=lms.length;i<2;i++){
-    lmHistory[i]=[];
-    smoothedHands[i]=null;
-  }
-
-  lms.forEach((raw,idx)=>{
-    if(idx>=2) return;
-    pushHistory(idx, raw);
-    smoothedHands[idx]=getSmoothed(idx);
-    const color=['rgba(255,77,196,.9)','rgba(77,200,255,.9)'][idx%2];
-    drawConnectors(hctx,raw,HAND_CONNECTIONS,{color,lineWidth:1.5});
-    drawLandmarks(hctx,raw,{color:'#fff',lineWidth:1,radius:2});
+// static stars (no gs needed)
+const bgStars = Array.from({length:130}, ()=>({
+  x: Math.random()*GW, y: Math.random()*GH,
+  r: Math.random()*1.2+0.3, alpha: Math.random()*0.5+0.2
+}));
+function drawBgStars() {
+  bgStars.forEach(s=>{
+    ctx.globalAlpha = s.alpha;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
   });
-
-  const primary=smoothedHands[0]||smoothedHands[1];
-
-  if(primary){
-    // Mirror x: natural right-hand-moves-right feel
-    const wx = 1-primary[0].x;
-    wristTrail.push({x:wx,t:Date.now()});
-    const cutoff=Date.now()-SWIPE_WIN_MS*1.5;
-    wristTrail=wristTrail.filter(p=>p.t>cutoff);
-
-    // Accumulate calibration samples; skip gesture logic during calibration
-    if(gs==='calibrate'){
-      calibSamples.push({x:wx,y:primary[0].y});
-      return;
-    }
-
-    if(isFist(primary))      activeGestures.add('fist');
-    else if(isPalm(primary)) activeGestures.add('palm');
-
-    const swipe=checkSwipe();
-    if(swipe) activeGestures.add(swipe);
-  }
-
-  // Two-hands: both visible + both palm or both raised
-  if(handCount>=2 && smoothedHands[0] && smoothedHands[1]){
-    const bothPalm  = isPalm(smoothedHands[0]) && isPalm(smoothedHands[1]);
-    const bothRaised= smoothedHands[0][0].y<0.60 && smoothedHands[1][0].y<0.60;
-    if(bothPalm||bothRaised) activeGestures.add('twohands');
-  }
-
-  if(gs==='play') processGestures();
+  ctx.globalAlpha = 1;
 }
 
-function setupMediaPipe(){
-  mpHands=new Hands({
-    locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`
-  });
-  mpHands.setOptions({maxNumHands:2,modelComplexity:1,minDetectionConfidence:0.7,minTrackingConfidence:0.5});
-  mpHands.onResults(onHandResults);
+// ── init ──
+async function init() {
+  drawLoading('Starting camera…');
+  $g('gesture-bar').textContent = '⏳ Starting camera…';
 
-  mpCam=new Camera(vidEl,{
-    onFrame:async()=>{ await mpHands.send({image:vidEl}); },
-    width:320,height:240,
-  });
-  mpCam.start()
-    .then(()=>document.getElementById('loading').style.display='none')
-    .catch(e=>{
-      document.getElementById('lmsg').textContent='⚠ '+e.message;
-      setTimeout(()=>document.getElementById('loading').style.display='none',2500);
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width:{ideal:CAM_W}, height:{ideal:CAM_H}, facingMode:'user' }
     });
-}
-
-function waitForMP(cb,n=0){
-  if(typeof Hands!=='undefined'&&typeof Camera!=='undefined') cb();
-  else if(n>60){ document.getElementById('lmsg').textContent='⚠ Load failed.';
-    setTimeout(()=>document.getElementById('loading').style.display='none',2000); }
-  else setTimeout(()=>waitForMP(cb,n+1),300);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   6. PARTICLES
-═══════════════════════════════════════════════════════════════════════ */
-let parts        = [];
-let floatTexts   = [];
-
-function spawnBurst(x,y,color,n=18){
-  for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2, s=2+Math.random()*6;
-    const life=40+Math.random()*30;
-    parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,r:2+Math.random()*5,color,life,max:life});
+  } catch(e) {
+    drawLoading('⚠️ Camera denied — please allow webcam and reload');
+    $g('gesture-bar').textContent = '⚠️ Camera access denied — reload and allow camera';
+    return;
   }
-}
 
-function spawnFloatText(x,y,text,color){
-  floatTexts.push({x,y,text,color,life:55,max:55,vy:-1.6});
-}
+  drawLoading('Loading pose model… (first load may take ~10s)');
+  $g('gesture-bar').textContent = '⏳ Loading pose model…';
 
-function tickParts(){
-  parts=parts.filter(p=>{
-    p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.vx*=0.96;p.life--;return p.life>0;
+  videoEl = document.createElement('video');
+  videoEl.width = CAM_W; videoEl.height = CAM_H;
+  videoEl.srcObject = stream;
+  videoEl.play();
+
+  const pose = new Pose({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${f}`
   });
-  floatTexts=floatTexts.filter(t=>{
-    t.y+=t.vy;t.vy*=0.98;t.life--;return t.life>0;
+  pose.setOptions({
+    modelComplexity: 0, smoothLandmarks: true,
+    minDetectionConfidence: 0.5, minTrackingConfidence: 0.5
   });
-}
+  pose.onResults(r => { poseResults = r; });
 
-function drawParts(){
-  parts.forEach(p=>{
-    cx.globalAlpha=p.life/p.max;
-    cx.fillStyle=p.color;
-    cx.beginPath();cx.arc(p.x,p.y,p.r,0,Math.PI*2);cx.fill();
+  try {
+    await pose.initialize();
+  } catch(e) {
+    drawLoading('⚠️ Pose model failed to load — check connection and reload');
+    $g('gesture-bar').textContent = '⚠️ Model failed — check connection and reload';
+    return;
+  }
+
+  const cam = new Camera(videoEl, {
+    onFrame: async () => { if(pose) await pose.send({image:videoEl}); },
+    width: CAM_W, height: CAM_H
   });
-  floatTexts.forEach(t=>{
-    cx.globalAlpha=t.life/t.max;
-    cx.font='bold 22px sans-serif';
-    cx.textAlign='center';
-    cx.fillStyle=t.color;
-    cx.fillText(t.text,t.x,t.y);
-  });
-  cx.globalAlpha=1;
+  cam.start();
+
+  phase = 'start';
+  animId = requestAnimationFrame(loop);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   7. LEADERBOARD  (localStorage)
-═══════════════════════════════════════════════════════════════════════ */
-const KEY_BEST_SCORE = 'monsterDodge_bestScore';
-const KEY_BEST_TIME  = 'monsterDodge_bestTime';
+// ── game state ──
+const MONSTER_POOL = ['👾','🐉','🦇','🕷️','🤖','💀','🐊','👻','🦑','🧟'];
 
-function getBestScore(){ return parseInt(localStorage.getItem(KEY_BEST_SCORE)||'0'); }
-function getBestTime() { return parseInt(localStorage.getItem(KEY_BEST_TIME) ||'0'); }
-
-function saveBests(score,secs){
-  if(score>getBestScore()) localStorage.setItem(KEY_BEST_SCORE,String(score));
-  if(secs >getBestTime() ) localStorage.setItem(KEY_BEST_TIME, String(secs));
+function initGameState() {
+  gs = {
+    score:0, lives:3, level:1, tick:0,
+    coinsCollected:0, dodged:0,
+    player:{ lane:1, row:1, shield:0, invincible:0, shakeFrames:0 },
+    monsters:[], coins:[], particles:[],
+    framesSinceLast:0, spawnInterval:80,
+    lastGesture:'stand',
+    calibrating:true, calibFrames:0, calibSumHipY:0, baseHipY:null,
+    over:false, overTick:0,
+    stars: Array.from({length:130}, ()=>({
+      x:Math.random()*GW, y:Math.random()*GH,
+      r:Math.random()*1.2+0.3, speed:Math.random()*0.35+0.08,
+      alpha:Math.random()*0.55+0.2
+    }))
+  };
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   8. STATE MACHINE
-═══════════════════════════════════════════════════════════════════════ */
-let gs = 'menu';   // menu | calibrate | countdown | play | results
+// ── gesture detection ──
+function readGesture() {
+  const lm = poseResults && poseResults.poseLandmarks ? poseResults.poseLandmarks : null;
+  if (!lm) return { move:'none', raise:false, tpose:false };
 
-let score        = 0;
-let streak       = 0;
-let maxStreak    = 0;
-let lives        = LIVES_MAX;
-let gameTime     = 0;       // seconds elapsed in play
-let countdownVal = 3;
-let countdownTimer = 0;
-let calibTimer   = 0;
-let screenFlash  = null;   // {color, alpha, t}
+  const lsh=lm[11], rsh=lm[12], lhip=lm[23], rhip=lm[24];
+  const lwr=lm[15], rwr=lm[16], lel=lm[13], rel=lm[14];
+  const lear=lm[7],  rear=lm[8];
+  if (!lsh||!rsh||!lhip||!rhip) return { move:'none', raise:false, tpose:false };
 
-function startCalibration(){
-  gs='calibrate';
-  calibTimer = CALIB_DUR/1000;
-  calibSamples=[];
-  calibBaseline=null;
-  wristTrail=[];
-}
+  const smx = (lsh.x+rsh.x)/2;
+  const hipY = (lhip.y+rhip.y)/2;
+  const earY = (lear&&rear) ? (lear.y+rear.y)/2 : (lsh.y+rsh.y)/2 - 0.05;
 
-function startCountdown(){
-  gs='countdown';
-  countdownVal=3;
-  countdownTimer=3.6;   // 3→2→1→GO
-}
+  // raise: both wrists above ears
+  const raise = !!(lwr&&rwr && lwr.y < earY-0.03 && rwr.y < earY-0.03);
 
-function startPlay(){
-  gs='play';
-  score=0;streak=0;maxStreak=0;
-  lives=LIVES_MAX;gameTime=0;
-  monsters=[];spawnTimer=1.8;
-  playerLane=1;playerX=LANE_X[1]*W;
-  parts=[];floatTexts=[];
-  Object.keys(debounceTs).forEach(k=>delete debounceTs[k]);
-  wristTrail=[];
-  getAC();
-}
+  // t-pose: elbows near shoulder height, wrists wide
+  const tpose = !!(lel&&rel&&lwr&&rwr
+    && Math.abs(lel.y-lsh.y)<0.07 && Math.abs(rel.y-rsh.y)<0.07
+    && Math.abs(lwr.x-rwr.x)>0.65);
 
-function endGame(){
-  gs='results';
-  saveBests(score,Math.floor(gameTime));
-  sfxFail();
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   9. MONSTER SYSTEM
-═══════════════════════════════════════════════════════════════════════ */
-let monsters      = [];
-let monsterIdCnt  = 0;
-let spawnTimer    = 0;
-
-function spawnInterval(){ return Math.max(0.75, 2.6 - score*0.018); }
-function monsterSpeedBonus(){ return score*0.0008; }
-
-function spawnMonster(){
-  const type=MKEYS[Math.floor(Math.random()*MKEYS.length)];
-  const lane=Math.floor(Math.random()*3);
-  const cfg=MTYPES[type];
-  const life=50+Math.random()*30;
-  monsters.push({
-    id:monsterIdCnt++,
-    type,lane,cfg,
-    y:  -80,
-    spd:cfg.spd + monsterSpeedBonus(),
-    st: 'active',   // active | dead
-    deadTimer:0,
-    windowOpen:false,
-    wobble:Math.random()*Math.PI*2,
-  });
-  sfxIncoming();
-}
-
-function updateMonsters(dt){
-  spawnTimer-=dt;
-  if(spawnTimer<=0){ spawnMonster(); spawnTimer=spawnInterval(); }
-
-  const hitY  = H*HIT_Y_F;
-  const missY = H*MISS_Y_F;
-
-  for(let i=monsters.length-1;i>=0;i--){
-    const m=monsters[i];
-
-    if(m.st==='dead'){
-      m.deadTimer-=dt;
-      if(m.deadTimer<=0) monsters.splice(i,1);
-      continue;
+  // calibration
+  if (gs && gs.calibrating) {
+    gs.calibFrames++;
+    gs.calibSumHipY += hipY;
+    if (gs.calibFrames >= 45) {
+      gs.baseHipY = gs.calibSumHipY / gs.calibFrames;
+      gs.calibrating = false;
     }
-
-    m.y   += m.spd*H*dt;
-    m.wobble += dt*2.4;
-
-    if(!m.windowOpen && m.y>=hitY) m.windowOpen=true;
-
-    // Miss — player failed to react
-    if(m.y>=missY && m.st==='active'){
-      m.st='dead'; m.deadTimer=0.4;
-      lives--;
-      streak=0;
-      const lx=LANE_X[m.lane]*W;
-      spawnBurst(lx,m.y,'#ff3333',14);
-      spawnFloatText(lx,m.y-28,'MISS!','#ff3333');
-      screenFlash={color:'#ff0000',alpha:0.35,t:Date.now()};
-      sfxHurt();
-      if(lives<=0) endGame();
-    }
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   10. PLAYER SYSTEM
-═══════════════════════════════════════════════════════════════════════ */
-let playerLane    = 1;
-let playerX       = 0;
-let playerAction  = null;   // 'block'|'dodge'|'swipe'|'special'
-let playerActTime = 0;
-
-/* ═══════════════════════════════════════════════════════════════════════
-   11. COLLISION & GESTURE → GAME LOGIC
-═══════════════════════════════════════════════════════════════════════ */
-function processGestures(){
-  for(const g of activeGestures){
-    if(g==='swipeLeft' && canTrigger('swipeLeft')){
-      const from=playerLane;
-      if(playerLane>0) playerLane--;
-      wristTrail=[];
-      playerAction='swipe'; playerActTime=Date.now();
-      flashGesture('swipeLeft');
-      tryMatch('swipe',from);
-    }
-    if(g==='swipeRight' && canTrigger('swipeRight')){
-      const from=playerLane;
-      if(playerLane<2) playerLane++;
-      wristTrail=[];
-      playerAction='swipe'; playerActTime=Date.now();
-      flashGesture('swipeRight');
-      tryMatch('swipe',from);
-    }
-    if(g==='fist' && canTrigger('fist')){
-      playerAction='block'; playerActTime=Date.now();
-      flashGesture('fist');
-      sfxBlock();
-      tryMatch('fist',playerLane);
-    }
-    if(g==='palm' && canTrigger('palm')){
-      playerAction='dodge'; playerActTime=Date.now();
-      flashGesture('palm');
-      sfxDodge();
-      tryMatch('palm',playerLane);
-    }
-    if(g==='twohands' && canTrigger('twohands')){
-      playerAction='special'; playerActTime=Date.now();
-      flashGesture('twohands');
-      sfxSpecial();
-      tryMatch('twohands',playerLane);
-    }
-  }
-}
-
-function tryMatch(gesture, lane){
-  for(let i=monsters.length-1;i>=0;i--){
-    const m=monsters[i];
-    if(m.st!=='active'||!m.windowOpen) continue;
-
-    let hit=false;
-    if(gesture==='swipe'){
-      // Any open-window FAST monster in the current or prior lane
-      if(m.type==='FAST'&&(m.lane===playerLane||m.lane===lane)) hit=true;
-    } else {
-      if(m.cfg.gesture===gesture && m.lane===playerLane) hit=true;
-    }
-
-    if(hit){ resolveHit(i); return; }
-  }
-}
-
-function resolveHit(idx){
-  const m=monsters[idx];
-  m.st='dead'; m.deadTimer=0.45;
-  streak++;
-  if(streak>maxStreak) maxStreak=streak;
-  const pts=10+(streak>1?streak*5:0);
-  score+=pts;
-  const lx=LANE_X[m.lane]*W;
-  spawnBurst(lx,m.y,m.cfg.color,22);
-  spawnFloatText(lx,m.y-32, streak>2?`${pts}pts ×${streak}`:`+${pts}`, '#00ff88');
-  if(streak>=3){ sfxCombo(); spawnFloatText(lx,m.y-62,`🔥 COMBO ×${streak}`,'#ffe04d'); }
-  else sfxSuccess();
-  screenFlash={color:'#00ff88',alpha:0.12,t:Date.now()};
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   12. DRAW HELPERS
-═══════════════════════════════════════════════════════════════════════ */
-function txt(s,x,y,font,color,align='center'){
-  cx.fillStyle=color;cx.font=font;cx.textAlign=align;cx.fillText(s,x,y);
-}
-function card(x,y,w,h,r,fill,stroke,lw){
-  cx.beginPath();cx.roundRect(x,y,w,h,r);
-  if(fill){cx.fillStyle=fill;cx.fill();}
-  if(stroke){cx.strokeStyle=stroke;cx.lineWidth=lw||2;cx.stroke();}
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   13. DRAW: BACKGROUND & ARENA
-═══════════════════════════════════════════════════════════════════════ */
-function drawBackground(){
-  const bg=cx.createLinearGradient(0,0,0,H);
-  bg.addColorStop(0,'#050010');
-  bg.addColorStop(1,'#0d0025');
-  cx.fillStyle=bg; cx.fillRect(0,0,W,H);
-
-  // Static star field (deterministic from index)
-  cx.fillStyle='rgba(255,255,255,0.35)';
-  for(let i=0;i<70;i++){
-    const sx=(((i*1373+991)%997)/997)*W;
-    const sy=(((i*2377+487)%983)/983)*H*0.90;
-    const sr=0.5+((i*739)%5)/10;
-    cx.beginPath();cx.arc(sx,sy,sr,0,Math.PI*2);cx.fill();
+    return { move:'calibrate', raise, tpose };
   }
 
-  // Lane columns
-  const laneW=W*0.185;
-  for(let l=0;l<3;l++){
-    const lx=LANE_X[l]*W;
-    cx.fillStyle=l===playerLane?'rgba(255,255,255,0.04)':'rgba(255,255,255,0.015)';
-    cx.fillRect(lx-laneW/2,0,laneW,H);
-    cx.strokeStyle='rgba(100,40,220,0.22)';
-    cx.lineWidth=1; cx.setLineDash([18,14]);
-    cx.beginPath();cx.moveTo(lx-laneW/2,0);cx.lineTo(lx-laneW/2,H);cx.stroke();
-    cx.beginPath();cx.moveTo(lx+laneW/2,0);cx.lineTo(lx+laneW/2,H);cx.stroke();
-    cx.setLineDash([]);
+  let move = 'stand';
+  if (gs && gs.baseHipY != null) {
+    const d = hipY - gs.baseHipY;
+    if (d < -0.09) move = 'jump';
+    else if (d > 0.09) move = 'duck';
+    else if (lwr&&rwr&&Math.abs(lwr.x-rwr.x)>0.55) move = 'shield';
+    else if (smx < 0.5-0.08) move = 'right';
+    else if (smx > 0.5+0.08) move = 'left';
   }
-
-  // Danger zone line
-  cx.strokeStyle='rgba(255,68,102,0.25)';
-  cx.lineWidth=1.5; cx.setLineDash([10,8]);
-  cx.beginPath();cx.moveTo(0,H*MISS_Y_F);cx.lineTo(W,H*MISS_Y_F);cx.stroke();
-  cx.setLineDash([]);
+  return { move, raise, tpose };
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   14. DRAW: PLAYER
-═══════════════════════════════════════════════════════════════════════ */
-function drawPlayer(){
-  const targetX=LANE_X[playerLane]*W;
-  playerX+=(targetX-playerX)*0.20;
-  const py=H*PLAYER_Y_F;
-  const age=Date.now()-playerActTime;
-  const acting=playerAction&&age<420;
-
-  // Ground shadow
-  cx.fillStyle='rgba(0,0,0,0.35)';
-  cx.beginPath();cx.ellipse(playerX,py+42,24,7,0,0,Math.PI*2);cx.fill();
-
-  const bodyClr = acting
-    ? ({block:'#cc2200',dodge:'#006699',swipe:'#666600',special:'#7722aa'}[playerAction]||'#223355')
-    : '#223355';
-
-  if(acting){
-    cx.shadowColor=bodyClr; cx.shadowBlur=24;
-  }
-
-  const sc=acting?1.08:1;
-  cx.save();
-  cx.translate(playerX,py);
-  cx.scale(sc,sc);
-
-  // Legs
-  cx.fillStyle='#2a3a55';
-  cx.fillRect(-11,10,9,24);
-  cx.fillRect(2,10,9,24);
-
-  // Body
-  cx.fillStyle=bodyClr;
-  cx.beginPath();cx.roundRect(-15,-12,30,24,5);cx.fill();
-
-  // Arms — pose-aware
-  cx.fillStyle='#2a3a55';
-  if(playerAction==='block'&&acting){
-    // Arms crossed in guard
-    cx.fillRect(-24,-10,48,10);
-    cx.fillStyle='#ffccaa';
-    cx.beginPath();cx.arc(-24,-5,8,0,Math.PI*2);cx.fill();
-    cx.beginPath();cx.arc(24,-5,8,0,Math.PI*2);cx.fill();
-  } else if(playerAction==='dodge'&&acting){
-    // Arms wide open
-    cx.fillRect(-34,-14,18,7);
-    cx.fillRect(16,-14,18,7);
-  } else if(playerAction==='special'&&acting){
-    // Both arms raised
-    cx.fillRect(-24,-34,9,22);
-    cx.fillRect(15,-34,9,22);
-  } else if(playerAction==='swipe'&&acting){
-    // One arm swinging
-    cx.fillRect(-26,-8,18,8);
-    cx.fillRect(8,-8,18,8);
+// ── spawn / collisions ──
+function spawnObject() {
+  const lane=Math.floor(Math.random()*LANES), row=Math.floor(Math.random()*3);
+  if (Math.random()<0.22) {
+    gs.coins.push({x:lane*LANE_W+LANE_W/2, y:-COIN_SIZE, row, lane, alive:true});
   } else {
-    cx.fillRect(-24,-8,9,16);
-    cx.fillRect(15,-8,9,16);
-  }
-
-  // Head
-  cx.fillStyle='#ffccaa';
-  cx.beginPath();cx.arc(0,-22,13,0,Math.PI*2);cx.fill();
-  // Headband
-  cx.fillStyle=bodyClr;
-  cx.fillRect(-13,-27,26,9);
-  // Eyes
-  cx.fillStyle='#fff';
-  cx.beginPath();cx.ellipse(-4,-24,3,2.5,0,0,Math.PI*2);cx.fill();
-  cx.beginPath();cx.ellipse(4,-24,3,2.5,0,0,Math.PI*2);cx.fill();
-  cx.fillStyle='#000';
-  cx.beginPath();cx.ellipse(-4,-24,1.5,1.5,0,0,Math.PI*2);cx.fill();
-  cx.beginPath();cx.ellipse(4,-24,1.5,1.5,0,0,Math.PI*2);cx.fill();
-
-  cx.restore();
-  cx.shadowBlur=0;
-
-  // Floating gesture echo
-  if(acting && gestureFlash){
-    const icons={fist:'✊',palm:'✋',swipeLeft:'👈',swipeRight:'👉',twohands:'✌️'};
-    const icon=icons[gestureFlash.name]||'';
-    cx.globalAlpha=1-age/420;
-    cx.font='30px serif';cx.textAlign='center';
-    cx.fillText(icon, playerX, py-70-(age/420)*22);
-    cx.globalAlpha=1;
+    gs.monsters.push({x:lane*LANE_W+LANE_W/2, y:-MON_SIZE-10, row, lane,
+      emoji:MONSTER_POOL[Math.floor(Math.random()*MONSTER_POOL.length)], alive:true});
   }
 }
-
-/* ═══════════════════════════════════════════════════════════════════════
-   15. DRAW: MONSTERS
-═══════════════════════════════════════════════════════════════════════ */
-function drawMonster(m){
-  if(m.st==='dead') cx.globalAlpha=Math.max(0,m.deadTimer/0.45);
-
-  const lx=LANE_X[m.lane]*W;
-  const {color,glow,symbol,label,sz}=m.cfg;
-  const t=Date.now()/1000;
-
-  cx.shadowColor=glow;
-  cx.shadowBlur=m.windowOpen?28:10;
-
-  if(m.type==='HIGH'){
-    const float=Math.sin(m.wobble)*9;
-    cx.fillStyle=color;
-    cx.beginPath();cx.arc(lx,m.y+float,sz,0,Math.PI*2);cx.fill();
-    cx.fillStyle='rgba(255,255,255,0.35)';
-    cx.beginPath();cx.arc(lx-sz*0.22,m.y+float-sz*0.28,sz*0.3,0,Math.PI*2);cx.fill();
-    // Ghost tails
-    cx.fillStyle=color+'55';
-    cx.beginPath();cx.arc(lx-sz-14,m.y+float,sz*0.7,sz*0.25,0,Math.PI*2);cx.fill();
-    cx.beginPath();cx.arc(lx+sz+14,m.y+float,sz*0.7,sz*0.25,0,Math.PI*2);cx.fill();
-
-  } else if(m.type==='STRONG'){
-    // Armored block
-    cx.fillStyle=color;
-    cx.beginPath();cx.roundRect(lx-sz,m.y-sz,sz*2,sz*2,8);cx.fill();
-    cx.strokeStyle='#ff9999'; cx.lineWidth=3;
-    cx.strokeRect(lx-sz+5,m.y-sz+5,sz*2-10,sz*2-10);
-    // Rotating spikes
-    for(let s=0;s<4;s++){
-      const a=(s/4)*Math.PI*2+m.wobble*0.5;
-      cx.fillStyle='#dd1100';
-      cx.beginPath();
-      cx.moveTo(lx+Math.cos(a)*sz,         m.y+Math.sin(a)*sz);
-      cx.lineTo(lx+Math.cos(a)*(sz+16),    m.y+Math.sin(a)*(sz+16));
-      cx.lineTo(lx+Math.cos(a+0.35)*sz,    m.y+Math.sin(a+0.35)*sz);
-      cx.fill();
-    }
-    // Eyes
-    cx.fillStyle='#ffaa00';
-    cx.beginPath();cx.arc(lx-9,m.y-6,6,0,Math.PI*2);cx.fill();
-    cx.beginPath();cx.arc(lx+9,m.y-6,6,0,Math.PI*2);cx.fill();
-    cx.fillStyle='#000';
-    cx.beginPath();cx.arc(lx-9,m.y-6,2.5,0,Math.PI*2);cx.fill();
-    cx.beginPath();cx.arc(lx+9,m.y-6,2.5,0,Math.PI*2);cx.fill();
-
-  } else if(m.type==='FAST'){
-    // Lightning bolt
-    cx.fillStyle=color;
-    cx.beginPath();
-    cx.moveTo(lx+11,m.y-sz);
-    cx.lineTo(lx-5, m.y-4);
-    cx.lineTo(lx+9, m.y-4);
-    cx.lineTo(lx-11,m.y+sz);
-    cx.lineTo(lx+5, m.y+4);
-    cx.lineTo(lx-9, m.y+4);
-    cx.closePath();cx.fill();
-    // Speed streaks
-    cx.strokeStyle=color+'55'; cx.lineWidth=2;
-    for(let s=1;s<=3;s++){
-      cx.beginPath();cx.moveTo(lx-22,m.y-s*11);cx.lineTo(lx+22,m.y-s*11);cx.stroke();
-    }
-
-  } else if(m.type==='SPECIAL'){
-    const pulse=1+Math.sin(m.wobble*1.8)*0.14;
-    // Outer aura rings
-    cx.strokeStyle=color+'44'; cx.lineWidth=1.5;
-    cx.beginPath();cx.arc(lx,m.y,sz*pulse*1.9,0,Math.PI*2);cx.stroke();
-    cx.strokeStyle=color+'88'; cx.lineWidth=2;
-    cx.beginPath();cx.arc(lx,m.y,sz*pulse*1.45,0,Math.PI*2);cx.stroke();
-    // 8-point star
-    cx.fillStyle=color;
-    cx.beginPath();
-    for(let s=0;s<8;s++){
-      const a=(s/8)*Math.PI*2+m.wobble*0.25;
-      const r=s%2===0?sz*pulse:sz*pulse*0.48;
-      s===0?cx.moveTo(lx+Math.cos(a)*r,m.y+Math.sin(a)*r)
-           :cx.lineTo(lx+Math.cos(a)*r,m.y+Math.sin(a)*r);
-    }
-    cx.closePath();cx.fill();
-    cx.fillStyle='#fff';
-    cx.beginPath();cx.arc(lx,m.y,sz*0.28,0,Math.PI*2);cx.fill();
-  }
-
-  cx.shadowBlur=0;
-
-  // Hit-window ring
-  if(m.windowOpen && m.st==='active'){
-    const pulse=0.55+Math.sin(Date.now()/90)*0.45;
-    cx.strokeStyle='#00ff88'; cx.lineWidth=2.5;
-    cx.globalAlpha=(cx.globalAlpha||1)*pulse;
-    cx.beginPath();cx.arc(lx,m.y,sz+16,0,Math.PI*2);cx.stroke();
-  }
-
-  // Reset alpha before gesture badge
-  cx.globalAlpha=m.st==='dead'?Math.max(0,m.deadTimer/0.45):1;
-
-  // Gesture prompt badge
-  const by=m.y-sz-18;
-  cx.fillStyle='rgba(0,0,0,0.72)';
-  cx.beginPath();cx.roundRect(lx-34,by-22,68,26,7);cx.fill();
-  cx.font='14px serif'; cx.textAlign='center';
-  cx.fillStyle=color;
-  cx.fillText(symbol+' '+label,lx,by-3);
-
-  cx.globalAlpha=1;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   16. DRAW: HUD
-═══════════════════════════════════════════════════════════════════════ */
-function drawHUD(){
-  const p=18;
-
-  // Score panel
-  card(p,p,148,64,10,'rgba(0,0,0,0.55)','rgba(255,68,102,0.3)',1.5);
-  txt('SCORE',p+74,p+18,'10px sans-serif','rgba(255,255,255,0.5)');
-  txt(String(score),p+74,p+48,'bold 30px sans-serif','#ffffff');
-
-  // Lives panel
-  card(W/2-64,p,128,52,10,'rgba(0,0,0,0.55)','rgba(255,68,102,0.3)',1.5);
-  txt('LIVES',W/2,p+16,'10px sans-serif','rgba(255,255,255,0.5)');
-  for(let l=0;l<LIVES_MAX;l++){
-    cx.font='18px serif'; cx.textAlign='center';
-    cx.fillText(l<lives?'❤️':'🖤', W/2-22+l*22, p+40);
-  }
-
-  // Time panel
-  const tx=W-p-148;
-  card(tx,p,148,64,10,'rgba(0,0,0,0.55)','rgba(255,68,102,0.3)',1.5);
-  txt('TIME',tx+74,p+18,'10px sans-serif','rgba(255,255,255,0.5)');
-  const sec=Math.floor(gameTime);
-  txt(`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`,tx+74,p+48,'bold 26px sans-serif','#ffffff');
-
-  // Streak badge (only ≥2)
-  if(streak>=2){
-    const bc=streak>=5?'#ff7700':'#ffe04d';
-    cx.shadowColor=streak>=5?'#ff3300':'#cc9900'; cx.shadowBlur=14;
-    card(W/2-56,H-78,112,36,18,bc,null,0);
-    cx.shadowBlur=0;
-    txt(`🔥 ${streak} STREAK`,W/2,H-53,'bold 14px sans-serif','#000');
-  }
-
-  // Lane dots
-  for(let l=0;l<3;l++){
-    const lx=LANE_X[l]*W;
-    cx.fillStyle=l===playerLane?'rgba(255,68,102,0.6)':'rgba(255,255,255,0.15)';
-    cx.beginPath();cx.roundRect(lx-14,H-28,28,10,5);cx.fill();
-  }
-
-  // Gesture echo at top-center
-  if(gestureFlash){
-    const age=Date.now()-gestureFlash.t;
-    if(age<500){
-      const icons={fist:'✊',palm:'✋',swipeLeft:'👈',swipeRight:'👉',twohands:'✌️'};
-      cx.globalAlpha=1-age/500;
-      cx.font='38px serif'; cx.textAlign='center';
-      cx.fillText(icons[gestureFlash.name]||'',W/2,H*0.11);
-      cx.globalAlpha=1;
-    }
-  }
-
-  // Active gesture label
-  if(handCount>0){
-    const activePrimary=smoothedHands[0]||smoothedHands[1];
-    if(activePrimary){
-      let label='';
-      if(activeGestures.has('twohands')) label='✌️ SPECIAL';
-      else if(activeGestures.has('fist')) label='✊ BLOCK';
-      else if(activeGestures.has('palm')) label='✋ DODGE';
-      else if(activeGestures.has('swipeLeft'))  label='👈 LEFT';
-      else if(activeGestures.has('swipeRight')) label='👉 RIGHT';
-      if(label){
-        cx.fillStyle='rgba(0,0,0,0.5)';
-        cx.beginPath();cx.roundRect(p,H-56,120,30,8);cx.fill();
-        txt(label,p+60,H-34,'12px sans-serif','rgba(255,255,255,0.8)');
-      }
-    }
+function burst(x,y,color,n) {
+  for (let i=0;i<n;i++) {
+    const a=(Math.PI*2*i/n)+Math.random()*0.5, sp=2+Math.random()*3;
+    gs.particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,color,life:1,size:3+Math.random()*3});
   }
 }
+function checkCollisions() {
+  const px=gs.player.lane*LANE_W+LANE_W/2, py=ROW_Y[gs.player.row];
+  gs.coins.forEach(c=>{
+    if(!c.alive)return;
+    if(c.lane===gs.player.lane&&c.row===gs.player.row&&Math.abs(c.y-py)<MON_SIZE*0.85){
+      c.alive=false; gs.score+=5; gs.coinsCollected++; burst(c.x,c.y,'#ffd166',8);
+    }
+  });
+  if(gs.player.shield>0||gs.player.invincible>0) return;
+  gs.monsters.forEach(m=>{
+    if(!m.alive||m.lane!==gs.player.lane||m.row!==gs.player.row) return;
+    if(Math.abs(m.y-py)<MON_SIZE*0.65){
+      m.alive=false; gs.lives--; gs.player.invincible=70; gs.player.shakeFrames=20;
+      burst(px,py,'#ff4a6e',12);
+      if(gs.lives<=0) gs.over=true;
+    }
+  });
+}
 
-/* ═══════════════════════════════════════════════════════════════════════
-   17. DRAW: SCREENS
-═══════════════════════════════════════════════════════════════════════ */
-function drawMenu(){
-  drawBackground();
-  drawParts();
+// ── draw helpers ──
+function drawGameStars() {
+  gs.stars.forEach(s=>{
+    s.y+=s.speed; if(s.y>GH) s.y=0;
+    ctx.globalAlpha=s.alpha; ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+function drawLanes() {
+  for(let l=1;l<LANES;l++){
+    ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.setLineDash([14,10]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(l*LANE_W,0); ctx.lineTo(l*LANE_W,GH); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ROW_Y.forEach((ry,i)=>{
+    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,ry); ctx.lineTo(GW,ry); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.font='10px monospace';
+    ctx.textAlign='left'; ctx.fillText(ROW_LABELS[i],6,ry-5);
+  });
+}
+function drawCamThumb() {
+  if(!videoEl) return;
+  try { camCtx.drawImage(videoEl,0,0,CAM_W,CAM_H); } catch(e){}
+  const tw=GW*0.16, th=tw*(CAM_H/CAM_W);
+  ctx.save();
+  ctx.globalAlpha=0.3;
+  ctx.translate(GW-tw-8, GH-th-8);
+  ctx.scale(-1,1);
+  ctx.drawImage(camCanvas,-tw,0,tw,th);
+  ctx.restore();
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.strokeRect(GW-tw-8, GH-th-8, tw, th);
+}
+function drawParticles() {
+  gs.particles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life-=0.04;
+    if(p.life<=0)return;
+    ctx.globalAlpha=p.life; ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  gs.particles=gs.particles.filter(p=>p.life>0);
+}
+function drawPlayer() {
+  const px=gs.player.lane*LANE_W+LANE_W/2, py=ROW_Y[gs.player.row];
+  if(gs.player.shield>0){
+    const a=gs.player.shield/100;
+    ctx.save(); ctx.globalAlpha=a*0.3; ctx.fillStyle='#7c6bff';
+    ctx.beginPath(); ctx.arc(px,py,PLAYER_SIZE*0.9,0,Math.PI*2); ctx.fill(); ctx.restore();
+    ctx.strokeStyle=`rgba(124,107,255,${a})`; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(px,py,PLAYER_SIZE*0.9,0,Math.PI*2); ctx.stroke(); ctx.lineWidth=1;
+  }
+  const blink=gs.player.invincible>0&&Math.floor(gs.tick/4)%2===0;
+  if(!blink){
+    ctx.font=`${PLAYER_SIZE}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🧍',px,py);
+  }
+  ctx.fillStyle='rgba(124,107,255,0.1)';
+  ctx.beginPath(); ctx.ellipse(px,py+PLAYER_SIZE*0.42,PLAYER_SIZE*0.5,7,0,0,Math.PI*2); ctx.fill();
+}
+function rArc(cx,cy,r,prog,color) {
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2,false); ctx.stroke();
+  if(prog>0){
+    ctx.strokeStyle=color; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*prog,false); ctx.stroke();
+  }
+  ctx.lineWidth=1;
+}
 
-  // Title
-  cx.shadowColor='#ff4466'; cx.shadowBlur=40;
-  txt('⚔ MONSTER DODGE',W/2,H*0.19,'bold 52px sans-serif','#ffffff');
-  cx.shadowBlur=0;
-  txt('HAND GESTURE EDITION',W/2,H*0.26,'18px sans-serif','#ff4466');
+// ── phase draw functions ──
+function drawStart() {
+  ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
+  drawBgStars(); drawCamThumb();
+  // title
+  ctx.font='bold 52px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#a78bfa'; ctx.fillText('🧟 Monster Dodge', GW/2, GH*0.18);
+  ctx.fillStyle='rgba(232,232,240,0.55)'; ctx.font='17px system-ui';
+  ctx.fillText('No buttons — your body is the controller', GW/2, GH*0.27);
 
-  // Gesture guide
-  const guides=[
-    {icon:'✊',name:'FIST',   desc:'Block strong monsters', color:'#ff4444'},
-    {icon:'✋',name:'PALM',   desc:'Dodge high monsters',   color:'#4dc8ff'},
-    {icon:'👈👉',name:'SWIPE',desc:'Move lanes fast',       color:'#ffe04d'},
-    {icon:'✌️',name:'BOTH HANDS',desc:'Special power move',  color:'#cc88ff'},
+  // gesture grid
+  const items=[
+    ['⬅️','Lean Left','shift left'],['🏃','Stand','middle lane'],['➡️','Lean Right','shift right'],
+    ['🦅','Duck','lower body'],['🦘','Jump','rise up'],['👐','Arms Wide','shield']
   ];
-  const cw=Math.min(176,W*0.185);
-  const gap=10;
-  const total=guides.length*(cw+gap)-gap;
-  const sx=W/2-total/2;
-  guides.forEach((g,i)=>{
-    const gx=sx+i*(cw+gap), gy=H*0.36;
-    card(gx,gy,cw,108,12,'rgba(255,255,255,0.04)',g.color+'55',1.5);
-    txt(g.icon,gx+cw/2,gy+44,'30px serif',g.color);
-    txt(g.name,gx+cw/2,gy+66,'bold 12px sans-serif','#ffffff');
-    txt(g.desc,gx+cw/2,gy+84,'10px sans-serif','rgba(255,255,255,0.55)');
+  const cw=136,ch=72,cols=3,gap=10;
+  const totalW=cols*cw+(cols-1)*gap;
+  const ox=GW/2-totalW/2, oy=GH*0.35;
+  items.forEach((it,i)=>{
+    const col=i%3, row=Math.floor(i/3);
+    const x=ox+col*(cw+gap), y=oy+row*(ch+gap);
+    ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=0.5;
+    rRect(x,y,cw,ch,10); ctx.fill(); ctx.stroke();
+    ctx.font='24px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff';
+    ctx.fillText(it[0],x+cw/2,y+ch*0.38);
+    ctx.font='bold 12px system-ui'; ctx.fillStyle='rgba(232,232,240,0.9)';
+    ctx.fillText(it[1],x+cw/2,y+ch*0.66);
+    ctx.font='11px system-ui'; ctx.fillStyle='rgba(232,232,240,0.45)';
+    ctx.fillText(it[2],x+cw/2,y+ch*0.84);
   });
 
-  // Start button (dwell)
-  const bw=228,bh=56,bx=W/2-114,by=H*0.68;
-  const hov=dwellId==='start';
-  const prog=hov?Math.min((Date.now()-dwellT)/DWELL,1):0;
-  card(bx,by,bw,bh,28,hov?'#ff4466':'#220015','#ff4466',2);
-  txt('▶  START GAME',W/2,by+37,'bold 22px sans-serif','#ffffff');
-  if(prog>0){
-    cx.fillStyle='rgba(255,255,255,0.3)';
-    cx.beginPath();cx.roundRect(bx+5,by+bh-9,(bw-10)*prog,6,3);cx.fill();
-  }
-  btns=[{id:'start',x:bx,y:by,w:bw,h:bh}];
-
-  if(!handCount)
-    txt('☝  Show your hands to begin',W/2,H*0.88,'15px sans-serif','rgba(255,255,255,0.45)');
-
-  drawDwellCursor();
+  const prog=Math.min(raiseTimer/RAISE_FRAMES,1);
+  ctx.fillStyle='rgba(232,232,240,0.6)'; ctx.font='15px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🙌  Raise both hands above your head to start', GW/2, GH*0.86);
+  rArc(GW/2, GH*0.93, 18, prog, '#7c6bff');
 }
 
-function drawCalibrate(){
-  drawBackground();
-  const prog=Math.max(0,1-calibTimer/(CALIB_DUR/1000));
-  txt('CALIBRATING…',W/2,H*0.3,'bold 36px sans-serif','#ffe04d');
-  txt('Hold hands relaxed in frame',W/2,H*0.40,'17px sans-serif','rgba(255,255,255,0.65)');
-  const bw=300,bh=12,bx=W/2-150,by=H*0.50;
-  card(bx,by,bw,bh,6,'rgba(255,255,255,0.1)',null,0);
-  cx.fillStyle='#ffe04d';
-  cx.beginPath();cx.roundRect(bx,by,bw*prog,bh,6);cx.fill();
-  txt(`${Math.ceil(calibTimer)}`,W/2,H*0.62,'bold 40px sans-serif','#ffffff');
-  txt(handCount>0?'✅ Hands detected':'⚠ Show hands to camera',
-    W/2,H*0.72,'15px sans-serif',handCount>0?'#00ff88':'#ff8800');
+function drawCalib() {
+  ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
+  drawBgStars(); drawCamThumb();
+  const pct=gs ? Math.round((gs.calibFrames/45)*100) : 0;
+  ctx.fillStyle='rgba(7,7,26,0.75)'; ctx.fillRect(0,GH/2-70,GW,140);
+  ctx.fillStyle='#e8e8f0'; ctx.font='bold 22px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(`📐 Calibrating… stand still (${pct}%)`, GW/2, GH/2-16);
+  ctx.fillStyle='rgba(232,232,240,0.5)'; ctx.font='15px system-ui';
+  ctx.fillText('Hold your normal standing pose', GW/2, GH/2+14);
+  const bw=300,bh=6,bx=GW/2-150,by=GH/2+42;
+  ctx.fillStyle='rgba(255,255,255,0.1)'; rRect(bx,by,bw,bh,3); ctx.fill();
+  ctx.fillStyle='#7c6bff'; rRect(bx,by,bw*(pct/100),bh,3); ctx.fill();
 }
 
-function drawCountdown(){
-  drawBackground();
-  const n=Math.max(0,Math.ceil(countdownTimer)-1);
-  const frac=countdownTimer-Math.floor(countdownTimer);
-  cx.save();
-  cx.translate(W/2,H/2);
-  cx.scale(1+(1-frac)*0.4,1+(1-frac)*0.4);
-  cx.globalAlpha=Math.max(0,frac);
-  if(n>0){
-    cx.shadowColor='#ff4466'; cx.shadowBlur=50;
-    txt(String(n),0,40,'bold 120px sans-serif','#ffffff');
-  } else {
-    cx.shadowColor='#00ff88'; cx.shadowBlur=50;
-    txt('GO!',0,44,'bold 88px sans-serif','#00ff88');
-  }
-  cx.restore();
-  cx.shadowBlur=0; cx.globalAlpha=1;
+function drawPlay() {
+  const shake=gs.player.shakeFrames>0?Math.floor(Math.random()*6)-3:0;
+  if(gs.player.shakeFrames>0) gs.player.shakeFrames--;
+  ctx.save(); if(shake) ctx.translate(shake,shake*0.5);
+  ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
+  drawGameStars(); drawLanes(); drawCamThumb();
+  const spd=3.2+gs.level*0.55;
+  gs.coins=gs.coins.filter(c=>c.alive&&c.y<GH+40);
+  gs.coins.forEach(c=>{
+    c.y+=spd;
+    ctx.font=`${COIN_SIZE}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🪙',c.x,c.y+Math.sin(gs.tick*0.12+c.x)*3);
+  });
+  gs.monsters=gs.monsters.filter(m=>m.alive&&m.y<GH+40);
+  gs.monsters.forEach(m=>{
+    m.y+=spd;
+    const near=m.lane===gs.player.lane&&m.row===gs.player.row&&Math.abs(m.y-ROW_Y[m.row])<90;
+    if(near){ctx.shadowColor='#ff4a6e';ctx.shadowBlur=16+Math.sin(gs.tick*0.3)*5;}
+    ctx.font=`${MON_SIZE}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(m.emoji,m.x,m.y+Math.sin(gs.tick*0.15+m.x)*2);
+    ctx.shadowBlur=0;
+    if(m.y>GH-10){gs.dodged++;m.alive=false;}
+  });
+  drawParticles(); drawPlayer(); ctx.restore();
 }
 
-function drawGamePlay(){
-  drawBackground();
-
-  // Screen flash overlay
-  if(screenFlash){
-    const age=Date.now()-screenFlash.t;
-    if(age<280){
-      cx.fillStyle=screenFlash.color;
-      cx.globalAlpha=screenFlash.alpha*(1-age/280);
-      cx.fillRect(0,0,W,H);
-      cx.globalAlpha=1;
-    }
-  }
-
-  // Monsters behind player
-  for(const m of monsters){
-    if(m.y<H*PLAYER_Y_F) drawMonster(m);
-  }
-
-  drawPlayer();
-
-  // Monsters in front of player
-  for(const m of monsters){
-    if(m.y>=H*PLAYER_Y_F) drawMonster(m);
-  }
-
-  drawParts();
-  drawHUD();
+function drawPause() {
+  drawPlay();
+  ctx.fillStyle='rgba(7,7,26,0.8)'; ctx.fillRect(0,0,GW,GH);
+  ctx.fillStyle='#e8e8f0'; ctx.font='bold 40px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('⏸ Paused', GW/2, GH/2-30);
+  ctx.fillStyle='rgba(232,232,240,0.55)'; ctx.font='16px system-ui';
+  ctx.fillText('Hold T-pose (arms fully horizontal) to resume', GW/2, GH/2+12);
+  rArc(GW/2, GH/2+56, 22, Math.min(tposeTimer/TPOSE_FRAMES,1), '#7c6bff');
 }
 
-function drawResults(){
-  drawBackground();
-  drawParts();
-  cx.fillStyle='rgba(0,0,0,0.62)';
-  cx.fillRect(0,0,W,H);
-
-  cx.shadowColor='#ff4466'; cx.shadowBlur=30;
-  txt('GAME OVER',W/2,H*0.20,'bold 54px sans-serif','#ff4466');
-  cx.shadowBlur=0;
-
-  // Stats card
-  const pw=Math.min(440,W*0.86),ph=188;
-  const px=W/2-pw/2,py=H*0.28;
-  card(px,py,pw,ph,16,'rgba(15,0,35,0.92)','rgba(255,68,102,0.45)',1.5);
-
-  const best=getBestScore();
-  const isNew=score>=best&&score>0;
-
-  txt('YOUR SCORE',W/2-pw*0.24,py+36,'11px sans-serif','rgba(255,255,255,0.5)');
-  txt(String(score),W/2-pw*0.24,py+76,'bold 44px sans-serif',isNew?'#ffe04d':'#ffffff');
-  if(isNew) txt('🏆 NEW BEST!',W/2-pw*0.24,py+98,'11px sans-serif','#ffe04d');
-
-  txt('BEST',W/2+pw*0.24,py+36,'11px sans-serif','rgba(255,255,255,0.5)');
-  txt(String(best),W/2+pw*0.24,py+76,'bold 44px sans-serif','#4dc8ff');
-
-  const sec=Math.floor(gameTime);
-  const timeStr=`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
-  txt('⏱ TIME  '+timeStr,  px+pw*0.25,py+140,'14px sans-serif','rgba(255,255,255,0.7)','center');
-  txt('🔥 BEST STREAK  '+maxStreak, px+pw*0.75,py+140,'14px sans-serif','rgba(255,255,255,0.7)','center');
-
-  txt(`Best time: ${Math.floor(getBestTime()/60)}:${String(getBestTime()%60).padStart(2,'0')}`,
-    W/2,py+168,'11px sans-serif','rgba(255,255,255,0.35)');
-
-  // Play again (dwell)
-  const bw=228,bh=54,bx=W/2-114,by=H*0.70;
-  const hov=dwellId==='restart';
-  const prog=hov?Math.min((Date.now()-dwellT)/DWELL,1):0;
-  card(bx,by,bw,bh,28,hov?'#ff4466':'#220015','#ff4466',2);
-  txt('▶  PLAY AGAIN',W/2,by+36,'bold 20px sans-serif','#ffffff');
-  if(prog>0){
-    cx.fillStyle='rgba(255,255,255,0.3)';
-    cx.beginPath();cx.roundRect(bx+5,by+bh-9,(bw-10)*prog,6,3);cx.fill();
+function drawOver() {
+  ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
+  drawBgStars(); drawCamThumb();
+  ctx.font='bold 46px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#ff4a6e'; ctx.fillText('💀 Game Over', GW/2, GH*0.2);
+  ctx.fillStyle='#e8e8f0'; ctx.font='bold 72px system-ui';
+  ctx.fillText(gs.score, GW/2, GH*0.38);
+  ctx.fillStyle='rgba(232,232,240,0.45)'; ctx.font='13px system-ui';
+  ctx.fillText('FINAL SCORE', GW/2, GH*0.5);
+  if(highScore>0){
+    ctx.fillStyle='#ffd166'; ctx.font='14px system-ui';
+    ctx.fillText(`🏆 Best: ${highScore}`, GW/2, GH*0.57);
   }
-  btns=[{id:'restart',x:bx,y:by,w:bw,h:bh}];
-  drawDwellCursor();
+  const stats=[['Level',gs.level],['Coins',gs.coinsCollected],['Dodged',gs.dodged]];
+  stats.forEach((s,i)=>{
+    const sx=GW/2+(i-1)*150;
+    ctx.fillStyle='#e8e8f0'; ctx.font='bold 22px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s[1],sx,GH*0.67);
+    ctx.fillStyle='rgba(232,232,240,0.4)'; ctx.font='11px system-ui';
+    ctx.fillText(s[0].toUpperCase(),sx,GH*0.74);
+  });
+  ctx.fillStyle='rgba(232,232,240,0.55)'; ctx.font='15px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🙌  Raise both hands above your head to play again', GW/2, GH*0.85);
+  rArc(GW/2, GH*0.92, 18, Math.min(raiseTimer/RAISE_FRAMES,1), '#7c6bff');
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   18. DWELL NAVIGATION  (gesture-driven menu selection)
-═══════════════════════════════════════════════════════════════════════ */
-let btns    = [];
-let dwellId = null, dwellT = 0;
-let handSX  = -1, handSY = -1;   // hand screen position
-
-function updateHandScreen(){
-  const lm=smoothedHands[0]||smoothedHands[1];
-  if(!lm||!handCount){ handSX=-1; handSY=-1; return; }
-  handSX=(1-lm[0].x)*W;
-  handSY=lm[0].y*H;
+// ── HUD ──
+const GLABELS = {
+  stand:'🏃 Standing',left:'⬅️ Lean Left',right:'➡️ Lean Right',
+  jump:'🦘 Jumping!',duck:'🦅 Ducking!',shield:'👐 Shield!',
+  calibrate:'📐 Calibrating…',none:'🤔 No pose'
+};
+function setHUD(on) {
+  $g('hud').style.display = on ? '' : 'none';
+}
+function updateHUD() {
+  $g('hud-score').textContent=`Score: ${gs.score}`;
+  $g('hud-lives').textContent='❤️'.repeat(Math.max(0,gs.lives))+'🖤'.repeat(Math.max(0,3-gs.lives));
+  $g('hud-level').textContent=`Lv ${gs.level}`;
+  $g('gesture-bar').textContent=GLABELS[gs.lastGesture]||'🤔';
 }
 
-function hovBtn(){
-  if(handSX<0||!handCount) return null;
-  for(const b of btns){
-    if(handSX>=b.x&&handSX<=b.x+b.w&&handSY>=b.y&&handSY<=b.y+b.h) return b.id;
+// ── main loop ──
+function loop() {
+  const g = readGesture();
+
+  switch(phase) {
+    case 'start':
+      if(g.raise) raiseTimer++; else raiseTimer=0;
+      drawStart();
+      setHUD(false);
+      $g('gesture-bar').textContent = raiseTimer>0 ? `🙌 Hold… ${Math.round(raiseTimer/RAISE_FRAMES*100)}%` : '🙌 Raise both hands to start';
+      if(raiseTimer>=RAISE_FRAMES){ raiseTimer=0; initGameState(); phase='calibrating'; }
+      break;
+
+    case 'calibrating':
+      readGesture(); // drives calibration side-effect
+      drawCalib();
+      setHUD(false);
+      $g('gesture-bar').textContent = '📐 Stand still — calibrating…';
+      if(gs&&!gs.calibrating){ phase='playing'; }
+      break;
+
+    case 'playing':
+      gs.lastGesture=g.move;
+      if(g.move==='jump')       { gs.player.row=0; gs.player.lane=1; }
+      else if(g.move==='duck')  { gs.player.row=2; gs.player.lane=1; }
+      else if(g.move==='left')  { gs.player.lane=0; gs.player.row=1; }
+      else if(g.move==='right') { gs.player.lane=2; gs.player.row=1; }
+      else if(g.move==='stand') { gs.player.lane=1; gs.player.row=1; }
+      if(g.move==='shield') gs.player.shield=100;
+
+      if(g.tpose) tposeTimer++; else tposeTimer=0;
+      if(tposeTimer>=TPOSE_FRAMES){ tposeTimer=0; phase='paused'; }
+
+      if(gs.player.shield>0) gs.player.shield--;
+      if(gs.player.invincible>0) gs.player.invincible--;
+      gs.framesSinceLast++;
+      if(gs.framesSinceLast>=gs.spawnInterval){ spawnObject(); gs.framesSinceLast=0; gs.score++; }
+      gs.tick++;
+      gs.level=1+Math.floor(gs.score/40);
+      gs.spawnInterval=Math.max(28,80-gs.level*7);
+      checkCollisions();
+      drawPlay();
+      setHUD(true); updateHUD();
+      if(gs.over){ gs.overTick++; if(gs.overTick>80){ highScore=Math.max(highScore,gs.score); phase='over'; } }
+      break;
+
+    case 'paused':
+      if(g.tpose) tposeTimer++; else tposeTimer=0;
+      drawPause();
+      setHUD(false);
+      $g('gesture-bar').textContent = tposeTimer>0 ? `🤸 Hold T-pose… ${Math.round(tposeTimer/TPOSE_FRAMES*100)}%` : '🤸 T-pose to resume';
+      if(tposeTimer>=TPOSE_FRAMES){ tposeTimer=0; phase='playing'; }
+      break;
+
+    case 'over':
+      if(g.raise) raiseTimer++; else raiseTimer=0;
+      drawOver();
+      setHUD(false);
+      $g('gesture-bar').textContent = raiseTimer>0 ? `🙌 Hold… ${Math.round(raiseTimer/RAISE_FRAMES*100)}%` : '🙌 Raise both hands to restart';
+      if(raiseTimer>=RAISE_FRAMES){ raiseTimer=0; initGameState(); phase='calibrating'; }
+      break;
   }
-  return null;
+
+  animId = requestAnimationFrame(loop);
 }
 
-function handleActivate(id){
-  getAC();
-  beep(800,0.1,'sine',0.3);
-  if(id==='start'||id==='restart'){ startCalibration(); btns=[]; }
+// ── util ──
+function rRect(x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
 }
 
-function drawDwellCursor(){
-  if(handSX<0||!handCount) return;
-  const prog=dwellId?Math.min((Date.now()-dwellT)/DWELL,1):0;
-  cx.shadowColor='#00ff88'; cx.shadowBlur=10;
-  cx.strokeStyle='#00ff88'; cx.lineWidth=3;
-  if(prog>0){
-    cx.beginPath();
-    cx.arc(handSX,handSY,22,-Math.PI/2,-Math.PI/2+prog*Math.PI*2);
-    cx.stroke();
-  } else {
-    cx.globalAlpha=0.45;
-    cx.beginPath();cx.arc(handSX,handSY,17,0,Math.PI*2);cx.stroke();
-    cx.globalAlpha=1;
-  }
-  cx.shadowBlur=0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   19. MAIN LOOP
-═══════════════════════════════════════════════════════════════════════ */
-let lastT=0;
-
-function loop(ts){
-  const dt=Math.min((ts-lastT)/1000,0.1); lastT=ts;
-
-  updateHandScreen();
-
-  // Dwell (menu states only)
-  if(gs==='menu'||gs==='results'){
-    const h=hovBtn();
-    if(h&&handCount>0){
-      if(h!==dwellId){ dwellId=h; dwellT=Date.now(); }
-      else if(Date.now()-dwellT>=DWELL){ handleActivate(dwellId); dwellId=null; }
-    } else dwellId=null;
-  }
-
-  // State machine ticks
-  if(gs==='calibrate'){
-    calibTimer-=dt;
-    if(calibTimer<=0){
-      if(calibSamples.length>5){
-        calibBaseline={
-          wx:calibSamples.reduce((s,p)=>s+p.x,0)/calibSamples.length,
-          wy:calibSamples.reduce((s,p)=>s+p.y,0)/calibSamples.length,
-        };
-      }
-      startCountdown();
-    }
-  }
-
-  if(gs==='countdown'){
-    countdownTimer-=dt;
-    const nv=Math.max(0,Math.ceil(countdownTimer)-1);
-    if(nv!==countdownVal&&nv>=0){ countdownVal=nv; sfxCountdown(); }
-    if(countdownTimer<=0){ sfxGo(); startPlay(); }
-  }
-
-  if(gs==='play'){
-    gameTime+=dt;
-    updateMonsters(dt);
-    tickParts();
-  }
-
-  // Render
-  cx.clearRect(0,0,W,H);
-  if(gs==='menu')      drawMenu();
-  if(gs==='calibrate') drawCalibrate();
-  if(gs==='countdown') drawCountdown();
-  if(gs==='play')      drawGamePlay();
-  if(gs==='results')   drawResults();
-
-  requestAnimationFrame(loop);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   20. BOOT
-═══════════════════════════════════════════════════════════════════════ */
-requestAnimationFrame(t=>{ lastT=t; loop(t); });
-waitForMP(setupMediaPipe);
-
-window.addEventListener('beforeunload',()=>{
-  try{ if(mpCam) mpCam.stop(); }catch(e){}
-  try{ if(mpHands) mpHands.close(); }catch(e){}
-});
+init();
+})();
 </script>
 </body>
 </html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cookie Monster – Hand Gesture Game</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0d0820;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    user-select: none;
+  }
+  #container {
+    position: relative;
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #game-canvas {
+    display: block;
+    width: 100%; height: 100%;
+    position: absolute; top: 0; left: 0;
+  }
+  #video-feed {
+    position: absolute; top: 8px; right: 8px;
+    width: 160px; height: 120px;
+    border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.15);
+    object-fit: cover;
+    transform: scaleX(-1);
+    z-index: 10;
+    opacity: 0.85;
+  }
+  #hand-debug {
+    position: absolute; top: 136px; right: 8px;
+    font-size: 11px; color: rgba(255,255,255,0.5);
+    z-index: 10; text-align: right;
+    line-height: 1.6;
+  }
+  #hidden-video { display: none; }
+</style>
+</head>
+<body>
+<div id="container">
+  <canvas id="game-canvas"></canvas>
+  <video id="video-feed" autoplay playsinline muted></video>
+  <video id="hidden-video" autoplay playsinline muted></video>
+  <div id="hand-debug"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script>
+/* ─── Canvas setup ─────────────────────────────────────── */
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const videoFeed = document.getElementById('video-feed');
+const hiddenVideo = document.getElementById('hidden-video');
+const debugEl = document.getElementById('hand-debug');
+
+let W, H;
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); if (state !== 'playing') buildButtons(); });
+
+/* ─── State ────────────────────────────────────────────── */
+let state = 'loading'; // loading | start | playing | gameover
+let score = 0;
+let timeLeft = 45;
+let gameTimer = null;
+let cookies = [];
+let particles = [];
+let stars = [];
+let buttons = [];
+
+/* ─── Hand tracking state ──────────────────────────────── */
+let handX = -999, handY = -999; // screen coords of index finger tip
+let handVisible = false;
+
+/* ─── Hover-to-select state ────────────────────────────── */
+const HOVER_DURATION = 500; // ms to hover to confirm
+let hoverTarget = null;   // which button is being hovered
+let hoverStart  = 0;      // timestamp when hover began
+
+/* ─── Monster state ────────────────────────────────────── */
+const monster = {
+  x: 0, y: 0,
+  targetX: 0, targetY: 0,
+  mouth: 0.05, mouthDir: 1,
+  wiggle: 0, wiggleV: 0,
+  eating: 0,
+};
+
+/* ─── Stars ────────────────────────────────────────────── */
+for (let i = 0; i < 90; i++) {
+  stars.push({ x: Math.random(), y: Math.random(), r: Math.random() * 1.5 + 0.3, phase: Math.random() * Math.PI * 2 });
+}
+
+/* ─── Button builder ───────────────────────────────────── */
+function buildButtons() {
+  buttons = [];
+  if (state === 'start') {
+    buttons.push({ id: 'start', label: '▶  Start Game', x: W / 2, y: H * 0.62, w: 220, h: 52, action: startGame });
+  } else if (state === 'gameover') {
+    buttons.push({ id: 'restart', label: '↺  Play Again', x: W / 2, y: H * 0.67, w: 220, h: 52, action: () => { startGame(); } });
+  }
+}
+
+/* ─── Cookie factory ───────────────────────────────────── */
+const COOKIE_R = 18;
+const MONSTER_R = 46;
+function spawnCookies() {
+  cookies = [];
+  const margin = 80;
+  for (let i = 0; i < 20; i++) {
+    cookies.push({
+      x: margin + Math.random() * (W - margin * 2),
+      y: margin + Math.random() * (H - margin * 2),
+      eaten: false,
+      scale: 0,
+      wobble: Math.random() * Math.PI * 2,
+      id: i,
+    });
+  }
+}
+
+/* ─── Particles ────────────────────────────────────────── */
+function burst(x, y) {
+  const colors = ['#FAC775', '#F0997B', '#97C459', '#5DCAA5', '#fff'];
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 2.5 + Math.random() * 4;
+    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1, life: 1, r: 3 + Math.random() * 4, c: colors[i % colors.length] });
+  }
+}
+
+/* ─── Game flow ────────────────────────────────────────── */
+function startGame() {
+  score = 0;
+  timeLeft = 45;
+  particles = [];
+  spawnCookies();
+  monster.x = W / 2; monster.y = H / 2;
+  monster.targetX = W / 2; monster.targetY = H / 2;
+  state = 'playing';
+  buttons = [];
+  if (gameTimer) clearInterval(gameTimer);
+  gameTimer = setInterval(() => {
+    timeLeft--;
+    if (timeLeft <= 0) { timeLeft = 0; endGame(); }
+  }, 1000);
+}
+
+function endGame() {
+  clearInterval(gameTimer);
+  state = 'gameover';
+  buildButtons();
+}
+
+/* ─── Drawing helpers ───────────────────────────────────── */
+function drawBg(t) {
+  ctx.fillStyle = '#0d0820';
+  ctx.fillRect(0, 0, W, H);
+
+  // subtle grid
+  ctx.save();
+  ctx.strokeStyle = 'rgba(83,74,183,0.08)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.restore();
+
+  // stars
+  stars.forEach(s => {
+    const alpha = 0.25 + 0.35 * Math.sin(t * 0.0008 + s.phase);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawCookie(c) {
+  if (c.eaten) return;
+  c.scale = Math.min(1, c.scale + 0.06);
+  c.wobble += 0.025;
+  const r = COOKIE_R * c.scale;
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate(Math.sin(c.wobble) * 0.04);
+
+  // shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 8;
+
+  // body
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#C68642'; ctx.fill();
+  ctx.strokeStyle = '#8B5E3C'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // highlight
+  ctx.beginPath(); ctx.arc(-r * 0.25, -r * 0.25, r * 0.35, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,220,130,0.2)'; ctx.fill();
+
+  // chips
+  [[-6, -5], [5, -7], [-4, 4], [7, 3], [0, -1], [-8, 2], [3, 8]].forEach(([cx, cy]) => {
+    const scale2 = r / COOKIE_R;
+    ctx.beginPath(); ctx.arc(cx * scale2, cy * scale2, 2.2 * scale2, 0, Math.PI * 2);
+    ctx.fillStyle = '#3d1c02'; ctx.fill();
+  });
+  ctx.restore();
+}
+
+function drawMonster(mx, my) {
+  const s = MONSTER_R;
+  ctx.save();
+  ctx.translate(mx, my);
+  ctx.rotate(monster.wiggle * 0.06);
+
+  // glow
+  const grd = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 1.8);
+  grd.addColorStop(0, 'rgba(21,101,192,0.3)');
+  grd.addColorStop(1, 'rgba(21,101,192,0)');
+  ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(0, 0, s * 1.8, 0, Math.PI * 2); ctx.fill();
+
+  // body
+  ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2);
+  ctx.fillStyle = '#1565C0'; ctx.fill();
+
+  // fur bumps
+  for (let a = 0; a < Math.PI * 2; a += 0.4) {
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * (s - 4), Math.sin(a) * (s - 4), 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#1976D2'; ctx.fill();
+  }
+
+  // mouth opening
+  const mAngle = monster.mouth;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, 6);
+  ctx.arc(0, 8, s * 0.56, Math.PI + mAngle, -mAngle, false);
+  ctx.closePath();
+  ctx.fillStyle = '#111'; ctx.fill();
+  // teeth
+  const teethCount = 5;
+  const teethSpread = s * 0.9;
+  for (let i = 0; i < teethCount; i++) {
+    const tx = -teethSpread / 2 + (teethSpread / (teethCount - 1)) * i;
+    ctx.beginPath(); ctx.arc(tx, 8 + s * 0.56 - 8, 4.5, 0, Math.PI);
+    ctx.fillStyle = '#f5f5f5'; ctx.fill();
+  }
+  ctx.restore();
+
+  // eyes
+  [[-14, -12], [14, -12]].forEach(([ex, ey]) => {
+    ctx.beginPath(); ctx.arc(ex, ey, 11, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.beginPath(); ctx.arc(ex + 2, ey + 2, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#111'; ctx.fill();
+    ctx.beginPath(); ctx.arc(ex + 4, ey, 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+  });
+
+  // outline
+  ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2.5; ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawFingerCursor(x, y) {
+  if (!handVisible || x < 0) return;
+  ctx.save();
+  // outer pulse ring
+  const pulse = 0.4 + 0.3 * Math.sin(Date.now() * 0.005);
+  ctx.globalAlpha = pulse;
+  ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2);
+  ctx.strokeStyle = '#FAC775'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // inner dot
+  ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#FAC775'; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+}
+
+function drawHoverProgress(btn) {
+  if (!btn || hoverTarget !== btn.id) return;
+  const pct = Math.min(1, (Date.now() - hoverStart) / HOVER_DURATION);
+  if (pct <= 0) return;
+  ctx.save();
+  ctx.strokeStyle = '#FAC775';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(btn.x, btn.y, btn.w / 2 + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawButton(btn, now) {
+  const isHovering = hoverTarget === btn.id;
+  const pct = isHovering ? Math.min(1, (now - hoverStart) / HOVER_DURATION) : 0;
+
+  ctx.save();
+  ctx.translate(btn.x, btn.y);
+
+  // bg
+  ctx.beginPath();
+  ctx.roundRect(-btn.w / 2, -btn.h / 2, btn.w, btn.h, 12);
+  ctx.fillStyle = isHovering ? `rgba(83,74,183,${0.5 + pct * 0.4})` : 'rgba(83,74,183,0.25)';
+  ctx.fill();
+  ctx.strokeStyle = isHovering ? '#AFA9EC' : 'rgba(175,169,236,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // fill bar
+  if (isHovering && pct > 0) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(-btn.w / 2, -btn.h / 2, btn.w * pct, btn.h, 12);
+    ctx.fillStyle = 'rgba(175,169,236,0.25)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // label
+  ctx.fillStyle = '#fff';
+  ctx.font = `500 17px 'Segoe UI', system-ui, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(btn.label, 0, 0);
+
+  ctx.restore();
+  drawHoverProgress(btn);
+}
+
+function drawHUD() {
+  // timer bar
+  const bw = Math.min(W * 0.45, 280);
+  const bx = W / 2 - bw / 2, by = 14, bh = 26;
+  const pct = timeLeft / 45;
+  const barColor = pct > 0.5 ? '#1D9E75' : pct > 0.25 ? '#EF9F27' : '#E24B4A';
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath(); ctx.roundRect(bx - 6, by - 4, bw + 12, bh + 8, 10); ctx.fill();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill();
+
+  ctx.fillStyle = barColor;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw * pct, bh, 6); ctx.fill();
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '500 13px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`⏱  ${timeLeft}s`, W / 2, by + bh / 2);
+
+  // score
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath(); ctx.roundRect(W - 92, 14, 80, 30, 8); ctx.fill();
+  ctx.fillStyle = '#FAC775';
+  ctx.font = '500 14px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`🍪  ${score}`, W - 52, 29);
+
+  // remaining
+  const left = cookies.filter(c => !c.eaten).length;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath(); ctx.roundRect(12, 14, 90, 30, 8); ctx.fill();
+  ctx.fillStyle = '#9FE1CB';
+  ctx.font = '500 13px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`left: ${left}`, 57, 29);
+
+  ctx.restore();
+}
+
+function drawStartScreen(t) {
+  // title
+  ctx.save();
+  const pulse = 1 + 0.015 * Math.sin(t * 0.002);
+  ctx.translate(W / 2, H * 0.22);
+  ctx.scale(pulse, pulse);
+
+  ctx.fillStyle = '#1565C0';
+  ctx.font = `900 ${Math.min(82, W * 0.11)}px 'Segoe UI', system-ui, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(21,101,192,0.7)'; ctx.shadowBlur = 30;
+  ctx.fillText('COOKIE', 0, 0);
+
+  ctx.fillStyle = '#FAC775';
+  ctx.shadowColor = 'rgba(250,199,117,0.5)'; ctx.shadowBlur = 20;
+  ctx.fillText('MONSTER', 0, Math.min(90, W * 0.12));
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // subtitle
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = '400 16px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('Move your hand → monster follows · Hover finger over button to select', W / 2, H * 0.5);
+
+  // hint
+  ctx.fillStyle = 'rgba(175,169,236,0.7)';
+  ctx.font = '400 13px system-ui';
+  ctx.fillText('Point with your index finger and hold over the button', W / 2, H * 0.56);
+
+  buttons.forEach(b => drawButton(b, t));
+  drawFingerCursor(handX, handY);
+}
+
+function drawGameScreen(t) {
+  cookies.forEach(c => drawCookie(c));
+
+  // monster follows hand
+  if (handVisible) {
+    monster.targetX = handX;
+    monster.targetY = handY;
+  }
+  monster.x += (monster.targetX - monster.x) * 0.14;
+  monster.y += (monster.targetY - monster.y) * 0.14;
+
+  // mouth animate
+  monster.mouth += 0.055 * monster.mouthDir;
+  if (monster.mouth > 0.75) monster.mouthDir = -1;
+  if (monster.mouth < 0.02) monster.mouthDir = 1;
+
+  // wiggle
+  monster.wiggleV += (Math.random() - 0.5) * 0.4;
+  monster.wiggleV *= 0.85;
+  monster.wiggle += monster.wiggleV;
+
+  // eat check
+  cookies.forEach(c => {
+    if (c.eaten) return;
+    const dx = monster.x - c.x, dy = monster.y - c.y;
+    if (Math.sqrt(dx * dx + dy * dy) < MONSTER_R + COOKIE_R - 6) {
+      c.eaten = true;
+      score++;
+      burst(c.x, c.y);
+      if (cookies.every(cc => cc.eaten)) endGame();
+    }
+  });
+
+  // particles
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.12; p.life -= 0.035;
+    ctx.save(); ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  });
+
+  drawMonster(monster.x, monster.y);
+  drawHUD();
+  drawFingerCursor(handX, handY);
+}
+
+function drawGameoverScreen(t) {
+  // dim
+  ctx.save();
+  ctx.fillStyle = 'rgba(13,8,32,0.72)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // panel
+  const pw = Math.min(400, W * 0.85), ph = 260;
+  const px = W / 2 - pw / 2, py = H / 2 - ph / 2;
+  ctx.save();
+  ctx.fillStyle = 'rgba(20,14,50,0.95)';
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 18); ctx.fill();
+  ctx.strokeStyle = 'rgba(175,169,236,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+
+  const allEaten = cookies.every(c => c.eaten);
+  ctx.fillStyle = '#fff';
+  ctx.font = `500 ${Math.min(28, W * 0.05)}px system-ui`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(allEaten ? '🎉 Board cleared!' : "⏰ Time's up!", W / 2, py + 52);
+
+  ctx.fillStyle = '#FAC775';
+  ctx.font = `500 ${Math.min(42, W * 0.08)}px system-ui`;
+  ctx.fillText(`${score} cookies`, W / 2, py + 110);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '400 14px system-ui';
+  ctx.fillText(`out of ${cookies.length} eaten`, W / 2, py + 148);
+
+  buttons.forEach(b => drawButton(b, t));
+  drawFingerCursor(handX, handY);
+}
+
+function drawLoadingScreen() {
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '400 18px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('📷  Initialising camera & hand tracking…', W / 2, H / 2);
+  ctx.fillStyle = 'rgba(175,169,236,0.5)';
+  ctx.font = '400 13px system-ui';
+  ctx.fillText('Please allow camera access when prompted', W / 2, H / 2 + 34);
+}
+
+/* ─── Hover detection ──────────────────────────────────── */
+function checkHover(now) {
+  if (!handVisible) { hoverTarget = null; return; }
+  let hit = null;
+  for (const btn of buttons) {
+    if (Math.abs(handX - btn.x) < btn.w / 2 && Math.abs(handY - btn.y) < btn.h / 2) {
+      hit = btn.id;
+      break;
+    }
+  }
+  if (hit !== hoverTarget) { hoverTarget = hit; hoverStart = now; }
+  if (hit && now - hoverStart >= HOVER_DURATION) {
+    const btn = buttons.find(b => b.id === hit);
+    if (btn) { hoverTarget = null; btn.action(); }
+  }
+}
+
+/* ─── Main loop ────────────────────────────────────────── */
+let lastT = 0;
+function loop(t) {
+  requestAnimationFrame(loop);
+  lastT = t;
+  drawBg(t);
+
+  checkHover(t);
+
+  if (state === 'loading')  drawLoadingScreen();
+  if (state === 'start')    drawStartScreen(t);
+  if (state === 'playing')  drawGameScreen(t);
+  if (state === 'gameover') drawGameoverScreen(t);
+}
+requestAnimationFrame(loop);
+
+/* ─── MediaPipe Hand Tracking ──────────────────────────── */
+function onHandResults(results) {
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    handVisible = true;
+    const lm = results.multiHandLandmarks[0];
+
+    // Index fingertip = landmark 8, mirrored on X
+    const tip = lm[8];
+    handX = (1 - tip.x) * W;
+    handY = tip.y * H;
+
+    debugEl.textContent = `✋ hand detected\nindex: (${Math.round(handX)}, ${Math.round(handY)})`;
+  } else {
+    handVisible = false;
+    debugEl.textContent = 'no hand detected';
+  }
+}
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    videoFeed.srcObject = stream;
+    hiddenVideo.srcObject = stream;
+    await hiddenVideo.play();
+
+    const hands = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+    });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.55,
+    });
+    hands.onResults(onHandResults);
+
+    const camera = new Camera(hiddenVideo, {
+      onFrame: async () => { await hands.send({ image: hiddenVideo }); },
+      width: 640, height: 480,
+    });
+    camera.start();
+
+    monster.x = W / 2; monster.y = H / 2;
+    monster.targetX = W / 2; monster.targetY = H / 2;
+    state = 'start';
+    buildButtons();
+
+  } catch (e) {
+    state = 'start'; // fallback — still show game screen
+    buildButtons();
+    debugEl.textContent = 'Camera error: ' + e.message;
+  }
+}
+
+initTracking();
+</script>
+</body>
+</html>

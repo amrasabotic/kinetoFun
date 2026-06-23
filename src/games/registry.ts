@@ -37,6 +37,33 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'goalkeeper-hero':            { folder: 'goalkeeper-hero',            indexPath: '/games/goalkeeper-hero/index.html' },
   'language-adventure':         { folder: 'language-adventure',         indexPath: '/games/language-adventure/index.html' },
   'monster-dodge':              { folder: 'monster-dodge',              indexPath: '/games/monster-dodge/index.html' },
+
+  // ── New plain HTML games ──────────────────────────────────────────────────
+  'air-coloring-book':      { folder: 'air-coloring-book',      indexPath: '/games/air-coloring-book/index.html' },
+  'air-painting':           { folder: 'air-painting',           indexPath: '/games/air-painting/index.html' },
+  'block-blast-gesture':    { folder: 'block-blast-gesture',    indexPath: '/games/block-blast-gesture/index.html' },
+  'block-blast-gestures':   { folder: 'block-blast-gestures',   indexPath: '/games/block-blast-gestures/index.html' },
+  'butterfly-catch':        { folder: 'butterfly-catch',        indexPath: '/games/butterfly-catch/index.html' },
+  'catch-the-falling-stars':{ folder: 'catch-the-falling-stars',indexPath: '/games/catch-the-falling-stars/index.html' },
+  'cookie-monster-game':    { folder: 'cookie-monster-game',    indexPath: '/games/cookie-monster-game/index.html' },
+  'fish-catcher':           { folder: 'fish-catcher',           indexPath: '/games/fish-catcher/index.html' },
+  'funny-face-contest':     { folder: 'funny-face-contest',     indexPath: '/games/funny-face-contest/index.html' },
+  'gesture-ludo-king':      { folder: 'gesture-ludo-king',      indexPath: '/games/gesture-ludo-king/index.html' },
+  'gesture-space-shooter':  { folder: 'gesture-space-shooter',  indexPath: '/games/gesture-space-shooter/index.html' },
+  'gesture_brickbreaker':   { folder: 'gesture_brickbreaker',   indexPath: '/games/gesture_brickbreaker/index.html' },
+  'gesture_dash_v2':        { folder: 'gesture_dash_v2',        indexPath: '/games/gesture_dash_v2/index.html' },
+  'gesture_mario':          { folder: 'gesture_mario',          indexPath: '/games/gesture_mario/index.html' },
+  'gesture_racer_v4':       { folder: 'gesture_racer_v4',       indexPath: '/games/gesture_racer_v4/index.html' },
+  'hand-snake-pro':         { folder: 'hand-snake-pro',         indexPath: '/games/hand-snake-pro/index.html' },
+  'handcell-game':          { folder: 'handcell-game',          indexPath: '/games/handcell-game/index.html' },
+  'knife-hit-gesture':      { folder: 'knife-hit-gesture',      indexPath: '/games/knife-hit-gesture/index.html' },
+  'magic_cleaning':         { folder: 'magic_cleaning',         indexPath: '/games/magic_cleaning/index.html' },
+  'ninja-star-throw':       { folder: 'ninja-star-throw',       indexPath: '/games/ninja-star-throw/index.html' },
+  'penalty_shooter':        { folder: 'penalty_shooter',        indexPath: '/games/penalty_shooter/index.html' },
+  'rock-paper-scissors':    { folder: 'rock-paper-scissors',    indexPath: '/games/rock-paper-scissors/index.html' },
+  'space-defender':         { folder: 'space-defender',         indexPath: '/games/space-defender/index.html' },
+  'whack_a_mole_hand':      { folder: 'whack_a_mole_hand',      indexPath: '/games/whack_a_mole_hand/index.html' },
+  'wizard-academy':         { folder: 'wizard-academy',         indexPath: '/games/wizard-academy/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */

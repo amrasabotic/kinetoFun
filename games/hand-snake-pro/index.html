@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hand Snake Pro</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+canvas#gc { display: block; position: fixed; top: 0; left: 0; }
+#ui { position: fixed; bottom: 16px; right: 16px; z-index: 20; }
+#camBox { position: relative; width: 160px; height: 120px; border-radius: 10px; overflow: hidden; border: 1.5px solid rgba(57,217,138,0.5); }
+video { display: block; width: 160px; height: 120px; transform: scaleX(-1); object-fit: cover; }
+#hc { position: absolute; top: 0; left: 0; width: 160px; height: 120px; transform: scaleX(-1); pointer-events: none; }
+#ghud { margin-top: 8px; background: rgba(0,0,0,0.7); color: #fff; font-size: 11px; padding: 6px 10px; border-radius: 8px; text-align: center; border: 0.5px solid rgba(255,255,255,0.1); }
+#scorebar { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 20; }
+.pill { background: rgba(0,0,0,0.7); border: 0.5px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 6px 18px; color: #fff; font-size: 13px; font-weight: 600; }
+.pill em { color: #39d98a; font-style: normal; }
+.pill.boost em { color: #ffd93d; }
+#dbg { position: fixed; top: 16px; left: 16px; color: rgba(255,255,255,0.4); font-size: 11px; z-index: 20; line-height: 1.6; }
+</style>
+</head>
+<body>
+<canvas id="gc"></canvas>
+<div id="ui">
+  <div id="camBox">
+    <video id="vid" autoplay playsinline muted></video>
+    <canvas id="hc" width="160" height="120"></canvas>
+  </div>
+  <div id="ghud"><span id="glbl">Loading…</span></div>
+</div>
+<div id="scorebar" style="display:none">
+  <div class="pill">Score <em id="sv">0</em></div>
+  <div class="pill">Best <em id="bv">0</em></div>
+  <div class="pill boost">Boost <em id="blbl">OFF</em></div>
+  <div class="pill">Alive <em id="av">6</em></div>
+</div>
+<div id="dbg"><span id="stlbl">Starting…</span></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+// ─── POLYFILL roundRect ──────────────────────────────────────────────────────
+(function(){
+  const p = CanvasRenderingContext2D.prototype;
+  if (p.roundRect) return;
+  p.roundRect = function(x, y, w, h, r) {
+    r = Math.min(+r || 0, w / 2, h / 2);
+    this.beginPath();
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y,     x + w, y + h, r);
+    this.arcTo(x + w, y + h, x,     y + h, r);
+    this.arcTo(x,     y + h, x,     y,     r);
+    this.arcTo(x,     y,     x + w, y,     r);
+    this.closePath();
+    return this;
+  };
+})();
+
+// ─── CANVAS ─────────────────────────────────────────────────────────────────
+const gc  = document.getElementById('gc');
+const ctx = gc.getContext('2d');
+const hcv = document.getElementById('hc');
+const hx  = hcv.getContext('2d');
+
+function resize() { gc.width = window.innerWidth; gc.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const WORLD = 3000;
+const CELL  = 22;
+const NBOTS = 5;
+const NFOOD = 180;
+const P_SPD = 2.8;
+const P_BST = 5.5;
+const B_SPD = 2.0;
+const SEG_D = 14;
+const P_R   = 10;
+const B_R   = 9;
+const F_R   = 7;
+const HOLD_NEED = 15;   // mediapipe frames ≈ 0.5 s
+const HOVER_D   = 85;   // px radius to hover a menu item
+
+const BOT_PALS = [
+  ['#ff4d6d','#c9184a','#800f2f'],
+  ['#f77f00','#d62828','#a4133c'],
+  ['#7b2d8b','#5a189a','#3c096c'],
+  ['#0077b6','#023e8a','#03045e'],
+  ['#f4a261','#e76f51','#e63946'],
+];
+const PLR_PAL = ['#39d98a','#1d9e75','#0f5e47'];
+const F_COLS  = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#f06595','#74c0fc'];
+
+// ─── GAME STATE ──────────────────────────────────────────────────────────────
+let STATE    = 'MENU';
+let score    = 0, best = 0, frameN = 0;
+let cdVal    = 3, cdTimer = null, deathAt = 0;
+let foods    = [], player = null, bots = [], sparks = [];
+let camX     = 0, camY = 0;
+let boosting = false;
+
+// ─── GESTURE STATE ───────────────────────────────────────────────────────────
+let fingerVis = false;
+let fX = 0, fY = 0;          // finger cursor on screen (px)
+let sfX = 0.5, sfY = 0.5;    // smoothed normalised position
+let extCount = 0;             // extended finger count
+const SM = 0.3;
+
+// Menu hover/hold
+let menuItems  = [];          // [{x,y,action,idx}]
+let hovIdx     = -1;
+let holdFrames = 0;
+let holdFired  = false;
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function lerpRGB(a, b, t) {
+  const r = s => parseInt(s.slice(1,3),16);
+  const g = s => parseInt(s.slice(3,5),16);
+  const bl= s => parseInt(s.slice(5,7),16);
+  return `rgb(${Math.round(r(a)+(r(b)-r(a))*t)},${Math.round(g(a)+(g(b)-g(a))*t)},${Math.round(bl(a)+(bl(b)-bl(a))*t)})`;
+}
+function dsq(a, b) { const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
+
+// ─── SNAKE ───────────────────────────────────────────────────────────────────
+class Snake {
+  constructor(x, y, pal, isPlayer, name) {
+    this.pal      = pal;
+    this.isPlayer = isPlayer;
+    this.name     = name || '';
+    this.r        = isPlayer ? P_R : B_R;
+    this.alive    = true;
+    this.ang      = Math.random() * Math.PI * 2;
+    this.tgtAng   = this.ang;
+    this.scOff    = Math.random() * 10;
+    this.tongue   = 0;
+    this.tongDir  = 1;
+    this.botDir   = this.ang;
+    this.botTimer = 0;
+    // build initial body
+    this.body = [];
+    for (let i = 0; i < 22; i++) {
+      this.body.push({
+        x: x - Math.cos(this.ang) * i * SEG_D * 0.8,
+        y: y - Math.sin(this.ang) * i * SEG_D * 0.8
+      });
+    }
+  }
+
+  get head() { return this.body[0]; }
+  get len()  { return this.body.length; }
+
+  grow(n) {
+    const tail = this.body[this.body.length - 1];
+    for (let i = 0; i < n; i++) this.body.push({ x: tail.x, y: tail.y });
+  }
+
+  step(targetAngle, speed) {
+    if (!this.alive) return;
+
+    // smooth turn
+    let da = targetAngle - this.ang;
+    while (da >  Math.PI) da -= Math.PI * 2;
+    while (da < -Math.PI) da += Math.PI * 2;
+    this.ang += da * (this.isPlayer ? 0.14 : 0.07);
+
+    // wall bounce
+    const nx = this.head.x + Math.cos(this.ang) * speed;
+    const ny = this.head.y + Math.sin(this.ang) * speed;
+    if (nx < this.r || nx > WORLD - this.r) this.ang = Math.PI - this.ang;
+    if (ny < this.r || ny > WORLD - this.r) this.ang = -this.ang;
+
+    const hx2 = Math.max(this.r, Math.min(WORLD - this.r, this.head.x + Math.cos(this.ang) * speed));
+    const hy2 = Math.max(this.r, Math.min(WORLD - this.r, this.head.y + Math.sin(this.ang) * speed));
+    this.body.unshift({ x: hx2, y: hy2 });
+
+    // keep body segments evenly spaced
+    for (let i = this.body.length - 1; i > 0; i--) {
+      const cur  = this.body[i];
+      const prev = this.body[i - 1];
+      const ddx  = prev.x - cur.x;
+      const ddy  = prev.y - cur.y;
+      const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (dist > SEG_D) {
+        cur.x += ddx / dist * (dist - SEG_D);
+        cur.y += ddy / dist * (dist - SEG_D);
+      } else if (dist < SEG_D * 0.5 && this.body.length > 3) {
+        this.body.splice(i, 1);
+        break;
+      }
+    }
+
+    // tongue flicker
+    this.tongue += 0.08 * this.tongDir;
+    if (this.tongue > 1 || this.tongue < 0) this.tongDir *= -1;
+  }
+
+  draw(camX, camY) {
+    if (!this.alive) return;
+    const W = gc.width, H = gc.height;
+    const SX = px => px - camX + W / 2;
+    const SY = py => py - camY + H / 2;
+
+    const hsx = SX(this.head.x);
+    const hsy = SY(this.head.y);
+
+    // off-screen cull
+    if (hsx < -300 || hsx > W + 300 || hsy < -300 || hsy > H + 300) return;
+
+    const N = this.body.length;
+
+    // ── BODY ──
+    for (let i = N - 1; i >= 1; i--) {
+      const seg = this.body[i];
+      const bsx = SX(seg.x);
+      const bsy = SY(seg.y);
+      if (bsx < -80 || bsx > W + 80 || bsy < -80 || bsy > H + 80) continue;
+
+      const t   = i / N;
+      const rad = this.r * (0.55 + 0.45 * (1 - t));
+      const sp  = (i + this.scOff) * 0.6;
+
+      ctx.fillStyle = lerpRGB(this.pal[1], this.pal[2], t * 0.8);
+      ctx.beginPath();
+      ctx.arc(bsx, bsy, rad * (0.82 + 0.18 * Math.sin(sp)), 0, Math.PI * 2);
+      ctx.fill();
+
+      if (rad > 6) {
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.beginPath();
+        ctx.ellipse(bsx - rad * 0.18, bsy - rad * 0.18, rad * 0.38, rad * 0.26, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // ── NECK JOIN ──
+    ctx.strokeStyle = this.pal[1];
+    ctx.lineWidth   = this.r * 1.55;
+    ctx.lineCap     = 'round';
+    ctx.beginPath();
+    ctx.moveTo(SX(this.body[1].x), SY(this.body[1].y));
+    ctx.lineTo(hsx, hsy);
+    ctx.stroke();
+
+    // ── HEAD ──
+    const hr = this.r * 1.18;
+    ctx.fillStyle = this.pal[0];
+    ctx.beginPath();
+    ctx.arc(hsx, hsy, hr, 0, Math.PI * 2);
+    ctx.fill();
+
+    // head scales
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    for (let s = 0; s < 5; s++) {
+      const sa = this.ang + Math.PI / 2 + s * 0.6 - 1.5;
+      ctx.beginPath();
+      ctx.arc(hsx + Math.cos(sa) * hr * 0.45, hsy + Math.sin(sa) * hr * 0.45, hr * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // boost aura
+    if (this.isPlayer && boosting) {
+      ctx.save();
+      ctx.shadowColor = '#ffd93d';
+      ctx.shadowBlur  = 20;
+      ctx.strokeStyle = 'rgba(255,217,61,0.6)';
+      ctx.lineWidth   = 2.5;
+      ctx.beginPath();
+      ctx.arc(hsx, hsy, hr + 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // eyes
+    for (const ea of [this.ang + Math.PI * 0.38, this.ang - Math.PI * 0.38]) {
+      const ex = hsx + Math.cos(ea) * hr * 0.62;
+      const ey = hsy + Math.sin(ea) * hr * 0.62;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(ex, ey, hr * 0.32, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.arc(ex + Math.cos(this.ang) * hr * 0.12, ey + Math.sin(this.ang) * hr * 0.12, hr * 0.17, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath(); ctx.arc(ex - hr * 0.1, ey - hr * 0.1, hr * 0.08, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // nostrils
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.arc(hsx + Math.cos(this.ang + 0.25) * hr * 0.72, hsy + Math.sin(this.ang + 0.25) * hr * 0.72, hr * 0.10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(hsx + Math.cos(this.ang - 0.25) * hr * 0.72, hsy + Math.sin(this.ang - 0.25) * hr * 0.72, hr * 0.10, 0, Math.PI * 2); ctx.fill();
+
+    // tongue
+    const tLen = hr * (1.2 + 0.6 * this.tongue);
+    const tx1  = hsx + Math.cos(this.ang) * (hr + tLen * 0.4);
+    const ty1  = hsy + Math.sin(this.ang) * (hr + tLen * 0.4);
+    const tx2  = hsx + Math.cos(this.ang) * (hr + tLen);
+    const ty2  = hsy + Math.sin(this.ang) * (hr + tLen);
+    ctx.strokeStyle = '#e63946'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(hsx + Math.cos(this.ang) * hr * 0.9, hsy + Math.sin(this.ang) * hr * 0.9); ctx.lineTo(tx1, ty1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx1, ty1); ctx.lineTo(tx2 + Math.cos(this.ang + 0.35) * hr * 0.4, ty2 + Math.sin(this.ang + 0.35) * hr * 0.4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx1, ty1); ctx.lineTo(tx2 + Math.cos(this.ang - 0.35) * hr * 0.4, ty2 + Math.sin(this.ang - 0.35) * hr * 0.4); ctx.stroke();
+
+    // bot name tag
+    if (!this.isPlayer && this.name) {
+      ctx.fillStyle   = 'rgba(255,255,255,0.75)';
+      ctx.font        = 'bold 11px system-ui';
+      ctx.textAlign   = 'center';
+      ctx.fillText(this.name, hsx, hsy - hr - 5);
+    }
+  }
+
+  eatFood() {
+    for (let i = foods.length - 1; i >= 0; i--) {
+      const f  = foods[i];
+      const dx = this.head.x - f.x;
+      const dy = this.head.y - f.y;
+      if (dx * dx + dy * dy < (this.r + F_R) * (this.r + F_R)) {
+        foods.splice(i, 1);
+        spawnFood(1);
+        this.grow(4);
+        if (this.isPlayer) { score++; document.getElementById('sv').textContent = score; }
+        burst(f.x, f.y, f.col, 6);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  collidesWithSnakes(arr) {
+    for (const other of arr) {
+      if (!other.alive) continue;
+      for (let i = 2; i < other.body.length; i++) {
+        const s  = other.body[i];
+        const dx = this.head.x - s.x;
+        const dy = this.head.y - s.y;
+        if (dx * dx + dy * dy < (this.r + other.r * 0.7) * (this.r + other.r * 0.7)) return true;
+      }
+    }
+    return false;
+  }
+}
+
+// ─── FOOD ────────────────────────────────────────────────────────────────────
+function spawnFood(n) {
+  for (let i = 0; i < n; i++) {
+    foods.push({
+      x:     CELL + Math.random() * (WORLD - CELL * 2),
+      y:     CELL + Math.random() * (WORLD - CELL * 2),
+      col:   F_COLS[Math.floor(Math.random() * F_COLS.length)],
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function drawFoods(camX, camY) {
+  const W = gc.width, H = gc.height, t = frameN / 60;
+  for (const f of foods) {
+    const fx = f.x - camX + W / 2;
+    const fy = f.y - camY + H / 2;
+    if (fx < -20 || fx > W + 20 || fy < -20 || fy > H + 20) continue;
+    const pulse = 1 + 0.2 * Math.sin(t * 2 + f.phase);
+    ctx.save();
+    ctx.shadowColor = f.col;
+    ctx.shadowBlur  = 10;
+    ctx.fillStyle   = f.col;
+    ctx.beginPath(); ctx.arc(fx, fy, F_R * pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.arc(fx - F_R * 0.25, fy - F_R * 0.25, F_R * 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ─── PARTICLES ───────────────────────────────────────────────────────────────
+function burst(wx, wy, col, n) {
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 1.5 + Math.random() * 3;
+    sparks.push({ wx, wy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, col, life: 1, r: 3 + Math.random() * 4 });
+  }
+}
+
+function tickSparks(camX, camY) {
+  const W = gc.width, H = gc.height;
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const p = sparks[i];
+    p.wx += p.vx; p.wy += p.vy;
+    p.vx *= 0.92;  p.vy *= 0.92;
+    p.life -= 0.04;
+    if (p.life <= 0) { sparks.splice(i, 1); continue; }
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle   = p.col;
+    ctx.beginPath();
+    ctx.arc(p.wx - camX + W / 2, p.wy - camY + H / 2, p.r * p.life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ─── WORLD ───────────────────────────────────────────────────────────────────
+function drawWorld(camX, camY) {
+  const W = gc.width, H = gc.height;
+  ctx.fillStyle = '#060d10';
+  ctx.fillRect(0, 0, W, H);
+
+  // grid
+  const offX = ((W / 2 - camX) % CELL + CELL) % CELL;
+  const offY = ((H / 2 - camY) % CELL + CELL) % CELL;
+  ctx.strokeStyle = 'rgba(57,217,138,0.05)';
+  ctx.lineWidth   = 0.5;
+  for (let x = offX; x < W; x += CELL) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = offY; y < H; y += CELL) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  // world border
+  const bx = W / 2 - camX, by = H / 2 - camY;
+  ctx.strokeStyle = 'rgba(57,217,138,0.3)';
+  ctx.lineWidth   = 3;
+  ctx.strokeRect(bx, by, WORLD, WORLD);
+}
+
+// ─── MINIMAP ─────────────────────────────────────────────────────────────────
+function drawMinimap() {
+  const W = gc.width, H = gc.height;
+  const mw = 130, mh = 130, mx = W - mw - 16, my = 16;
+  ctx.save();
+  ctx.globalAlpha = 0.75;
+  ctx.fillStyle   = 'rgba(0,0,0,0.75)';
+  ctx.strokeStyle = 'rgba(57,217,138,0.35)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath(); ctx.rect(mx, my, mw, mh); ctx.fill(); ctx.stroke();
+
+  const scx = mw / WORLD, scy = mh / WORLD;
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  for (const f of foods) { ctx.beginPath(); ctx.arc(mx + f.x * scx, my + f.y * scy, 1.2, 0, Math.PI * 2); ctx.fill(); }
+  for (const b of bots)  {
+    if (!b.alive) continue;
+    ctx.fillStyle = b.pal[0];
+    ctx.beginPath(); ctx.arc(mx + b.head.x * scx, my + b.head.y * scy, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  if (player && player.alive) {
+    ctx.fillStyle   = '#39d98a';
+    ctx.beginPath(); ctx.arc(mx + player.head.x * scx, my + player.head.y * scy, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(57,217,138,0.6)'; ctx.lineWidth = 1;
+    ctx.strokeRect(mx + (camX - W/2) * scx, my + (camY - H/2) * scy, W * scx, H * scy);
+  }
+  ctx.restore();
+}
+
+// ─── BOT AI ──────────────────────────────────────────────────────────────────
+function botThink(bot, all) {
+  bot.botTimer--;
+  if (bot.botTimer > 0) return bot.botDir;
+  bot.botTimer = 15 + Math.floor(Math.random() * 25);
+  let bd = Infinity, bf = null;
+  for (const f of foods) { const d = dsq(bot.head, f); if (d < bd) { bd = d; bf = f; } }
+  let ta = bot.ang;
+  if (bf) ta = Math.atan2(bf.y - bot.head.y, bf.x - bot.head.x);
+  const M = 150;
+  if (bot.head.x < M) ta = 0;
+  if (bot.head.x > WORLD - M) ta = Math.PI;
+  if (bot.head.y < M) ta = Math.PI / 2;
+  if (bot.head.y > WORLD - M) ta = -Math.PI / 2;
+  for (const s of all) { if (s === bot || !s.alive) continue; if (dsq(bot.head, s.head) < 100*100) ta = Math.atan2(bot.head.y - s.head.y, bot.head.x - s.head.x); }
+  bot.botDir = ta;
+  return ta;
+}
+
+// ─── CURSOR ──────────────────────────────────────────────────────────────────
+function drawCursor() {
+  if (!fingerVis) return;
+  ctx.save();
+  if (extCount >= 2) {
+    ctx.strokeStyle = 'rgba(255,217,61,0.95)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(fX, fY, 14, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,217,61,0.3)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(fX, fY, 22, 0, Math.PI * 2); ctx.stroke();
+  } else {
+    ctx.strokeStyle = 'rgba(57,217,138,0.95)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(fX, fY, 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(57,217,138,0.4)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(fX - 18, fY); ctx.lineTo(fX - 13, fY);
+    ctx.moveTo(fX + 13, fY); ctx.lineTo(fX + 18, fY);
+    ctx.moveTo(fX, fY - 18); ctx.lineTo(fX, fY - 13);
+    ctx.moveTo(fX, fY + 13); ctx.lineTo(fX, fY + 18);
+    ctx.stroke();
+  }
+  // hold progress arc
+  if ((STATE === 'MENU' || STATE === 'DEAD') && holdFrames > 0) {
+    const prog = holdFrames / HOLD_NEED;
+    ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.arc(fX, fY, 20, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ─── MENU ────────────────────────────────────────────────────────────────────
+const MENU_DEFS = [{ lbl: '▶  PLAY', act: 'play' }, { lbl: '✕  QUIT', act: 'quit' }];
+
+function drawMenu() {
+  const W = gc.width, H = gc.height, cx = W / 2, cy = H / 2;
+  ctx.fillStyle = '#060d10';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  // Title
+  ctx.shadowColor = '#39d98a'; ctx.shadowBlur = 40;
+  ctx.fillStyle   = '#39d98a';
+  ctx.font        = `bold ${Math.min(80, W / 9)}px 'Segoe UI', sans-serif`;
+  ctx.fillText('🐍 HAND SNAKE', cx, cy - 130);
+  ctx.shadowBlur  = 0;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '15px system-ui';
+  ctx.fillText('Point your finger at a button and hold 0.5s to select', cx, cy - 85);
+
+  // Menu items
+  menuItems = [];
+  for (let i = 0; i < MENU_DEFS.length; i++) {
+    const def = MENU_DEFS[i];
+    const iy  = cy + i * 72 - 10;
+    menuItems.push({ x: cx, y: iy, act: def.act, idx: i });
+
+    const isHov  = hovIdx === i;
+    const prog   = isHov ? holdFrames / HOLD_NEED : 0;
+
+    // Button background
+    ctx.fillStyle   = isHov ? `rgba(57,217,138,${0.08 + prog * 0.14})` : 'rgba(255,255,255,0.04)';
+    ctx.strokeStyle = isHov ? `rgba(57,217,138,${0.35 + prog * 0.65})` : 'rgba(255,255,255,0.12)';
+    ctx.lineWidth   = isHov ? 1.5 : 0.5;
+    ctx.beginPath();
+    ctx.rect(cx - 155, iy - 38, 310, 58);
+    ctx.fill(); ctx.stroke();
+
+    // Hold arc
+    if (isHov && prog > 0) {
+      ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, iy - 10, 32, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = isHov ? '#39d98a' : 'rgba(255,255,255,0.6)';
+    ctx.font      = (isHov ? 'bold ' : '') + '23px "Segoe UI", sans-serif';
+    ctx.fillText(def.lbl, cx, iy + 7);
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.font = '12px system-ui';
+  ctx.fillText('☝ One finger = steer snake   ✌ Two fingers = BOOST   Hold 0.5s to select', cx, cy + 175);
+
+  drawCursor();
+  ctx.restore();
+}
+
+// ─── COUNTDOWN ───────────────────────────────────────────────────────────────
+function drawCountdown() {
+  const W = gc.width, H = gc.height;
+  ctx.fillStyle = '#060d10'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '18px system-ui';
+  ctx.fillText('Get your hand ready…', W / 2, H / 2 - 80);
+  ctx.shadowColor = '#39d98a'; ctx.shadowBlur = 60;
+  ctx.fillStyle   = '#39d98a'; ctx.font = 'bold 120px "Segoe UI"';
+  ctx.fillText(String(cdVal), W / 2, H / 2 + 45);
+  ctx.restore();
+}
+
+// ─── DEAD SCREEN ─────────────────────────────────────────────────────────────
+function drawDead() {
+  const W = gc.width, H = gc.height, cx = W / 2, cy = H / 2;
+  const elapsed = (Date.now() - deathAt) / 1000;
+  ctx.fillStyle   = `rgba(0,0,0,${Math.min(0.82, elapsed * 1.5)})`;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.shadowColor = '#e63946'; ctx.shadowBlur = 30;
+  ctx.fillStyle   = '#e63946'; ctx.font = 'bold 64px "Segoe UI"';
+  ctx.fillText('YOU DIED', cx, cy - 70);
+  ctx.shadowBlur  = 0;
+  ctx.fillStyle   = 'rgba(255,255,255,0.75)'; ctx.font = '22px system-ui';
+  ctx.fillText('Score: ' + score + '   Best: ' + best, cx, cy - 10);
+  ctx.fillStyle   = 'rgba(255,255,255,0.45)'; ctx.font = '15px system-ui';
+  ctx.fillText('☝ Point here and hold 0.5s to restart', cx, cy + 42);
+
+  // restart hover target
+  menuItems = [{ x: cx, y: cy + 42, act: 'restart', idx: 0 }];
+
+  if (hovIdx === 0 && holdFrames > 0) {
+    const prog = holdFrames / HOLD_NEED;
+    const bw = 220, bh = 7, bx2 = cx - 110, by2 = cy + 62;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.rect(bx2, by2, bw, bh); ctx.fill();
+    ctx.fillStyle = '#39d98a'; ctx.beginPath(); ctx.rect(bx2, by2, bw * prog, bh); ctx.fill();
+  }
+  drawCursor();
+  ctx.restore();
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+const BOT_NAMES = ['Cobra', 'Viper', 'Mamba', 'Python', 'Rattler'];
+
+function initGame() {
+  foods   = []; sparks = []; bots = [];
+  score   = 0;   boosting = false;
+  document.getElementById('sv').textContent = '0';
+  spawnFood(NFOOD);
+  player = new Snake(WORLD / 2, WORLD / 2, PLR_PAL, true, 'You');
+  camX = player.head.x; camY = player.head.y;
+  for (let i = 0; i < NBOTS; i++) {
+    const bx = 300 + Math.random() * (WORLD - 600);
+    const by = 300 + Math.random() * (WORLD - 600);
+    bots.push(new Snake(bx, by, BOT_PALS[i], false, BOT_NAMES[i]));
+  }
+  document.getElementById('scorebar').style.display = 'flex';
+  document.getElementById('av').textContent = NBOTS + 1;
+}
+
+function startCountdown() {
+  STATE = 'COUNTDOWN'; cdVal = 3;
+  initGame();
+  cdTimer = setInterval(() => { cdVal--; if (cdVal <= 0) { clearInterval(cdTimer); STATE = 'PLAYING'; } }, 1000);
+}
+
+function killPlayer() {
+  if (!player) return;
+  player.alive = false;
+  burst(player.head.x, player.head.y, '#39d98a', 22);
+  if (score > best) best = score;
+  document.getElementById('bv').textContent = best;
+  STATE = 'DEAD'; deathAt = Date.now();
+  menuItems = []; hovIdx = -1; holdFrames = 0; holdFired = false;
+}
+
+function doRestart() {
+  document.getElementById('scorebar').style.display = 'none';
+  STATE = 'MENU'; menuItems = []; hovIdx = -1; holdFrames = 0; holdFired = false;
+}
+
+// ─── HOVER / HOLD ────────────────────────────────────────────────────────────
+function tickHover() {
+  if (!fingerVis) { hovIdx = -1; holdFrames = 0; holdFired = false; return; }
+  let found = -1;
+  for (const item of menuItems) {
+    const dx = fX - item.x, dy = fY - item.y;
+    if (dx * dx + dy * dy < HOVER_D * HOVER_D) { found = item.idx; break; }
+  }
+  if (found !== -1) {
+    if (hovIdx !== found) { hovIdx = found; holdFrames = 0; holdFired = false; }
+    holdFrames = Math.min(holdFrames + 1, HOLD_NEED);
+    if (holdFrames >= HOLD_NEED && !holdFired) {
+      holdFired = true;
+      const act = (menuItems.find(m => m.idx === found) || {}).act;
+      if      (act === 'play')    startCountdown();
+      else if (act === 'quit')    { try { window.close(); } catch(e) {} }
+      else if (act === 'restart') doRestart();
+    }
+  } else {
+    hovIdx = -1;
+    holdFrames = Math.max(0, holdFrames - 2);
+    if (holdFrames === 0) holdFired = false;
+  }
+}
+
+// ─── MAIN LOOP ───────────────────────────────────────────────────────────────
+function loop() {
+  frameN++;
+
+  if (STATE === 'MENU' || STATE === 'DEAD') tickHover();
+  if (STATE === 'MENU')      { drawMenu();      return; }
+  if (STATE === 'COUNTDOWN') { drawCountdown(); return; }
+
+  // ── PHYSICS ──
+  const all = [player, ...bots].filter(s => s && s.alive);
+
+  if (STATE === 'PLAYING' && player && player.alive) {
+    // Finger → world target
+    if (fingerVis) {
+      const W = gc.width, H = gc.height;
+      const wx = fX - W / 2 + camX;
+      const wy = fY - H / 2 + camY;
+      const dx = wx - player.head.x;
+      const dy = wy - player.head.y;
+      if (dx * dx + dy * dy > 30) player.tgtAng = Math.atan2(dy, dx);
+    }
+    boosting = fingerVis && extCount >= 2;
+    player.step(player.tgtAng, boosting ? P_BST : P_SPD);
+    player.eatFood();
+    document.getElementById('blbl').textContent = boosting ? 'ON ✌' : 'OFF';
+    if (player.collidesWithSnakes(bots)) killPlayer();
+  }
+
+  for (const bot of bots) {
+    if (!bot.alive) continue;
+    bot.step(botThink(bot, all), B_SPD);
+    bot.eatFood();
+
+    // bot vs player
+    if (player && player.alive) {
+      if (dsq(bot.head, player.head) < (bot.r + player.r) * (bot.r + player.r)) {
+        if (player.len > bot.len) {
+          bot.alive = false;
+          burst(bot.head.x, bot.head.y, bot.pal[0], 16);
+          for (let k = 0; k < bot.body.length; k += 3)
+            foods.push({ x: bot.body[k].x, y: bot.body[k].y, col: bot.pal[0], phase: Math.random() * Math.PI * 2 });
+          score += 5;
+          document.getElementById('sv').textContent = score;
+        } else if (STATE === 'PLAYING') killPlayer();
+      }
+    }
+
+    // bot vs bot
+    for (const ob of bots) {
+      if (ob === bot || !ob.alive) continue;
+      if (dsq(bot.head, ob.head) < (bot.r + ob.r) * (bot.r + ob.r) && bot.len > ob.len) {
+        ob.alive = false;
+        burst(ob.head.x, ob.head.y, ob.pal[0], 12);
+      }
+    }
+  }
+
+  document.getElementById('av').textContent = [player, ...bots].filter(s => s && s.alive).length;
+
+  // camera
+  if (player && player.alive) {
+    camX += (player.head.x - camX) * 0.1;
+    camY += (player.head.y - camY) * 0.1;
+  }
+
+  // ── RENDER ──
+  drawWorld(camX, camY);
+  drawFoods(camX, camY);
+  tickSparks(camX, camY);
+  for (const b of bots) b.draw(camX, camY);
+  if (player) player.draw(camX, camY);
+  drawMinimap();
+  drawCursor();
+  if (STATE === 'DEAD') drawDead();
+}
+
+// Use requestAnimationFrame for smooth rendering
+function raf() { loop(); requestAnimationFrame(raf); }
+requestAnimationFrame(raf);
+
+// ─── HAND OVERLAY ────────────────────────────────────────────────────────────
+const HAND_CONN = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
+
+function drawHandOverlay(lm) {
+  hx.clearRect(0, 0, 160, 120);
+  if (!lm) return;
+  const W = 160, H = 120;
+  hx.strokeStyle = 'rgba(57,217,138,0.55)'; hx.lineWidth = 1.5;
+  for (const [a, b] of HAND_CONN) {
+    hx.beginPath(); hx.moveTo(lm[a].x * W, lm[a].y * H); hx.lineTo(lm[b].x * W, lm[b].y * H); hx.stroke();
+  }
+  lm.forEach((p, i) => {
+    hx.fillStyle = i === 8 ? '#ff6b3d' : (i === 12 ? '#ffd93d' : (i === 0 ? '#fff' : 'rgba(57,217,138,0.8)'));
+    hx.beginPath(); hx.arc(p.x * W, p.y * H, (i === 8 || i === 12) ? 5 : 2.5, 0, Math.PI * 2); hx.fill();
+  });
+}
+
+function countExtended(lm) {
+  const tips = [8, 12, 16, 20], pips = [6, 10, 14, 18];
+  let n = 0;
+  for (let i = 0; i < 4; i++) if (lm[tips[i]].y < lm[pips[i]].y) n++;
+  return n;
+}
+
+// ─── MEDIAPIPE ───────────────────────────────────────────────────────────────
+const vidEl = document.getElementById('vid');
+const stEl  = document.getElementById('stlbl');
+
+function onResults(res) {
+  if (!res.multiHandLandmarks || !res.multiHandLandmarks.length) {
+    fingerVis = false;
+    drawHandOverlay(null);
+    document.getElementById('glbl').textContent = 'No hand — show your hand';
+    return;
+  }
+  const lm = res.multiHandLandmarks[0];
+  drawHandOverlay(lm);
+
+  extCount = countExtended(lm);
+  const tip = lm[8]; // index fingertip
+  sfX = sfX * (1 - SM) + tip.x * SM;
+  sfY = sfY * (1 - SM) + tip.y * SM;
+  // mirrored cam → flip X
+  fX = (1 - sfX) * gc.width;
+  fY = sfY * gc.height;
+  fingerVis = true;
+
+  if (extCount >= 2) document.getElementById('glbl').textContent = '✌ Two fingers — BOOST!';
+  else if (extCount === 1) document.getElementById('glbl').textContent = '☝ Steering…';
+  else document.getElementById('glbl').textContent = '✊ Fist';
+}
+
+async function boot() {
+  try {
+    vidEl.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' } });
+    stEl.textContent = 'Camera ready — loading model…';
+  } catch (e) {
+    stEl.textContent = '⚠ Camera denied — use keyboard';
+    return;
+  }
+  try {
+    const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.62, minTrackingConfidence: 0.55 });
+    hands.onResults(onResults);
+    const cam = new Camera(vidEl, { onFrame: async () => { await hands.send({ image: vidEl }); }, width: 320, height: 240 });
+    await cam.start();
+    stEl.textContent = '✓ Hand tracking active';
+    setTimeout(() => { stEl.textContent = ''; }, 3000);
+  } catch (e) {
+    stEl.textContent = '⚠ Hand tracking failed — use keyboard';
+  }
+}
+
+// ─── KEYBOARD FALLBACK ───────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && STATE === 'MENU') startCountdown();
+  if ((e.key === 'Enter' || e.key === ' ') && STATE === 'DEAD') doRestart();
+  if (STATE === 'PLAYING' && player) {
+    const am = { ArrowUp: -Math.PI/2, ArrowRight: 0, ArrowDown: Math.PI/2, ArrowLeft: Math.PI,
+                 w: -Math.PI/2, d: 0, s: Math.PI/2, a: Math.PI };
+    if (e.key in am) player.tgtAng = am[e.key];
+    if (e.key === 'Shift') boosting = true;
+  }
+});
+document.addEventListener('keyup', e => { if (e.key === 'Shift') boosting = false; });
+
+boot();
+</script>
+</body>
+</html>

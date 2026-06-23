@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funny Face Contest</title>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a12;
+    color: #fff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #game-container {
+    position: relative;
+    width: 640px;
+    height: 480px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(120,80,255,0.4);
+    border: 2px solid rgba(120,80,255,0.5);
+  }
+
+  #video { display: none; }
+
+  #output-canvas {
+    width: 640px;
+    height: 480px;
+    transform: scaleX(-1);
+    display: block;
+  }
+
+  #ui-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  #hud {
+    position: absolute;
+    top: 14px; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+  }
+
+  .hud-pill {
+    background: rgba(10,10,20,0.75);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50px;
+    padding: 6px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    backdrop-filter: blur(8px);
+  }
+
+  #timer-pill {
+    font-size: 22px;
+    font-weight: 700;
+    min-width: 70px;
+    text-align: center;
+    color: #e8d5ff;
+  }
+
+  #timer-pill.urgent { color: #ff6b6b; animation: pulse 0.5s infinite alternate; }
+
+  #score-pill { color: #a0f0c0; }
+
+  #level-pill { color: #ffe080; }
+
+  @keyframes pulse { from { opacity: 1; } to { opacity: 0.5; } }
+
+  #target-banner {
+    position: absolute;
+    bottom: 70px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10,10,20,0.82);
+    border: 1.5px solid rgba(180,140,255,0.5);
+    border-radius: 16px;
+    padding: 10px 28px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s;
+  }
+
+  #target-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 2px;
+  }
+
+  #target-expression {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  #target-emoji {
+    font-size: 28px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  #progress-bar-wrap {
+    position: absolute;
+    bottom: 55px; left: 20px; right: 20px;
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  #progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7b4fff, #c77dff);
+    border-radius: 6px;
+    width: 0%;
+    transition: width 0.1s;
+  }
+
+  #detection-feedback {
+    position: absolute;
+    top: 70px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    background: rgba(0,0,0,0.45);
+    padding: 4px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  #screen-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5,3,15,0.88);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    border-radius: 20px;
+  }
+
+  #screen-overlay.hidden { display: none; }
+
+  .screen-title {
+    font-size: 42px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #c77dff, #7b4fff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .screen-subtitle {
+    font-size: 16px;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 36px;
+    text-align: center;
+    max-width: 380px;
+    line-height: 1.6;
+  }
+
+  .gesture-btn {
+    position: relative;
+    width: 200px;
+    height: 56px;
+    border-radius: 50px;
+    border: 2px solid rgba(120,80,255,0.7);
+    background: rgba(120,80,255,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: #d4b0ff;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .gesture-btn-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    background: rgba(120,80,255,0.5);
+    border-radius: 50px;
+    transition: width 0.05s linear;
+    pointer-events: none;
+    width: 0%;
+  }
+
+  .gesture-btn span { position: relative; z-index: 2; }
+
+  .expressions-preview {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .exp-item {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+  }
+
+  .exp-item .emoji { font-size: 32px; display: block; margin-bottom: 4px; }
+
+  #final-score-display {
+    font-size: 64px;
+    font-weight: 800;
+    color: #a0f0c0;
+    margin: 8px 0;
+    text-shadow: 0 0 30px rgba(160,240,192,0.5);
+  }
+
+  #success-flash {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(120,255,160,0.18);
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  #success-flash.show { opacity: 1; }
+
+  .hand-cursor {
+    position: absolute;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(200,160,255,0.7);
+    border: 2px solid #c77dff;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: all 0.05s;
+    box-shadow: 0 0 12px rgba(200,160,255,0.6);
+    z-index: 20;
+  }
+
+  #combo-toast {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    font-weight: 800;
+    color: #ffe080;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 30;
+    text-shadow: 0 2px 12px rgba(255,200,0,0.5);
+    transition: none;
+  }
+
+  #status-bar {
+    position: absolute;
+    bottom: 10px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <video id="video" playsinline></video>
+  <canvas id="output-canvas" width="640" height="480"></canvas>
+
+  <div id="success-flash"></div>
+
+  <div id="hud">
+    <div class="hud-pill" id="score-pill">Score: 0</div>
+    <div class="hud-pill" id="timer-pill">30</div>
+    <div class="hud-pill" id="level-pill">Level 1</div>
+  </div>
+
+  <div id="detection-feedback">detecting...</div>
+
+  <div id="target-banner">
+    <div id="target-label">make this face</div>
+    <div id="target-expression">–<span id="target-emoji"></span></div>
+  </div>
+
+  <div id="progress-bar-wrap">
+    <div id="progress-bar"></div>
+  </div>
+
+  <div id="combo-toast">COMBO!</div>
+
+  <div id="status-bar">Point finger at button and hold to select</div>
+
+  <div id="screen-overlay">
+    <div class="screen-title">😂 Funny Face Contest</div>
+    <div class="screen-subtitle">Use your face to match expressions and score points! Point one finger at the button and hold to start.</div>
+    <div class="expressions-preview">
+      <div class="exp-item"><span class="emoji">😲</span>Surprised</div>
+      <div class="exp-item"><span class="emoji">😠</span>Angry</div>
+      <div class="exp-item"><span class="emoji">😄</span>Happy</div>
+      <div class="exp-item"><span class="emoji">😢</span>Sad</div>
+      <div class="exp-item"><span class="emoji">😏</span>Smirk</div>
+    </div>
+    <div class="gesture-btn" id="start-btn">
+      <div class="gesture-btn-fill" id="start-btn-fill"></div>
+      <span>☝️ Hold to Start</span>
+    </div>
+  </div>
+
+  <div class="hand-cursor" id="hand-cursor" style="display:none"></div>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('output-canvas');
+const ctx = canvas.getContext('2d');
+
+const scoreEl = document.getElementById('score-pill');
+const timerEl = document.getElementById('timer-pill');
+const levelEl = document.getElementById('level-pill');
+const targetExprEl = document.getElementById('target-expression');
+const targetEmojiEl = document.getElementById('target-emoji');
+const progressBar = document.getElementById('progress-bar');
+const detectionFeedback = document.getElementById('detection-feedback');
+const screenOverlay = document.getElementById('screen-overlay');
+const startBtn = document.getElementById('start-btn');
+const startBtnFill = document.getElementById('start-btn-fill');
+const successFlash = document.getElementById('success-flash');
+const comboToast = document.getElementById('combo-toast');
+const handCursor = document.getElementById('hand-cursor');
+const finalScoreDisplay = document.createElement('div');
+
+const EXPRESSIONS = [
+  { name: 'Surprised', emoji: '😲', detect: isSurprised },
+  { name: 'Angry',     emoji: '😠', detect: isAngry },
+  { name: 'Happy',     emoji: '😄', detect: isHappy },
+  { name: 'Sad',       emoji: '😢', detect: isSad },
+  { name: 'Smirk',     emoji: '😏', detect: isSmirk },
+];
+
+let score = 0, timeLeft = 30, gameRunning = false, currentTarget = null;
+let holdProgress = 0, holdInterval = null, holdActive = false;
+let comboCount = 0, lastMatchTime = 0;
+let matchHoldTime = 0, matchHoldRequired = 800;
+let faceLandmarks = null, handLandmarks = null;
+let timerInterval = null, level = 1;
+let lastExpression = '';
+
+function getLandmark(lm, i) { return lm[i]; }
+
+function dist(a, b) {
+  return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2);
+}
+
+function isHappy(lm) {
+  const leftMouth = lm[61];
+  const rightMouth = lm[291];
+  const topLip = lm[13];
+  const bottomLip = lm[14];
+  const leftCorner = lm[61];
+  const rightCorner = lm[291];
+  const noseTip = lm[4];
+  const mouthWidth = dist(leftMouth, rightMouth);
+  const mouthOpen = Math.abs(topLip.y - bottomLip.y);
+  const smileLeft = (lm[61].y - lm[0].y);
+  const smileRight = (lm[291].y - lm[0].y);
+  const avgSmile = (smileLeft + smileRight) / 2;
+  return mouthWidth > 0.08 && avgSmile < -0.015;
+}
+
+function isSurprised(lm) {
+  const topLip = lm[13];
+  const bottomLip = lm[14];
+  const mouthOpen = Math.abs(topLip.y - bottomLip.y);
+  const leftBrow = lm[70];
+  const rightBrow = lm[300];
+  const leftEye = lm[159];
+  const rightEye = lm[386];
+  const browRaise = ((leftBrow.y - leftEye.y) + (rightBrow.y - rightEye.y)) / 2;
+  return mouthOpen > 0.04 && browRaise < -0.03;
+}
+
+function isAngry(lm) {
+  const leftBrow = lm[70];
+  const rightBrow = lm[300];
+  const leftEye = lm[159];
+  const rightEye = lm[386];
+  const browDown = ((leftBrow.y - leftEye.y) + (rightBrow.y - rightEye.y)) / 2;
+  const leftInnerBrow = lm[107];
+  const rightInnerBrow = lm[336];
+  const browFurrow = Math.abs(leftInnerBrow.y - rightInnerBrow.y);
+  const topLip = lm[13];
+  const bottomLip = lm[14];
+  const mouthOpen = Math.abs(topLip.y - bottomLip.y);
+  return browDown > 0.01 && mouthOpen < 0.03;
+}
+
+function isSad(lm) {
+  const leftMouth = lm[61];
+  const rightMouth = lm[291];
+  const chinMid = lm[0];
+  const leftCornerY = leftMouth.y - chinMid.y;
+  const rightCornerY = rightMouth.y - chinMid.y;
+  const avgCorner = (leftCornerY + rightCornerY) / 2;
+  const leftBrow = lm[70];
+  const rightBrow = lm[300];
+  const leftEye = lm[159];
+  const rightEye = lm[386];
+  const browDrop = ((leftBrow.y - leftEye.y) + (rightBrow.y - rightEye.y)) / 2;
+  return avgCorner > 0.04 && browDrop > -0.01;
+}
+
+function isSmirk(lm) {
+  const leftMouth = lm[61];
+  const rightMouth = lm[291];
+  const diff = Math.abs(leftMouth.y - rightMouth.y);
+  const topLip = lm[13];
+  const bottomLip = lm[14];
+  const mouthOpen = Math.abs(topLip.y - bottomLip.y);
+  return diff > 0.015 && mouthOpen < 0.025;
+}
+
+function pickTarget() {
+  let candidates = EXPRESSIONS;
+  if (currentTarget) candidates = EXPRESSIONS.filter(e => e.name !== currentTarget.name);
+  currentTarget = candidates[Math.floor(Math.random() * candidates.length)];
+  targetExprEl.textContent = currentTarget.name;
+  targetEmojiEl.textContent = ' ' + currentTarget.emoji;
+  matchHoldTime = 0;
+  progressBar.style.width = '0%';
+}
+
+function showCombo(count) {
+  comboToast.textContent = count >= 3 ? `🔥 x${count} COMBO!` : '✨ Nice!';
+  comboToast.style.opacity = '1';
+  comboToast.style.transform = 'translate(-50%, -60%) scale(1.2)';
+  setTimeout(() => {
+    comboToast.style.opacity = '0';
+    comboToast.style.transform = 'translate(-50%, -50%) scale(1)';
+  }, 900);
+}
+
+function addPoints(pts) {
+  score += pts;
+  scoreEl.textContent = `Score: ${score}`;
+  level = Math.floor(score / 50) + 1;
+  levelEl.textContent = `Level ${level}`;
+  timerEl.style.textShadow = '0 0 20px rgba(160,240,192,0.8)';
+  setTimeout(() => timerEl.style.textShadow = '', 400);
+}
+
+function triggerSuccess() {
+  const pts = 10 + (comboCount * 5);
+  addPoints(pts);
+  successFlash.classList.add('show');
+  setTimeout(() => successFlash.classList.remove('show'), 200);
+  showCombo(comboCount);
+  comboCount++;
+  lastMatchTime = Date.now();
+  matchHoldTime = 0;
+  progressBar.style.width = '0%';
+  progressBar.style.background = 'linear-gradient(90deg,#a0f0c0,#4caf88)';
+  setTimeout(() => progressBar.style.background = 'linear-gradient(90deg,#7b4fff,#c77dff)', 300);
+  pickTarget();
+}
+
+let faceMesh, handsDetector;
+
+function initMediaPipe() {
+  faceMesh = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
+  faceMesh.onResults(onFaceResults);
+
+  handsDetector = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+  handsDetector.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 0,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
+  handsDetector.onResults(onHandResults);
+
+  const camera = new Camera(video, {
+    onFrame: async () => {
+      await faceMesh.send({ image: video });
+      await handsDetector.send({ image: video });
+    },
+    width: 640,
+    height: 480,
+  });
+  camera.start();
+}
+
+function onFaceResults(results) {
+  ctx.save();
+  ctx.clearRect(0, 0, 640, 480);
+  ctx.drawImage(results.image, 0, 0, 640, 480);
+
+  if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+    faceLandmarks = results.multiFaceLandmarks[0];
+    if (gameRunning) processExpression();
+  } else {
+    faceLandmarks = null;
+    if (gameRunning) detectionFeedback.textContent = '😶 No face detected';
+  }
+  ctx.restore();
+}
+
+function onHandResults(results) {
+  handLandmarks = null;
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    handLandmarks = results.multiHandLandmarks[0];
+    processGesture();
+  } else {
+    handCursor.style.display = 'none';
+    if (!holdActive) resetHoldBtn();
+  }
+}
+
+function isOneFingerPointing(lm) {
+  const indexTip = lm[8];
+  const indexPip = lm[6];
+  const middleTip = lm[12];
+  const middleMcp = lm[9];
+  const ringTip = lm[16];
+  const ringMcp = lm[13];
+  const pinkyTip = lm[20];
+  const pinkyMcp = lm[17];
+  const indexExtended = indexTip.y < indexPip.y;
+  const middleFolded = middleTip.y > middleMcp.y;
+  const ringFolded = ringTip.y > ringMcp.y;
+  const pinkyFolded = pinkyTip.y > pinkyMcp.y;
+  return indexExtended && middleFolded && ringFolded && pinkyFolded;
+}
+
+function processGesture() {
+  if (!handLandmarks) return;
+  const indexTip = handLandmarks[8];
+  const mirrored = { x: 1 - indexTip.x, y: indexTip.y };
+
+  const cx = mirrored.x * 640;
+  const cy = mirrored.y * 480;
+
+  handCursor.style.display = 'block';
+  handCursor.style.left = cx + 'px';
+  handCursor.style.top = cy + 'px';
+
+  if (!isOneFingerPointing(handLandmarks)) {
+    resetHoldBtn();
+    holdActive = false;
+    return;
+  }
+
+  const overlay = screenOverlay;
+  if (!overlay.classList.contains('hidden')) {
+    const btn = document.getElementById('start-btn');
+    const rect = btn.getBoundingClientRect();
+    const containerRect = document.getElementById('game-container').getBoundingClientRect();
+    const bx = rect.left - containerRect.left;
+    const by = rect.top - containerRect.top;
+    const bw = rect.width;
+    const bh = rect.height;
+
+    if (cx > bx && cx < bx + bw && cy > by && cy < by + bh) {
+      holdActive = true;
+      holdProgress += 3;
+      startBtnFill.style.width = Math.min(holdProgress, 100) + '%';
+      if (holdProgress >= 100) {
+        holdProgress = 0;
+        startBtnFill.style.width = '0%';
+        holdActive = false;
+        startGame();
+      }
+    } else {
+      if (!holdActive) resetHoldBtn();
+    }
+  } else if (gameRunning) {
+    holdActive = false;
+  }
+}
+
+function resetHoldBtn() {
+  if (!holdActive) {
+    holdProgress = Math.max(0, holdProgress - 2);
+    startBtnFill.style.width = holdProgress + '%';
+  }
+}
+
+function processExpression() {
+  if (!faceLandmarks || !currentTarget) return;
+  const lm = faceLandmarks;
+  let detectedName = '–';
+  let matched = false;
+
+  for (const expr of EXPRESSIONS) {
+    try {
+      if (expr.detect(lm)) {
+        detectedName = expr.name + ' ' + expr.emoji;
+        if (expr.name === currentTarget.name) {
+          matched = true;
+        }
+        break;
+      }
+    } catch(e) {}
+  }
+
+  detectionFeedback.textContent = `Detecting: ${detectedName}`;
+
+  if (matched) {
+    matchHoldTime += 33;
+    const pct = Math.min(100, (matchHoldTime / matchHoldRequired) * 100);
+    progressBar.style.width = pct + '%';
+    if (matchHoldTime >= matchHoldRequired) {
+      triggerSuccess();
+    }
+  } else {
+    if (matchHoldTime > 0) {
+      matchHoldTime = Math.max(0, matchHoldTime - 50);
+      progressBar.style.width = Math.max(0, (matchHoldTime / matchHoldRequired) * 100) + '%';
+    }
+    if (Date.now() - lastMatchTime > 3000) comboCount = 0;
+  }
+}
+
+function startGame() {
+  score = 0; timeLeft = 30; level = 1; comboCount = 0; matchHoldTime = 0;
+  scoreEl.textContent = 'Score: 0';
+  timerEl.textContent = '30';
+  timerEl.classList.remove('urgent');
+  levelEl.textContent = 'Level 1';
+  progressBar.style.width = '0%';
+  screenOverlay.classList.add('hidden');
+  gameRunning = true;
+  pickTarget();
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerEl.textContent = timeLeft;
+    if (timeLeft <= 10) timerEl.classList.add('urgent');
+    if (timeLeft <= 0) endGame();
+  }, 1000);
+}
+
+function endGame() {
+  clearInterval(timerInterval);
+  gameRunning = false;
+  currentTarget = null;
+  targetExprEl.textContent = '–';
+  targetEmojiEl.textContent = '';
+  progressBar.style.width = '0%';
+
+  screenOverlay.innerHTML = `
+    <div class="screen-title">⏱ Time's Up!</div>
+    <div class="screen-subtitle">Great faces out there! Here's your final score:</div>
+    <div id="final-score-display" style="font-size:64px;font-weight:800;color:#a0f0c0;margin:8px 0;text-shadow:0 0 30px rgba(160,240,192,0.5);">${score}</div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:32px;">Level reached: ${level}</div>
+    <div class="expressions-preview">
+      <div class="exp-item"><span class="emoji">😲</span>Surprised</div>
+      <div class="exp-item"><span class="emoji">😠</span>Angry</div>
+      <div class="exp-item"><span class="emoji">😄</span>Happy</div>
+      <div class="exp-item"><span class="emoji">😢</span>Sad</div>
+      <div class="exp-item"><span class="emoji">😏</span>Smirk</div>
+    </div>
+    <div class="gesture-btn" id="start-btn">
+      <div class="gesture-btn-fill" id="start-btn-fill"></div>
+      <span>☝️ Hold to Restart</span>
+    </div>
+  `;
+  screenOverlay.classList.remove('hidden');
+  holdProgress = 0;
+}
+
+initMediaPipe();
+</script>
+</body>
+</html>

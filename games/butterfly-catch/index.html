@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🦋 Butterfly Catch</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d0a1a;
+    font-family: 'Quicksand', sans-serif;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+  }
+
+  /* ── Loading ── */
+  #loading-screen {
+    position: fixed; inset: 0;
+    background: #0d0a1a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 100; gap: 20px;
+  }
+  .load-butterfly { font-size: 64px; animation: flutter 0.8s ease-in-out infinite alternate; }
+  @keyframes flutter {
+    from { transform: rotate(-10deg) scale(1); }
+    to   { transform: rotate(10deg) scale(1.1); }
+  }
+  .load-title { color: #e8c8ff; font-size: 2rem; font-weight: 700; letter-spacing: 2px; }
+  .load-status { color: #9a7fc0; font-size: 1rem; }
+  .load-bar-outer { width: 260px; height: 6px; background: #2a1f4a; border-radius: 10px; overflow: hidden; }
+  .load-bar-inner { height: 100%; background: linear-gradient(90deg, #b87fff, #ff8fc8); border-radius: 10px; width: 0%; transition: width 0.3s ease; }
+
+  /* ── Game wrapper ── */
+  #game-wrapper { position: relative; width: 100vw; height: 100vh; display: none; }
+  #video-bg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover; transform: scaleX(-1);
+    opacity: 0.32;
+  }
+  #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* ── HUD ── */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px;
+    background: linear-gradient(to bottom, rgba(13,10,26,0.85), transparent);
+    pointer-events: none; z-index: 10;
+  }
+  .hud-score { color: #e8c8ff; font-size: 1.6rem; font-weight: 700; }
+  .hud-timer { color: #ffcf8a; font-size: 1.4rem; font-weight: 600; }
+  .hud-gesture { color: #a0ffc8; font-size: 0.9rem; font-weight: 600; }
+
+  /* ── Bottom hint ── */
+  #pinch-hint {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(13,10,26,0.75); color: #e8c8ff;
+    padding: 10px 22px; border-radius: 30px;
+    font-size: 0.9rem; font-weight: 600;
+    border: 1px solid rgba(184,127,255,0.3);
+    pointer-events: none; z-index: 10; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  #pinch-hint.active {
+    background: rgba(184,127,255,0.35); border-color: #b87fff; color: #fff;
+    box-shadow: 0 0 18px rgba(184,127,255,0.5);
+  }
+
+  /* ── Camera error ── */
+  #cam-error {
+    position: fixed; inset: 0; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    z-index: 200; background: rgba(13,10,26,0.97);
+    color: #ffb8b8; gap: 14px; font-size: 1.1rem; text-align: center; padding: 40px;
+  }
+  #cam-error .icon { font-size: 3rem; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="load-butterfly">🦋</div>
+  <div class="load-title">Butterfly Catch</div>
+  <div class="load-status" id="load-status">Loading MediaPipe…</div>
+  <div class="load-bar-outer"><div class="load-bar-inner" id="load-bar"></div></div>
+</div>
+
+<!-- Camera error -->
+<div id="cam-error">
+  <div class="icon">📷</div>
+  <strong>Camera not found</strong>
+  <p>Please allow camera access and reload the page.</p>
+</div>
+
+<!-- Game -->
+<div id="game-wrapper">
+  <video id="video-bg" autoplay playsinline muted></video>
+  <canvas id="game-canvas"></canvas>
+
+  <div id="hud">
+    <div class="hud-score">🦋 <span id="score-display">0</span></div>
+    <div class="hud-timer">⏱ <span id="timer-display">60</span>s</div>
+    <div class="hud-gesture" id="gesture-status">✋ Detecting…</div>
+  </div>
+
+  <div id="pinch-hint">🤏 Pinch to catch!</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONSTANTS & GLOBALS
+// ════════════════════════════════════════════════════════════
+const canvas    = document.getElementById('game-canvas');
+const ctx       = canvas.getContext('2d');
+const video     = document.getElementById('video-bg');
+const scoreEl   = document.getElementById('score-display');
+const timerEl   = document.getElementById('timer-display');
+const gestureEl = document.getElementById('gesture-status');
+const pinchHint = document.getElementById('pinch-hint');
+const loadBar   = document.getElementById('load-bar');
+const loadStatus= document.getElementById('load-status');
+
+const BUTTERFLY_COUNT = 8;
+const HOVER_TRIGGER_MS = 1200;   // ms to hover on a gesture-button before it fires
+
+// Hand state
+let handX = -9999, handY = -9999;
+let pinching = false, prevPinching = false;
+
+// Game state
+let score = 0, timeLeft = 60, gameRunning = false;
+let timerInterval = null;
+let butterflies = [], particles = [], popups = [];
+
+// Screens: 'start' | 'playing' | 'gameover'
+let screen = 'start';
+
+// Gesture buttons (drawn on canvas)
+// Each: { id, label, x, y, w, h, hoverStart, onTrigger }
+let gestureButtons = [];
+let btnHoverTarget = null;
+let btnHoverStart  = 0;
+
+// ════════════════════════════════════════════════════════════
+//  CANVAS RESIZE
+// ════════════════════════════════════════════════════════════
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ════════════════════════════════════════════════════════════
+//  BUTTERFLY COLORS
+// ════════════════════════════════════════════════════════════
+const BF_COLORS = [
+  ['#ff8fc8','#ffb3da'], ['#b87fff','#d8a8ff'], ['#7fc8ff','#a8dfff'],
+  ['#ffe07f','#fff0b3'], ['#7fffb8','#a8ffd3'], ['#ff9f7f','#ffcfb3'],
+  ['#c87fff','#e4b8ff'], ['#ff6fa8','#ffa0cc'],
+];
+
+// ════════════════════════════════════════════════════════════
+//  BUTTERFLY CLASS
+// ════════════════════════════════════════════════════════════
+class Butterfly {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x = Math.random() * canvas.width;
+    this.y = initial ? Math.random() * canvas.height : -60;
+    this.vx = (Math.random() - 0.5) * 1.6;
+    this.vy = 0.4 + Math.random() * 1.0;
+    this.size = 28 + Math.random() * 22;
+    this.wingPhase = Math.random() * Math.PI * 2;
+    this.wingSpeed = 0.08 + Math.random() * 0.07;
+    const ci = Math.floor(Math.random() * BF_COLORS.length);
+    this.color1 = BF_COLORS[ci][0];
+    this.color2 = BF_COLORS[ci][1];
+    this.alive = true;
+    this.driftAmp = 0.6 + Math.random() * 0.8;
+    this.driftOffset = Math.random() * 1000;
+  }
+  update(t) {
+    if (!this.alive) return;
+    this.x += this.vx + Math.sin((t + this.driftOffset) * 0.0006) * this.driftAmp * 0.12;
+    this.y += this.vy;
+    this.wingPhase += this.wingSpeed;
+    if (this.x < this.size)                     { this.x = this.size;                this.vx = Math.abs(this.vx); }
+    if (this.x > canvas.width - this.size)      { this.x = canvas.width - this.size; this.vx = -Math.abs(this.vx); }
+    if (this.y > canvas.height + 80) this.reset();
+  }
+  draw() {
+    if (!this.alive) return;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    const wing  = Math.sin(this.wingPhase);
+    const wScale = Math.abs(wing);
+
+    ctx.save();
+    ctx.scale(wScale * (wing > 0 ? 1 : -1), 1);
+    const g1 = ctx.createLinearGradient(-this.size, -this.size, 0, this.size);
+    g1.addColorStop(0, this.color1); g1.addColorStop(1, this.color2);
+
+    ctx.globalAlpha = 0.88;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.bezierCurveTo(-this.size*1.2,-this.size*0.9,-this.size*1.4,this.size*0.2,0,this.size*0.3);
+    ctx.fillStyle = g1; ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.bezierCurveTo(this.size*1.2,-this.size*0.9,this.size*1.4,this.size*0.2,0,this.size*0.3);
+    ctx.fillStyle = g1; ctx.fill();
+
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(0,this.size*0.3);
+    ctx.bezierCurveTo(-this.size*0.9,this.size*0.4,-this.size*0.8,this.size*1.1,0,this.size*0.9);
+    ctx.fillStyle = this.color2; ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(0,this.size*0.3);
+    ctx.bezierCurveTo(this.size*0.9,this.size*0.4,this.size*0.8,this.size*1.1,0,this.size*0.9);
+    ctx.fillStyle = this.color2; ctx.fill();
+
+    ctx.globalAlpha = 0.45;
+    [[-this.size*0.5,0],[this.size*0.5,0]].forEach(([ax,ay]) => {
+      ctx.beginPath(); ctx.arc(ax,ay,this.size*0.12,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+    });
+    ctx.restore();
+
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.ellipse(0,this.size*0.4,this.size*0.08,this.size*0.5,0,0,Math.PI*2);
+    ctx.fillStyle = '#1a0f35'; ctx.fill();
+
+    ctx.strokeStyle='#1a0f35'; ctx.lineWidth=1.5; ctx.globalAlpha=0.8;
+    [[-1,1],[1,1]].forEach(([sx]) => {
+      ctx.beginPath();
+      ctx.moveTo(0,-this.size*0.05);
+      ctx.quadraticCurveTo(sx*this.size*0.4,-this.size*0.8,sx*this.size*0.5,-this.size*0.95);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx*this.size*0.5,-this.size*0.95,3,0,Math.PI*2);
+      ctx.fillStyle='#1a0f35'; ctx.fill();
+    });
+    ctx.restore();
+  }
+  hitTest(hx, hy) {
+    const dx=hx-this.x, dy=hy-(this.y+this.size*0.4);
+    return Math.sqrt(dx*dx+dy*dy) < this.size * 1.2;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  PARTICLES & POPUPS
+// ════════════════════════════════════════════════════════════
+function spawnParticles(x,y,c1,c2) {
+  for (let i=0;i<20;i++) {
+    const a=Math.random()*Math.PI*2, s=1.5+Math.random()*4;
+    particles.push({ x,y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
+      life:1, decay:0.02+Math.random()*0.03,
+      size:3+Math.random()*6, color:Math.random()<0.5?c1:c2 });
+  }
+}
+function drawParticles() {
+  particles = particles.filter(p=>p.life>0);
+  particles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.08; p.life-=p.decay;
+    ctx.save(); ctx.globalAlpha=p.life;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
+    ctx.fillStyle=p.color; ctx.fill(); ctx.restore();
+  });
+}
+function spawnPopup(x,y,text='+1') {
+  popups.push({x,y,life:1,vy:-2,text});
+}
+function drawPopups() {
+  popups = popups.filter(p=>p.life>0);
+  popups.forEach(p=>{
+    p.y+=p.vy; p.life-=0.022;
+    ctx.save(); ctx.globalAlpha=p.life;
+    ctx.font='bold 30px Quicksand,sans-serif';
+    ctx.fillStyle='#ffe07f'; ctx.textAlign='center';
+    ctx.shadowColor='rgba(255,207,80,0.7)'; ctx.shadowBlur=12;
+    ctx.fillText(p.text,p.x,p.y); ctx.restore();
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  GESTURE BUTTON SYSTEM
+//  Buttons are drawn on canvas; hovering fills a ring, then fires
+// ════════════════════════════════════════════════════════════
+function makeBtn(id, label, emoji, subLabel, cx, cy, onTrigger) {
+  return { id, label, emoji, subLabel, cx, cy, w:260, h:80, onTrigger };
+}
+
+function drawGestureBtn(btn, now) {
+  const { cx, cy, w, h, emoji, label, subLabel } = btn;
+  const x = cx - w/2, y = cy - h/2;
+  const isHovered = (btnHoverTarget === btn.id);
+
+  // Fill progress 0–1
+  let progress = 0;
+  if (isHovered && btnHoverStart > 0) {
+    progress = Math.min(1, (now - btnHoverStart) / HOVER_TRIGGER_MS);
+  }
+
+  // Hand near button?
+  const nearX = handX > x - 30 && handX < x + w + 30;
+  const nearY = handY > y - 30 && handY < y + h + 30;
+  const hovering = nearX && nearY && handX > -9000;
+
+  // Glow pulse when hovering
+  const pulse = hovering ? 0.5 + 0.5 * Math.sin(now * 0.008) : 0;
+
+  ctx.save();
+
+  // Shadow / glow
+  if (hovering || progress > 0) {
+    ctx.shadowColor = `rgba(184,127,255,${0.4 + pulse * 0.3})`;
+    ctx.shadowBlur = 24 + pulse * 16;
+  }
+
+  // Background
+  const bgAlpha = hovering ? 0.30 + pulse * 0.08 : 0.18;
+  ctx.fillStyle = `rgba(40,20,80,${bgAlpha})`;
+  ctx.beginPath();
+  roundRect(ctx, x, y, w, h, 22);
+  ctx.fill();
+
+  // Border
+  ctx.strokeStyle = hovering
+    ? `rgba(184,127,255,${0.7 + pulse*0.3})`
+    : 'rgba(184,127,255,0.28)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  roundRect(ctx, x, y, w, h, 22);
+  ctx.stroke();
+
+  // Progress fill strip at bottom
+  if (progress > 0) {
+    ctx.fillStyle = `rgba(184,127,255,${0.35 + progress*0.25})`;
+    ctx.beginPath();
+    roundRect(ctx, x, y + h - 8, w * progress, 8, [0,0,6,6]);
+    ctx.fill();
+  }
+
+  // Emoji + text
+  ctx.shadowBlur = 0;
+  ctx.font = '28px serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, x + 20, cy);
+
+  ctx.font = `700 ${hovering ? 19 : 17}px Quicksand,sans-serif`;
+  ctx.fillStyle = hovering ? '#fff' : '#e8c8ff';
+  ctx.textAlign = 'left';
+  ctx.fillText(label, x + 64, cy - 10);
+
+  ctx.font = '13px Quicksand,sans-serif';
+  ctx.fillStyle = 'rgba(200,170,255,0.7)';
+  ctx.fillText(subLabel, x + 64, cy + 12);
+
+  ctx.restore();
+
+  return { hovering, progress };
+}
+
+function roundRect(c, x, y, w, h, r) {
+  if (typeof r === 'number') r = [r,r,r,r];
+  c.moveTo(x+r[0], y);
+  c.lineTo(x+w-r[1], y); c.arcTo(x+w,y, x+w,y+r[1], r[1]);
+  c.lineTo(x+w, y+h-r[2]); c.arcTo(x+w,y+h, x+w-r[2],y+h, r[2]);
+  c.lineTo(x+r[3], y+h); c.arcTo(x,y+h, x,y+h-r[3], r[3]);
+  c.lineTo(x, y+r[0]); c.arcTo(x,y, x+r[0],y, r[0]);
+}
+
+// ════════════════════════════════════════════════════════════
+//  HAND CURSOR
+// ════════════════════════════════════════════════════════════
+function drawHandCursor() {
+  if (handX < -9000) return;
+  ctx.save();
+  const r = pinching ? 14 : 20;
+  ctx.beginPath();
+  ctx.arc(handX, handY, r, 0, Math.PI*2);
+  ctx.strokeStyle = pinching ? '#b87fff' : '#a0ffc8';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = pinching ? '#b87fff' : '#a0ffc8';
+  ctx.shadowBlur = 18;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(handX, handY, 5, 0, Math.PI*2);
+  ctx.fillStyle = pinching ? '#b87fff' : '#a0ffc8';
+  ctx.fill();
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════
+//  SCREENS — drawn on canvas
+// ════════════════════════════════════════════════════════════
+function drawStartScreen(now) {
+  // Dark overlay
+  ctx.fillStyle = 'rgba(13,10,26,0.88)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width / 2;
+  let y = canvas.height / 2 - 210;
+
+  // Animated butterfly emoji
+  ctx.save();
+  ctx.font = '72px serif';
+  ctx.textAlign = 'center';
+  const flutter = Math.sin(now * 0.004) * 6;
+  ctx.fillText('🦋', cx, y + flutter);
+  y += 90;
+
+  // Title
+  ctx.font = '700 52px Quicksand,sans-serif';
+  ctx.fillStyle = '#e8c8ff';
+  ctx.shadowColor = 'rgba(184,127,255,0.5)';
+  ctx.shadowBlur = 30;
+  ctx.fillText('Butterfly Catch', cx, y);
+  y += 46;
+
+  // Subtitle
+  ctx.shadowBlur = 0;
+  ctx.font = '400 17px Quicksand,sans-serif';
+  ctx.fillStyle = '#b090d0';
+  ctx.fillText('Hover your hand over the button below and hold to start', cx, y);
+  ctx.restore();
+  y += 52;
+
+  // Instruction cards (small, drawn as text)
+  const cards = [
+    ['✋','Hold hand up in front of camera'],
+    ['🤏','Pinch to catch butterflies'],
+  ];
+  ctx.font = '14px Quicksand,sans-serif';
+  ctx.textAlign = 'center';
+  cards.forEach(([icon,txt],i) => {
+    const bx = cx + (i === 0 ? -120 : 120);
+    ctx.save();
+    ctx.fillStyle = 'rgba(184,127,255,0.10)';
+    ctx.beginPath();
+    roundRect(ctx, bx-100, y, 195, 52, 12);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(184,127,255,0.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    roundRect(ctx, bx-100, y, 195, 52, 12);
+    ctx.stroke();
+
+    ctx.font = '22px serif';
+    ctx.fillText(icon, bx-73, y+28);
+    ctx.font = '13px Quicksand,sans-serif';
+    ctx.fillStyle = '#c8a8e8';
+    ctx.fillText(txt, bx+16, y+28);
+    ctx.restore();
+  });
+  y += 80;
+
+  // Gesture button: START GAME
+  gestureButtons = [
+    makeBtn('start', 'Start Game', '🦋', 'Hover here to begin →', cx, y + 10, () => startGame())
+  ];
+  gestureButtons.forEach(btn => drawGestureBtn(btn, now));
+}
+
+function drawGameOverScreen(now) {
+  ctx.fillStyle = 'rgba(13,10,26,0.88)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width / 2;
+  let y = canvas.height / 2 - 180;
+
+  ctx.save();
+  ctx.font = '68px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🌸', cx, y + Math.sin(now*0.003)*5);
+  y += 88;
+
+  ctx.font = "700 52px Quicksand,sans-serif";
+  ctx.fillStyle = '#e8c8ff';
+  ctx.shadowColor = 'rgba(184,127,255,0.5)'; ctx.shadowBlur = 26;
+  ctx.fillText("Time's Up!", cx, y); y += 48;
+
+  ctx.shadowBlur = 0;
+  ctx.font = '400 18px Quicksand,sans-serif';
+  ctx.fillStyle = '#b090d0';
+  ctx.fillText('You caught', cx, y); y += 56;
+
+  ctx.font = "700 80px Quicksand,sans-serif";
+  ctx.fillStyle = '#ffcf8a';
+  ctx.shadowColor = 'rgba(255,207,138,0.5)'; ctx.shadowBlur = 24;
+  ctx.fillText(score, cx, y); y += 52;
+
+  ctx.shadowBlur = 0;
+  ctx.font = '400 22px Quicksand,sans-serif';
+  ctx.fillStyle = '#b090d0';
+  ctx.fillText('butterflies! 🦋', cx, y); y += 64;
+  ctx.restore();
+
+  // Gesture button: PLAY AGAIN
+  gestureButtons = [
+    makeBtn('restart', 'Play Again', '🔄', 'Hover here to restart →', cx, y + 10, () => startGame())
+  ];
+  gestureButtons.forEach(btn => drawGestureBtn(btn, now));
+}
+
+// ════════════════════════════════════════════════════════════
+//  GAME LOGIC
+// ════════════════════════════════════════════════════════════
+function startGame() {
+  score = 0; scoreEl.textContent = 0;
+  timeLeft = 60; timerEl.textContent = 60;
+  butterflies = []; particles = []; popups = [];
+  gestureButtons = [];
+  btnHoverTarget = null; btnHoverStart = 0;
+  for (let i = 0; i < BUTTERFLY_COUNT; i++) butterflies.push(new Butterfly());
+  screen = 'playing';
+  gameRunning = true;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerEl.textContent = timeLeft;
+    if (timeLeft <= 0) endGame();
+  }, 1000);
+}
+
+function endGame() {
+  clearInterval(timerInterval);
+  gameRunning = false;
+  screen = 'gameover';
+  gestureButtons = [];
+}
+
+// ════════════════════════════════════════════════════════════
+//  GESTURE BUTTON HOVER CHECK
+// ════════════════════════════════════════════════════════════
+function checkGestureButtons(now) {
+  if (!gestureButtons.length) return;
+
+  let hoveredId = null;
+  for (const btn of gestureButtons) {
+    const { cx, cy, w, h } = btn;
+    const bx = cx - w/2, by = cy - h/2;
+    if (handX > bx && handX < bx+w && handY > by && handY < by+h && handX > -9000) {
+      hoveredId = btn.id;
+      break;
+    }
+  }
+
+  if (hoveredId) {
+    if (btnHoverTarget !== hoveredId) {
+      btnHoverTarget = hoveredId;
+      btnHoverStart  = now;
+    } else {
+      const elapsed = now - btnHoverStart;
+      if (elapsed >= HOVER_TRIGGER_MS) {
+        // Fire!
+        const btn = gestureButtons.find(b => b.id === hoveredId);
+        if (btn) btn.onTrigger();
+        btnHoverTarget = null;
+        btnHoverStart  = 0;
+      }
+    }
+  } else {
+    btnHoverTarget = null;
+    btnHoverStart  = 0;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  MAIN LOOP
+// ════════════════════════════════════════════════════════════
+function gameLoop(now) {
+  requestAnimationFrame(gameLoop);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Check gesture buttons on overlay screens
+  if (screen !== 'playing') {
+    checkGestureButtons(now);
+  }
+
+  if (screen === 'start') {
+    drawStartScreen(now);
+    drawHandCursor();
+    return;
+  }
+
+  if (screen === 'gameover') {
+    // Draw butterflies fading in background for ambiance
+    ctx.save(); ctx.globalAlpha = 0.3;
+    butterflies.forEach(bf => { bf.update(now); bf.draw(); });
+    ctx.restore();
+    drawGameOverScreen(now);
+    drawHandCursor();
+    return;
+  }
+
+  // ── Playing ──
+  // Subtle bg gradient
+  const grad = ctx.createRadialGradient(canvas.width/2,canvas.height/2,0,canvas.width/2,canvas.height/2,Math.max(canvas.width,canvas.height));
+  grad.addColorStop(0,'rgba(30,15,60,0.08)');
+  grad.addColorStop(1,'rgba(13,10,26,0.28)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  butterflies.forEach(bf => { bf.update(now); bf.draw(); });
+
+  // Catch logic
+  if (pinching && !prevPinching) {
+    for (const bf of butterflies) {
+      if (bf.alive && bf.hitTest(handX, handY)) {
+        bf.alive = false;
+        score++;
+        scoreEl.textContent = score;
+        spawnParticles(bf.x, bf.y + bf.size*0.4, bf.color1, bf.color2);
+        spawnPopup(bf.x, bf.y);
+        setTimeout(() => { bf.reset(); }, 500);
+        break;
+      }
+    }
+  }
+  prevPinching = pinching;
+
+  drawParticles();
+  drawPopups();
+  drawHandCursor();
+
+  // Low time warning
+  if (timeLeft <= 10) {
+    ctx.save();
+    ctx.font = 'bold 18px Quicksand,sans-serif';
+    ctx.fillStyle = `rgba(255,100,80,${0.5 + 0.5*Math.sin(now*0.01)})`;
+    ctx.textAlign = 'center';
+    ctx.fillText('⏰ Hurry!', canvas.width/2, canvas.height - 60);
+    ctx.restore();
+  }
+}
+requestAnimationFrame(gameLoop);
+
+// ════════════════════════════════════════════════════════════
+//  MEDIAPIPE INIT
+// ════════════════════════════════════════════════════════════
+function setProgress(pct, msg) {
+  loadBar.style.width = pct + '%';
+  loadStatus.textContent = msg;
+}
+
+async function initMediaPipe() {
+  setProgress(10, 'Setting up camera…');
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    video.play();
+  } catch(e) {
+    document.getElementById('cam-error').style.display = 'flex';
+    document.getElementById('loading-screen').classList.add('hidden');
+    return;
+  }
+
+  setProgress(35, 'Loading hand detection model…');
+
+  const hands = new Hands({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  });
+  hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.6,
+  });
+  hands.onResults(onHandResults);
+
+  setProgress(70, 'Starting detection…');
+
+  const camera = new Camera(video, {
+    onFrame: async () => { await hands.send({ image: video }); },
+    width: 640, height: 480
+  });
+
+  camera.start().then(() => {
+    setProgress(100, 'Ready!');
+    setTimeout(() => {
+      document.getElementById('loading-screen').classList.add('hidden');
+      document.getElementById('game-wrapper').style.display = 'block';
+    }, 500);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  HAND RESULTS
+// ════════════════════════════════════════════════════════════
+function onHandResults(results) {
+  if (!results.multiHandLandmarks || !results.multiHandLandmarks.length) {
+    gestureEl.textContent = '✋ Show your hand…';
+    gestureEl.style.color = '#9a7fc0';
+    pinching = false;
+    handX = -9999; handY = -9999;
+    pinchHint.classList.remove('active');
+    return;
+  }
+
+  const lm = results.multiHandLandmarks[0];
+  // Mirror x because video is mirrored
+  const ix = (1 - lm[8].x) * canvas.width,  iy = lm[8].y * canvas.height;
+  const tx = (1 - lm[4].x) * canvas.width,  ty = lm[4].y * canvas.height;
+
+  handX = (ix + tx) / 2;
+  handY = (iy + ty) / 2;
+
+  const dist     = Math.hypot(ix-tx, iy-ty);
+  const handSize = Math.hypot(
+    (1-lm[0].x)*canvas.width  - (1-lm[9].x)*canvas.width,
+    lm[0].y*canvas.height     - lm[9].y*canvas.height
+  );
+  pinching = (dist / (handSize || 1)) < 0.30;
+
+  if (pinching) {
+    gestureEl.textContent = '🤏 Pinching!';
+    gestureEl.style.color = '#b87fff';
+    pinchHint.classList.add('active');
+    pinchHint.textContent = screen === 'playing' ? '🤏 Catching!' : '🤏 Pinching!';
+  } else {
+    gestureEl.textContent = '✋ Hand detected';
+    gestureEl.style.color = '#a0ffc8';
+    pinchHint.classList.remove('active');
+    pinchHint.textContent = screen === 'playing' ? '🤏 Pinch to catch!' : '✋ Hover over button to select';
+  }
+}
+
+// ── Boot ──
+initMediaPipe();
+</script>
+</body>
+</html>

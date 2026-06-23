@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gesture Space Shooter</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+  #container { position: relative; width: 100vw; height: 100vh; background: #000; overflow: hidden; }
+  #videoEl { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0; pointer-events: none; }
+  #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; z-index: 10; }
+  #camStatus { position: absolute; bottom: 12px; right: 14px; font-size: 12px; color: rgba(127,255,255,0.5); z-index: 20; font-family: 'Courier New', monospace; }
+  #gestureHint { position: absolute; top: 12px; left: 14px; font-size: 13px; color: rgba(127,255,255,0.65); z-index: 20; line-height: 2; }
+  #fingerDisplay { position: absolute; bottom: 12px; left: 14px; font-size: 12px; color: rgba(127,255,255,0.5); z-index: 20; }
+  .menu-title { font-size: clamp(24px, 5vw, 42px); font-weight: 700; letter-spacing: 4px; margin-bottom: 6px; color: #7ff; text-shadow: 0 0 30px rgba(0,255,255,0.7); text-align: center; }
+  .menu-sub { font-size: 13px; color: rgba(127,255,255,0.55); margin-bottom: 36px; letter-spacing: 1px; text-align: center; }
+  .menu-btn { padding: 13px 32px; margin: 7px; font-size: 14px; border: 1px solid rgba(127,255,255,0.35); color: #7ff; background: transparent; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace; min-width: 220px; text-align: center; letter-spacing: 1px; transition: all 0.15s; position: relative; overflow: hidden; }
+  .menu-btn::before { content: ''; position: absolute; inset: 0; background: rgba(127,255,255,0.08); opacity: 0; transition: opacity 0.15s; }
+  .menu-btn.hovered { border-color: #7ff; color: #fff; box-shadow: 0 0 14px rgba(0,255,255,0.25); }
+  .menu-btn.hovered::before { opacity: 1; }
+  #cursor { position: absolute; width: 26px; height: 26px; border: 2px solid #7ff; border-radius: 50%; pointer-events: none; z-index: 30; transform: translate(-50%,-50%); box-shadow: 0 0 10px rgba(0,255,255,0.6); transition: box-shadow 0.1s; }
+  #cursor.shooting { border-color: #ff0; box-shadow: 0 0 16px rgba(255,220,0,0.7); background: rgba(255,220,0,0.08); }
+  #cursor::after { content: ''; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #7ff; border-radius: 50%; transform: translate(-50%,-50%); }
+  #cursor.shooting::after { background: #ff0; }
+  .level-badge { font-size: 11px; letter-spacing: 2px; color: rgba(127,255,255,0.4); margin-bottom: 4px; text-transform: uppercase; text-align: center; }
+</style>
+</head>
+<body>
+<div id="container">
+  <video id="videoEl" playsinline muted autoplay></video>
+  <canvas id="gameCanvas"></canvas>
+  <div id="cursor"></div>
+  <div id="overlay"></div>
+  <div id="camStatus">Camera: initializing...</div>
+  <div id="gestureHint">
+    ☝ 1 finger &nbsp;— aim / select<br>
+    ✌ 2 fingers — shoot<br>
+    ✊ fist &nbsp;&nbsp;&nbsp;&nbsp;— idle
+  </div>
+  <div id="fingerDisplay">Fingers: 0</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const video = document.getElementById('videoEl');
+const overlay = document.getElementById('overlay');
+const cursor = document.getElementById('cursor');
+const camStatus = document.getElementById('camStatus');
+const fingerDisplay = document.getElementById('fingerDisplay');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ── STATE ── */
+const STATE = { LOADING: 0, MENU: 1, LEVEL_SELECT: 2, PLAYING: 3, DEAD: 4, WIN: 5 };
+let state = STATE.LOADING;
+
+/* ── HAND TRACKING STATE ── */
+let handX = 0, handY = 0, fingerCount = 0;
+let handVisible = false;
+
+/* ── MENU LOGIC ── */
+const menuBtns = [];
+let lastHoveredBtn = -1, hoverFrames = 0;
+
+/* ── LEVELS ── */
+const LEVELS = [
+  { name: 'Sector I — Nebula',        enemies: 6,  speed: 1.3, color: '#f97', bg1: '#0d0016', bg2: '#1a0030', accent: '#f97' },
+  { name: 'Sector II — Asteroid Belt', enemies: 10, speed: 1.9, color: '#fa6', bg1: '#000d1a', bg2: '#001a30', accent: '#fa6' },
+  { name: 'Sector III — Dark Zone',    enemies: 15, speed: 2.5, color: '#7af', bg1: '#001100', bg2: '#001f10', accent: '#7af' }
+];
+let currentLevel = 0;
+
+/* ── GAME OBJECTS ── */
+const ship = { x: 0, y: 0, w: 30, h: 34, hp: 3, invincible: 0 };
+let bullets = [], enemyBullets = [], enemies = [], particles = [], stars = [];
+let score = 0, shootCooldown = 0, gameTime = 0;
+
+/* ── STARS ── */
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 120; i++) {
+    stars.push({
+      x: Math.random() * 1920,
+      y: Math.random() * 1080,
+      r: Math.random() * 1.6 + 0.2,
+      s: Math.random() * 0.7 + 0.15,
+      a: Math.random() * 0.6 + 0.2
+    });
+  }
+}
+initStars();
+
+function drawBg() {
+  const lv = state === STATE.PLAYING ? LEVELS[currentLevel] : { bg1: '#000', bg2: '#060614' };
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, lv.bg1);
+  grad.addColorStop(1, lv.bg2);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  stars.forEach(s => {
+    s.y += s.s;
+    if (s.y > H) { s.y = -2; s.x = Math.random() * W; }
+    ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  });
+}
+
+/* ── SPAWN ── */
+function spawnEnemies(lvl) {
+  enemies = [];
+  const lv = LEVELS[lvl];
+  for (let i = 0; i < lv.enemies; i++) {
+    const row = Math.floor(i / 5);
+    const col = i % 5;
+    enemies.push({
+      x: 80 + col * ((W - 160) / 4),
+      y: -60 - row * 70,
+      w: 30, h: 28,
+      hp: lvl + 1, maxHp: lvl + 1,
+      vy: lv.speed * (0.65 + Math.random() * 0.7),
+      vx: (Math.random() - 0.5) * lv.speed * 0.9,
+      color: lv.color,
+      shootTimer: 80 + Math.random() * 160,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function startLevel(lvl) {
+  currentLevel = lvl;
+  bullets = []; enemyBullets = []; particles = [];
+  score = 0; shootCooldown = 0; gameTime = 0;
+  ship.x = W / 2; ship.y = H - 100; ship.hp = 3; ship.invincible = 0;
+  spawnEnemies(lvl);
+  state = STATE.PLAYING;
+  overlay.style.display = 'none';
+}
+
+/* ── PARTICLES ── */
+function addParticle(x, y, color, n, speed) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = (speed || 2) * (0.5 + Math.random() * 1.5);
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 25 + Math.random() * 30, maxLife: 55, color, r: 1 + Math.random() * 2 });
+  }
+}
+
+/* ── DRAW SHIP ── */
+function drawShip(x, y, flicker) {
+  if (flicker && Math.floor(Date.now() / 80) % 2 === 0) return;
+  ctx.save(); ctx.translate(x, y);
+  ctx.shadowBlur = 18; ctx.shadowColor = '#0ff';
+  ctx.fillStyle = '#4ff';
+  ctx.beginPath();
+  ctx.moveTo(0, -17); ctx.lineTo(5, -8); ctx.lineTo(15, 14); ctx.lineTo(7, 9); ctx.lineTo(-7, 9); ctx.lineTo(-15, 14); ctx.lineTo(-5, -8);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.arc(0, -2, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,255,255,0.35)';
+  ctx.beginPath(); ctx.moveTo(-7, 9); ctx.lineTo(7, 9); ctx.lineTo(4, 18); ctx.lineTo(-4, 18); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0; ctx.restore();
+}
+
+/* ── DRAW ENEMY ── */
+function drawEnemy(e) {
+  ctx.save(); ctx.translate(e.x, e.y);
+  ctx.shadowBlur = 10; ctx.shadowColor = e.color;
+  ctx.fillStyle = e.color;
+  ctx.beginPath();
+  ctx.moveTo(0, 13); ctx.lineTo(-14, -8); ctx.lineTo(-6, -3); ctx.lineTo(0, -10); ctx.lineTo(6, -3); ctx.lineTo(14, -8);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(-13, -20, 26, 5);
+  ctx.fillStyle = e.hp / e.maxHp > 0.5 ? '#5f5' : '#fa5';
+  ctx.fillRect(-13, -20, 26 * (e.hp / e.maxHp), 5);
+  ctx.shadowBlur = 0; ctx.restore();
+}
+
+/* ── DRAW BULLET ── */
+function drawBullet(b) {
+  ctx.save();
+  ctx.shadowBlur = 10; ctx.shadowColor = b.color;
+  ctx.fillStyle = b.color;
+  ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath(); ctx.arc(b.x, b.y - b.vy * 0.5, b.r * 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+}
+
+/* ── HUD ── */
+function drawHUD() {
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(0, 0, W, 44);
+  ctx.strokeStyle = 'rgba(127,255,255,0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, 44); ctx.lineTo(W, 44); ctx.stroke();
+
+  ctx.fillStyle = '#7ff';
+  ctx.font = '13px "Courier New"';
+  ctx.textAlign = 'left';
+  ctx.fillText(`SCORE  ${score.toString().padStart(6,'0')}`, 16, 27);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(127,255,255,0.8)';
+  ctx.fillText(LEVELS[currentLevel].name.toUpperCase(), W / 2, 27);
+  ctx.textAlign = 'right';
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i < ship.hp ? '#f44' : 'rgba(255,80,80,0.15)';
+    ctx.shadowBlur = i < ship.hp ? 8 : 0; ctx.shadowColor = '#f44';
+    ctx.beginPath(); ctx.arc(W - 20 - i * 24, 22, 8, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  const remaining = enemies.length;
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(127,255,255,0.4)';
+  ctx.font = '11px "Courier New"';
+  ctx.fillText(`ENEMIES  ${remaining}`, W - 16, H - 14);
+}
+
+/* ── COLLISION ── */
+function dist(a, b) { const dx = a.x - b.x, dy = a.y - b.y; return Math.sqrt(dx*dx+dy*dy); }
+
+/* ── GAME LOOP ── */
+function gameLoop() {
+  drawBg();
+
+  /* LOADING */
+  if (state === STATE.LOADING) {
+    ctx.fillStyle = '#7ff';
+    ctx.font = '18px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.fillText('Initializing hand tracking...', W / 2, H / 2);
+    ctx.fillStyle = 'rgba(127,255,255,0.4)';
+    ctx.font = '13px "Courier New"';
+    ctx.fillText('Allow camera access to play', W / 2, H / 2 + 32);
+  }
+
+  /* MENU HOVER */
+  if (state === STATE.MENU || state === STATE.LEVEL_SELECT || state === STATE.DEAD || state === STATE.WIN) {
+    updateMenuHover();
+    renderHoverProgress();
+  }
+
+  /* PLAYING */
+  if (state === STATE.PLAYING) {
+    gameTime++;
+    if (shootCooldown > 0) shootCooldown--;
+    if (ship.invincible > 0) ship.invincible--;
+
+    /* Move ship toward hand */
+    const tx = Math.max(24, Math.min(W - 24, handX));
+    const ty = Math.max(50, Math.min(H - 24, handY));
+    ship.x += (tx - ship.x) * 0.16;
+    ship.y += (ty - ship.y) * 0.13;
+
+    /* Shoot on 2 fingers */
+    if (fingerCount >= 2 && shootCooldown === 0) {
+      bullets.push({ x: ship.x, y: ship.y - 20, vy: -11, r: 4, color: '#ff0' });
+      bullets.push({ x: ship.x - 10, y: ship.y - 8, vy: -10, r: 3, color: '#fa0' });
+      bullets.push({ x: ship.x + 10, y: ship.y - 8, vy: -10, r: 3, color: '#fa0' });
+      shootCooldown = 10;
+      addParticle(ship.x, ship.y - 18, '#ff0', 3, 4);
+    }
+    cursor.className = fingerCount >= 2 ? 'shooting' : '';
+
+    /* Move bullets */
+    bullets = bullets.filter(b => { b.y += b.vy; return b.y > -10; });
+    enemyBullets = enemyBullets.filter(b => {
+      b.x += b.vx; b.y += b.vy;
+      return b.y < H + 10 && b.x > -10 && b.x < W + 10;
+    });
+
+    /* Move enemies */
+    enemies.forEach(e => {
+      e.phase += 0.02;
+      e.x += e.vx + Math.sin(e.phase) * 0.4;
+      e.y += e.vy;
+      if (e.x < 20 || e.x > W - 20) e.vx *= -1;
+      if (e.y > H + 50) { e.y = -50; e.x = 40 + Math.random() * (W - 80); }
+
+      e.shootTimer--;
+      if (e.shootTimer <= 0) {
+        e.shootTimer = 80 + Math.random() * 140;
+        const dx = ship.x - e.x, dy = ship.y - e.y;
+        const d = Math.sqrt(dx*dx+dy*dy) || 1;
+        enemyBullets.push({ x: e.x, y: e.y + 16, vx: dx/d*3.5, vy: dy/d*3.5, r: 4, color: '#f44' });
+      }
+
+      /* Bullet hits enemy */
+      bullets.forEach((b, bi) => {
+        if (dist(b, e) < 20) {
+          e.hp--;
+          addParticle(b.x, b.y, e.color, 5, 3);
+          bullets.splice(bi, 1);
+          if (e.hp <= 0) {
+            addParticle(e.x, e.y, e.color, 16, 4);
+            score += 100 * (currentLevel + 1);
+          }
+        }
+      });
+    });
+    enemies = enemies.filter(e => e.hp > 0);
+
+    /* Enemy bullet hits ship */
+    if (ship.invincible === 0) {
+      enemyBullets.forEach((b, bi) => {
+        if (dist(b, ship) < 18) {
+          ship.hp--;
+          ship.invincible = 80;
+          addParticle(ship.x, ship.y, '#4ff', 10, 4);
+          enemyBullets.splice(bi, 1);
+        }
+      });
+    }
+
+    /* Draw particles */
+    particles = particles.filter(p => {
+      p.x += p.vx; p.y += p.vy; p.life--;
+      p.vx *= 0.96; p.vy *= 0.96;
+      ctx.globalAlpha = p.life / p.maxLife;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      return p.life > 0;
+    });
+
+    enemies.forEach(e => drawEnemy(e));
+    bullets.forEach(b => drawBullet(b));
+    enemyBullets.forEach(b => drawBullet(b));
+    drawShip(ship.x, ship.y, ship.invincible > 0);
+    drawHUD();
+
+    /* Check lose */
+    if (ship.hp <= 0) {
+      addParticle(ship.x, ship.y, '#4ff', 40, 5);
+      state = STATE.DEAD;
+      buildResultMenu(false);
+    }
+    /* Check win */
+    if (enemies.length === 0) {
+      state = STATE.WIN;
+      buildResultMenu(true);
+    }
+  }
+
+  /* Cursor */
+  cursor.style.left = handX + 'px';
+  cursor.style.top = handY + 'px';
+
+  requestAnimationFrame(gameLoop);
+}
+
+/* ── MENU BUILDER ── */
+function clearOverlay() {
+  menuBtns.length = 0;
+  overlay.innerHTML = '';
+  overlay.style.display = 'flex';
+  lastHoveredBtn = -1;
+  hoverFrames = 0;
+}
+
+function makeBtn(label, action, parent) {
+  const btn = document.createElement('div');
+  btn.className = 'menu-btn';
+  btn.textContent = label;
+  parent.appendChild(btn);
+  menuBtns.push({ el: btn, action });
+}
+
+function showMainMenu() {
+  state = STATE.MENU;
+  clearOverlay();
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
+  wrap.innerHTML = `<div class="menu-title">✦ SPACE GESTURES ✦</div><div class="menu-sub">hand-tracked space shooter</div>`;
+  makeBtn('▶  Start Game', () => showLevelSelect(), wrap);
+  makeBtn('⚡  Quick Play', () => startLevel(0), wrap);
+  overlay.appendChild(wrap);
+}
+
+function showLevelSelect() {
+  state = STATE.LEVEL_SELECT;
+  clearOverlay();
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
+  wrap.innerHTML = `<div class="level-badge">Mission Briefing</div><div class="menu-title" style="font-size:clamp(20px,3.5vw,32px)">Select Sector</div><div class="menu-sub">Point and hold 1 second to confirm</div>`;
+  LEVELS.forEach((lv, i) => {
+    makeBtn(lv.name, () => startLevel(i), wrap);
+  });
+  makeBtn('← Back', () => showMainMenu(), wrap);
+  overlay.appendChild(wrap);
+}
+
+function buildResultMenu(win) {
+  clearOverlay();
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
+  const color = win ? '#7ff' : '#f77';
+  const titleText = win
+    ? (currentLevel < LEVELS.length - 1 ? '✦ Sector Cleared' : '✦ All Sectors Clear')
+    : '✦ Ship Destroyed';
+  wrap.innerHTML = `<div class="menu-title" style="color:${color};text-shadow:0 0 30px ${color}66">${titleText}</div><div class="menu-sub">Final score: ${score.toString().padStart(6,'0')}</div>`;
+  if (win && currentLevel < LEVELS.length - 1) {
+    makeBtn(`▶  Next — ${LEVELS[currentLevel+1].name}`, () => startLevel(currentLevel+1), wrap);
+  }
+  makeBtn('↺  Retry Sector', () => startLevel(currentLevel), wrap);
+  makeBtn('⌂  Main Menu', () => showMainMenu(), wrap);
+  overlay.appendChild(wrap);
+}
+
+/* ── MENU HOVER DETECTION ── */
+function updateMenuHover() {
+  if (fingerCount !== 1) { lastHoveredBtn = -1; hoverFrames = 0; return; }
+  const contRect = document.getElementById('container').getBoundingClientRect();
+  let foundIdx = -1;
+
+  menuBtns.forEach((b, i) => {
+    const r = b.el.getBoundingClientRect();
+    const bx = r.left - contRect.left + r.width / 2;
+    const by = r.top - contRect.top + r.height / 2;
+    const bw = r.width / 2 + 18;
+    const bh = r.height / 2 + 10;
+    const inside = handX > bx - bw && handX < bx + bw && handY > by - bh && handY < by + bh;
+    b.el.className = 'menu-btn' + (inside ? ' hovered' : '');
+    if (inside) foundIdx = i;
+  });
+
+  if (foundIdx >= 0) {
+    if (lastHoveredBtn === foundIdx) {
+      hoverFrames++;
+      if (hoverFrames >= 50) {
+        const action = menuBtns[foundIdx].action;
+        hoverFrames = 0; lastHoveredBtn = -1;
+        action();
+      }
+    } else {
+      lastHoveredBtn = foundIdx; hoverFrames = 0;
+    }
+  } else {
+    lastHoveredBtn = -1; hoverFrames = 0;
+  }
+}
+
+function renderHoverProgress() {
+  if (lastHoveredBtn < 0 || hoverFrames === 0) return;
+  const b = menuBtns[lastHoveredBtn];
+  if (!b) return;
+  const contRect = document.getElementById('container').getBoundingClientRect();
+  const r = b.el.getBoundingClientRect();
+  const bx = r.left - contRect.left + r.width / 2;
+  const by = r.top - contRect.top + r.height / 2;
+  const prog = hoverFrames / 50;
+  ctx.save();
+  ctx.strokeStyle = '#7ff';
+  ctx.lineWidth = 3;
+  ctx.shadowBlur = 8; ctx.shadowColor = '#0ff';
+  ctx.beginPath();
+  ctx.arc(bx, by, 28, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ── MEDIAPIPE HAND TRACKING ── */
+function countFingers(lm) {
+  const tipIds = [8, 12, 16, 20];
+  const pipIds = [6, 10, 14, 18];
+  let count = 0;
+  tipIds.forEach((t, i) => { if (lm[t].y < lm[pipIds[i]].y) count++; });
+  const thumbTip = lm[4], thumbMcp = lm[2];
+  if (Math.abs(thumbTip.x - thumbMcp.x) > 0.06) count++;
+  return count;
+}
+
+function onResults(results) {
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    const lm = results.multiHandLandmarks[0];
+    const idx = lm[8];
+    const rawX = (1 - idx.x) * W;
+    const rawY = idx.y * H;
+    handX += (rawX - handX) * 0.45;
+    handY += (rawY - handY) * 0.45;
+    fingerCount = countFingers(lm);
+    handVisible = true;
+    fingerDisplay.textContent = `Fingers: ${fingerCount}`;
+    camStatus.textContent = 'Camera: on ✓';
+  } else {
+    fingerCount = 0;
+    handVisible = false;
+    fingerDisplay.textContent = 'No hand detected';
+  }
+}
+
+async function initHandTracking() {
+  try {
+    const hands = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+    });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 0,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.55
+    });
+    hands.onResults(onResults);
+
+    const cam = new Camera(video, {
+      onFrame: async () => { await hands.send({ image: video }); },
+      width: 320, height: 240
+    });
+    await cam.start();
+    camStatus.textContent = 'Camera: on ✓';
+    state = STATE.MENU;
+    showMainMenu();
+  } catch (err) {
+    camStatus.textContent = 'Camera unavailable — mouse mode';
+    console.warn('Hand tracking unavailable:', err);
+    state = STATE.MENU;
+    showMainMenu();
+  }
+}
+
+/* ── MOUSE FALLBACK ── */
+document.addEventListener('mousemove', e => {
+  if (!handVisible) {
+    handX = e.clientX;
+    handY = e.clientY;
+  }
+});
+let mouseShoot = false;
+document.addEventListener('mousedown', e => {
+  if (!handVisible) {
+    if (e.button === 2) { fingerCount = 2; mouseShoot = true; }
+    else { fingerCount = 1; }
+  }
+});
+document.addEventListener('mouseup', e => {
+  if (!handVisible) {
+    if (e.button === 2) { fingerCount = 0; mouseShoot = false; }
+    else { fingerCount = 0; }
+  }
+});
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ── INIT ── */
+handX = window.innerWidth / 2;
+handY = window.innerHeight / 2;
+gameLoop();
+initHandTracking();
+</script>
+</body>
+</html>

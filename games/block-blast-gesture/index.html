@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Block Blast — Hand Gesture</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+:root{--bg:#080812;--panel:#10101f;--border:#1e1e3a;--accent:#7c3aed;--cyan:#06b6d4;--green:#22c55e;--red:#ef4444;--text:#e2e8f0;--dim:#64748b;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;overflow:hidden;user-select:none;}
+#root{width:100vw;height:100vh;display:grid;grid-template-columns:260px 1fr 200px;align-items:start;justify-items:center;gap:0;padding:10px;}
+#camCol{display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:4px;width:100%;}
+#camWrap{position:relative;width:240px;height:180px;border-radius:14px;overflow:hidden;border:2px solid var(--border);background:#000;}
+#video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;}
+#handCanvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);pointer-events:none;}
+#camPill{position:absolute;top:7px;right:7px;display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.7);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--dim);}
+#camDot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:all .3s;}
+#camDot.on{background:var(--green);box-shadow:0 0 8px var(--green);}
+#gestureBadge{background:var(--panel);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;font-family:'Fredoka One',cursive;font-size:15px;color:var(--accent);width:240px;text-align:center;min-height:42px;display:flex;align-items:center;justify-content:center;}
+#gestureBadge.lit{border-color:var(--accent);}
+.legend{width:240px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
+.ltitle{font-family:'Fredoka One',cursive;font-size:10px;color:var(--cyan);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;}
+.leg{display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--dim);line-height:1.45;}
+.leg .ico{font-size:16px;width:20px;flex-shrink:0;margin-top:1px;}
+.leg strong{color:var(--text);}
+#gameCol{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;}
+#gameTitle{font-family:'Fredoka One',cursive;font-size:24px;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px;margin-top:4px;}
+#boardWrap{position:relative;}
+#gameCanvas{display:block;border-radius:10px;border:2px solid var(--border);}
+#trayWrap{display:flex;gap:8px;justify-content:center;margin-top:6px;}
+.tslot{width:90px;height:90px;background:var(--panel);border:1.5px dashed #2a3a5c;border-radius:10px;position:relative;display:flex;align-items:center;justify-content:center;transition:border-color .15s,background .15s;cursor:pointer;}
+.tslot.selected{border-color:var(--cyan);border-style:solid;background:#0d1f30;}
+.tslot.hovered{border-color:var(--green);border-style:solid;}
+.tslot canvas{pointer-events:none;display:block;}
+.dring{position:absolute;inset:0;border-radius:9px;pointer-events:none;}
+#statsCol{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:4px;width:100%;}
+.scard{width:160px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center;}
+.scard .sl{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);display:block;margin-bottom:3px;}
+.scard .sv{font-family:'Fredoka One',cursive;font-size:26px;color:var(--accent);line-height:1;}
+.scard.cyan .sv{color:var(--cyan);}
+.screen{position:absolute;inset:0;border-radius:10px;background:rgba(8,8,18,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20;padding:24px;}
+.screen h2{font-family:'Fredoka One',cursive;font-size:32px;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;}
+.screen .sub{color:var(--dim);font-size:12px;text-align:center;line-height:1.7;max-width:230px;}
+.screen .bigscore{font-family:'Fredoka One',cursive;font-size:50px;color:#fff;}
+.gbtn{position:relative;width:200px;height:52px;border-radius:14px;background:rgba(124,58,237,.1);border:2px solid rgba(124,58,237,.3);display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:17px;color:#a78bfa;overflow:hidden;cursor:pointer;}
+.gbtn .bar{position:absolute;left:0;top:0;bottom:0;width:0%;background:linear-gradient(90deg,rgba(124,58,237,.6),rgba(6,182,212,.4));transition:width .05s linear;border-radius:12px;}
+.gbtn .lbl{position:relative;z-index:1;}
+.gbtn.hover{border-color:var(--accent);color:#fff;}
+.gbtn.fired{background:rgba(124,58,237,.5);}
+.hidden{display:none!important;}
+#cursor{position:fixed;width:24px;height:24px;border-radius:50%;border:2.5px solid var(--cyan);background:rgba(6,182,212,.15);pointer-events:none;transform:translate(-50%,-50%);z-index:9999;display:none;}
+#cursor.grab{width:14px;height:14px;background:rgba(124,58,237,.6);border-color:var(--accent);}
+#comboPop{position:absolute;top:28%;left:50%;transform:translateX(-50%);font-family:'Fredoka One',cursive;font-size:20px;color:#fbbf24;pointer-events:none;opacity:0;z-index:30;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div id="root">
+
+  <div id="camCol">
+    <div id="camWrap">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="handCanvas"></canvas>
+      <div id="camPill"><div id="camDot"></div><span id="camTxt">Starting…</span></div>
+    </div>
+    <div id="gestureBadge">👋 Waiting for camera…</div>
+    <div class="legend">
+      <div class="ltitle">✋ Gesture Guide</div>
+      <div class="leg"><span class="ico">☝️</span><div><strong>Point (1 finger)</strong> — hover over a piece tray slot and hold 1s to select it</div></div>
+      <div class="leg"><span class="ico">✌️</span><div><strong>Two fingers up</strong> — grab & drag selected piece over the grid</div></div>
+      <div class="leg"><span class="ico">✊</span><div><strong>Fist or Open palm</strong> — drop piece at highlighted position</div></div>
+      <div class="leg"><span class="ico">👆</span><div><strong>On menu buttons</strong> — point + hold 1.5s to press</div></div>
+    </div>
+  </div>
+
+  <div id="gameCol">
+    <div id="gameTitle">BLOCK BLAST</div>
+    <div id="boardWrap">
+      <canvas id="gameCanvas"></canvas>
+      <div id="comboPop"></div>
+      <div class="screen" id="scStart">
+        <h2>BLOCK BLAST</h2>
+        <p class="sub">Select pieces from the tray and place them on the grid. Fill complete rows or columns to clear them!</p>
+        <div class="gbtn" id="btn-start" data-action="start"><div class="bar" id="bar-btn-start"></div><span class="lbl">▶ START GAME</span></div>
+        <p class="sub" style="font-size:10px;margin-top:4px;">Point finger at button and hold 1s — or click it</p>
+      </div>
+      <div class="screen hidden" id="scOver">
+        <h2>GAME OVER</h2>
+        <div class="bigscore" id="finalScore">0</div>
+        <p class="sub">Final score</p>
+        <div class="gbtn" id="btn-again" data-action="restart"><div class="bar" id="bar-btn-again"></div><span class="lbl">🔄 PLAY AGAIN</span></div>
+      </div>
+    </div>
+    <div id="trayWrap">
+      <div class="tslot" id="ts0"><canvas id="tc0" width="82" height="82"></canvas><div class="dring" id="dr0"></div></div>
+      <div class="tslot" id="ts1"><canvas id="tc1" width="82" height="82"></canvas><div class="dring" id="dr1"></div></div>
+      <div class="tslot" id="ts2"><canvas id="tc2" width="82" height="82"></canvas><div class="dring" id="dr2"></div></div>
+    </div>
+  </div>
+
+  <div id="statsCol">
+    <div class="scard"><span class="sl">Score</span><div class="sv" id="elScore">0</div></div>
+    <div class="scard cyan"><span class="sl">Best</span><div class="sv" id="elBest">0</div></div>
+    <div class="scard"><span class="sl">Lines</span><div class="sv" id="elLines">0</div></div>
+  </div>
+</div>
+
+<div id="cursor"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script>
+// ════════════════════════════
+//   BLOCK BLAST GAME ENGINE
+// ════════════════════════════
+const GC = 9, GR = 9, CS = 38;
+const gc = document.getElementById('gameCanvas');
+const gctx = gc.getContext('2d');
+gc.width = GC * CS; gc.height = GR * CS;
+
+const COLORS = ['#4fc3f7','#81c784','#ffb74d','#f06292','#ba68c8','#4db6ac','#ff8a65','#e57373','#fff176'];
+const SHAPES = [
+  [[1]],[[1,1]],[[1],[1]],
+  [[1,1,1]],[[1],[1],[1]],
+  [[1,1],[1,1]],
+  [[1,1,1,1]],[[1],[1],[1],[1]],
+  [[1,1,1],[0,0,1]],[[1,1,1],[1,0,0]],
+  [[0,0,1],[1,1,1]],[[1,0,0],[1,1,1]],
+  [[1,1],[0,1],[0,1]],[[1,1],[1,0],[1,0]],
+  [[0,1],[0,1],[1,1]],[[1,0],[1,0],[1,1]],
+  [[0,1,0],[1,1,1]],[[1,1,1],[0,1,0]],
+  [[1,1,1],[1,1,1],[1,1,1]],
+  [[1,1,1],[1,1,1]],[[1,1],[1,1],[1,1]],
+  [[1,0],[1,1],[0,1]],[[0,1],[1,1],[1,0]],
+];
+
+let grid, score, best, totalLines, tray, selIdx;
+let dragGX = -1, dragGY = -1, dragPiece = null;
+let flashRows = [], flashCols = [];
+let alive = false;
+
+function rnd(a){ return a[Math.floor(Math.random()*a.length)]; }
+function mkPiece(){ return { shape: rnd(SHAPES), color: rnd(COLORS) }; }
+
+function startGame(){
+  grid = Array.from({length:GR},()=>Array(GC).fill(null));
+  score=0; best=+localStorage.getItem('bbg_best')||0;
+  totalLines=0; tray=[mkPiece(),mkPiece(),mkPiece()];
+  selIdx=null; dragPiece=null; dragGX=-1; dragGY=-1;
+  flashRows=[]; flashCols=[]; alive=true;
+  hide('scStart'); hide('scOver');
+  updHUD(); drawBoard(); drawTray();
+}
+
+function updHUD(){
+  document.getElementById('elScore').textContent=score;
+  document.getElementById('elBest').textContent=best;
+  document.getElementById('elLines').textContent=totalLines;
+}
+
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+
+function cell(ctx,px,py,color,sz,alpha){
+  const a=alpha===undefined?1:alpha;
+  ctx.save(); ctx.globalAlpha=a;
+  ctx.fillStyle=color; rr(ctx,px+1,py+1,sz-2,sz-2,Math.max(2,sz*.1)); ctx.fill();
+  ctx.globalAlpha=a*.28; ctx.fillStyle='#fff';
+  ctx.fillRect(px+3,py+3,sz-6,Math.max(2,sz*.1));
+  ctx.restore();
+}
+
+function drawBoard(){
+  gctx.clearRect(0,0,gc.width,gc.height);
+  gctx.fillStyle='#0d1b2e'; rr(gctx,0,0,gc.width,gc.height,10); gctx.fill();
+  for(let r=0;r<GR;r++) for(let c=0;c<GC;c++){
+    gctx.strokeStyle='rgba(255,255,255,.04)'; gctx.lineWidth=.5;
+    gctx.strokeRect(c*CS,r*CS,CS,CS);
+    if(grid[r][c]){
+      const fl=flashRows.includes(r)||flashCols.includes(c);
+      cell(gctx,c*CS,r*CS,fl?'#fff':grid[r][c],CS,fl?.95:1);
+    }
+  }
+  if(dragPiece && dragGX>=0){
+    const ok=canPlace(dragPiece.shape,dragGX,dragGY);
+    dragPiece.shape.forEach((row,dr)=>row.forEach((v,dc)=>{
+      if(!v)return;
+      gctx.globalAlpha=.5;
+      gctx.fillStyle=ok?dragPiece.color:'#ef4444';
+      rr(gctx,(dragGX+dc)*CS+1,(dragGY+dr)*CS+1,CS-2,CS-2,Math.max(2,CS*.1));
+      gctx.fill(); gctx.globalAlpha=1;
+    }));
+  }
+}
+
+function drawTray(){
+  for(let i=0;i<3;i++){
+    const cv=document.getElementById('tc'+i);
+    const ctx=cv.getContext('2d'); const W=cv.width,H=cv.height;
+    ctx.clearRect(0,0,W,H);
+    document.getElementById('ts'+i).className='tslot'+(selIdx===i?' selected':'');
+    const p=tray[i]; if(!p)continue;
+    const rows=p.shape.length,cols=Math.max(...p.shape.map(r=>r.length));
+    const cs=Math.min(Math.floor((Math.min(W,H)-8)/Math.max(rows,cols)),22);
+    const ox=Math.floor((W-cols*cs)/2),oy=Math.floor((H-rows*cs)/2);
+    p.shape.forEach((row,r)=>row.forEach((v,c)=>{
+      if(!v)return; cell(ctx,ox+c*cs,oy+r*cs,p.color,cs,selIdx===i?1:.72);
+    }));
+  }
+}
+
+function canPlace(shape,gx,gy){
+  return shape.every((row,dr)=>row.every((v,dc)=>{
+    if(!v)return true;
+    const r=gy+dr,c=gx+dc;
+    return r>=0&&r<GR&&c>=0&&c<GC&&!grid[r][c];
+  }));
+}
+
+function clamp(shape,gx,gy){
+  const cols=Math.max(...shape.map(r=>r.length)),rows=shape.length;
+  return{gx:Math.max(0,Math.min(GC-cols,gx)),gy:Math.max(0,Math.min(GR-rows,gy))};
+}
+
+function doPlace(shape,color,gx,gy){
+  shape.forEach((row,dr)=>row.forEach((v,dc)=>{if(v)grid[gy+dr][gx+dc]=color;}));
+  score+=shape.flat().filter(Boolean).length;
+  const fr=[],fc=[];
+  for(let r=0;r<GR;r++) if(grid[r].every(v=>v))fr.push(r);
+  for(let c=0;c<GC;c++) if(grid.map(r=>r[c]).every(v=>v))fc.push(c);
+  const lines=fr.length+fc.length;
+  if(lines>0){
+    totalLines+=lines; score+=lines*10*lines;
+    if(score>best){best=score;localStorage.setItem('bbg_best',best);}
+    flashRows=fr;flashCols=fc; drawBoard();
+    if(lines>=2)combo(lines);
+    setTimeout(()=>{
+      fr.forEach(r=>{for(let c=0;c<GC;c++)grid[r][c]=null;});
+      fc.forEach(c=>{for(let r=0;r<GR;r++)grid[r][c]=null;});
+      flashRows=[];flashCols=[]; updHUD(); drawBoard();
+    },220);
+  } else {if(score>best){best=score;localStorage.setItem('bbg_best',best);}updHUD();drawBoard();}
+}
+
+function combo(n){
+  const el=document.getElementById('comboPop');
+  el.textContent={2:'Double!',3:'Triple!',4:'MEGA!',5:'ULTRA!'}[Math.min(n,5)]||n+'x!';
+  el.style.cssText='opacity:1;transition:none;transform:translateX(-50%) scale(1.1);';
+  setTimeout(()=>{el.style.cssText='opacity:0;transition:opacity .5s,transform .5s;transform:translateX(-50%) translateY(-20px) scale(1);';},350);
+}
+
+function checkGameOver(){
+  return tray.filter(Boolean).every(p=>{
+    for(let r=0;r<GR;r++)for(let c=0;c<GC;c++)if(canPlace(p.shape,c,r))return false;
+    return true;
+  });
+}
+
+function afterPlace(idx){
+  tray[idx]=null;selIdx=null;dragPiece=null;dragGX=-1;dragGY=-1;
+  if(tray.every(p=>!p))tray=[mkPiece(),mkPiece(),mkPiece()];
+  drawTray();
+  if(checkGameOver())setTimeout(()=>{document.getElementById('finalScore').textContent=score;show('scOver');alive=false;},380);
+}
+
+function bXY(cx,cy){
+  const rect=gc.getBoundingClientRect();
+  const sx=gc.width/rect.width,sy=gc.height/rect.height;
+  return{gx:Math.floor((cx-rect.left)*sx/CS),gy:Math.floor((cy-rect.top)*sy/CS)};
+}
+
+// mouse fallback
+for(let i=0;i<3;i++){
+  document.getElementById('ts'+i).addEventListener('click',()=>{
+    if(!alive||!tray[i])return;
+    selIdx=selIdx===i?null:i; dragPiece=selIdx!==null?tray[selIdx]:null;
+    drawTray();drawBoard();
+  });
+}
+gc.addEventListener('mousemove',e=>{
+  if(!dragPiece||!alive)return;
+  const{gx,gy}=bXY(e.clientX,e.clientY);
+  const p=dragPiece,adj=clamp(p.shape,gx-Math.floor(p.shape[0].length/2),gy-Math.floor(p.shape.length/2));
+  dragGX=adj.gx;dragGY=adj.gy;drawBoard();
+});
+gc.addEventListener('mouseleave',()=>{dragGX=-1;dragGY=-1;drawBoard();});
+gc.addEventListener('click',e=>{
+  if(!dragPiece||!alive)return;
+  const{gx,gy}=bXY(e.clientX,e.clientY);
+  const p=dragPiece,adj=clamp(p.shape,gx-Math.floor(p.shape[0].length/2),gy-Math.floor(p.shape.length/2));
+  if(canPlace(p.shape,adj.gx,adj.gy)){doPlace(p.shape,p.color,adj.gx,adj.gy);afterPlace(selIdx);}
+});
+document.querySelectorAll('.gbtn').forEach(b=>b.addEventListener('click',()=>{
+  if(b.dataset.action==='start'||b.dataset.action==='restart')startGame();
+}));
+
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+
+grid=Array.from({length:GR},()=>Array(GC).fill(null));drawBoard();
+
+
+// ════════════════════════════
+//   GESTURE ENGINE (MediaPipe)
+// ════════════════════════════
+const video=document.getElementById('video');
+const hCanvas=document.getElementById('handCanvas');
+const hctx=hCanvas.getContext('2d');
+const badge=document.getElementById('gestureBadge');
+const cursor=document.getElementById('cursor');
+
+// ── dwell for UI buttons ──
+const DWELL_BTN=1000, DWELL_TRAY=1000;
+let dwellBtn=null,dwellBtnStart=0,dwellBtnDone=false;
+let dwellTray=-1,dwellTrayStart=0,dwellTrayDone=false;
+
+function processBtnDwell(btn){
+  if(btn!==dwellBtn){
+    if(dwellBtn){const b=document.getElementById('bar-'+dwellBtn.id);if(b)b.style.width='0%';dwellBtn.classList.remove('hover','fired');}
+    dwellBtn=btn;dwellBtnStart=Date.now();dwellBtnDone=false;
+  }
+  if(!btn)return;
+  if(dwellBtnDone)return;
+  const pct=Math.min((Date.now()-dwellBtnStart)/DWELL_BTN*100,100);
+  const bar=document.getElementById('bar-'+btn.id);
+  if(bar)bar.style.width=pct+'%';
+  btn.classList.add('hover');
+  if(pct>=100){
+    dwellBtnDone=true;btn.classList.add('fired');
+    if(btn.dataset.action==='start'||btn.dataset.action==='restart')startGame();
+    setTimeout(()=>{btn.classList.remove('fired','hover');if(bar)bar.style.width='0%';},500);
+  }
+}
+
+function btnAt(x,y){
+  for(const b of document.querySelectorAll('.gbtn')){
+    if(b.closest('.hidden'))continue;
+    const r=b.getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return b;
+  }return null;
+}
+
+function processTrayDwell(idx){
+  if(idx!==dwellTray){
+    if(dwellTray>=0){
+      document.getElementById('dr'+dwellTray).style.background='';
+      document.getElementById('ts'+dwellTray)?.classList.remove('hovered');
+    }
+    dwellTray=idx;dwellTrayStart=Date.now();dwellTrayDone=false;
+  }
+  if(idx<0||dwellTrayDone)return;
+  const pct=Math.min((Date.now()-dwellTrayStart)/DWELL_TRAY,1);
+  document.getElementById('dr'+idx).style.background=`rgba(34,197,94,${pct*.3})`;
+  document.getElementById('ts'+idx)?.classList.add('hovered');
+  if(pct>=1){
+    dwellTrayDone=true;
+    if(alive&&tray[idx]){
+      selIdx=selIdx===idx?null:idx;
+      dragPiece=selIdx!==null?tray[selIdx]:null;
+      drawTray();drawBoard();
+    }
+  }
+}
+
+function trayAt(x,y){
+  for(let i=0;i<3;i++){
+    const r=document.getElementById('ts'+i).getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return i;
+  }return -1;
+}
+
+// ── smoothing ──
+let smX=null,smY=null;
+const SM=0.38;
+function sm(cur,prev){return prev===null?cur:prev*(1-SM)+cur*SM;}
+
+// ── classifier ──
+function dist2(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
+function fingerUp(lm,tip,pip,mcp){return lm[tip].y<lm[pip].y&&lm[pip].y<lm[mcp].y;}
+
+function classify(lm,vw,vh){
+  const idx=fingerUp(lm,8,6,5);
+  const mid=fingerUp(lm,12,10,9);
+  const ring=fingerUp(lm,16,14,13);
+  const pink=fingerUp(lm,20,18,17);
+  const thumb=lm[4].y<lm[2].y-0.035;
+  const ext=[idx,mid,ring,pink].filter(Boolean).length;
+  const pinchD=dist2(lm[4],lm[8]);
+
+  if(ext>=3)return{g:'open_palm'};
+  if(ext===0&&!thumb)return{g:'fist'};
+  if(idx&&mid&&!ring&&!pink)return{g:'two_fingers'};
+  if(ext===1&&idx){
+    return{g:'point',fx:(1-lm[8].x)*vw,fy:lm[8].y*vh,pinch:pinchD<0.065};
+  }
+  return{g:'other'};
+}
+
+// ── skeleton ──
+function skeleton(lm){
+  const W=hCanvas.width,H=hCanvas.height;
+  const pt=i=>({x:lm[i].x*W,y:lm[i].y*H});
+  const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  hctx.strokeStyle='rgba(124,58,237,.65)';hctx.lineWidth=2;
+  for(const[a,b]of CONN){const p1=pt(a),p2=pt(b);hctx.beginPath();hctx.moveTo(p1.x,p1.y);hctx.lineTo(p2.x,p2.y);hctx.stroke();}
+  for(let i=0;i<21;i++){
+    const p=pt(i),r=i===4||i===8?9:i===0?5:3;
+    const col=i===4?'#f97316':i===8?'#06b6d4':i===0?'#7c3aed':'rgba(200,160,255,.8)';
+    hctx.beginPath();hctx.arc(p.x,p.y,r,0,Math.PI*2);
+    hctx.fillStyle=col;hctx.shadowColor=col;hctx.shadowBlur=10;hctx.fill();hctx.shadowBlur=0;
+  }
+}
+
+// ── fire-guard: prevent same gesture firing twice in quick succession ──
+const GUARD={};
+function canFire(key,ms){const n=Date.now();if(!GUARD[key]||n-GUARD[key]>ms){GUARD[key]=n;return true;}return false;}
+
+let lastG='';
+
+function onHandResults(res){
+  hctx.clearRect(0,0,hCanvas.width,hCanvas.height);
+
+  if(!res.multiHandLandmarks||res.multiHandLandmarks.length===0){
+    badge.innerHTML='👋 Show your hand…';badge.classList.remove('lit');
+    cursor.style.display='none';processBtnDwell(null);processTrayDwell(-1);
+    return;
+  }
+
+  const lm=res.multiHandLandmarks[0];
+  const vw=window.innerWidth,vh=window.innerHeight;
+  skeleton(lm);
+
+  const g=classify(lm,vw,vh);
+
+  const LABELS={open_palm:'🖐 Open palm → drop!',fist:'✊ Fist → drop!',two_fingers:'✌️ Two fingers → dragging',point:'☝️ Pointing',other:'✋ Hand visible'};
+  badge.innerHTML=LABELS[g.g]||'✋';
+  badge.classList.toggle('lit',g.g!=='other');
+
+  // ── POINTING ──
+  if(g.g==='point'){
+    smX=sm(g.fx,smX);smY=sm(g.fy,smY);
+    cursor.style.display='block';cursor.className='';
+    cursor.style.left=smX+'px';cursor.style.top=smY+'px';
+
+    const uiBtn=btnAt(smX,smY);
+    if(uiBtn){
+      processBtnDwell(uiBtn);processTrayDwell(-1);
+    } else {
+      processBtnDwell(null);
+      const ti=trayAt(smX,smY);
+      processTrayDwell(ti);
+    }
+
+    // pinch-while-pointing also drags
+    if(g.pinch&&dragPiece&&alive){
+      cursor.className='grab';
+      const{gx,gy}=bXY(smX,smY);
+      const p=dragPiece,adj=clamp(p.shape,gx-Math.floor(p.shape[0].length/2),gy-Math.floor(p.shape.length/2));
+      dragGX=adj.gx;dragGY=adj.gy;drawBoard();
+    }
+  }
+  // ── TWO FINGERS = DRAG ──
+  else if(g.g==='two_fingers'){
+    processBtnDwell(null);processTrayDwell(-1);
+    const mx=(1-(lm[8].x+lm[12].x)/2)*vw;
+    const my=((lm[8].y+lm[12].y)/2)*vh;
+    smX=sm(mx,smX);smY=sm(my,smY);
+    cursor.style.display='block';cursor.className='grab';
+    cursor.style.left=smX+'px';cursor.style.top=smY+'px';
+
+    if(dragPiece&&alive){
+      const{gx,gy}=bXY(smX,smY);
+      const p=dragPiece,adj=clamp(p.shape,gx-Math.floor(p.shape[0].length/2),gy-Math.floor(p.shape.length/2));
+      dragGX=adj.gx;dragGY=adj.gy;drawBoard();
+    }
+  }
+  // ── FIST or OPEN PALM = DROP ──
+  else if((g.g==='fist'||g.g==='open_palm')&&lastG!==g.g){
+    processBtnDwell(null);processTrayDwell(-1);
+    cursor.style.display='none';
+    if(dragPiece&&alive&&dragGX>=0&&canFire('drop',600)){
+      const p=dragPiece;
+      if(canPlace(p.shape,dragGX,dragGY)){
+        doPlace(p.shape,p.color,dragGX,dragGY);afterPlace(selIdx);
+      } else {
+        selIdx=null;dragPiece=null;dragGX=-1;dragGY=-1;drawTray();drawBoard();
+      }
+    }
+  }
+  else if(g.g==='other'){
+    processBtnDwell(null);processTrayDwell(-1);cursor.style.display='none';
+  }
+
+  lastG=g.g;
+}
+
+// ── init camera ──
+async function initCamera(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
+    video.srcObject=stream;await video.play();
+    hCanvas.width=video.videoWidth||640;hCanvas.height=video.videoHeight||480;
+    document.getElementById('camDot').classList.add('on');
+    document.getElementById('camTxt').textContent='Live';
+    badge.innerHTML='✋ Ready — show your hand!';
+
+    const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:0.7,minTrackingConfidence:0.65});
+    hands.onResults(onHandResults);
+
+    async function tick(){if(video.readyState>=2)await hands.send({image:video});requestAnimationFrame(tick);}
+    tick();
+  }catch(e){
+    document.getElementById('camDot').style.background='#f97316';
+    document.getElementById('camTxt').textContent='Denied';
+    badge.innerHTML='⚠️ Camera denied — use mouse to play';
+  }
+}
+
+initCamera();
+</script>
+</body>
+</html>
