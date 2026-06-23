@@ -11,6 +11,8 @@ export type GameEvent =
 interface GameIframeProps {
   /** URL to the game's index.html under /public/games/ */
   src: string;
+  /** Fill the parent container edge-to-edge with no border-radius */
+  fullscreen?: boolean;
   /** Called when the game sends a GAME_COMPLETE event */
   onGameComplete?: (score: number) => void;
   /** Called when the game sends an XP_EARNED event */
@@ -21,6 +23,7 @@ interface GameIframeProps {
 
 export default function GameIframe({
   src,
+  fullscreen = false,
   onGameComplete,
   onXpEarned,
   onAchievementUnlocked,
@@ -53,8 +56,8 @@ export default function GameIframe({
       ref={iframeRef}
       src={src}
       allow="camera; microphone; autoplay; fullscreen"
-      className="w-full rounded-2xl border-0"
-      style={{ height: "calc(100vh - 120px)", minHeight: 500 }}
+      className={fullscreen ? "w-full flex-1 border-0" : "w-full rounded-2xl border-0"}
+      style={fullscreen ? { flex: 1, minHeight: 0 } : { height: "calc(100vh - 120px)", minHeight: 500 }}
       title="Game"
     />
   );
