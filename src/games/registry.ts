@@ -11,7 +11,7 @@
  */
 
 export type GameEntry = {
-  /** Subfolder name under src/app/(app)/games/games/ and public/games/ */
+  /** Subfolder name under games/ and public/games/ */
   folder: string;
   /** URL to the index.html served from public/games/ */
   indexPath: string;
@@ -23,7 +23,6 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'mouth-open-catch':{ folder: 'mouth-open-catch', indexPath: '/games/mouth-open-catch/out/index.html' },
   'happy-glass':     { folder: 'happy-glass',     indexPath: '/games/happy-glass/out/index.html' },
   'gesture-runner':  { folder: 'gesture-runner',  indexPath: '/games/gesture-runner/out/index.html' },
-  'cooking-chef':    { folder: 'cooking-chef',    indexPath: '/games/cooking-chef/out/index.html' },
   'world-explorer':  { folder: 'world-explorer',  indexPath: '/games/world-explorer/out/index.html' },
 
   // ── Vite games (dist/ copied to public/games/[name]/) ────────────────────

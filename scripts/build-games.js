@@ -66,7 +66,8 @@ function buildGame(name) {
       console.log(`  ✓ Copied to public/games/${name}/`);
 
     } else if (type === 'VITE') {
-      run('npm install --prefer-offline', gameDir);
+      const hasModules = fs.existsSync(path.join(gameDir, 'node_modules'));
+      run(hasModules ? 'npm install --prefer-offline' : 'npm install', gameDir);
       run('npm run build', gameDir);
       const distDir = path.join(gameDir, 'dist');
       const dest = path.join(GAMES_OUT, name);
@@ -75,7 +76,8 @@ function buildGame(name) {
       console.log(`  ✓ Built → public/games/${name}/`);
 
     } else if (type === 'NEXT') {
-      run('npm install --prefer-offline', gameDir);
+      const hasModules = fs.existsSync(path.join(gameDir, 'node_modules'));
+      run(hasModules ? 'npm install --prefer-offline' : 'npm install', gameDir);
       run('npm run build', gameDir);
       const outDir = path.join(gameDir, 'out');
       if (!fs.existsSync(outDir)) {
