@@ -49,6 +49,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'fish-catcher':           { folder: 'fish-catcher',           indexPath: '/games/fish-catcher/index.html' },
   'funny-face-contest':     { folder: 'funny-face-contest',     indexPath: '/games/funny-face-contest/index.html' },
   'gesture-ludo-king':      { folder: 'gesture-ludo-king',      indexPath: '/games/gesture-ludo-king/index.html' },
+  'gesture-pop':            { folder: 'gesture-pop',            indexPath: '/games/gesture-pop/index.html' },
   'gesture-space-shooter':  { folder: 'gesture-space-shooter',  indexPath: '/games/gesture-space-shooter/index.html' },
   'gesture-brickbreaker':   { folder: 'gesture-brickbreaker',   indexPath: '/games/gesture-brickbreaker/index.html' },
   'gesture-dash-v2':        { folder: 'gesture-dash-v2',        indexPath: '/games/gesture-dash-v2/index.html' },
