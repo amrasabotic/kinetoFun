@@ -157,6 +157,7 @@ function startGame(){
   schedMoles();
 }
 function endGame(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   clearInterval(gTmr); gTmr=null;
   moles.forEach(m=>{clearTimeout(m.timer);m.timer=null;});
   st=ST.OVER; buildBtns();

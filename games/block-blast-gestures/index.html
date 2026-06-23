@@ -433,6 +433,7 @@ function startGame(){
 }
 
 function doGameOver(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   alive=false;
   clearTimeout(dropTimer);
   document.getElementById('finalScore').textContent=score;

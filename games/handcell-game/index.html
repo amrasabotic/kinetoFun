@@ -586,6 +586,7 @@ function loop(){
 }
 
 function showDeath(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: player.score }, '*');
   gameState='dead';
   document.getElementById('deathFinal').textContent=`Final Mass: ${player.score}`;
   deathScreen.style.display='flex';

@@ -613,6 +613,7 @@ function gameLoop(ts) {
 //  GAME END
 // ═══════════════════════════════════════════════════
 function endGame(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: state.score }, '*');
   state.running=false;
   document.getElementById('game-over-screen').classList.add('visible');
   document.getElementById('final-score').textContent=`Score: ${state.score}`;

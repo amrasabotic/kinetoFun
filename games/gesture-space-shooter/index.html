@@ -344,11 +344,13 @@ function gameLoop() {
     /* Check lose */
     if (ship.hp <= 0) {
       addParticle(ship.x, ship.y, '#4ff', 40, 5);
+      window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
       state = STATE.DEAD;
       buildResultMenu(false);
     }
     /* Check win */
     if (enemies.length === 0) {
+      window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
       state = STATE.WIN;
       buildResultMenu(true);
     }

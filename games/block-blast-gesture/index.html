@@ -264,7 +264,7 @@ function afterPlace(idx){
   tray[idx]=null;selIdx=null;dragPiece=null;dragGX=-1;dragGY=-1;
   if(tray.every(p=>!p))tray=[mkPiece(),mkPiece(),mkPiece()];
   drawTray();
-  if(checkGameOver())setTimeout(()=>{document.getElementById('finalScore').textContent=score;show('scOver');alive=false;},380);
+  if(checkGameOver())setTimeout(()=>{window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');document.getElementById('finalScore').textContent=score;show('scOver');alive=false;},380);
 }
 
 function bXY(cx,cy){

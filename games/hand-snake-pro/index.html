@@ -624,6 +624,7 @@ function killPlayer() {
   burst(player.head.x, player.head.y, '#39d98a', 22);
   if (score > best) best = score;
   document.getElementById('bv').textContent = best;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   STATE = 'DEAD'; deathAt = Date.now();
   menuItems = []; hovIdx = -1; holdFrames = 0; holdFired = false;
 }

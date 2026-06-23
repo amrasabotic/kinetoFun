@@ -622,6 +622,7 @@ function updateProgress() {
     completed.add(currentAnimalIdx);
     score += 100;
     document.getElementById('score').textContent = score;
+    window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
     showCompletion();
   }
 }

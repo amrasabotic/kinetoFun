@@ -327,6 +327,7 @@ function enemyAttack() {
   if (gs.playerHP <= 0) {
     clearInterval(enemyTimer);
     document.getElementById('death-wave').textContent = gs.wave;
+    window.parent.postMessage({ type: 'GAME_COMPLETE', score: gs.wave }, '*');
     setTimeout(() => showScreen('gameover'), 700);
   }
 }

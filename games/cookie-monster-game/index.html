@@ -157,6 +157,7 @@ function startGame() {
 }
 
 function endGame() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   clearInterval(gameTimer);
   state = 'gameover';
   buildButtons();

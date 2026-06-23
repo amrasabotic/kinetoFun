@@ -214,6 +214,7 @@ function showHelp() {
 }
 
 function showWin() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   gameState = 'win';
   overlay.style.display = 'flex';
   overlay.innerHTML = `<h1>Level Clear!</h1><p class="subtitle">Score: ${score}</p>`;
@@ -226,6 +227,7 @@ function showWin() {
 }
 
 function showLose() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   gameState = 'lose';
   overlay.style.display = 'flex';
   overlay.innerHTML = `<h1>Game Over</h1><p class="subtitle">Score: ${score}</p>`;

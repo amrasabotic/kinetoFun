@@ -509,7 +509,7 @@ function loop() {
       checkCollisions();
       drawPlay();
       setHUD(true); updateHUD();
-      if(gs.over){ gs.overTick++; if(gs.overTick>80){ highScore=Math.max(highScore,gs.score); phase='over'; } }
+      if(gs.over){ gs.overTick++; if(gs.overTick>80){ highScore=Math.max(highScore,gs.score); window.parent.postMessage({ type: 'GAME_COMPLETE', score: gs.score }, '*'); phase='over'; } }
       break;
 
     case 'paused':

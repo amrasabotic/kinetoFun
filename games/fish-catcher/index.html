@@ -694,6 +694,7 @@ function updateGame() {
 }
 
 function endGame() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   state = 'gameover';
   bestScore = Math.max(bestScore, score);
   document.getElementById('final-score').textContent = score;

@@ -1817,6 +1817,7 @@ const Game = (() => {
     const score=engine.calcScore(state.strokes,state.timeLeft,lv.time);
     const result=engine.finalize(score);
     state.score=score;
+    window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
     state.xp=result.progress.xp;
     state.totalStars=result.progress.totalStars;
 

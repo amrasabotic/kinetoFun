@@ -707,6 +707,7 @@ function startGame() {
 }
 
 function endGame() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   state = 'gameover';
   document.getElementById('finalScore').textContent = score;
   document.getElementById('hud').classList.add('hidden');

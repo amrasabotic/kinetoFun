@@ -275,7 +275,7 @@ function update(){
   }
 
   // Win
-  if(camX>lvLen){if(score>best[mi])best[mi]=score;st=ST.WIN;}
+  if(camX>lvLen){if(score>best[mi])best[mi]=score;window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');st=ST.WIN;}
 }
 
 function die(){
@@ -284,6 +284,7 @@ function die(){
   burst(P.x+P.sz/2,P.y+P.sz/2,MAPS[mi].ac,30);
   burst(P.x+P.sz/2,P.y+P.sz/2,'#fff',12);
   if(score>best[mi])best[mi]=score;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   setTimeout(()=>{st=ST.DEAD;},600);
 }
 

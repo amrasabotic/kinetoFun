@@ -1000,6 +1000,7 @@ function updateHUD() {
 //  END GAME
 // ─────────────────────────────────────────────
 function endGame(won) {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: STATE.score }, '*');
   STATE.running = false;
   clearInterval(timerInt);
   if (animId) cancelAnimationFrame(animId);

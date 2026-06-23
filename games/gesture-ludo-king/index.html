@@ -521,6 +521,7 @@ function movePieceByIndex(idx) {
       setMsg(`${cap(col)} piece ${idx+1} reached home! 🏆`);
       if (state.pieces[col].every(p => p.finished)) {
         state.winner = col;
+        window.parent.postMessage({ type: 'GAME_COMPLETE', score: 1 }, '*');
         drawBoard(); return true;
       }
     } else {

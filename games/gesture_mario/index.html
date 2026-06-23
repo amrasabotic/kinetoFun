@@ -769,6 +769,7 @@ function loseLife(){
   lives--;livesVal.textContent=lives;
   spawnParticles(player.x+13-cameraOffset,player.y+10,'#e03030',14);
   if(lives<=0){
+    window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
     gameState='end';
     endItems=[{id:'restart',icon:'🔄',label:'Play Again'},{id:'menu',icon:'🏠',label:'Main Menu'}];
   } else {resetPlayer();invincible=120;}

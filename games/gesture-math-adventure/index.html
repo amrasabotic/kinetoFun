@@ -679,6 +679,7 @@ function onTimeUp(){
 
 // ── END GAME ──────────────────────────────────────────────────────────────────
 function endGame(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   setBest(confirmedDiff,score);
   setBestStreak(confirmedDiff,sessionBestStreak);
   gs='results';clearBtns();dwellId=null;

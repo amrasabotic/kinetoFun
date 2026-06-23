@@ -864,6 +864,7 @@ function handleAnswer(opt) {
    END GAME
 ══════════════════════════════════════════════════════════ */
 function endGame() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: S.score }, '*');
   LS.saveBestScore(S.score);
   LS.saveBestStreak(S.bestStreak);
 

@@ -792,7 +792,7 @@ function startFreeze(){
 }
 function nextRound(){
   round++;
-  if(round>totalRounds){gs='results';addToLeaderboard(players.map(p=>({name:p.name,score:p.score,mode:numPlayers+'P'})));return;}
+  if(round>totalRounds){window.parent.postMessage({ type: 'GAME_COMPLETE', score: players[0]?.score ?? 0 }, '*');gs='results';addToLeaderboard(players.map(p=>({name:p.name,score:p.score,mode:numPlayers+'P'})));return;}
   startCountdown();
 }
 function startGame(){

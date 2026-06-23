@@ -588,6 +588,7 @@ function runGame(dt){
   // game over?
   if(!player.alive&&parts.length<3){
     document.getElementById('hud').style.display='none';
+    window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
     gs='dead'; dwellId=null;
   }
 }

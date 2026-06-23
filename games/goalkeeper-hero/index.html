@@ -373,7 +373,7 @@ function onGoal(x,y){
   screenShake=14;
   if(settings.effects) spawnBurst(x,y,'#ff3300',18);
   sfxGoal();
-  if(lives<=0){gs='results'; addToLeaderboard(score,saveCount,level);}
+  if(lives<=0){window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');gs='results'; addToLeaderboard(score,saveCount,level);}
 }
 
 /* ═══════════════════════════════════════════

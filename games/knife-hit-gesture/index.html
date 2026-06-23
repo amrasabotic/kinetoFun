@@ -268,11 +268,13 @@ function landKnife(){
 }
 
 function triggerGameOver(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   alive=false;gameOver=true;
   spawnParticles(CX,CY,'#ef4444',32);
   setTimeout(()=>{hideAllScreens();$('finalScore').textContent=score;show('scOver');setStatus('Game Over');},500);
 }
 function triggerWin(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
   alive=false;won=true;
   $('winScore').textContent=score;
   const isLast=level>=8;

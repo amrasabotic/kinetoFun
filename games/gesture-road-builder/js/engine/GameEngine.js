@@ -796,6 +796,7 @@ GRB.GameEngine = class {
   _onGameOver(reason) {
     this.vehicle.stopDriving();
     this._gameOverReason = reason;
+    window.parent.postMessage({ type: 'GAME_COMPLETE', score: this.endlessScore }, '*');
     if (this.isEndless) {
       this.save.submitEndlessScore(this.endlessScore, this.endlessDistance);
       this.menu.setScreen('endless_over');

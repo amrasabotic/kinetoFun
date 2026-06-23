@@ -723,6 +723,7 @@ function loop(){
     S.resultTimer--;
     if(S.resultTimer <= 0){
       S.phase = S.shots <= 0 ? 'gameover' : 'aiming';
+      if(S.phase === 'gameover') window.parent.postMessage({ type: 'GAME_COMPLETE', score: S.score }, '*');
       if(S.phase === 'aiming') S.palmFired = false;
     }
   }
