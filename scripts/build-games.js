@@ -17,7 +17,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const GAMES_SRC = path.join(ROOT, 'src', 'app', '(app)', 'games', 'games');
+const GAMES_SRC = path.join(ROOT, 'games');
 const GAMES_OUT = path.join(ROOT, 'public', 'games');
 
 function detectType(gameDir) {
