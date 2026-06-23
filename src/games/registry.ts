@@ -30,6 +30,9 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-chef':          { folder: 'gesture-chef',          indexPath: '/games/gesture-chef/index.html' },
   'gesture-pong':          { folder: 'gesture-pong',          indexPath: '/games/gesture-pong/index.html' },
   'pizza-maker':           { folder: 'pizza-maker',           indexPath: '/games/pizza-maker/index.html' },
+  'flags-game':            { folder: 'flags-game',            indexPath: '/games/flags-game/index.html' },
+  'green-red-light':       { folder: 'green-red-light',       indexPath: '/games/green-red-light/index.html' },
+  'mirror-me':             { folder: 'mirror-me',             indexPath: '/games/mirror-me/index.html' },
 
   // ── Plain HTML games (folder copied as-is to public/games/[name]/) ───────
   'color-artist-gesture-quest': { folder: 'color-artist-gesture-quest', indexPath: '/games/color-artist-gesture-quest/index.html' },
