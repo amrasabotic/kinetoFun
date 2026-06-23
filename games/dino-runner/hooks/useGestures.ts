@@ -102,7 +102,7 @@ export function useGestures(enabled: boolean): GesturesOutput {
         };
 
         console.log('[useGestures] Creating Hands detector...');
-        const hands = new w.Hands({
+        const hands = new (w as any).Hands({
           locateFile: (file: string) =>
             `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`,
         });
