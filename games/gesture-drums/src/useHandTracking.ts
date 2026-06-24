@@ -41,10 +41,9 @@ export function useHandTracking(videoRef: React.RefObject<HTMLVideoElement>): Bo
 
       if (results.landmarks && results.landmarks.length > 0) {
         results.landmarks.forEach((lm, i) => {
-          // MediaPipe reports handedness relative to the image (mirrored camera)
-          // "Right" in MediaPipe = player's left hand; flip for natural feel
-          const rawHandedness = results.handednesses[i]?.[0]?.categoryName ?? 'Right';
-          const handedness: 'Left' | 'Right' = rawHandedness === 'Right' ? 'Left' : 'Right';
+          // @mediapipe/tasks-vision HandLandmarker already returns handedness
+          // from the user's perspective, so no flip needed.
+          const handedness = (results.handednesses[i]?.[0]?.categoryName ?? 'Right') as 'Left' | 'Right';
 
           // Use wrist (lm[0]) for stable position tracking
           const wrist = lm[0];

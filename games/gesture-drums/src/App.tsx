@@ -52,12 +52,41 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
 
 function HowToPlayScreen({ onBack }: { onBack: () => void }) {
   const items = [
-    { icon: '👋', title: 'Left Hand → Left Pads', desc: 'Your left hand controls the left half of the kit: Hi-Hat, Crash, Snare, and Rim Shot.' },
-    { icon: '🤜', title: 'Right Hand → Right Pads', desc: 'Your right hand controls the right half: Kick, Tom, Floor Tom, and Cowbell.' },
-    { icon: '⬇️', title: 'Strike Down to Hit', desc: 'Move your hand downward into a pad zone to trigger it. Fast downward motion = a drum hit. Keep your hands visible to the camera.' },
-    { icon: '🎵', title: 'Rhythm Mode', desc: 'Colored bars fall toward each pad. Hit the pad when the bar reaches the white hit line at the bottom. Timing matters!' },
-    { icon: '⭐', title: 'Scoring', desc: 'PERFECT (±45ms) = 100 pts × combo. GOOD (±90ms) = 50 pts × combo. Missing a note resets your combo.' },
-    { icon: '🥁', title: 'Free Play', desc: 'No rules — just drum! Great for warming up and learning which pads make which sounds.' },
+    {
+      icon: '📷',
+      title: 'Camera Setup',
+      desc: 'Sit facing your webcam with both hands clearly visible. Keep your hands roughly at chest height, about 30–60 cm from the camera. Good lighting helps detection.',
+    },
+    {
+      icon: '👈',
+      title: 'Left Hand → Left Side',
+      desc: 'Your LEFT hand controls the LEFT half of the screen: Hi-Hat (top-left, cyan), Crash (top-right, yellow), Snare (bottom-left, red), Rim Shot (bottom-right, orange).',
+    },
+    {
+      icon: '👉',
+      title: 'Right Hand → Right Side',
+      desc: 'Your RIGHT hand controls the RIGHT half of the screen: Kick (top-left, purple), Tom (top-right, blue), Floor Tom (bottom-left, green), Cowbell (bottom-right, pink).',
+    },
+    {
+      icon: '⬇️',
+      title: 'How to Hit a Pad',
+      desc: 'Move your hand DOWN quickly over a pad zone — like actually striking a drum. A slow hover does nothing; you need a fast downward strike motion. Each pad flashes and plays a sound when hit.',
+    },
+    {
+      icon: '🎵',
+      title: 'Rhythm Mode — How to Score',
+      desc: 'Colored bars fall from the top toward each pad. When a bar reaches the glowing white hit line near the bottom, strike that pad. The closer to the line you hit, the more points you earn.',
+    },
+    {
+      icon: '⭐',
+      title: 'Timing Windows & Combo',
+      desc: 'PERFECT (bar is right on the line) = 100 pts × combo multiplier. GOOD (slightly early/late) = 50 pts × combo. Missing a note resets your combo to zero. Build long combos for massive scores.',
+    },
+    {
+      icon: '🥁',
+      title: 'Free Play Mode',
+      desc: 'No falling bars, no timing pressure — just hit any pad to hear it. Use this to learn where each pad is and practice your striking motion before jumping into Rhythm mode.',
+    },
   ];
 
   return (
@@ -96,8 +125,14 @@ const MODE_OPTIONS: { id: GameMode; label: string; desc: string; accent: string;
 function ModeSelectScreen({ onSelect, onBack }: { onSelect: (m: GameMode) => void; onBack: () => void }) {
   return (
     <div className="h-screen bg-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
-      <div className="w-full max-w-md flex flex-col gap-5">
+      <div className="w-full max-w-md flex flex-col gap-4">
         <h2 className="text-3xl font-black text-white text-center">Select Mode</h2>
+
+        {/* Quick reminder */}
+        <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white/55 leading-relaxed">
+          <span className="text-purple-400 font-bold">Rhythm modes:</span> colored bars fall toward each pad — strike the pad when the bar hits the glowing white line to score. <span className="text-yellow-400 font-bold">PERFECT</span> = 100 pts × combo · <span className="text-green-400 font-bold">GOOD</span> = 50 pts × combo.
+        </div>
+
         <div className="flex flex-col gap-2.5">
           {MODE_OPTIONS.map(opt => (
             <button key={opt.id} onClick={() => onSelect(opt.id)}
