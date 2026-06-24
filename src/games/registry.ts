@@ -35,6 +35,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'flags-game':            { folder: 'flags-game',            indexPath: '/games/flags-game/index.html' },
   'green-red-light':       { folder: 'green-red-light',       indexPath: '/games/green-red-light/index.html' },
   'mirror-me':             { folder: 'mirror-me',             indexPath: '/games/mirror-me/index.html' },
+  'shield-hero':           { folder: 'shield-hero',           indexPath: '/games/shield-hero/index.html' },
   'block-breaker':         { folder: 'block-breaker',         indexPath: '/games/block-breaker/index.html' },
   'crossword-builder':     { folder: 'crossword-builder',     indexPath: '/games/crossword-builder/index.html' },
   'gesture-air-hockey':    { folder: 'gesture-air-hockey',    indexPath: '/games/gesture-air-hockey/index.html' },
