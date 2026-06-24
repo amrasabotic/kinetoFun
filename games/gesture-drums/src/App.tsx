@@ -1,0 +1,378 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useHandTracking } from './useHandTracking';
+import { useGameCanvas } from './useGameCanvas';
+import {
+  initialGameState, stepGame, scoreHit, checkPadHit, accuracy,
+  CANVAS_W, CANVAS_H,
+} from './gameLogic';
+import type { GameState, GameMode } from './gameLogic';
+import { playDrum, initAudio } from './audio';
+
+type Screen = 'landing' | 'howtoplay' | 'modeselect' | 'game';
+
+export default function App() {
+  const [screen, setScreen] = useState<Screen>('landing');
+  const [mode, setMode] = useState<GameMode>('freeplay');
+
+  if (screen === 'landing')   return <LandingScreen onPlay={() => setScreen('modeselect')} onHow={() => setScreen('howtoplay')} />;
+  if (screen === 'howtoplay') return <HowToPlayScreen onBack={() => setScreen('landing')} />;
+  if (screen === 'modeselect') return <ModeSelectScreen onSelect={m => { setMode(m); setScreen('game'); }} onBack={() => setScreen('landing')} />;
+  return <GameScreen mode={mode} onQuit={() => setScreen('landing')} />;
+}
+
+// ── Landing Screen ────────────────────────────────────────────────────────────
+
+function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => void }) {
+  return (
+    <div className="h-screen bg-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
+      <div className="flex flex-col items-center gap-8 w-full max-w-sm">
+        <DrumKitSvg />
+        <div className="flex flex-col items-center gap-1">
+          <h1 className="text-5xl font-black tracking-tight text-white">
+            Gesture<span className="text-purple-400">Drums</span>
+          </h1>
+          <p className="text-gray-400 text-sm tracking-widest uppercase">Air-drum with your hands</p>
+        </div>
+        <div className="flex flex-col gap-3 w-full">
+          <button onClick={() => { initAudio(); onPlay(); }}
+            className="w-full py-4 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-black text-xl rounded-xl tracking-wide transition-all duration-150 shadow-lg shadow-purple-900/50">
+            PLAY
+          </button>
+          <button onClick={onHow}
+            className="w-full py-3 bg-white/8 hover:bg-white/12 active:scale-95 text-white font-semibold text-base rounded-xl tracking-wide transition-all duration-150 border border-white/10">
+            How to Play
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── How To Play Screen ────────────────────────────────────────────────────────
+
+function HowToPlayScreen({ onBack }: { onBack: () => void }) {
+  const items = [
+    { icon: '👋', title: 'Left Hand → Left Pads', desc: 'Your left hand controls the left half of the kit: Hi-Hat, Crash, Snare, and Rim Shot.' },
+    { icon: '🤜', title: 'Right Hand → Right Pads', desc: 'Your right hand controls the right half: Kick, Tom, Floor Tom, and Cowbell.' },
+    { icon: '⬇️', title: 'Strike Down to Hit', desc: 'Move your hand downward into a pad zone to trigger it. Fast downward motion = a drum hit. Keep your hands visible to the camera.' },
+    { icon: '🎵', title: 'Rhythm Mode', desc: 'Colored bars fall toward each pad. Hit the pad when the bar reaches the white hit line at the bottom. Timing matters!' },
+    { icon: '⭐', title: 'Scoring', desc: 'PERFECT (±45ms) = 100 pts × combo. GOOD (±90ms) = 50 pts × combo. Missing a note resets your combo.' },
+    { icon: '🥁', title: 'Free Play', desc: 'No rules — just drum! Great for warming up and learning which pads make which sounds.' },
+  ];
+
+  return (
+    <div className="h-screen bg-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
+      <div className="w-full max-w-md flex flex-col gap-5">
+        <h2 className="text-3xl font-black text-white text-center">How to Play</h2>
+        <div className="flex flex-col gap-2.5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+          {items.map(item => (
+            <div key={item.title} className="flex gap-4 bg-white/5 rounded-xl p-3.5 border border-white/8">
+              <div className="w-8 flex-shrink-0 flex items-start justify-center pt-0.5 text-xl">{item.icon}</div>
+              <div>
+                <p className="text-white font-bold text-sm">{item.title}</p>
+                <p className="text-gray-400 text-xs leading-relaxed mt-0.5">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={onBack}
+          className="w-full py-3 bg-white/8 hover:bg-white/12 active:scale-95 text-white font-semibold rounded-xl transition-all duration-150 border border-white/10">
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Mode Select Screen ────────────────────────────────────────────────────────
+
+const MODE_OPTIONS: { id: GameMode; label: string; desc: string; accent: string; btn: string; bpm?: string }[] = [
+  { id: 'freeplay', label: 'Free Play', desc: 'No timing, no score — just drum', accent: 'text-gray-300',   btn: 'bg-gray-700 hover:bg-gray-600' },
+  { id: 'easy',     label: 'Easy',      desc: '80 BPM · basic kick & snare',     accent: 'text-green-400',  btn: 'bg-green-800 hover:bg-green-700', bpm: '80 BPM' },
+  { id: 'medium',   label: 'Medium',    desc: '110 BPM · adds toms & 8th hats',  accent: 'text-yellow-400', btn: 'bg-yellow-800 hover:bg-yellow-700', bpm: '110 BPM' },
+  { id: 'hard',     label: 'Hard',      desc: '140 BPM · syncopation & fills',   accent: 'text-red-400',    btn: 'bg-red-900 hover:bg-red-800', bpm: '140 BPM' },
+];
+
+function ModeSelectScreen({ onSelect, onBack }: { onSelect: (m: GameMode) => void; onBack: () => void }) {
+  return (
+    <div className="h-screen bg-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
+      <div className="w-full max-w-md flex flex-col gap-5">
+        <h2 className="text-3xl font-black text-white text-center">Select Mode</h2>
+        <div className="flex flex-col gap-2.5">
+          {MODE_OPTIONS.map(opt => (
+            <button key={opt.id} onClick={() => onSelect(opt.id)}
+              className={`w-full py-3.5 ${opt.btn} active:scale-95 text-white rounded-xl transition-all duration-150 shadow-lg flex items-center justify-between px-5`}>
+              <div className="flex flex-col items-start">
+                <span className={`font-black text-lg ${opt.accent}`}>{opt.label}</span>
+                <span className="text-white/50 text-xs">{opt.desc}</span>
+              </div>
+              {opt.bpm && <span className="text-white/40 text-sm font-mono">{opt.bpm}</span>}
+            </button>
+          ))}
+        </div>
+        <button onClick={onBack}
+          className="w-full py-3 bg-white/8 hover:bg-white/12 active:scale-95 text-white font-semibold rounded-xl transition-all duration-150 border border-white/10">
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Game Screen ───────────────────────────────────────────────────────────────
+
+function GameScreen({ mode, onQuit }: { mode: GameMode; onQuit: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const gameStateRef = useRef<GameState>(initialGameState(mode));
+  const [displayState, setDisplayState] = useState<GameState>(gameStateRef.current);
+  const rafRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
+
+  const handsData = useHandTracking(videoRef as React.RefObject<HTMLVideoElement>);
+  const handsDataRef = useRef(handsData);
+  handsDataRef.current = handsData;
+
+  const draw = useGameCanvas(canvasRef as React.RefObject<HTMLCanvasElement>);
+
+  const loop = useCallback((ts: number) => {
+    const delta = lastTimeRef.current ? Math.min(ts - lastTimeRef.current, 50) : 16;
+    lastTimeRef.current = ts;
+
+    const hands = handsDataRef.current;
+    let gs = gameStateRef.current;
+    if (gs.phase === 'playing') {
+      // Advance song time
+      gs = stepGame(gs, delta, ts);
+
+      // Check hits for each hand
+      for (const pad of gs.pads) {
+        const hand = pad.hand === 'left' ? hands.left : hands.right;
+        if (!hand) continue;
+        if (checkPadHit(pad, hand.x, hand.y, hand.vy, ts)) {
+          playDrum(pad.sound);
+          gs = scoreHit(gs, pad.id, ts);
+        }
+      }
+
+      gameStateRef.current = gs;
+      setDisplayState({ ...gs });
+    }
+
+    rafRef.current = requestAnimationFrame(loop);
+  }, []);
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [loop]);
+
+  // Draw on every state update
+  useEffect(() => {
+    const hands = handsDataRef.current;
+    draw({
+      state: displayState,
+      leftDetected: !!hands.left,
+      rightDetected: !!hands.right,
+      leftX: hands.left?.x ?? 0.25,
+      leftY: hands.left?.y ?? 0.5,
+      rightX: hands.right?.x ?? 0.75,
+      rightY: hands.right?.y ?? 0.5,
+      videoEl: videoRef.current,
+    });
+  }, [displayState, draw]);
+
+  // Emit score on finish
+  useEffect(() => {
+    if (displayState.phase === 'finished') {
+      window.parent.postMessage({ type: 'GAME_COMPLETE', score: displayState.score }, '*');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayState.phase]);
+
+  const handleRestart = () => {
+    gameStateRef.current = initialGameState(mode);
+    setDisplayState(gameStateRef.current);
+  };
+
+  const gs = displayState;
+  const anyHand = !!handsData.left || !!handsData.right;
+
+  return (
+    <div className="h-screen bg-gray-950 flex items-center justify-center overflow-hidden">
+      <div className="flex items-stretch gap-4 h-full py-4 px-4" style={{ maxHeight: CANVAS_H + 32 }}>
+
+        {/* ── Left panel ── */}
+        <div className="flex flex-col items-center justify-between gap-3 w-28 shrink-0">
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <span className="text-2xl">🥁</span>
+            <span className="text-purple-400/60 text-xs font-bold uppercase tracking-widest">Drums</span>
+          </div>
+
+          <div className="flex flex-col items-center gap-1 w-full">
+            <span className="text-white/40 text-xs uppercase tracking-widest">Score</span>
+            <span className="text-white font-black text-3xl tabular-nums">{gs.score}</span>
+          </div>
+
+          {gs.combo > 1 && (
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-yellow-400/50 text-xs uppercase tracking-widest">Combo</span>
+              <span className="text-yellow-400 font-black text-2xl">×{gs.combo}</span>
+            </div>
+          )}
+
+          {gs.mode !== 'freeplay' && (
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-white/40 text-xs uppercase tracking-widest">Accuracy</span>
+              <span className="text-purple-400 font-black text-xl">{accuracy(gs)}%</span>
+            </div>
+          )}
+
+          <div className="flex-1" />
+
+          <div className="flex flex-col gap-1.5 w-full pb-1">
+            <button onClick={handleRestart}
+              className="w-full py-2 bg-white/8 hover:bg-white/14 active:scale-95 text-white/65 text-xs font-semibold rounded-lg transition-all border border-white/10">
+              Restart
+            </button>
+            <button onClick={onQuit}
+              className="w-full py-2 bg-white/8 hover:bg-white/14 active:scale-95 text-white/65 text-xs font-semibold rounded-lg transition-all border border-white/10">
+              Quit
+            </button>
+          </div>
+        </div>
+
+        {/* ── Canvas ── */}
+        <div className="relative flex-shrink-0">
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_W}
+            height={CANVAS_H}
+            className="rounded-xl shadow-2xl block h-full w-auto"
+            style={{ maxHeight: CANVAS_H }}
+          />
+
+          {/* No-hand overlay */}
+          {!anyHand && gs.phase === 'playing' && (
+            <div className="absolute inset-0 rounded-xl flex flex-col items-center justify-center"
+              style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)' }}>
+              <span className="text-5xl mb-3">🙌</span>
+              <p className="text-white font-bold text-lg">Show your hands!</p>
+              <p className="text-white/50 text-sm mt-1">Hold both hands in front of the camera</p>
+            </div>
+          )}
+
+          {/* Game finished overlay */}
+          {gs.phase === 'finished' && (
+            <div className="absolute inset-0 rounded-xl flex items-center justify-center"
+              style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(6px)' }}>
+              <div className="text-center flex flex-col items-center gap-5 px-8">
+                <p className="text-purple-400 font-black text-4xl">Song Complete!</p>
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="flex gap-6">
+                    <Stat label="Score" value={String(gs.score)} color="text-white" />
+                    <Stat label="Accuracy" value={`${accuracy(gs)}%`} color="text-purple-300" />
+                    <Stat label="Max Combo" value={`×${gs.maxCombo}`} color="text-yellow-300" />
+                  </div>
+                  <div className="text-white/40 text-sm mt-1">
+                    {gs.hitNotes} / {gs.totalNotes} notes hit
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-1">
+                  <button onClick={handleRestart}
+                    className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold rounded-xl transition-all">
+                    Play Again
+                  </button>
+                  <button onClick={onQuit}
+                    className="px-6 py-2.5 bg-white/12 hover:bg-white/20 active:scale-95 text-white font-bold rounded-xl transition-all">
+                    Quit
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Right panel: webcam + pad legend ── */}
+        <div className="flex flex-col items-center justify-between gap-3 w-40 shrink-0">
+          <div className="flex flex-col gap-1 w-full pt-1">
+            <HandBadge color="cyan" label="Left Hand" items={['Hi-Hat', 'Crash', 'Snare', 'Rim']} />
+            <HandBadge color="purple" label="Right Hand" items={['Kick', 'Tom', 'Floor Tom', 'Cowbell']} />
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Webcam */}
+          <div className="relative rounded-xl overflow-hidden border-2 border-white/12 shadow-xl w-full" style={{ aspectRatio: '4/3' }}>
+            <video
+              ref={videoRef as React.RefObject<HTMLVideoElement>}
+              className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }}
+              muted
+              playsInline
+            />
+            <div className={`absolute top-1.5 left-1.5 w-2.5 h-2.5 rounded-full border border-black/30 ${
+              handsData.left && handsData.right ? 'bg-green-400' :
+              handsData.left || handsData.right  ? 'bg-yellow-400' : 'bg-red-500'
+            }`} />
+            {!anyHand && (
+              <div className="absolute inset-0 bg-red-900/40 flex items-end justify-center pb-2">
+                <span className="text-white text-xs font-bold drop-shadow">No hands</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ── Small shared components ───────────────────────────────────────────────────
+
+function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className={`font-black text-3xl tabular-nums ${color}`}>{value}</span>
+      <span className="text-white/40 text-xs uppercase tracking-widest">{label}</span>
+    </div>
+  );
+}
+
+function HandBadge({ color, label, items }: { color: 'cyan' | 'purple'; label: string; items: string[] }) {
+  const accent = color === 'cyan' ? 'text-cyan-400 border-cyan-400/20' : 'text-purple-400 border-purple-400/20';
+  return (
+    <div className={`rounded-lg border p-2 ${accent} bg-white/4`}>
+      <p className={`text-xs font-bold uppercase tracking-widest ${color === 'cyan' ? 'text-cyan-400' : 'text-purple-400'} mb-1`}>{label}</p>
+      {items.map(i => (
+        <p key={i} className="text-white/50 text-xs leading-tight">{i}</p>
+      ))}
+    </div>
+  );
+}
+
+function DrumKitSvg() {
+  return (
+    <svg width="140" height="100" viewBox="0 0 140 100" fill="none">
+      {/* Bass drum */}
+      <ellipse cx="70" cy="75" rx="36" ry="18" fill="#1e1b4b" stroke="#7c3aed" strokeWidth="2"/>
+      <ellipse cx="70" cy="72" rx="34" ry="16" fill="#2e1065" stroke="#a855f7" strokeWidth="1.5"/>
+      {/* Hi-hat stand */}
+      <line x1="20" y1="80" x2="20" y2="30" stroke="#4b5563" strokeWidth="2"/>
+      <ellipse cx="20" cy="28" rx="14" ry="4" fill="#1e293b" stroke="#06b6d4" strokeWidth="1.5"/>
+      <ellipse cx="20" cy="24" rx="14" ry="4" fill="#0f172a" stroke="#06b6d4" strokeWidth="1.5"/>
+      {/* Snare */}
+      <ellipse cx="70" cy="60" rx="22" ry="8" fill="#1e1b4b" stroke="#ef4444" strokeWidth="1.5"/>
+      <rect x="48" y="55" width="44" height="8" rx="2" fill="#1e1b4b" stroke="#ef4444" strokeWidth="1"/>
+      {/* Tom */}
+      <ellipse cx="110" cy="40" rx="16" ry="6" fill="#1e1b4b" stroke="#3b82f6" strokeWidth="1.5"/>
+      <rect x="94" y="36" width="32" height="8" rx="2" fill="#1e1b4b" stroke="#3b82f6" strokeWidth="1"/>
+      {/* Crash cymbal */}
+      <ellipse cx="110" cy="20" rx="18" ry="5" fill="#1e293b" stroke="#eab308" strokeWidth="1.5"/>
+      {/* Stick left */}
+      <line x1="35" y1="50" x2="50" y2="65" stroke="#d1d5db" strokeWidth="3" strokeLinecap="round"/>
+      {/* Stick right */}
+      <line x1="105" y1="50" x2="90" y2="65" stroke="#d1d5db" strokeWidth="3" strokeLinecap="round"/>
+    </svg>
+  );
+}
