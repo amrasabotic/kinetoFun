@@ -113,7 +113,7 @@ export class HandTracker {
     const ctx = cv.getContext('2d')!;
     ctx.clearRect(0, 0, cv.width, cv.height);
 
-    resetHand(this.hands[0]); resetHand(this.hands[1]);
+    const detected = new Set<number>();
 
     if (res.multiHandLandmarks?.length > 0) {
       res.multiHandLandmarks.forEach((lm: NormalizedLandmark[], i: number) => {
@@ -124,8 +124,14 @@ export class HandTracker {
           (window as any).drawLandmarks(ctx, lm, { color: '#fff', lineWidth: 1, radius: 2 });
         }
         updateHand(this.hands[i], lm as NormalizedLandmark[], W, H);
+        detected.add(i);
       });
     }
+
+    // Only fully reset hands that weren't detected this frame.
+    // Keeping x/y/hist between frames is critical for velocity and gesture detection.
+    if (!detected.has(0)) resetHand(this.hands[0]);
+    if (!detected.has(1)) resetHand(this.hands[1]);
 
     this.callbacks.forEach(cb => cb(this.hands));
   }

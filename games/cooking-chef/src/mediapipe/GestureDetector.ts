@@ -27,11 +27,11 @@ export function detectThumbsUp(lm: NormalizedLandmark[]): boolean {
 }
 
 export function detectChopDown(h: HandData): boolean {
-  return h.vy > 9 && h.hist.length > 3;
+  return h.vy > 5 && h.hist.length > 3;
 }
 
 export function detectSwipeUp(h: HandData): boolean {
-  return h.vy < -11;
+  return h.vy < -7;
 }
 
 export function detectSwipeLeft(h: HandData): boolean {
