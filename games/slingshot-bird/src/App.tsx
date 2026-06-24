@@ -113,6 +113,34 @@ function GestureBtn({ dwellId, activeId, dwellProgress, onClick, className = '',
   );
 }
 
+// Gesture button for the game screen — uses dwell state driven by pinch wrist position
+function GameGestureBtn({ dwellId, activeId, dwellProgress, onClick, className = '', children }: {
+  dwellId: string; activeId: string | null; dwellProgress: number;
+  onClick: () => void; className?: string; children: React.ReactNode;
+}) {
+  const isActive = activeId === dwellId;
+  const R = 16;
+  const circ = 2 * Math.PI * (R - 2);
+  return (
+    <div className="relative inline-flex">
+      <button data-dwell-id={dwellId} onClick={onClick}
+        className={`${className} ${isActive ? 'ring-2 ring-red-400/70 brightness-125' : ''} transition-all`}>
+        {children}
+      </button>
+      {isActive && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          <svg width={R * 2} height={R * 2} className="absolute">
+            <circle cx={R} cy={R} r={R - 2} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
+            <circle cx={R} cy={R} r={R - 2} fill="none" stroke="#ef4444" strokeWidth="3"
+              strokeDasharray={`${circ * dwellProgress} ${circ}`} strokeLinecap="round"
+              transform={`rotate(-90 ${R} ${R})`} />
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Landing Screen ────────────────────────────────────────────────────────────
 
 function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => void }) {
@@ -206,6 +234,49 @@ function GameScreen({ onQuit }: { onQuit: () => void }) {
   const pinchRef = useRef(pinch);
   pinchRef.current = pinch;
 
+  // Dwell detection for overlay / side-panel buttons
+  const [dwellActiveId, setDwellActiveId] = useState<string | null>(null);
+  const [dwellProgress, setDwellProgress] = useState(0);
+  const dwellStartRef = useRef<number | null>(null);
+  const dwellActiveIdRef = useRef<string | null>(null);
+  const dwellRafRef = useRef<number>(0);
+
+  const dwellLoop = useCallback((ts: number) => {
+    const p = pinchRef.current;
+    if (!p.detected) {
+      setDwellActiveId(null); setDwellProgress(0);
+      dwellStartRef.current = null; dwellActiveIdRef.current = null;
+      dwellRafRef.current = requestAnimationFrame(dwellLoop); return;
+    }
+    const cx = p.wristX * window.innerWidth;
+    const cy = p.wristY * window.innerHeight;
+    let hoveredId: string | null = null;
+    document.querySelectorAll('[data-dwell-id]').forEach(el => {
+      const rect = (el as HTMLElement).getBoundingClientRect();
+      const id = (el as HTMLElement).dataset.dwellId!;
+      if (cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom) hoveredId = id;
+    });
+    if (hoveredId !== dwellActiveIdRef.current) {
+      dwellActiveIdRef.current = hoveredId;
+      setDwellActiveId(hoveredId);
+      dwellStartRef.current = hoveredId ? ts : null;
+      setDwellProgress(0);
+    } else if (hoveredId && dwellStartRef.current !== null) {
+      const progress = Math.min((ts - dwellStartRef.current) / DWELL_MS, 1);
+      setDwellProgress(progress);
+      if (progress >= 1) {
+        (document.querySelector(`[data-dwell-id="${hoveredId}"]`) as HTMLElement | null)?.click();
+        dwellStartRef.current = null; setDwellActiveId(null); setDwellProgress(0); dwellActiveIdRef.current = null;
+      }
+    }
+    dwellRafRef.current = requestAnimationFrame(dwellLoop);
+  }, []);
+
+  useEffect(() => {
+    dwellRafRef.current = requestAnimationFrame(dwellLoop);
+    return () => cancelAnimationFrame(dwellRafRef.current);
+  }, [dwellLoop]);
+
   const draw = useGameCanvas(canvasRef as React.RefObject<HTMLCanvasElement>);
 
   const loop = useCallback((ts: number) => {
@@ -290,14 +361,16 @@ function GameScreen({ onQuit }: { onQuit: () => void }) {
           </div>
           <div className="flex-1" />
           <div className="flex flex-col gap-1.5 w-full">
-            <button onClick={handleRestart}
+            <GameGestureBtn dwellId="restart" activeId={dwellActiveId} dwellProgress={dwellProgress}
+              onClick={handleRestart}
               className="w-full py-2 bg-white/8 hover:bg-white/14 active:scale-95 text-white/65 text-xs font-semibold rounded-lg transition-all border border-white/10">
               Restart
-            </button>
-            <button onClick={onQuit}
+            </GameGestureBtn>
+            <GameGestureBtn dwellId="quit-side" activeId={dwellActiveId} dwellProgress={dwellProgress}
+              onClick={onQuit}
               className="w-full py-2 bg-white/8 hover:bg-white/14 active:scale-95 text-white/65 text-xs font-semibold rounded-lg transition-all border border-white/10">
               Quit
-            </button>
+            </GameGestureBtn>
           </div>
         </div>
 
@@ -333,14 +406,16 @@ function GameScreen({ onQuit }: { onQuit: () => void }) {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={handleNextLevel}
+                  <GameGestureBtn dwellId="next-level" activeId={dwellActiveId} dwellProgress={dwellProgress}
+                    onClick={handleNextLevel}
                     className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-black font-black rounded-xl transition-all">
                     Next Level →
-                  </button>
-                  <button onClick={onQuit}
+                  </GameGestureBtn>
+                  <GameGestureBtn dwellId="quit-win" activeId={dwellActiveId} dwellProgress={dwellProgress}
+                    onClick={onQuit}
                     className="px-6 py-2.5 bg-white/12 hover:bg-white/20 active:scale-95 text-white font-bold rounded-xl transition-all">
                     Quit
-                  </button>
+                  </GameGestureBtn>
                 </div>
               </div>
             </div>
@@ -357,14 +432,16 @@ function GameScreen({ onQuit }: { onQuit: () => void }) {
                   <span className="text-white/40 text-xs uppercase tracking-widest">Final Score</span>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={handleRestart}
+                  <GameGestureBtn dwellId="try-again" activeId={dwellActiveId} dwellProgress={dwellProgress}
+                    onClick={handleRestart}
                     className="px-6 py-2.5 bg-red-500 hover:bg-red-400 active:scale-95 text-white font-black rounded-xl transition-all">
                     Try Again
-                  </button>
-                  <button onClick={onQuit}
+                  </GameGestureBtn>
+                  <GameGestureBtn dwellId="quit-lose" activeId={dwellActiveId} dwellProgress={dwellProgress}
+                    onClick={onQuit}
                     className="px-6 py-2.5 bg-white/12 hover:bg-white/20 active:scale-95 text-white font-bold rounded-xl transition-all">
                     Quit
-                  </button>
+                  </GameGestureBtn>
                 </div>
               </div>
             </div>
@@ -393,6 +470,17 @@ function GameScreen({ onQuit }: { onQuit: () => void }) {
         </div>
 
       </div>
+
+      {/* Floating wrist cursor for dwell navigation */}
+      {pinch.detected && (
+        <div className="pointer-events-none fixed z-50"
+          style={{ left: pinch.wristX * window.innerWidth - CURSOR_R, top: pinch.wristY * window.innerHeight - CURSOR_R, width: CURSOR_R * 2, height: CURSOR_R * 2 }}>
+          <svg width={CURSOR_R * 2} height={CURSOR_R * 2}>
+            <circle cx={CURSOR_R} cy={CURSOR_R} r={6} fill="#ef4444" fillOpacity="0.85" />
+            <circle cx={CURSOR_R} cy={CURSOR_R} r={CURSOR_R - 1} fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="1.5" />
+          </svg>
+        </div>
+      )}
     </div>
   );
 }
