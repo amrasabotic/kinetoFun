@@ -25,6 +25,8 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-runner':  { folder: 'gesture-runner',  indexPath: '/games/gesture-runner/out/index.html' },
   'world-explorer':  { folder: 'world-explorer',  indexPath: '/games/world-explorer/out/index.html' },
 
+  'cooking-chef':          { folder: 'cooking-chef',          indexPath: '/games/cooking-chef/out/index.html' },
+
   // ── Vite games (dist/ copied to public/games/[name]/) ────────────────────
   'balloon-pop-adventure': { folder: 'balloon-pop-adventure', indexPath: '/games/balloon-pop-adventure/index.html' },
   'gesture-chef':          { folder: 'gesture-chef',          indexPath: '/games/gesture-chef/index.html' },
