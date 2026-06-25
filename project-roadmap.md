@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-06-25 (Gesture Piano — ADR-025)
+> Last updated: 2026-06-25 (Gesture Tetris — ADR-026)
 
 ---
 
@@ -58,6 +58,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-06-25] Gesture Tetris game.** Classic 10×20 Tetris; all 7 tetrominoes with 7-bag, ghost piece, SRS kicks, NES fall curve; 3 gesture controls (tilt/raise/lower); 3 difficulty levels; all menus dwell-to-select; Web Audio SFX; scores saved to DB; Vite game served from `public/games/gesture-tetris/`. (ADR-026)
 - [x] **[2026-06-25] Gesture Piano game.** 10-lane Guitar Hero piano; fingertip hover detection via MediaPipe; 3 built-in songs; Web Audio synthesis; scores saved to DB; built Vite game served from `public/games/gesture-piano/`. (ADR-025)
 - [x] **[2026-06-19] Unified calm global background.** Replaced 3 competing background systems (animated balloons canvas + three.js dotted surface + rainbow body gradient) with one soft sky-blue→white `body` gradient (calm navy in dark). Deleted the 2 decorative components + mounts; removed auth glow blobs and landing clouds/sun-glow/confetti (kept foreground illustrations). Calm, consistent background across home/dashboard/game/profile/auth; SuperAdmin keeps its own back-office surface. Build + tsc + lint clean; `/` + `/login` → 200, no `<canvas>`. (ADR-024)
 - [x] **[2026-06-19] Homepage redesign — ABCmouse-style child-learning landing.** Rebuilt the logged-out `/` landing into a bright, playful 10-section ABCmouse flow (Hero, Category strip, Educational Excellence, alternating Feature grid, Proven Results, Learning System, Tickets & Rewards, Testimonials, Icon strip, Final CTA + waves/clouds/floating icons). **UI/presentation only — no logic/API/route/auth changes; authenticated dashboard untouched.** Live hooks preserved in-design (`useGames`→"Worlds" real game cards, `useLeaderboard`→"Star Learners"). ABCmouse palette applied landing-scoped (global theme tokens untouched); Baloo 2 + Nunito loaded via runtime `<link>`; scoped `.landing-root`/`.font-display` + keyframes in `globals.css`. This also surfaces admin-`featured` games on the public homepage. Build + `tsc` + lint clean; `curl /` → 200 with new copy. (ADR-023)

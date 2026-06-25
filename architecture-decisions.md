@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-06-11 (ADR-021 — SuperAdmin console redesign + /superadmin routing)
+> Last updated: 2026-06-25 (ADR-026 — Gesture Tetris game)
 
 ---
 
@@ -470,3 +470,29 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 **Deliberately left as-is.** The **SuperAdmin console** (`SuperAdminShell` → opaque `bg-[#F8FAFC]`) keeps its own premium light-SaaS surface — it's a back-office tool, already calm/consistent, and the redesign brief targets user-facing pages (home, dashboard, game, profile, auth). Forcing the kid gradient there would degrade ADR-021's deliberate design.
 
 **Verification.** `eslint` on changed files → 0 errors (2 pre-existing warnings). `tsc --noEmit` clean. `npm run build` clean. `next start` + curl: `/` and `/login` → **200**; `/` HTML now contains **no `<canvas>`** (balloons gone) and still renders the landing copy.
+
+---
+
+## ADR-026 — Gesture Tetris game
+**Date:** 2026-06-25
+**Status:** Accepted
+**Decision:** Add a full gesture-controlled classic Tetris game as a Vite + React + TypeScript app (`games/gesture-tetris/`) built to `public/games/gesture-tetris/` and served in an `<iframe>` via the existing play screen.
+
+**Gesture mapping:**
+- Tilt wrist left/right (horizontal offset of mid-MCP landmark 9 vs wrist landmark 0, threshold ±0.08, mirrored X) → continuous lateral move with 170 ms per-cell cooldown.
+- Raise wrist (wrist.y < 0.30 in normalised frame) → clockwise rotation, edge-triggered (locks until wrist returns above y=0.40).
+- Lower wrist (wrist.y > 0.72) → 8× soft-drop speed, level-held.
+
+**Game rules:** 10×20 board (2 hidden spawn rows), all 7 tetrominoes (I/O/T/S/Z/J/L), 7-bag randomiser, simple SRS wall-kicks (5 horizontal offsets + 1 floor-kick), ghost piece, NES-curve fall speed, 500 ms lock-delay, line-clear animation (200 ms flash). Scoring: 1/2/3/4 lines = 100/300/500/800 × level. Level increases every 10 lines.
+
+**Menu navigation:** Identical dwell-to-click system as gesture-piano (`MenuGestureLayer` + `GestureBtn`, 900 ms dwell, SVG progress ring). Screens: Landing → Difficulty (Easy lv1 / Normal lv3 / Hard lv6) → Game → Game-Over overlay.
+
+**Score submission:** `window.parent.postMessage({ type: 'GAME_COMPLETE', score }, '*')` on game-over (guarded by `scoreSentRef` to fire exactly once). Parent play page already handles this → `POST /api/scores`.
+
+**Audio:** Web Audio API (no files), lazy init on first gesture. SFX: move click, rotate chirp, lock thunk, line-clear ascending arp (1–3 lines), Tetris fanfare (4 lines, 8-tone), level-up sweep, game-over descending.
+
+**Files added:**
+- `games/gesture-tetris/` — full Vite project (src: App.tsx, gameLogic.ts, useHandTracking.ts, useMenuHand.ts, useGesture.ts, useGameCanvas.ts, audio.ts, main.tsx, index.css)
+- `public/games/gesture-tetris/` — built dist (index.html + assets/)
+- `src/games/registry.ts` — added `gesture-tetris` entry
+- `supabase/seed_gesture_tetris.sql` — upsert-safe game row (Arcade, published, featured)

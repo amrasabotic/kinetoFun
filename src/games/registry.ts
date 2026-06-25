@@ -28,6 +28,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'cooking-chef':          { folder: 'cooking-chef',          indexPath: '/games/cooking-chef/out/index.html' },
 
   // ── Vite games (dist/ copied to public/games/[name]/) ────────────────────
+  'gesture-tetris':        { folder: 'gesture-tetris',        indexPath: '/games/gesture-tetris/index.html' },
   'gesture-piano':         { folder: 'gesture-piano',         indexPath: '/games/gesture-piano/index.html' },
   'gesture-drums':         { folder: 'gesture-drums',         indexPath: '/games/gesture-drums/index.html' },
   'slingshot-bird':        { folder: 'slingshot-bird',        indexPath: '/games/slingshot-bird/index.html' },
