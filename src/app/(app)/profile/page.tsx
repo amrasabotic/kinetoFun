@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { Gamepad2, Clock, Trophy, Star, Zap, type LucideIcon } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { useProfileStats } from "@/features/scores/useProfileStats";
@@ -10,6 +11,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { ScoreList } from "@/components/profile/ScoreList";
 import { formatDate, relativeTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   return (
@@ -26,7 +28,6 @@ function ProfileContent() {
 
   if (!user) return null;
 
-  // Enrich scores + sessions with game objects from the cached catalog.
   const enrichedStats = useMemo(() => {
     if (!stats) return null;
     return {
@@ -44,24 +45,44 @@ function ProfileContent() {
 
   const xpIntoLevel = user.xp % 1000;
   const xpPct = Math.round((xpIntoLevel / 1000) * 100);
+  const avatarGradient = user.avatarColor || "from-primary/80 to-violet-700";
 
   return (
     <div className="space-y-6">
-      {/* Profile header */}
-      <section className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.04] p-8 backdrop-blur-xl sm:flex sm:items-center sm:gap-6">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-primary/40 blur-sm" />
+      {/* ── Profile hero ─────────────────────────────────────────────────── */}
+      <section className="overflow-hidden rounded-3xl border border-white/[0.08]">
+        {/* Banner */}
+        <div className={`relative h-32 bg-gradient-to-br sm:h-40 ${avatarGradient}`}>
+          <div className="absolute inset-0 bg-black/25" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
+          <div className="absolute right-4 top-4">
+            <ButtonLink
+              href="/settings"
+              variant="secondary"
+              className="border-white/25 bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
+            >
+              Edit profile
+            </ButtonLink>
+          </div>
+        </div>
 
-        <Avatar user={user} size="xl" />
+        {/* Content below banner */}
+        <div className="relative bg-white/[0.03] px-6 pb-7 backdrop-blur-xl">
+          {/* Avatar row — overlaps banner */}
+          <div className="-mt-11 mb-4 flex items-end justify-between">
+            <div className="rounded-2xl ring-4 ring-background">
+              <Avatar user={user} size="xl" />
+            </div>
+            <div className="mb-1 flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5">
+              <Zap className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-bold text-primary">Level {user.level}</span>
+            </div>
+          </div>
 
-        <div className="mt-5 flex-1 sm:mt-0">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-foreground/40">
-            // Player profile
-          </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-foreground">
+          <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
             {user.displayName}
           </h1>
-          <p className="text-sm text-foreground/45">@{user.username}</p>
+          <p className="text-sm text-foreground/50">@{user.username}</p>
           {user.bio && (
             <p className="mt-2 max-w-lg text-sm text-foreground/70">{user.bio}</p>
           )}
@@ -69,26 +90,25 @@ function ProfileContent() {
             Member since {formatDate(user.joinedAt)}
           </p>
 
-          <div className="mt-4 max-w-sm">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-semibold text-foreground">Level {user.level}</span>
-              <span className="text-xs text-foreground/45">{xpIntoLevel} / 1000 XP</span>
+          {/* XP bar */}
+          <div className="mt-5 max-w-sm">
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className="font-medium text-foreground/55">XP Progress</span>
+              <span className="font-semibold tabular-nums text-foreground/55">
+                {xpIntoLevel.toLocaleString()} / 1,000
+              </span>
             </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+            <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60 shadow-[0_0_10px_rgba(140,92,255,0.5)] transition-all duration-700"
+                className="h-full rounded-full bg-gradient-to-r from-primary to-violet-400 shadow-[0_0_10px_rgba(140,92,255,0.5)] transition-all duration-700"
                 style={{ width: `${xpPct}%` }}
               />
             </div>
           </div>
         </div>
-
-        <ButtonLink href="/settings" variant="secondary" className="mt-6 sm:mt-0 sm:self-start">
-          Edit profile
-        </ButtonLink>
       </section>
 
-      {/* Stats */}
+      {/* ── Stats + activity ─────────────────────────────────────────────── */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
@@ -100,31 +120,39 @@ function ProfileContent() {
       ) : enrichedStats ? (
         <>
           <section className="grid grid-cols-3 gap-4">
-            <StatCard label="Games played" value={enrichedStats.gamesPlayed} />
-            <StatCard label="Sessions" value={enrichedStats.totalSessions} />
-            <StatCard label="Best score" value={enrichedStats.bestScore.toLocaleString()} />
+            <StatCard
+              label="Games played"
+              value={enrichedStats.gamesPlayed}
+              Icon={Gamepad2}
+              iconBg="bg-violet-500/15"
+              iconColor="text-violet-400"
+            />
+            <StatCard
+              label="Sessions"
+              value={enrichedStats.totalSessions}
+              Icon={Clock}
+              iconBg="bg-sky-500/15"
+              iconColor="text-sky-400"
+            />
+            <StatCard
+              label="Best score"
+              value={enrichedStats.bestScore.toLocaleString()}
+              Icon={Trophy}
+              iconBg="bg-amber-500/15"
+              iconColor="text-amber-400"
+            />
           </section>
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Recent scores */}
             <section className="space-y-3">
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-lg font-bold text-foreground">Recent scores</h2>
-                <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
-                  // latest runs
-                </span>
-              </div>
+              <SectionHeading Icon={Star} label="Recent scores" />
               <ScoreList scores={enrichedStats.recentScores} />
             </section>
 
             {/* Recent sessions */}
             <section className="space-y-3">
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-lg font-bold text-foreground">Recent activity</h2>
-                <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
-                  // sessions
-                </span>
-              </div>
+              <SectionHeading Icon={Clock} label="Recent activity" />
               {enrichedStats.recentSessions.length === 0 ? (
                 <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45 backdrop-blur-xl">
                   No sessions yet.
@@ -136,14 +164,14 @@ function ProfileContent() {
                       <Link
                         href={session.game ? `/games/${session.game.id}` : "#"}
                         data-focusable
-                        className="flex items-center gap-4 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 backdrop-blur-sm transition-all duration-200 hover:bg-white/[0.07] hover:border-white/[0.12] focus:outline-none"
+                        className="flex items-center gap-4 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 backdrop-blur-sm transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.07] focus:outline-none"
                       >
                         <span
                           className={`h-10 w-10 shrink-0 rounded-lg bg-gradient-to-br ${
                             session.game?.cover ?? "from-zinc-600 to-zinc-800"
                           }`}
                         />
-                        <span className="flex-1 min-w-0">
+                        <span className="min-w-0 flex-1">
                           <span className="block truncate font-semibold text-foreground">
                             {session.game?.title ?? "Unknown game"}
                           </span>
@@ -171,12 +199,47 @@ function ProfileContent() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  Icon,
+  iconBg,
+  iconColor,
+}: {
+  label: string;
+  value: string | number;
+  Icon: LucideIcon;
+  iconBg: string;
+  iconColor: string;
+}) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center backdrop-blur-xl">
+    <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 text-center backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-      <div className="text-3xl font-black text-foreground sm:text-4xl">{value}</div>
-      <div className="mt-1 text-xs font-medium uppercase tracking-widest text-foreground/40">{label}</div>
+      <div
+        className={cn(
+          "mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl",
+          iconBg,
+        )}
+      >
+        <Icon className={cn("h-5 w-5", iconColor)} />
+      </div>
+      <div className="text-2xl font-black text-foreground sm:text-3xl">{value}</div>
+      <div className="mt-1 text-xs font-medium uppercase tracking-widest text-foreground/40">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function SectionHeading({ Icon, label }: { Icon: LucideIcon; label: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+        <Icon className="h-4 w-4 text-primary" />
+      </div>
+      <h2 className="text-lg font-bold text-foreground">{label}</h2>
     </div>
   );
 }

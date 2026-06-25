@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  User, Monitor, Keyboard, Info, type LucideIcon,
+} from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
 import { useSettings } from "@/features/settings/useSettings";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
@@ -88,98 +91,99 @@ function SettingsContent() {
     setProfileError(null);
   }
 
+  const AVATAR_COLORS = [
+    "from-[#1AACE0] to-[#1A2E74]",
+    "from-[#5ABB47] to-[#1A2E74]",
+    "from-[#F9B233] to-[#F7267C]",
+    "from-[#F7267C] to-[#1A2E74]",
+    "from-[#1AACE0] to-[#5ABB47]",
+    "from-purple-500 to-pink-500",
+  ];
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <header className="space-y-1 pb-2">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-foreground/40">
-          // Preferences
-        </p>
+      {/* Header */}
+      <header className="space-y-1">
         <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
           Settings
         </h1>
         <p className="text-sm text-foreground/45">Manage your account and preferences.</p>
       </header>
 
-      {/* Account */}
-      <Section title="Account">
+      {/* ── Account ──────────────────────────────────────────────────────── */}
+      <Section title="Account" Icon={User} accent="primary">
         {isAuthenticated && user ? (
           <div className="space-y-6">
             {editingProfile ? (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {profileError && (
-                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
                     {profileError}
                   </div>
                 )}
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-foreground">
-                    Display name
-                  </label>
+
+                <Field
+                  label="Display name"
+                  hint="Shown everywhere as your name"
+                >
                   <input
                     type="text"
                     value={editDisplayName}
                     onChange={(e) => setEditDisplayName(e.target.value)}
                     maxLength={100}
-                    className="w-full rounded-lg border border-white/[0.10] bg-white/[0.06] px-3 py-2 text-sm text-foreground placeholder-foreground/45 transition focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    className={inputCls}
                     placeholder="Your name"
                   />
-                  <p className="mt-1 text-xs text-foreground/40">Shown everywhere as your name</p>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-foreground">
-                    Username / @handle
-                  </label>
+                </Field>
+
+                <Field
+                  label="Username / @handle"
+                  hint="Optional — shown as @handle on your profile"
+                >
                   <input
                     type="text"
                     value={editUsername}
                     onChange={(e) => setEditUsername(e.target.value)}
                     maxLength={50}
-                    className="w-full rounded-lg border border-white/[0.10] bg-white/[0.06] px-3 py-2 text-sm text-foreground placeholder-foreground/45 transition focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    className={inputCls}
                     placeholder="optional_handle"
                   />
-                  <p className="mt-1 text-xs text-foreground/40">Optional — shown as @handle on your profile</p>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-foreground">
-                    Bio
-                  </label>
+                </Field>
+
+                <Field label="Bio" hint={`${editBio.length}/500`}>
                   <textarea
                     value={editBio}
                     onChange={(e) => setEditBio(e.target.value)}
                     maxLength={500}
                     rows={3}
-                    className="w-full rounded-lg border border-white/[0.10] bg-white/[0.06] px-3 py-2 text-sm text-foreground placeholder-foreground/45 transition focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    className={inputCls}
                     placeholder="Tell us about yourself"
                   />
-                  <p className="mt-1 text-xs text-foreground/40">{editBio.length}/500</p>
-                </div>
+                </Field>
+
                 <div>
                   <label className="mb-3 block text-sm font-semibold text-foreground">
                     Avatar color
                   </label>
-                  <div className="grid grid-cols-6 gap-2">
-                    {[
-                      "from-[#1AACE0] to-[#1A2E74]",
-                      "from-[#5ABB47] to-[#1A2E74]",
-                      "from-[#F9B233] to-[#F7267C]",
-                      "from-[#F7267C] to-[#1A2E74]",
-                      "from-[#1AACE0] to-[#5ABB47]",
-                      "from-purple-500 to-pink-500",
-                    ].map((color) => (
+                  <div className="flex flex-wrap gap-2">
+                    {AVATAR_COLORS.map((color) => (
                       <button
                         key={color}
                         type="button"
                         onClick={() => setEditAvatarColor(color)}
                         className={cn(
-                          `h-10 w-10 rounded-lg bg-gradient-to-br transition-all ${color}`,
-                          editAvatarColor === color && "ring-2 ring-primary ring-offset-2",
+                          `h-10 w-10 rounded-xl bg-gradient-to-br transition-all ${color}`,
+                          editAvatarColor === color
+                            ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110"
+                            : "hover:scale-105",
                         )}
                         aria-label={color}
                       />
                     ))}
                   </div>
                 </div>
-                <div className="flex gap-3 pt-2">
+
+                <div className="flex gap-3 pt-1">
                   <Button
                     onClick={handleSaveProfile}
                     disabled={isSavingProfile}
@@ -198,13 +202,30 @@ function SettingsContent() {
               </div>
             ) : (
               <>
+                {/* Profile preview */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <Avatar user={user} size="lg" />
-                  <div className="flex-1">
-                    <p className="text-base font-bold text-foreground">{user.displayName}</p>
-                    <p className="text-sm text-foreground/45">{user.email}</p>
-                    {user.bio && <p className="mt-1 text-sm text-foreground/60">{user.bio}</p>}
+                  {/* Avatar on a mini gradient banner */}
+                  <div className="relative flex h-20 w-20 shrink-0 items-end justify-center overflow-hidden rounded-2xl">
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-br ${user.avatarColor || "from-primary/80 to-violet-700"}`}
+                    />
+                    <div className="absolute inset-0 bg-black/20" />
+                    <div className="relative -mb-1">
+                      <Avatar user={user} size="lg" />
+                    </div>
                   </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-bold text-foreground">{user.displayName}</p>
+                    {user.username && (
+                      <p className="text-xs text-foreground/45">@{user.username}</p>
+                    )}
+                    <p className="text-sm text-foreground/50">{user.email}</p>
+                    {user.bio && (
+                      <p className="mt-1 line-clamp-2 text-sm text-foreground/60">{user.bio}</p>
+                    )}
+                  </div>
+
                   <Button
                     variant="secondary"
                     onClick={() => {
@@ -214,12 +235,16 @@ function SettingsContent() {
                       setEditAvatarColor(user.avatarColor || "");
                       setEditingProfile(true);
                     }}
+                    className="shrink-0"
                   >
                     Edit profile
                   </Button>
                 </div>
-                <div className="h-px bg-white/[0.06]" />
-                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+
+                <Divider />
+
+                {/* Sign out */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                   <Button
                     variant="danger"
                     onClick={handleSignOut}
@@ -252,25 +277,31 @@ function SettingsContent() {
         )}
       </Section>
 
-      {/* Display */}
-      <Section title="Display">
+      {/* ── Display ──────────────────────────────────────────────────────── */}
+      <Section title="Display" Icon={Monitor} accent="sky">
         <Toggle
           label="Large UI text"
           description="Increase text size for big-screen, across-the-room reading."
           checked={settings.largeText}
-          onChange={(checked) => { updateSettings({ largeText: checked }); toast("Display settings saved", { duration: 1500 }); }}
+          onChange={(checked) => {
+            updateSettings({ largeText: checked });
+            toast("Display settings saved", { duration: 1500 });
+          }}
         />
-        <div className="h-px bg-white/[0.06]" />
+        <Divider />
         <Toggle
           label="Reduce motion"
           description="Minimize animations and transitions."
           checked={settings.reduceMotion}
-          onChange={(checked) => { updateSettings({ reduceMotion: checked }); toast("Display settings saved", { duration: 1500 }); }}
+          onChange={(checked) => {
+            updateSettings({ reduceMotion: checked });
+            toast("Display settings saved", { duration: 1500 });
+          }}
         />
       </Section>
 
-      {/* Input */}
-      <Section title="Input">
+      {/* ── Input ────────────────────────────────────────────────────────── */}
+      <Section title="Input" Icon={Keyboard} accent="green">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold text-foreground">Gesture controls</p>
@@ -282,7 +313,7 @@ function SettingsContent() {
             Coming soon
           </span>
         </div>
-        <div className="h-px bg-white/[0.06]" />
+        <Divider />
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold text-foreground">Keyboard navigation</p>
@@ -296,50 +327,93 @@ function SettingsContent() {
         </div>
       </Section>
 
-      {/* About */}
-      <Section title="About">
-        <dl className="space-y-3 text-sm">
-          <Row label="App" value="KinetoFun" />
-          <div className="h-px bg-white/[0.06]" />
-          <Row label="Version" value="0.1.0 (Phase 2 — Auth)" />
-          <div className="h-px bg-white/[0.06]" />
-          <Row label="Auth" value="Custom JWT · revocable httpOnly session" />
-          <div className="h-px bg-white/[0.06]" />
-          <Row label="Database" value="Supabase Postgres (local fallback)" />
+      {/* ── About ────────────────────────────────────────────────────────── */}
+      <Section title="About" Icon={Info} accent="zinc">
+        <dl className="divide-y divide-white/[0.06] text-sm">
+          {[
+            { label: "App", value: "KinetoFun" },
+            { label: "Version", value: "0.1.0 (Phase 2 — Auth)" },
+            { label: "Auth", value: "Custom JWT · revocable httpOnly session" },
+            { label: "Database", value: "Supabase Postgres (local fallback)" },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex justify-between py-2.5 first:pt-0 last:pb-0">
+              <dt className="text-foreground/45">{label}</dt>
+              <dd className="font-medium text-foreground">{value}</dd>
+            </div>
+          ))}
         </dl>
       </Section>
     </div>
   );
 }
 
+// ── Shared input class ─────────────────────────────────────────────────────────
+
+const inputCls =
+  "w-full rounded-xl border border-white/[0.10] bg-white/[0.06] px-3 py-2.5 text-sm text-foreground placeholder-foreground/40 transition focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30";
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+type SectionAccent = "primary" | "sky" | "green" | "zinc";
+
+const ACCENT_CLASSES: Record<SectionAccent, { icon: string; bg: string }> = {
+  primary: { icon: "text-primary",     bg: "bg-primary/10" },
+  sky:     { icon: "text-sky-400",     bg: "bg-sky-500/10" },
+  green:   { icon: "text-emerald-400", bg: "bg-emerald-500/10" },
+  zinc:    { icon: "text-zinc-400",    bg: "bg-zinc-500/10" },
+};
+
 function Section({
   title,
+  Icon,
+  accent = "primary",
   children,
 }: {
   title: string;
+  Icon: LucideIcon;
+  accent?: SectionAccent;
   children: React.ReactNode;
 }) {
+  const { icon, bg } = ACCENT_CLASSES[accent];
   return (
     <section className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-xl">
-      {/* Top highlight */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-      {/* Primary glow */}
-      <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-primary/40 blur-sm" />
-      <h2 className="mb-5 text-xs font-semibold uppercase tracking-widest text-foreground/50">
-        {title}
-      </h2>
+      <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-primary/30 blur-sm" />
+
+      <div className="mb-5 flex items-center gap-3">
+        <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", bg)}>
+          <Icon className={cn("h-4 w-4", icon)} />
+        </div>
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-foreground/50">
+          {title}
+        </h2>
+      </div>
+
       <div className="space-y-4">{children}</div>
     </section>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex justify-between">
-      <dt className="text-foreground/45">{label}</dt>
-      <dd className="font-medium text-foreground">{value}</dd>
+    <div>
+      <label className="mb-1.5 block text-sm font-semibold text-foreground">{label}</label>
+      {children}
+      {hint && <p className="mt-1 text-xs text-foreground/40">{hint}</p>}
     </div>
   );
+}
+
+function Divider() {
+  return <div className="h-px bg-white/[0.06]" />;
 }
 
 function Toggle({
