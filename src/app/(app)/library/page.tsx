@@ -3,41 +3,42 @@
 import { Suspense, useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useGames } from "@/features/games/useGames";
-import { selectCategories, searchGames } from "@/services/games.service";
+import { searchGames } from "@/services/games.service";
 import { GameCard } from "@/components/game/GameCard";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/utils";
-import type { GameCategory } from "@/types";
-
-type Filter = "All" | GameCategory;
+import type { Category } from "@/types";
 
 function LibraryContent() {
   const { games, loading } = useGames();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("All");
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    const category = searchParams.get("category");
-    if (category) {
-      const normalized = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
-      if (["Action", "Adventure", "Puzzle", "Sports"].includes(normalized)) {
-        setFilter(normalized as GameCategory);
-      }
-    }
-  }, [searchParams]);
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data: { categories: Category[] }) => setCategories(data.categories ?? []))
+      .catch(() => {});
+  }, []);
 
-  const categories = useMemo<Filter[]>(
-    () => ["All", ...selectCategories(games)],
-    [games],
-  );
+  useEffect(() => {
+    const slug = searchParams.get("category");
+    if (!slug || categories.length === 0) return;
+    const match = categories.find((c) => c.slug === slug.toLowerCase());
+    if (match) setSelectedCategory(match);
+  }, [searchParams, categories]);
 
   const results = useMemo(() => {
     const searched = searchGames(games, query);
-    return filter === "All"
-      ? searched
-      : searched.filter((g) => g.category === filter);
-  }, [games, query, filter]);
+    if (!selectedCategory) return searched;
+    return searched.filter(
+      (g) =>
+        g.categoryId === selectedCategory.id ||
+        g.category.toLowerCase() === selectedCategory.name.toLowerCase(),
+    );
+  }, [games, query, selectedCategory]);
 
   return (
     <div className="space-y-8">
@@ -63,19 +64,31 @@ function LibraryContent() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <button
+            data-focusable
+            onClick={() => setSelectedCategory(null)}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none",
+              selectedCategory === null
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                : "border border-border/50 bg-card/20 text-muted-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-card/40 hover:text-foreground",
+            )}
+          >
+            All
+          </button>
           {categories.map((category) => (
             <button
-              key={category}
+              key={category.id}
               data-focusable
-              onClick={() => setFilter(category)}
+              onClick={() => setSelectedCategory(category)}
               className={cn(
                 "rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none",
-                filter === category
+                selectedCategory?.id === category.id
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                   : "border border-border/50 bg-card/20 text-muted-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-card/40 hover:text-foreground",
               )}
             >
-              {category}
+              {category.name}
             </button>
           ))}
         </div>

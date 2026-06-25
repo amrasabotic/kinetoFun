@@ -36,32 +36,50 @@ function toCategory(row: CategoryRow, gamesCount?: number): Category {
   };
 }
 
-/** Map a category_id → count of games. One grouped query (no N+1). */
-async function gamesCountByCategory(): Promise<Map<string, number>> {
+/**
+ * Map category id to count of published games.
+ * Matches by category_id when set; falls back to the legacy `category` name
+ * field for games that were created before category_id was backfilled.
+ */
+async function gamesCountByCategory(categories: CategoryRow[]): Promise<Map<string, number>> {
   const { data, error } = await getSupabaseAdmin()
     .from("games")
-    .select("category_id")
-    .not("category_id", "is", null)
+    .select("category_id, category")
+    .eq("status", "published")
     .limit(10000);
   if (error) throw new Error(`[supabase] gamesCountByCategory: ${error.message}`);
+
+  const nameToId = new Map(categories.map((c) => [c.name.toLowerCase(), c.id]));
   const counts = new Map<string, number>();
-  for (const row of (data ?? []) as { category_id: string }[]) {
-    counts.set(row.category_id, (counts.get(row.category_id) ?? 0) + 1);
+  for (const row of (data ?? []) as { category_id: string | null; category: string | null }[]) {
+    const id = row.category_id ?? nameToId.get((row.category ?? "").toLowerCase());
+    if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   return counts;
 }
 
+/** Public read — active categories only, no game counts needed. */
+export async function listActiveCategories(): Promise<Category[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  if (error) throw new Error(`[supabase] listActiveCategories: ${error.message}`);
+  return (data as CategoryRow[]).map((r) => toCategory(r));
+}
+
 export async function listCategories(): Promise<Category[]> {
-  const [{ data, error }, counts] = await Promise.all([
-    getSupabaseAdmin()
-      .from("categories")
-      .select("*")
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true }),
-    gamesCountByCategory(),
-  ]);
+  const { data, error } = await getSupabaseAdmin()
+    .from("categories")
+    .select("*")
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
   if (error) throw new Error(`[supabase] listCategories: ${error.message}`);
-  return (data as CategoryRow[]).map((r) => toCategory(r, counts.get(r.id) ?? 0));
+  const rows = data as CategoryRow[];
+  const counts = await gamesCountByCategory(rows);
+  return rows.map((r) => toCategory(r, counts.get(r.id) ?? 0));
 }
 
 export async function getCategoryById(id: string): Promise<Category | null> {
@@ -72,8 +90,9 @@ export async function getCategoryById(id: string): Promise<Category | null> {
     .maybeSingle();
   if (error) throw new Error(`[supabase] getCategoryById: ${error.message}`);
   if (!data) return null;
-  const counts = await gamesCountByCategory();
-  return toCategory(data as CategoryRow, counts.get((data as CategoryRow).id) ?? 0);
+  const row = data as CategoryRow;
+  const counts = await gamesCountByCategory([row]);
+  return toCategory(row, counts.get(row.id) ?? 0);
 }
 
 export interface CategoryInput {
@@ -119,8 +138,9 @@ export async function updateCategory(
     .select("*")
     .single();
   if (error) throw new Error(`[supabase] updateCategory: ${error.message}`);
-  const counts = await gamesCountByCategory();
-  return toCategory(data as CategoryRow, counts.get(id) ?? 0);
+  const row = data as CategoryRow;
+  const counts = await gamesCountByCategory([row]);
+  return toCategory(row, counts.get(id) ?? 0);
 }
 
 /** How many games are linked to a category (for delete safeguards). */
