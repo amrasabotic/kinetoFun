@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useGestureTracking, useMenuHand, MenuHandData } from './useGestureTracking';
+import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+import { useGestureTracking } from './useGestureTracking';
 import { useGameCanvas } from './useGameCanvas';
 import {
   GameState, initialGameState, restartGame, updateGame, shootBubble,
@@ -7,9 +8,114 @@ import {
 } from './gameLogic';
 import { playShoot, playBounce, playPop, playLevelUp, playGameOver } from './audio';
 
-// ─── Dwell button ─────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 const DWELL_MS = 900;
 
+// ─── useMenuGesture: wrist tracking + dwell — fully reactive ─────────────────
+interface MenuGestureState {
+  detected: boolean;
+  x: number;
+  y: number;
+  activeId: string | null;
+  dwellProgress: number;
+}
+
+function useMenuGesture(videoRef: React.RefObject<HTMLVideoElement>): MenuGestureState {
+  const [state, setState] = useState<MenuGestureState>({
+    detected: false, x: 0.5, y: 0.5, activeId: null, dwellProgress: 0,
+  });
+
+  const lmRef      = useRef<HandLandmarker | null>(null);
+  const rafRef     = useRef<number>(0);
+  const lastTRef   = useRef<number>(-1);
+  const dwellRef   = useRef<{ id: string | null; start: number }>({ id: null, start: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    function detect() {
+      const video = videoRef.current;
+      const lm    = lmRef.current;
+      if (!video || !lm || video.readyState < 2) {
+        rafRef.current = requestAnimationFrame(detect);
+        return;
+      }
+      if (video.currentTime !== lastTRef.current) {
+        lastTRef.current = video.currentTime;
+        const res = lm.detectForVideo(video, performance.now());
+
+        if (res.landmarks?.length > 0) {
+          const wrist = res.landmarks[0][0] as { x: number; y: number };
+          const hx = 1 - wrist.x;
+          const hy = wrist.y;
+          const cx = hx * window.innerWidth;
+          const cy = hy * window.innerHeight;
+
+          const el = document.elementFromPoint(cx, cy)?.closest('[data-dwell-id]') as HTMLElement | null;
+          const id = el?.dataset.dwellId ?? null;
+          const d  = dwellRef.current;
+
+          if (id !== d.id) {
+            d.id = id;
+            d.start = performance.now();
+            setState({ detected: true, x: hx, y: hy, activeId: id, dwellProgress: 0 });
+          } else {
+            const p = id ? Math.min((performance.now() - d.start) / DWELL_MS, 1) : 0;
+            if (id && p >= 1) {
+              d.id = null; d.start = 0;
+              setState({ detected: true, x: hx, y: hy, activeId: null, dwellProgress: 0 });
+              // Trigger click
+              const btn = document.querySelector(`[data-dwell-id="${id}"]`) as HTMLButtonElement | null;
+              btn?.click();
+            } else {
+              setState({ detected: true, x: hx, y: hy, activeId: id, dwellProgress: p });
+            }
+          }
+        } else {
+          dwellRef.current.id = null;
+          setState({ detected: false, x: 0.5, y: 0.5, activeId: null, dwellProgress: 0 });
+        }
+      }
+      rafRef.current = requestAnimationFrame(detect);
+    }
+
+    async function init() {
+      const vision = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+      );
+      if (cancelled) return;
+      const hlm = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numHands: 1,
+      });
+      if (cancelled) return;
+      lmRef.current = hlm;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+      const video = videoRef.current;
+      if (video) { video.srcObject = stream; video.play(); }
+      rafRef.current = requestAnimationFrame(detect);
+    }
+
+    init().catch(console.error);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafRef.current);
+      const video = videoRef.current;
+      if (video?.srcObject) (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+      lmRef.current?.close();
+    };
+  }, [videoRef]);
+
+  return state;
+}
+
+// ─── GestureBtn ───────────────────────────────────────────────────────────────
 function GestureBtn({
   dwellId, activeId, dwellProgress, onClick, children, className = '',
 }: {
@@ -44,69 +150,15 @@ function GestureBtn({
   );
 }
 
-// ─── Menu gesture layer (hover + dwell) ───────────────────────────────────────
-function MenuGestureLayer({
-  videoRef, onAction,
-}: {
-  videoRef: React.RefObject<HTMLVideoElement>;
-  onAction: (id: string) => void;
-}) {
-  const [, handRef] = useMenuHand(videoRef);
-  const dwellRef = useRef<{ id: string | null; start: number }>({ id: null, start: 0 });
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const rafRef = useRef<number>(0);
-
-  const loop = useCallback(() => {
-    rafRef.current = requestAnimationFrame(loop);
-    const hand = handRef.current as MenuHandData;
-    if (!hand.detected) { setActiveId(null); setProgress(0); dwellRef.current.id = null; return; }
-    const cx = hand.x * window.innerWidth;
-    const cy = hand.y * window.innerHeight;
-    const el = document.elementFromPoint(cx, cy)?.closest('[data-dwell-id]') as HTMLElement | null;
-    const id = el?.dataset.dwellId ?? null;
-    const d  = dwellRef.current;
-    if (id !== d.id) { d.id = id; d.start = performance.now(); setActiveId(id); setProgress(0); return; }
-    if (!id) return;
-    const p = Math.min((performance.now() - d.start) / DWELL_MS, 1);
-    setProgress(p);
-    if (p >= 1) { d.id = null; d.start = 0; setActiveId(null); setProgress(0); onAction(id); }
-  }, [handRef, onAction]);
-
-  useEffect(() => {
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [loop]);
-
+// ─── HandCursor ───────────────────────────────────────────────────────────────
+function HandCursor({ x, y, detected }: { x: number; y: number; detected: boolean }) {
+  if (!detected) return null;
   return (
-    <>
-      {/* Hand cursor overlay */}
-      <div className="pointer-events-none fixed inset-0 z-50">
-        {(handRef.current as MenuHandData).detected && (
-          <div
-            className="absolute w-5 h-5 rounded-full border-2 border-violet-400 bg-violet-400/20"
-            style={{
-              left: (handRef.current as MenuHandData).x * window.innerWidth - 10,
-              top:  (handRef.current as MenuHandData).y * window.innerHeight - 10,
-            }}
-          />
-        )}
-      </div>
-      {/* Pass active state down via context substitute: expose for GestureBtn via DOM */}
-      <style>{`[data-active-dwell="${activeId}"] { outline: 2px solid #a78bfa; }`}</style>
-      {/* Hidden state exporters */}
-      <_DwellState activeId={activeId} progress={progress} />
-    </>
+    <div
+      className="pointer-events-none fixed z-50 w-5 h-5 rounded-full border-2 border-violet-400 bg-violet-400/20 -translate-x-1/2 -translate-y-1/2"
+      style={{ left: x * window.innerWidth, top: y * window.innerHeight }}
+    />
   );
-}
-
-// Tiny helper to make activeId/progress accessible via a React ref from parent
-function _DwellState({ activeId, progress }: { activeId: string | null; progress: number }) {
-  useEffect(() => {
-    (window as unknown as Record<string, unknown>).__dwellActiveId = activeId;
-    (window as unknown as Record<string, unknown>).__dwellProgress = progress;
-  }, [activeId, progress]);
-  return null;
 }
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
@@ -118,28 +170,13 @@ function LandingScreen({
   onStart: () => void; onHowTo: () => void;
   videoRef: React.RefObject<HTMLVideoElement>;
 }) {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-
-  const handleAction = useCallback((id: string) => {
-    if (id === 'start') onStart();
-    if (id === 'howto') onHowTo();
-  }, [onStart, onHowTo]);
-
-  // Sync from MenuGestureLayer via window hack
-  useEffect(() => {
-    const id = setInterval(() => {
-      setActiveId((window as unknown as Record<string, unknown>).__dwellActiveId as string | null ?? null);
-      setProgress((window as unknown as Record<string, unknown>).__dwellProgress as number ?? 0);
-    }, 50);
-    return () => clearInterval(id);
-  }, []);
+  const { detected, x, y, activeId, dwellProgress } = useMenuGesture(videoRef);
 
   return (
     <div className="relative flex flex-col items-center justify-center h-screen bg-gradient-to-b from-slate-900 to-indigo-950 text-white overflow-hidden">
-      <MenuGestureLayer videoRef={videoRef} onAction={handleAction} />
+      <HandCursor x={x} y={y} detected={detected} />
       {/* Decorative bubbles */}
-      {['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#06b6d4'].map((c, i) => (
+      {['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4'].map((c, i) => (
         <div key={i} className="absolute rounded-full opacity-20 animate-pulse"
           style={{
             width: 40 + i * 12, height: 40 + i * 12,
@@ -153,24 +190,25 @@ function LandingScreen({
       <div className="z-10 flex flex-col items-center gap-8">
         <div className="text-center">
           <h1 className="text-5xl font-black text-violet-300 drop-shadow-lg">Bubble Shooter</h1>
-          <p className="mt-2 text-slate-400 text-lg">Aim with your finger · Flick to shoot · Match 3 to pop!</p>
+          <p className="mt-2 text-slate-400 text-lg">Aim with your finger · Pinch to shoot · Match 3 to pop!</p>
         </div>
         <div className="flex flex-col gap-4 w-60">
           <GestureBtn
-            dwellId="start" activeId={activeId} dwellProgress={progress}
+            dwellId="start" activeId={activeId} dwellProgress={dwellProgress}
             onClick={onStart}
             className="w-full px-8 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold text-lg"
           >
             Play
           </GestureBtn>
           <GestureBtn
-            dwellId="howto" activeId={activeId} dwellProgress={progress}
+            dwellId="howto" activeId={activeId} dwellProgress={dwellProgress}
             onClick={onHowTo}
             className="w-full px-8 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold text-lg"
           >
             How to Play
           </GestureBtn>
         </div>
+        <p className="text-slate-500 text-sm">Hover your hand over a button to select it</p>
       </div>
       <video ref={videoRef} className="hidden" playsInline muted />
     </div>
@@ -183,25 +221,11 @@ function HowToScreen({
   onBack: () => void; onStart: () => void;
   videoRef: React.RefObject<HTMLVideoElement>;
 }) {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-
-  const handleAction = useCallback((id: string) => {
-    if (id === 'back') onBack();
-    if (id === 'play') onStart();
-  }, [onBack, onStart]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setActiveId((window as unknown as Record<string, unknown>).__dwellActiveId as string | null ?? null);
-      setProgress((window as unknown as Record<string, unknown>).__dwellProgress as number ?? 0);
-    }, 50);
-    return () => clearInterval(id);
-  }, []);
+  const { detected, x, y, activeId, dwellProgress } = useMenuGesture(videoRef);
 
   return (
     <div className="relative flex flex-col items-center justify-center h-screen bg-gradient-to-b from-slate-900 to-indigo-950 text-white">
-      <MenuGestureLayer videoRef={videoRef} onAction={handleAction} />
+      <HandCursor x={x} y={y} detected={detected} />
       <div className="z-10 max-w-lg text-center flex flex-col gap-6">
         <h2 className="text-3xl font-bold text-violet-300">How to Play</h2>
         <div className="bg-slate-800/70 rounded-2xl p-6 text-left space-y-4 text-slate-200">
@@ -210,12 +234,12 @@ function HowToScreen({
             <div><strong className="text-violet-300">Aim</strong> — point your index finger to aim the shooter. The dashed line shows the trajectory.</div>
           </div>
           <div className="flex items-start gap-3">
-            <span className="text-2xl">🤙</span>
-            <div><strong className="text-violet-300">Shoot</strong> — flick your wrist upward quickly to launch a bubble.</div>
+            <span className="text-2xl">🤌</span>
+            <div><strong className="text-violet-300">Shoot</strong> — pinch your thumb and index finger together to launch a bubble.</div>
           </div>
           <div className="flex items-start gap-3">
             <span className="text-2xl">🔴</span>
-            <div><strong className="text-violet-300">Match</strong> — pop 3 or more same-colored bubbles in a row. Popping clusters drops floating bubbles too!</div>
+            <div><strong className="text-violet-300">Match</strong> — pop 3 or more same-colored bubbles. Popping clusters drops floating bubbles too!</div>
           </div>
           <div className="flex items-start gap-3">
             <span className="text-2xl">⬆️</span>
@@ -224,14 +248,14 @@ function HowToScreen({
         </div>
         <div className="flex gap-4 justify-center">
           <GestureBtn
-            dwellId="back" activeId={activeId} dwellProgress={progress}
+            dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
             onClick={onBack}
             className="px-6 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold"
           >
             Back
           </GestureBtn>
           <GestureBtn
-            dwellId="play" activeId={activeId} dwellProgress={progress}
+            dwellId="play" activeId={activeId} dwellProgress={dwellProgress}
             onClick={onStart}
             className="px-8 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold"
           >
@@ -256,16 +280,19 @@ function GameScreen({
   const lastTsRef  = useRef<number>(-1);
   const rafRef     = useRef<number>(0);
 
-  const [aimAngle, setAimAngle]         = useState(Math.PI / 2);
-  const [handX, setHandX]               = useState(0.5);
-  const [handY, setHandY]               = useState(0.5);
-  const [handDetected, setHandDetected] = useState(false);
-  const [phase, setPhase]               = useState<string>('playing');
+  const [aimAngle, setAimAngle]           = useState(Math.PI / 2);
+  const [handX, setHandX]                 = useState(0.5);
+  const [handY, setHandY]                 = useState(0.5);
+  const [handDetected, setHandDetected]   = useState(false);
+  const [phase, setPhase]                 = useState<string>('playing');
   const [dwellActiveId, setDwellActiveId] = useState<string | null>(null);
   const [dwellProgress, setDwellProgress] = useState(0);
 
-  const aimRef = useRef(Math.PI / 2);
+  const aimRef          = useRef(Math.PI / 2);
   const flickPendingRef = useRef(false);
+  const handXRef        = useRef(0.5);
+  const handYRef        = useRef(0.5);
+  const handDetRef      = useRef(false);
 
   const onFrame = useCallback((data: {
     detected: boolean; wristX: number; wristY: number; aimAngle: number; flick: boolean;
@@ -273,6 +300,9 @@ function GameScreen({
     setHandDetected(data.detected);
     setHandX(data.wristX);
     setHandY(data.wristY);
+    handXRef.current   = data.wristX;
+    handYRef.current   = data.wristY;
+    handDetRef.current = data.detected;
     if (data.detected) {
       aimRef.current = data.aimAngle;
       setAimAngle(data.aimAngle);
@@ -292,7 +322,7 @@ function GameScreen({
 
       let gs = gsRef.current;
 
-      // Consume flick
+      // Consume pinch-shoot
       if (flickPendingRef.current && gs.phase === 'playing' && !gs.flying) {
         flickPendingRef.current = false;
         const { state: s2, events: e2 } = shootBubble(gs, aimRef.current);
@@ -305,9 +335,9 @@ function GameScreen({
       const { state: s3, events: e3 } = updateGame(gs, delta);
       gs = s3;
       for (const ev of e3) {
-        if (ev.type === 'bounce')  playBounce();
-        if (ev.type === 'pop')     playPop(ev.count);
-        if (ev.type === 'levelup') playLevelUp();
+        if (ev.type === 'bounce')   playBounce();
+        if (ev.type === 'pop')      playPop(ev.count);
+        if (ev.type === 'levelup')  playLevelUp();
         if (ev.type === 'gameover') playGameOver();
       }
       gsRef.current = gs;
@@ -317,25 +347,24 @@ function GameScreen({
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  // Dwell loop for game-screen buttons
-  const dwellHandRef = useRef<{ x: number; y: number; detected: boolean }>({ x: 0.5, y: 0.5, detected: false });
-  useEffect(() => {
-    dwellHandRef.current = { x: handX, y: handY, detected: handDetected };
-  }, [handX, handY, handDetected]);
-
+  // Dwell loop for game-screen overlay buttons (uses wrist position from gesture tracker)
   const dwellRef = useRef<{ id: string | null; start: number }>({ id: null, start: 0 });
   useEffect(() => {
     let rafId = 0;
     function loop() {
       rafId = requestAnimationFrame(loop);
-      const hand = dwellHandRef.current;
-      if (!hand.detected) { setDwellActiveId(null); setDwellProgress(0); dwellRef.current.id = null; return; }
-      const cx = hand.x * window.innerWidth;
-      const cy = hand.y * window.innerHeight;
+      if (!handDetRef.current) {
+        setDwellActiveId(null); setDwellProgress(0); dwellRef.current.id = null; return;
+      }
+      const cx = handXRef.current * window.innerWidth;
+      const cy = handYRef.current * window.innerHeight;
       const el = document.elementFromPoint(cx, cy)?.closest('[data-dwell-id]') as HTMLElement | null;
       const id = el?.dataset.dwellId ?? null;
-      const d = dwellRef.current;
-      if (id !== d.id) { d.id = id; d.start = performance.now(); setDwellActiveId(id); setDwellProgress(0); return; }
+      const d  = dwellRef.current;
+      if (id !== d.id) {
+        d.id = id; d.start = performance.now();
+        setDwellActiveId(id); setDwellProgress(0); return;
+      }
       if (!id) return;
       const p = Math.min((performance.now() - d.start) / DWELL_MS, 1);
       setDwellProgress(p);
@@ -365,8 +394,8 @@ function GameScreen({
     onQuit();
   }, [onQuit]);
 
-  const isOver   = phase === 'gameover';
-  const score    = Math.floor(gsRef.current.score);
+  const isOver    = phase === 'gameover';
+  const score     = Math.floor(gsRef.current.score);
   const highScore = Math.floor(gsRef.current.highScore);
 
   return (
@@ -409,7 +438,7 @@ function GameScreen({
           </div>
         )}
 
-        {/* Quit button (top right, always visible) */}
+        {/* Quit button (top right, always visible during play) */}
         {!isOver && (
           <GestureBtn
             dwellId="quit-side" activeId={dwellActiveId} dwellProgress={dwellProgress}
@@ -422,7 +451,7 @@ function GameScreen({
 
         {/* Gesture hint */}
         <div className="absolute bottom-2 right-3 text-xs text-slate-500 pointer-events-none select-none">
-          {handDetected ? '☝️ aim · 🤙 flick to shoot' : '✋ show hand to camera'}
+          {handDetected ? '☝️ point to aim · 🤌 pinch to shoot' : '✋ show hand to camera'}
         </div>
       </div>
 
@@ -433,7 +462,7 @@ function GameScreen({
 
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('landing');
+  const [screen, setScreen]   = useState<Screen>('landing');
   const [highScore, setHighScore] = useState(0);
   const menuVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -441,7 +470,6 @@ export default function App() {
   const handleHowTo = useCallback(() => setScreen('howto'), []);
   const handleBack  = useCallback(() => setScreen('landing'), []);
   const handleQuit  = useCallback(() => {
-    // Preserve high score across sessions within this window
     setHighScore(hs => Math.max(hs, 0));
     setScreen('landing');
   }, []);

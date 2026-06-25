@@ -11,9 +11,8 @@ export interface GestureData {
 
 interface Landmark { x: number; y: number; z: number; }
 
-const FLICK_VY_THRESH = -0.022;  // upward wrist velocity (normalized/ms)
-const FLICK_COOLDOWN  = 700;     // ms between flicks
-const VY_WINDOW       = 60;      // ms window for velocity calc
+const PINCH_THRESH   = 0.07;  // normalized thumb-to-index distance
+const PINCH_COOLDOWN = 700;   // ms between shots
 
 export function useGestureTracking(
   videoRef: React.RefObject<HTMLVideoElement>,
@@ -22,8 +21,9 @@ export function useGestureTracking(
   const landmarkerRef  = useRef<HandLandmarker | null>(null);
   const rafRef         = useRef<number>(0);
   const lastTimeRef    = useRef<number>(-1);
-  const flickCoolRef   = useRef<number>(0);
-  const wristYHistRef  = useRef<{ t: number; y: number }[]>([]);
+  const pinchCoolRef   = useRef<number>(0);
+  const wasPinchedRef  = useRef<boolean>(false);
+  const lastTickRef    = useRef<number>(-1);
 
   const detect = useCallback(() => {
     const video = videoRef.current;
@@ -33,6 +33,13 @@ export function useGestureTracking(
       return;
     }
     const now = performance.now();
+
+    // Drain cooldown with real elapsed time
+    if (lastTickRef.current >= 0 && pinchCoolRef.current > 0) {
+      pinchCoolRef.current -= now - lastTickRef.current;
+    }
+    lastTickRef.current = now;
+
     if (video.currentTime !== lastTimeRef.current) {
       lastTimeRef.current = video.currentTime;
       const results = lm.detectForVideo(video, now);
@@ -42,6 +49,7 @@ export function useGestureTracking(
         const wrist     = pts[0];
         const indexMCP  = pts[5];
         const indexTip  = pts[8];
+        const thumbTip  = pts[4];
 
         // Mirror x for selfie view
         const mx  = (x: number) => 1 - x;
@@ -59,33 +67,21 @@ export function useGestureTracking(
         if (angle < MIN_ANGLE) angle = MIN_ANGLE;
         if (angle > MAX_ANGLE) angle = MAX_ANGLE;
 
-        // Wrist Y velocity
-        const hist = wristYHistRef.current;
-        hist.push({ t: now, y: wristY });
-        while (hist.length > 0 && now - hist[0].t > VY_WINDOW) hist.shift();
+        // Pinch detection: thumb tip close to index tip
+        const pinchDist = Math.hypot(mx(thumbTip.x) - mx(indexTip.x), thumbTip.y - indexTip.y);
+        const pinched   = pinchDist < PINCH_THRESH;
 
         let flick = false;
-        if (hist.length >= 2 && flickCoolRef.current <= 0) {
-          const oldest = hist[0];
-          const newest = hist[hist.length - 1];
-          const dt = newest.t - oldest.t;
-          if (dt > 0) {
-            const vy = (newest.y - oldest.y) / dt;
-            if (vy < FLICK_VY_THRESH) {
-              flick = true;
-              flickCoolRef.current = FLICK_COOLDOWN;
-              wristYHistRef.current = [];
-            }
-          }
+        if (pinched && !wasPinchedRef.current && pinchCoolRef.current <= 0) {
+          flick = true;
+          pinchCoolRef.current = PINCH_COOLDOWN;
         }
-        if (flickCoolRef.current > 0) {
-          flickCoolRef.current -= 16; // approx frame time
-        }
+        wasPinchedRef.current = pinched;
 
         onFrame({ detected: true, wristX, wristY, aimAngle: angle, flick });
       } else {
         onFrame({ detected: false, wristX: 0.5, wristY: 0.5, aimAngle: Math.PI / 2, flick: false });
-        wristYHistRef.current = [];
+        wasPinchedRef.current = false;
       }
     }
     rafRef.current = requestAnimationFrame(detect);
@@ -124,73 +120,4 @@ export function useGestureTracking(
       landmarkerRef.current?.close();
     };
   }, [detect, videoRef]);
-}
-
-// Lightweight wrist tracker for menu screens
-export interface MenuHandData { detected: boolean; x: number; y: number; }
-
-export function useMenuHand(
-  videoRef: React.RefObject<HTMLVideoElement>,
-): [MenuHandData, React.MutableRefObject<MenuHandData>] {
-  const handRef    = useRef<MenuHandData>({ detected: false, x: 0.5, y: 0.5 });
-  const lmRef      = useRef<HandLandmarker | null>(null);
-  const rafRef     = useRef<number>(0);
-  const lastTRef   = useRef<number>(-1);
-
-  useEffect(() => {
-    let cancelled = false;
-    let setHand: ((d: MenuHandData) => void) | null = null;
-    // We expose state via ref only; caller reads handRef directly
-    function detect() {
-      const video = videoRef.current;
-      const lm    = lmRef.current;
-      if (!video || !lm || video.readyState < 2) { rafRef.current = requestAnimationFrame(detect); return; }
-      if (video.currentTime !== lastTRef.current) {
-        lastTRef.current = video.currentTime;
-        const res = lm.detectForVideo(video, performance.now());
-        if (res.landmarks?.length > 0) {
-          const w = res.landmarks[0][0] as Landmark;
-          const d = { detected: true, x: 1 - w.x, y: w.y };
-          handRef.current = d;
-          setHand?.(d);
-        } else {
-          handRef.current = { ...handRef.current, detected: false };
-          setHand?.({ ...handRef.current, detected: false });
-        }
-      }
-      rafRef.current = requestAnimationFrame(detect);
-    }
-    async function init() {
-      const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
-      );
-      if (cancelled) return;
-      const hlm = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-          delegate: 'GPU',
-        },
-        runningMode: 'VIDEO',
-        numHands: 1,
-      });
-      if (cancelled) return;
-      lmRef.current = hlm;
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-      const video = videoRef.current;
-      if (video) { video.srcObject = stream; video.play(); }
-      rafRef.current = requestAnimationFrame(detect);
-    }
-    init().catch(console.error);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafRef.current);
-      const video = videoRef.current;
-      if (video?.srcObject) (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-      lmRef.current?.close();
-    };
-  }, [videoRef]);
-
-  return [handRef.current, handRef];
 }
