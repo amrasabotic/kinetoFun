@@ -50,11 +50,11 @@ function ProfileContent() {
   return (
     <div className="space-y-6">
       {/* ── Profile hero ─────────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-3xl border border-white/[0.08]">
+      <section className="overflow-hidden rounded-3xl border border-white/[0.12] shadow-[0_8px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)]">
         {/* Banner */}
-        <div className={`relative h-32 bg-gradient-to-br sm:h-40 ${avatarGradient}`}>
+        <div className={`relative h-36 bg-gradient-to-br sm:h-44 ${avatarGradient}`}>
           <div className="absolute inset-0 bg-black/25" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/50 to-transparent" />
           <div className="absolute right-4 top-4">
             <ButtonLink
               href="/settings"
@@ -64,10 +64,23 @@ function ProfileContent() {
               Edit profile
             </ButtonLink>
           </div>
+          {/* Wave transition into card */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 leading-[0]" aria-hidden>
+            <svg
+              className="block h-10 w-full sm:h-14"
+              viewBox="0 0 1440 56"
+              preserveAspectRatio="none"
+            >
+              <path
+                fill="var(--background)"
+                d="M0,32 C200,56 440,8 720,32 C920,50 1160,10 1440,28 L1440,56 L0,56 Z"
+              />
+            </svg>
+          </div>
         </div>
 
         {/* Content below banner */}
-        <div className="relative bg-white/[0.03] px-6 pb-7 backdrop-blur-xl">
+        <div className="relative bg-gradient-to-b from-white/[0.05] to-white/[0.02] px-6 pb-7 backdrop-blur-xl">
           {/* Avatar row — overlaps banner */}
           <div className="-mt-11 mb-4 flex items-end justify-between">
             <div className="rounded-2xl ring-4 ring-background">
@@ -164,7 +177,7 @@ function ProfileContent() {
                       <Link
                         href={session.game ? `/games/${session.game.id}` : "#"}
                         data-focusable
-                        className="flex items-center gap-4 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 backdrop-blur-sm transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.07] focus:outline-none"
+                        className="flex items-center gap-4 rounded-xl border border-white/[0.10] bg-gradient-to-r from-white/[0.05] to-white/[0.02] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm transition-all duration-200 hover:border-white/[0.16] hover:from-white/[0.08] hover:to-white/[0.04] focus:outline-none"
                       >
                         <span
                           className={`h-10 w-10 shrink-0 rounded-lg bg-gradient-to-br ${
@@ -215,8 +228,8 @@ function StatCard({
   iconColor: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 text-center backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+    <div className="relative overflow-hidden rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-5 text-center backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.1)]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
       <div
         className={cn(
           "mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl",

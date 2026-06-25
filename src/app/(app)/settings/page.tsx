@@ -102,12 +102,22 @@ function SettingsContent() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      {/* Header */}
-      <header className="space-y-1">
+      {/* Header banner with wave */}
+      <header className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-primary/20 via-violet-900/10 to-transparent px-7 pb-10 pt-7 shadow-[0_4px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
         <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
           Settings
         </h1>
-        <p className="text-sm text-foreground/45">Manage your account and preferences.</p>
+        <p className="mt-1 text-sm text-foreground/45">Manage your account and preferences.</p>
+        {/* Wave bottom */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 leading-[0]" aria-hidden>
+          <svg className="block h-8 w-full" viewBox="0 0 1440 32" preserveAspectRatio="none">
+            <path
+              fill="var(--background)"
+              d="M0,16 C320,32 640,0 960,16 C1120,24 1280,8 1440,16 L1440,32 L0,32 Z"
+            />
+          </svg>
+        </div>
       </header>
 
       {/* ── Account ──────────────────────────────────────────────────────── */}
@@ -376,9 +386,9 @@ function Section({
 }) {
   const { icon, bg } = ACCENT_CLASSES[accent];
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-primary/30 blur-sm" />
+    <section className="relative overflow-hidden rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 backdrop-blur-xl shadow-[0_4px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-primary/40 blur-sm" />
 
       <div className="mb-5 flex items-center gap-3">
         <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", bg)}>
