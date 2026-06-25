@@ -32,6 +32,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'slingshot-bird':        { folder: 'slingshot-bird',        indexPath: '/games/slingshot-bird/index.html' },
   'simon-says-hands':      { folder: 'simon-says-hands',      indexPath: '/games/simon-says-hands/index.html' },
   'traffic-controller':    { folder: 'traffic-controller',    indexPath: '/games/traffic-controller/index.html' },
+  'bubble-shooter':        { folder: 'bubble-shooter',        indexPath: '/games/bubble-shooter/index.html' },
   'balloon-pop-adventure': { folder: 'balloon-pop-adventure', indexPath: '/games/balloon-pop-adventure/index.html' },
   'gesture-chef':          { folder: 'gesture-chef',          indexPath: '/games/gesture-chef/index.html' },
   'gesture-pong':          { folder: 'gesture-pong',          indexPath: '/games/gesture-pong/index.html' },
