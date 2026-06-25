@@ -60,7 +60,7 @@ export function GameRail({
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+        <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {title}
         </h2>
         {subtitle && viewAllHref ? (
