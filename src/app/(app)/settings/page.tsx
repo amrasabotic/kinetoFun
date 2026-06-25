@@ -102,13 +102,14 @@ function SettingsContent() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      {/* Header banner with wave */}
-      <header className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-primary/20 via-violet-900/10 to-transparent px-7 pb-10 pt-7 shadow-[0_4px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-        <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
+      {/* Header */}
+      <header className="relative overflow-hidden rounded-2xl border border-border/40 bg-card px-7 pb-10 pt-7 shadow-sm">
+        {/* Subtle primary tint */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 to-transparent" />
+        <h1 className="relative text-3xl font-black tracking-tight text-foreground sm:text-4xl">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-foreground/45">Manage your account and preferences.</p>
+        <p className="relative mt-1 text-sm text-muted-foreground">Manage your account and preferences.</p>
         {/* Wave bottom */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 leading-[0]" aria-hidden>
           <svg className="block h-8 w-full" viewBox="0 0 1440 32" preserveAspectRatio="none">
@@ -281,7 +282,7 @@ function SettingsContent() {
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <p className="text-sm text-foreground/45">You&apos;re not signed in.</p>
+            <p className="text-sm text-muted-foreground">You&apos;re not signed in.</p>
             <ButtonLink href="/login">Sign in</ButtonLink>
           </div>
         )}
@@ -315,11 +316,11 @@ function SettingsContent() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold text-foreground">Gesture controls</p>
-            <p className="text-sm text-foreground/45">
+            <p className="text-sm text-muted-foreground">
               Camera-based hand tracking arrives with the hardware input layer (Phase 4).
             </p>
           </div>
-          <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.06] px-3 py-1 text-xs font-semibold text-foreground/50">
+          <span className="shrink-0 rounded-full border border-border/40 bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
             Coming soon
           </span>
         </div>
@@ -327,7 +328,7 @@ function SettingsContent() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold text-foreground">Keyboard navigation</p>
-            <p className="text-sm text-foreground/45">
+            <p className="text-sm text-muted-foreground">
               Use arrow keys to move focus, Enter to select. Always on.
             </p>
           </div>
@@ -339,7 +340,7 @@ function SettingsContent() {
 
       {/* ── About ────────────────────────────────────────────────────────── */}
       <Section title="About" Icon={Info} accent="zinc">
-        <dl className="divide-y divide-white/[0.06] text-sm">
+        <dl className="divide-y divide-border/30 text-sm">
           {[
             { label: "App", value: "KinetoFun" },
             { label: "Version", value: "0.1.0 (Phase 2 — Auth)" },
@@ -347,7 +348,7 @@ function SettingsContent() {
             { label: "Database", value: "Supabase Postgres (local fallback)" },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between py-2.5 first:pt-0 last:pb-0">
-              <dt className="text-foreground/45">{label}</dt>
+              <dt className="text-muted-foreground">{label}</dt>
               <dd className="font-medium text-foreground">{value}</dd>
             </div>
           ))}
@@ -386,10 +387,7 @@ function Section({
 }) {
   const { icon, bg } = ACCENT_CLASSES[accent];
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 backdrop-blur-xl shadow-[0_4px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-primary/40 blur-sm" />
-
+    <section className="rounded-2xl border border-border/40 bg-card p-6 shadow-sm">
       <div className="mb-5 flex items-center gap-3">
         <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", bg)}>
           <Icon className={cn("h-4 w-4", icon)} />
@@ -423,7 +421,7 @@ function Field({
 }
 
 function Divider() {
-  return <div className="h-px bg-white/[0.06]" />;
+  return <div className="h-px bg-border/30" />;
 }
 
 function Toggle({
@@ -441,7 +439,7 @@ function Toggle({
     <div className="flex items-center justify-between gap-4">
       <div>
         <p className="font-semibold text-foreground">{label}</p>
-        <p className="text-sm text-foreground/45">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       <button
         type="button"
