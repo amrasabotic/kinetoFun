@@ -29,7 +29,7 @@ export default function App() {
 // ── Dwell-to-click (menu gesture layer) ──────────────────────────────────────
 
 const DWELL_MS = 900;
-const CURSOR_R = 22;
+const CURSOR_R = 26;
 
 function MenuGestureLayer({ children }: {
   children: (props: { hand: MenuHandData; activeId: string | null; dwellProgress: number }) => React.ReactNode;
@@ -91,50 +91,54 @@ function MenuGestureLayer({ children }: {
 
       {children({ hand, activeId, dwellProgress })}
 
+      {/* Hand cursor */}
       {hand.detected && (
-        <div className="pointer-events-none fixed z-40"
+        <div className="pointer-events-none fixed z-50"
           style={{ left: hand.x * window.innerWidth - CURSOR_R, top: hand.y * window.innerHeight - CURSOR_R, width: CURSOR_R * 2, height: CURSOR_R * 2 }}>
           <svg width={CURSOR_R * 2} height={CURSOR_R * 2}>
-            <circle cx={CURSOR_R} cy={CURSOR_R} r={6}            fill="#38bdf8" fillOpacity="0.9" />
-            <circle cx={CURSOR_R} cy={CURSOR_R} r={CURSOR_R - 1} fill="none"   stroke="rgba(56,189,248,0.3)" strokeWidth="1.5" />
+            <circle cx={CURSOR_R} cy={CURSOR_R} r={CURSOR_R - 2} fill="none" stroke="rgba(56,189,248,0.25)" strokeWidth="2" />
+            <circle cx={CURSOR_R} cy={CURSOR_R} r={8} fill="#38bdf8" fillOpacity="0.95" />
+            <circle cx={CURSOR_R} cy={CURSOR_R} r={4} fill="white" fillOpacity="0.8" />
           </svg>
         </div>
       )}
-      <div className={`fixed top-3 left-3 z-40 w-2.5 h-2.5 rounded-full border border-black/30 ${hand.detected ? 'bg-green-400' : 'bg-red-500'}`} />
+      {/* Camera status dot */}
+      <div className={`fixed top-4 left-4 z-50 flex items-center gap-2`}>
+        <div className={`w-3 h-3 rounded-full border-2 border-black/20 shadow ${hand.detected ? 'bg-emerald-400' : 'bg-red-500'}`} />
+        <span className="text-white/40 text-xs">{hand.detected ? 'Hand detected' : 'No hand'}</span>
+      </div>
     </div>
   );
 }
 
+// GestureBtn — large touch-target button with bottom fill-bar dwell indicator
 function GestureBtn({
-  dwellId, activeId, dwellProgress, onClick, className = '', children,
+  dwellId, activeId, dwellProgress, onClick, className = '', style, children,
 }: {
   dwellId: string; activeId: string | null; dwellProgress: number;
-  onClick: () => void; className?: string; children: React.ReactNode;
+  onClick: () => void; className?: string; style?: React.CSSProperties; children: React.ReactNode;
 }) {
-  const isActive      = activeId === dwellId;
-  const circumference = 2 * Math.PI * (CURSOR_R - 3);
-  const dash          = circumference * (isActive ? dwellProgress : 0);
+  const isActive = activeId === dwellId;
 
   return (
-    <div className="relative">
+    <div className="relative rounded-2xl overflow-hidden">
       <button
         data-dwell-id={dwellId}
         onClick={(e) => { if (e.isTrusted) return; onClick(); }}
         onMouseDown={(e) => e.preventDefault()}
-        style={{ cursor: 'default', userSelect: 'none' }}
-        className={`${className} ${isActive ? 'ring-2 ring-sky-400/60' : ''} transition-all`}>
+        style={{ cursor: 'default', userSelect: 'none', ...style }}
+        className={`${className} ${isActive ? 'brightness-110 scale-[1.02]' : ''} transition-all duration-150 relative`}>
         {children}
       </button>
-      {isActive && (
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <svg width={CURSOR_R * 2} height={CURSOR_R * 2} className="absolute">
-            <circle cx={CURSOR_R} cy={CURSOR_R} r={CURSOR_R - 3} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="3" />
-            <circle cx={CURSOR_R} cy={CURSOR_R} r={CURSOR_R - 3} fill="none" stroke="#38bdf8" strokeWidth="3"
-              strokeDasharray={`${dash} ${circumference}`} strokeLinecap="round"
-              transform={`rotate(-90 ${CURSOR_R} ${CURSOR_R})`} />
-          </svg>
-        </div>
-      )}
+      {/* Dwell progress bar — grows left→right along the bottom edge */}
+      <div
+        className="absolute bottom-0 left-0 h-[4px] rounded-full transition-none pointer-events-none"
+        style={{
+          width:      `${isActive ? dwellProgress * 100 : 0}%`,
+          background: 'linear-gradient(90deg,#38bdf8,#818cf8)',
+          opacity:    isActive ? 1 : 0,
+        }}
+      />
     </div>
   );
 }
@@ -145,37 +149,64 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
   return (
     <MenuGestureLayer>
       {({ hand: _h, activeId, dwellProgress }) => (
-        <div className="h-screen bg-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
-          <div className="flex flex-col items-center gap-8 w-full max-w-sm">
-            <div className="text-8xl select-none">🏐</div>
-            <div className="flex flex-col items-center gap-1">
-              <h1 className="text-5xl font-black tracking-tight text-white">
-                Gesture<span className="text-sky-400">Volleyball</span>
+        <div className="h-screen flex flex-col items-center justify-center overflow-hidden px-6"
+          style={{ background: 'linear-gradient(160deg,#061428 0%,#0a2040 45%,#061020 100%)' }}>
+
+          {/* Subtle court net line decoration */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 opacity-10"
+            style={{ background: 'linear-gradient(to top,#38bdf8 0%,transparent 100%)' }} />
+
+          <div className="flex flex-col items-center gap-7 w-full max-w-lg relative z-10">
+            {/* Hero icon */}
+            <div className="relative">
+              <div className="text-[96px] leading-none select-none drop-shadow-2xl">🏐</div>
+              <div className="absolute inset-0 rounded-full blur-2xl opacity-30"
+                style={{ background: 'radial-gradient(circle,#38bdf8,transparent 70%)' }} />
+            </div>
+
+            {/* Title */}
+            <div className="flex flex-col items-center gap-2 text-center">
+              <h1 className="text-6xl font-black tracking-tight leading-none"
+                style={{ background: 'linear-gradient(90deg,#fff 30%,#38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Gesture<br />Volleyball
               </h1>
-              <p className="text-gray-400 text-sm tracking-widest uppercase">
-                Smash &amp; Block with your hands
+              <p className="text-sky-300/70 text-sm tracking-[0.2em] uppercase font-medium">
+                Smash · Block · Win
               </p>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white/55 leading-relaxed text-center space-y-1">
-              <p>Move your hand left/right to position the player</p>
-              <p>✋ Raise hand → <strong className="text-sky-300">Smash</strong> · 🤲 Spread hands → <strong className="text-blue-300">Block</strong></p>
-              <p>First to {WINNING_SCORE} points wins!</p>
+            {/* Gesture quick-reference pills */}
+            <div className="grid grid-cols-3 gap-3 w-full">
+              {[
+                { icon: '↔️', label: 'Move', color: 'from-slate-700/80 to-slate-800/80', border: 'border-slate-600/40' },
+                { icon: '☝️', label: 'Smash', color: 'from-amber-900/60 to-orange-900/60', border: 'border-amber-500/30' },
+                { icon: '🤲', label: 'Block', color: 'from-sky-900/60 to-blue-900/60', border: 'border-sky-500/30' },
+              ].map(g => (
+                <div key={g.label}
+                  className={`flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-gradient-to-b ${g.color} border ${g.border}`}>
+                  <span className="text-2xl">{g.icon}</span>
+                  <span className="text-white/80 text-xs font-bold tracking-wide uppercase">{g.label}</span>
+                </div>
+              ))}
             </div>
 
-            <p className="text-white/30 text-xs text-center">
-              Hover your hand over a button and hold still to select
+            {/* Dwell hint */}
+            <p className="text-white/25 text-xs text-center">
+              Hover your hand over a button and hold still for 1 second to select
             </p>
 
-            <div className="flex flex-col gap-3 w-full">
+            {/* CTA buttons */}
+            <div className="flex flex-col gap-4 w-full">
               <GestureBtn dwellId="play" activeId={activeId} dwellProgress={dwellProgress}
                 onClick={() => { initAudio(); onPlay(); }}
-                className="w-full py-4 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-black text-xl rounded-xl tracking-wide transition-all shadow-lg shadow-sky-900/50">
-                PLAY
+                className="w-full min-h-[88px] flex items-center justify-center gap-3 text-white font-black text-2xl rounded-2xl tracking-wide transition-all shadow-2xl"
+                style={{ background: 'linear-gradient(135deg,#0284c7 0%,#0ea5e9 50%,#38bdf8 100%)', boxShadow: '0 8px 40px rgba(56,189,248,0.35)' } as React.CSSProperties}>
+                <span className="text-3xl">▶</span> PLAY
               </GestureBtn>
               <GestureBtn dwellId="how" activeId={activeId} dwellProgress={dwellProgress}
                 onClick={onHow}
-                className="w-full py-3 bg-white/8 hover:bg-white/12 active:scale-95 text-white font-semibold text-base rounded-xl tracking-wide transition-all border border-white/10">
+                className="w-full min-h-[72px] flex items-center justify-center text-white/80 font-bold text-lg rounded-2xl tracking-wide transition-all border border-white/15"
+                style={{ background: 'rgba(255,255,255,0.06)' } as React.CSSProperties}>
                 How to Play
               </GestureBtn>
             </div>
@@ -189,43 +220,55 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
 // ── How To Play Screen ────────────────────────────────────────────────────────
 
 const HOW_ITEMS = [
-  { icon: '📷', title: 'Camera Setup',
-    desc: 'Position your webcam so your upper body and both arms are visible. Good lighting improves hand tracking accuracy.' },
-  { icon: '↔️', title: 'Move & Position',
-    desc: 'Move your hand(s) left and right to slide the player across your half of the court. The average position of all visible hands drives movement.' },
-  { icon: '☝️', title: 'Smash Hit',
-    desc: 'Raise one hand high above your forehead — when the ball is near, your player launches a powerful smash across the net. Edge-triggered: lower your hand between smashes.' },
-  { icon: '🤲', title: 'Block',
-    desc: 'Spread both hands far apart horizontally. Your player spreads their arms to deflect the ball back over the net without sending it at full speed.' },
-  { icon: '🤖', title: 'AI Opponent',
-    desc: 'The AI moves to intercept the ball and sometimes smashes. Difficulty controls its speed and smash frequency. Easy AI misses occasionally — Hard AI almost never does.' },
-  { icon: '🏆', title: 'Scoring',
-    desc: `First to ${WINNING_SCORE} points wins the match. A point is scored whenever the ball touches the floor on the opponent's side. Serves alternate after each point.` },
+  { icon: '📷', title: 'Camera Setup',      color: '#64748b',
+    desc: 'Position your webcam so your upper body and both arms are visible. Good lighting improves hand tracking.' },
+  { icon: '↔️', title: 'Move & Position',   color: '#94a3b8',
+    desc: 'Move your hand(s) left and right — the average wrist position drives your player across your half of the court.' },
+  { icon: '☝️', title: 'Smash Hit',         color: '#f59e0b',
+    desc: 'Raise one hand above forehead level. When the ball is nearby, your player smashes it fast and flat. Lower your hand to reset and smash again.' },
+  { icon: '🤲', title: 'Block',             color: '#38bdf8',
+    desc: 'Spread both hands far apart horizontally. Your player spreads their arms to deflect the ball back over the net.' },
+  { icon: '🤖', title: 'AI Opponent',       color: '#a78bfa',
+    desc: 'Difficulty controls AI speed and smash rate. Easy sometimes misses; Hard almost never does.' },
+  { icon: '🏆', title: 'Scoring',           color: '#facc15',
+    desc: `First to ${WINNING_SCORE} points wins. Score when the ball hits the floor on the opponent's side. Serves alternate each point.` },
 ];
 
 function HowToPlayScreen({ onBack }: { onBack: () => void }) {
   return (
     <MenuGestureLayer>
       {({ hand: _h, activeId, dwellProgress }) => (
-        <div className="h-screen bg-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
-          <div className="w-full max-w-md flex flex-col gap-4">
-            <h2 className="text-3xl font-black text-white text-center">How to Play</h2>
-            <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+        <div className="h-screen flex flex-col items-center justify-center overflow-hidden px-6 py-4"
+          style={{ background: 'linear-gradient(160deg,#061428 0%,#0a2040 45%,#061020 100%)' }}>
+
+          <div className="w-full max-w-lg flex flex-col gap-4 h-full">
+            <h2 className="text-4xl font-black text-white text-center pt-2 shrink-0">How to Play</h2>
+
+            <div className="flex flex-col gap-3 overflow-y-auto flex-1 pb-1">
               {HOW_ITEMS.map(item => (
-                <div key={item.title} className="flex gap-4 bg-white/5 rounded-xl p-3 border border-white/8">
-                  <div className="w-8 flex-shrink-0 flex items-start justify-center pt-0.5 text-xl">{item.icon}</div>
-                  <div>
-                    <p className="text-white font-bold text-sm">{item.title}</p>
-                    <p className="text-gray-400 text-xs leading-relaxed mt-0.5">{item.desc}</p>
+                <div key={item.title}
+                  className="flex gap-4 rounded-2xl p-4 border border-white/8"
+                  style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl shrink-0"
+                    style={{ background: `${item.color}22`, border: `1.5px solid ${item.color}44` }}>
+                    {item.icon}
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <p className="text-white font-bold text-base">{item.title}</p>
+                    <p className="text-white/50 text-sm leading-relaxed mt-0.5">{item.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
-            <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
-              onClick={onBack}
-              className="w-full py-3 bg-white/8 hover:bg-white/12 active:scale-95 text-white font-semibold rounded-xl transition-all border border-white/10">
-              Back
-            </GestureBtn>
+
+            <div className="shrink-0">
+              <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
+                onClick={onBack}
+                className="w-full min-h-[72px] flex items-center justify-center text-white/80 font-bold text-lg rounded-2xl transition-all border border-white/15"
+                style={{ background: 'rgba(255,255,255,0.07)' } as React.CSSProperties}>
+                ← Back
+              </GestureBtn>
+            </div>
           </div>
         </div>
       )}
@@ -235,35 +278,75 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
 
 // ── Difficulty Screen ─────────────────────────────────────────────────────────
 
-const DIFF_OPTIONS: { id: Difficulty; label: string; desc: string; btn: string; accent: string }[] = [
-  { id: 'easy',   label: 'Easy',   desc: 'AI is slow and misses occasionally — great for beginners',    accent: 'text-green-400',  btn: 'bg-green-800 hover:bg-green-700' },
-  { id: 'normal', label: 'Normal', desc: 'Balanced challenge — AI smashes and tracks ball reliably',     accent: 'text-yellow-400', btn: 'bg-yellow-800 hover:bg-yellow-700' },
-  { id: 'hard',   label: 'Hard',   desc: 'Fast AI that smashes aggressively and almost never misses',    accent: 'text-red-400',    btn: 'bg-red-900 hover:bg-red-800' },
+const DIFF_OPTIONS: {
+  id: Difficulty; emoji: string; label: string; tagline: string;
+  desc: string; stars: number; grad: string; glow: string; border: string;
+}[] = [
+  {
+    id: 'easy', emoji: '🌊', label: 'Easy', tagline: 'Learn the ropes',
+    desc: 'Slow AI · misses occasionally · perfect for first timers',
+    stars: 1, grad: 'linear-gradient(135deg,#064e3b,#065f46)', glow: '#10b981', border: '#10b98140',
+  },
+  {
+    id: 'normal', emoji: '🏐', label: 'Normal', tagline: 'Balanced rally',
+    desc: 'Medium speed · reliable returns · occasional smashes',
+    stars: 3, grad: 'linear-gradient(135deg,#78350f,#92400e)', glow: '#f59e0b', border: '#f59e0b40',
+  },
+  {
+    id: 'hard', emoji: '⚡', label: 'Hard', tagline: 'No mercy',
+    desc: 'Fast reflexes · frequent smashes · almost never misses',
+    stars: 5, grad: 'linear-gradient(135deg,#7f1d1d,#991b1b)', glow: '#ef4444', border: '#ef444440',
+  },
 ];
 
 function DifficultyScreen({ onSelect, onBack }: { onSelect: (d: Difficulty) => void; onBack: () => void }) {
   return (
     <MenuGestureLayer>
       {({ hand: _h, activeId, dwellProgress }) => (
-        <div className="h-screen bg-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
-          <div className="w-full max-w-md flex flex-col gap-4">
-            <h2 className="text-3xl font-black text-white text-center">Select Difficulty</h2>
-            <div className="flex flex-col gap-2.5">
+        <div className="h-screen flex flex-col items-center justify-center overflow-hidden px-6 py-6"
+          style={{ background: 'linear-gradient(160deg,#061428 0%,#0a2040 45%,#061020 100%)' }}>
+
+          <div className="w-full max-w-lg flex flex-col gap-5">
+            <div className="text-center">
+              <h2 className="text-4xl font-black text-white">Pick Your Challenge</h2>
+              <p className="text-white/35 text-sm mt-1">Hover over a difficulty to select it</p>
+            </div>
+
+            <div className="flex flex-col gap-4">
               {DIFF_OPTIONS.map(opt => (
                 <GestureBtn key={opt.id} dwellId={`diff-${opt.id}`} activeId={activeId} dwellProgress={dwellProgress}
                   onClick={() => onSelect(opt.id)}
-                  className={`w-full py-3.5 ${opt.btn} active:scale-95 text-white rounded-xl transition-all shadow-lg flex items-center justify-between px-5`}>
-                  <div className="flex flex-col items-start">
-                    <span className={`font-black text-lg ${opt.accent}`}>{opt.label}</span>
-                    <span className="text-white/50 text-xs">{opt.desc}</span>
+                  className="w-full min-h-[96px] flex items-center gap-5 px-6 rounded-2xl transition-all"
+                  style={{
+                    background:  opt.grad,
+                    border:      `1.5px solid ${opt.border}`,
+                    boxShadow:   activeId === `diff-${opt.id}` ? `0 0 28px ${opt.glow}55` : 'none',
+                  } as React.CSSProperties}>
+                  {/* Big emoji */}
+                  <span className="text-5xl shrink-0">{opt.emoji}</span>
+                  {/* Text */}
+                  <div className="flex flex-col flex-1 items-start">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-white font-black text-2xl">{opt.label}</span>
+                      <span className="text-white/50 text-sm font-medium">{opt.tagline}</span>
+                    </div>
+                    <span className="text-white/55 text-sm mt-0.5">{opt.desc}</span>
+                  </div>
+                  {/* Star meter */}
+                  <div className="flex gap-1 shrink-0">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i} className="text-lg" style={{ opacity: i < opt.stars ? 1 : 0.18 }}>★</span>
+                    ))}
                   </div>
                 </GestureBtn>
               ))}
             </div>
+
             <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
               onClick={onBack}
-              className="w-full py-3 bg-white/8 hover:bg-white/12 active:scale-95 text-white font-semibold rounded-xl transition-all border border-white/10">
-              Back
+              className="w-full min-h-[68px] flex items-center justify-center text-white/70 font-bold text-lg rounded-2xl transition-all border border-white/12"
+              style={{ background: 'rgba(255,255,255,0.06)' } as React.CSSProperties}>
+              ← Back
             </GestureBtn>
           </div>
         </div>
