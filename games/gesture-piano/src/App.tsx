@@ -132,8 +132,13 @@ function GestureBtn({
 
   return (
     <div className="relative">
-      <button data-dwell-id={dwellId} onClick={onClick}
-        className={`${className} ${isActive ? 'ring-2 ring-purple-400/60' : ''} transition-all`}>
+      <button
+        data-dwell-id={dwellId}
+        onClick={(e) => { if (e.isTrusted) return; onClick(); }}
+        onMouseDown={(e) => e.preventDefault()}
+        style={{ cursor: 'default', userSelect: 'none' }}
+        className={`${className} ${isActive ? 'ring-2 ring-purple-400/60' : ''} transition-all`}
+      >
         {children}
       </button>
       {isActive && (
