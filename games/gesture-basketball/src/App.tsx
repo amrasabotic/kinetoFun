@@ -18,6 +18,39 @@ import {
 } from './audio';
 import type { MenuHandData } from './useMenuHand';
 
+// ── End-of-game gesture detection ────────────────────────────────────────────
+// MediaPipe landmark indices: wrist=0, thumbTip=4,
+// indexMCP=5, indexTip=8, middleMCP=9, middleTip=12,
+// ringMCP=13, ringTip=16, pinkyMCP=17, pinkyTip=20
+
+import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
+
+function detectFist(hands: NormalizedLandmark[][]): boolean {
+  if (!hands.length) return false;
+  const h = hands[0];
+  // All 4 finger tips must be below (larger Y = lower in frame) their MCPs
+  const curled = [
+    h[8].y  > h[5].y,   // index
+    h[12].y > h[9].y,   // middle
+    h[16].y > h[13].y,  // ring
+    h[20].y > h[17].y,  // pinky
+  ];
+  return curled.filter(Boolean).length >= 3;
+}
+
+function detectVSign(hands: NormalizedLandmark[][]): boolean {
+  if (!hands.length) return false;
+  const h = hands[0];
+  // Index + middle extended (tip above PIP), ring + pinky curled (tip below MCP)
+  const indexUp  = h[8].y  < h[6].y;
+  const middleUp = h[12].y < h[10].y;
+  const ringDown = h[16].y > h[13].y;
+  const pinkyDown = h[20].y > h[17].y;
+  return indexUp && middleUp && ringDown && pinkyDown;
+}
+
+const GESTURE_DWELL_MS = 1500;
+
 // ── Screen router ─────────────────────────────────────────────────────────────
 
 type Screen = 'landing' | 'howtoplay' | 'difficulty' | 'game';
@@ -138,29 +171,27 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
     <MenuGestureLayer>
       {({ hand: _h, activeId, dwellProgress }) => (
         <div className="h-screen flex flex-col items-center justify-center overflow-hidden px-6 relative"
-          style={{ background: 'linear-gradient(160deg,#0d0500 0%,#1a0900 50%,#0a0300 100%)' }}>
+          style={{ background: 'linear-gradient(160deg,#1a0800 0%,#2d1200 50%,#1a0800 100%)' }}>
 
           {/* Court floor glow */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56"
-            style={{ background: 'linear-gradient(to top,rgba(120,50,10,0.55) 0%,transparent 100%)' }} />
+            style={{ background: 'linear-gradient(to top,rgba(180,80,20,0.40) 0%,transparent 100%)' }} />
           {/* Spotlight */}
           <div className="pointer-events-none absolute inset-0"
-            style={{ background: 'radial-gradient(ellipse 60% 70% at 50% 30%,rgba(251,146,60,0.08) 0%,transparent 100%)' }} />
+            style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 25%,rgba(251,146,60,0.13) 0%,transparent 100%)' }} />
 
           <div className="flex flex-col items-center gap-6 w-full max-w-md relative z-10">
 
             {/* Giant ball */}
-            <div className="relative">
-              <div className="text-[100px] leading-none select-none" style={{ filter: 'drop-shadow(0 0 40px rgba(249,115,22,0.5))' }}>🏀</div>
-            </div>
+            <div className="text-[96px] leading-none select-none" style={{ filter: 'drop-shadow(0 0 36px rgba(249,115,22,0.65))' }}>🏀</div>
 
             {/* Title */}
             <div className="text-center">
               <h1 className="text-5xl font-black tracking-tight leading-tight"
-                style={{ background: 'linear-gradient(180deg,#ffffff 0%,#fb923c 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                style={{ background: 'linear-gradient(180deg,#ffffff 0%,#fdba74 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 Gesture<br />Basketball
               </h1>
-              <p className="text-orange-400/80 text-sm tracking-[0.25em] uppercase font-bold mt-2">
+              <p className="text-orange-300 text-sm tracking-[0.25em] uppercase font-bold mt-2">
                 Free Throw Challenge
               </p>
             </div>
@@ -168,34 +199,34 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
             {/* Quick-ref gestures */}
             <div className="grid grid-cols-3 gap-3 w-full">
               {[
-                { icon: '↔️', label: 'Aim',    sub: 'Move hand left/right' },
-                { icon: '⬇️', label: 'Ready',  sub: 'Hand below waist' },
-                { icon: '🏀', label: 'Throw',  sub: 'Flick upward fast' },
+                { icon: '↔️', label: 'Aim',   sub: 'Move hand left/right' },
+                { icon: '⬇️', label: 'Ready', sub: 'Hand below waist' },
+                { icon: '🏀', label: 'Throw', sub: 'Flick upward fast' },
               ].map(g => (
                 <div key={g.label} className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl text-center"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(251,146,60,0.25)' }}>
+                  style={{ background: 'rgba(255,255,255,0.10)', border: '1.5px solid rgba(251,146,60,0.45)' }}>
                   <span className="text-2xl">{g.icon}</span>
                   <div>
                     <div className="text-white font-bold text-xs tracking-wide uppercase">{g.label}</div>
-                    <div className="text-white/45 text-[10px] mt-0.5 leading-tight">{g.sub}</div>
+                    <div className="text-orange-200 text-[11px] mt-0.5 leading-tight font-medium">{g.sub}</div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <p className="text-white/30 text-xs text-center">Hover your hand over a button for 1 second to select</p>
+            <p className="text-orange-200/80 text-xs font-medium text-center">Hover hand over a button for 1 second to select</p>
 
             <div className="flex flex-col gap-3 w-full">
               <GestureBtn dwellId="play" activeId={activeId} dwellProgress={dwellProgress}
                 onClick={() => { initAudio(); onPlay(); }}
                 className="w-full min-h-[80px] flex items-center justify-center gap-3 text-white font-black text-2xl rounded-2xl"
-                style={{ background: 'linear-gradient(135deg,#b45309 0%,#d97706 40%,#f97316 100%)', boxShadow: '0 6px 32px rgba(249,115,22,0.45), inset 0 1px 0 rgba(255,255,255,0.15)' } as React.CSSProperties}>
-                <span>▶</span> PLAY
+                style={{ background: 'linear-gradient(135deg,#c2410c 0%,#ea580c 50%,#f97316 100%)', boxShadow: '0 8px 32px rgba(249,115,22,0.55), inset 0 1px 0 rgba(255,255,255,0.20)' } as React.CSSProperties}>
+                ▶ &nbsp;PLAY
               </GestureBtn>
               <GestureBtn dwellId="how" activeId={activeId} dwellProgress={dwellProgress}
                 onClick={onHow}
-                className="w-full min-h-[64px] flex items-center justify-center text-white/80 font-bold text-lg rounded-2xl"
-                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' } as React.CSSProperties}>
+                className="w-full min-h-[64px] flex items-center justify-center text-white font-bold text-lg rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.14)', border: '1.5px solid rgba(255,255,255,0.35)' } as React.CSSProperties}>
                 How to Play
               </GestureBtn>
             </div>
@@ -228,19 +259,19 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
     <MenuGestureLayer>
       {({ hand: _h, activeId, dwellProgress }) => (
         <div className="h-screen flex flex-col items-center overflow-hidden px-5 py-4"
-          style={{ background: 'linear-gradient(160deg,#0d0500 0%,#1a0900 50%,#0a0300 100%)' }}>
+          style={{ background: 'linear-gradient(160deg,#1a0800 0%,#2d1200 50%,#1a0800 100%)' }}>
           <h2 className="text-3xl font-black text-white pt-2 pb-3 shrink-0">How to Play</h2>
           <div className="flex flex-col gap-2.5 overflow-y-auto flex-1 w-full max-w-lg pb-2">
             {HOW_ITEMS.map(item => (
               <div key={item.title} className="flex gap-4 rounded-2xl p-4"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
-                  style={{ background: `${item.color}18`, border: `1.5px solid ${item.color}40` }}>
+                style={{ background: 'rgba(255,255,255,0.10)', border: `1.5px solid ${item.color}55` }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 shrink-0"
+                  style={{ background: `${item.color}28`, border: `2px solid ${item.color}80` }}>
                   {item.icon}
                 </div>
                 <div>
                   <p className="text-white font-bold text-sm">{item.title}</p>
-                  <p className="text-white/55 text-xs leading-relaxed mt-0.5">{item.desc}</p>
+                  <p className="text-orange-100 text-xs leading-relaxed mt-1 font-medium" style={{ opacity: 0.88 }}>{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -248,8 +279,8 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
           <div className="shrink-0 w-full max-w-lg pt-2">
             <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
               onClick={onBack}
-              className="w-full min-h-[64px] flex items-center justify-center text-white/80 font-bold text-lg rounded-2xl"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' } as React.CSSProperties}>
+              className="w-full min-h-[64px] flex items-center justify-center text-white font-bold text-lg rounded-2xl"
+              style={{ background: 'rgba(255,255,255,0.14)', border: '1.5px solid rgba(255,255,255,0.35)' } as React.CSSProperties}>
               ← Back
             </GestureBtn>
           </div>
@@ -290,41 +321,41 @@ function DifficultyScreen({ onSelect, onBack }: { onSelect: (d: Difficulty) => v
     <MenuGestureLayer>
       {({ hand: _h, activeId, dwellProgress }) => (
         <div className="h-screen flex flex-col items-center justify-center overflow-hidden px-5 py-6"
-          style={{ background: 'linear-gradient(160deg,#0d0500 0%,#1a0900 50%,#0a0300 100%)' }}>
+          style={{ background: 'linear-gradient(160deg,#1a0800 0%,#2d1200 50%,#1a0800 100%)' }}>
           <div className="w-full max-w-lg flex flex-col gap-4">
             <div className="text-center mb-1">
               <h2 className="text-4xl font-black text-white">Pick Difficulty</h2>
-              <p className="text-white/40 text-sm mt-1">Hover to select</p>
+              <p className="text-orange-200 text-sm mt-1 font-medium">Hover hand over a card to select</p>
             </div>
             {DIFF_OPTIONS.map(opt => (
               <GestureBtn key={opt.id} dwellId={`d-${opt.id}`} activeId={activeId} dwellProgress={dwellProgress}
                 onClick={() => onSelect(opt.id)}
                 className="w-full flex items-center gap-5 px-5 py-4 rounded-2xl"
-                style={{ background: opt.grad, border: `1.5px solid ${opt.border}`, boxShadow: activeId === `d-${opt.id}` ? `0 0 30px ${opt.glow}50` : 'none' } as React.CSSProperties}>
+                style={{ background: opt.grad, border: `2px solid ${opt.border}`, boxShadow: activeId === `d-${opt.id}` ? `0 0 36px ${opt.glow}70` : `0 2px 12px rgba(0,0,0,0.4)` } as React.CSSProperties}>
                 <span className="text-5xl shrink-0">{opt.emoji}</span>
                 <div className="flex-1 text-left">
                   <div className="flex items-baseline gap-3">
                     <span className="text-white font-black text-xl">{opt.label}</span>
-                    <span className="text-white/55 text-sm">{opt.tagline}</span>
+                    <span className="text-white font-medium text-sm" style={{ opacity: 0.80 }}>{opt.tagline}</span>
                   </div>
-                  <div className="flex gap-2 mt-1 flex-wrap">
+                  <div className="flex gap-2 mt-1.5 flex-wrap">
                     {opt.bullets.map(b => (
-                      <span key={b} className="text-white/60 text-xs px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(0,0,0,0.25)' }}>{b}</span>
+                      <span key={b} className="text-white font-semibold text-xs px-2.5 py-0.5 rounded-full"
+                        style={{ background: 'rgba(0,0,0,0.38)', border: '1px solid rgba(255,255,255,0.20)' }}>{b}</span>
                     ))}
                   </div>
                 </div>
                 <div className="flex gap-0.5 shrink-0">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i} className="text-base" style={{ opacity: i < opt.stars ? 1 : 0.15 }}>★</span>
+                    <span key={i} className="text-lg" style={{ opacity: i < opt.stars ? 1 : 0.20 }}>★</span>
                   ))}
                 </div>
               </GestureBtn>
             ))}
             <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
               onClick={onBack}
-              className="w-full min-h-[60px] flex items-center justify-center text-white/70 font-bold text-lg rounded-2xl"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' } as React.CSSProperties}>
+              className="w-full min-h-[60px] flex items-center justify-center text-white font-bold text-lg rounded-2xl"
+              style={{ background: 'rgba(255,255,255,0.14)', border: '1.5px solid rgba(255,255,255,0.35)' } as React.CSSProperties}>
               ← Back
             </GestureBtn>
           </div>
@@ -346,10 +377,18 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
   const sentRef    = useRef(false);
   const trailRef   = useRef<Array<{ x: number; y: number; age: number }>>([]);
 
+  // End-of-game gesture dwell state
+  const [fistProgress, setFistProgress] = useState(0);
+  const [vProgress,    setVProgress]    = useState(0);
+  const fistDwellRef = useRef(0);  // accumulated ms
+  const vDwellRef    = useRef(0);
+
   const gestureRefs = useGestureRefs();
   const handsRaw    = useHandTracking(videoRef as React.RefObject<HTMLVideoElement>);
   const handsRef    = useRef(handsRaw);
   handsRef.current  = handsRaw;
+
+  const handleRestartRef = useRef<() => void>(() => {});
 
   const loop = useCallback((ts: number) => {
     const rawDt = lastTRef.current ? ts - lastTRef.current : 16;
@@ -379,12 +418,9 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
         window.parent.postMessage({ type: 'GAME_COMPLETE', score: next.score + bonus }, '*');
       }
 
-      // Update ball trail
       if (next.phase === 'in_flight') {
         trailRef.current.push({ x: next.ball.x, y: next.ball.y, age: 0 });
-        trailRef.current = trailRef.current
-          .map(t => ({ ...t, age: t.age + 1 }))
-          .filter(t => t.age < 10);
+        trailRef.current = trailRef.current.map(t => ({ ...t, age: t.age + 1 })).filter(t => t.age < 10);
       } else {
         trailRef.current = [];
       }
@@ -392,11 +428,26 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
       gs = next;
       gsRef.current = gs;
       setDisp({ ...gs });
+    } else {
+      // Game over — detect fist (restart) and V-sign (quit) with dwell
+      const isFist = detectFist(raw.hands);
+      const isV    = detectVSign(raw.hands);
+
+      fistDwellRef.current = isFist ? Math.min(fistDwellRef.current + dtMs, GESTURE_DWELL_MS) : Math.max(0, fistDwellRef.current - dtMs * 2);
+      vDwellRef.current    = isV    ? Math.min(vDwellRef.current    + dtMs, GESTURE_DWELL_MS) : Math.max(0, vDwellRef.current    - dtMs * 2);
+
+      const fp = fistDwellRef.current / GESTURE_DWELL_MS;
+      const vp = vDwellRef.current    / GESTURE_DWELL_MS;
+      setFistProgress(fp);
+      setVProgress(vp);
+
+      if (fp >= 1) { fistDwellRef.current = 0; handleRestartRef.current(); }
+      if (vp >= 1) { vDwellRef.current    = 0; onQuit(); }
     }
 
     drawGame(canvasRef.current, gs, gesture, trailRef.current);
     rafRef.current = requestAnimationFrame(loop);
-  }, [gestureRefs, difficulty]);
+  }, [gestureRefs, difficulty, onQuit]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(loop);
@@ -407,61 +458,61 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
     gsRef.current = initialGameState(difficulty);
     sentRef.current = false;
     trailRef.current = [];
+    fistDwellRef.current = 0;
+    vDwellRef.current    = 0;
+    setFistProgress(0);
+    setVProgress(0);
     gestureRefs.shootFiredRef.current = false;
     gestureRefs.peakYRef.current      = 0.7;
     gestureRefs.baseYRef.current      = 0.7;
     setDisp(gsRef.current);
   };
+  handleRestartRef.current = handleRestart;
 
-  const gs       = disp;
-  const anyHand  = handsRaw.leftDetected || handsRaw.rightDetected;
-  const isOver   = gs.phase === 'game_over';
+  const gs        = disp;
+  const anyHand   = handsRaw.leftDetected || handsRaw.rightDetected;
+  const isOver    = gs.phase === 'game_over';
   const shotsDone = gs.shotsTotal;
 
   return (
     <div className="h-screen flex flex-col items-center justify-center overflow-hidden gap-2 px-2"
-      style={{ background: '#0a0400' }}>
+      style={{ background: '#1a0800' }}>
 
       {/* Top HUD */}
       <div className="flex items-center justify-between w-full px-1" style={{ maxWidth: CANVAS_W }}>
-        {/* Score */}
         <div className="flex items-center gap-2">
           <div className="text-orange-400 font-black text-3xl leading-none tabular-nums"
             style={{ textShadow: '0 0 20px rgba(249,115,22,0.6)' }}>
             {gs.score}
           </div>
           <div className="flex flex-col">
-            <span className="text-white/50 text-[10px] font-bold uppercase tracking-widest">pts</span>
+            <span className="text-white text-[10px] font-bold uppercase tracking-widest" style={{ opacity: 0.75 }}>pts</span>
             {gs.streak >= 2 && (
               <span className="text-yellow-400 text-[10px] font-bold">{gs.streak}× 🔥</span>
             )}
           </div>
         </div>
 
-        {/* Shot dots */}
         <div className="flex items-center gap-1.5">
           {Array.from({ length: MAX_SHOTS }).map((_, i) => {
             const used = i < shotsDone;
             const cur  = i === shotsDone && gs.phase === 'aiming';
             return (
-              <div key={i}
-                className="rounded-full transition-all duration-300"
+              <div key={i} className="rounded-full transition-all duration-300"
                 style={{
-                  width:       cur ? 12 : 9,
-                  height:      cur ? 12 : 9,
-                  background:  used ? '#f97316' : cur ? '#fbbf24' : 'rgba(255,255,255,0.15)',
-                  boxShadow:   cur ? '0 0 8px #fbbf24' : 'none',
+                  width:      cur ? 12 : 9, height: cur ? 12 : 9,
+                  background: used ? '#f97316' : cur ? '#fbbf24' : 'rgba(255,255,255,0.25)',
+                  boxShadow:  cur ? '0 0 8px #fbbf24' : 'none',
                 }} />
             );
           })}
         </div>
 
-        {/* Difficulty badge */}
         <div className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide"
           style={{
-            background: difficulty === 'easy' ? 'rgba(16,185,129,0.2)' : difficulty === 'normal' ? 'rgba(249,115,22,0.2)' : 'rgba(239,68,68,0.2)',
-            color:      difficulty === 'easy' ? '#34d399' : difficulty === 'normal' ? '#fb923c' : '#f87171',
-            border:     `1px solid ${difficulty === 'easy' ? 'rgba(16,185,129,0.35)' : difficulty === 'normal' ? 'rgba(249,115,22,0.35)' : 'rgba(239,68,68,0.35)'}`,
+            background: difficulty === 'easy' ? 'rgba(16,185,129,0.35)' : difficulty === 'normal' ? 'rgba(249,115,22,0.35)' : 'rgba(239,68,68,0.35)',
+            color: '#ffffff',
+            border: `1.5px solid ${difficulty === 'easy' ? '#34d399' : difficulty === 'normal' ? '#fb923c' : '#f87171'}`,
           }}>
           {DIFF_CONFIG[difficulty].label}
         </div>
@@ -471,34 +522,34 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
       <div className="relative" style={{ maxWidth: CANVAS_W }}>
         <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H}
           className="block rounded-xl shadow-2xl"
-          style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 108px)', border: '1px solid rgba(255,255,255,0.06)' }} />
+          style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 108px)', border: '1px solid rgba(255,255,255,0.10)' }} />
 
         {!anyHand && !isOver && gs.phase === 'aiming' && (
           <div className="absolute inset-0 rounded-xl flex flex-col items-center justify-center"
             style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
             <span className="text-5xl mb-3">✋</span>
             <p className="text-white font-black text-xl">Show your hand!</p>
-            <p className="text-white/55 text-sm mt-1">Hold it in front of the camera</p>
+            <p className="text-white text-sm mt-1" style={{ opacity: 0.70 }}>Hold it in front of the camera</p>
           </div>
         )}
 
-        {isOver && <GameOverOverlay gs={gs} onRestart={handleRestart} onQuit={onQuit} />}
+        {isOver && (
+          <GameOverOverlay
+            gs={gs}
+            fistProgress={fistProgress}
+            vProgress={vProgress}
+            onRestart={handleRestart}
+            onQuit={onQuit}
+          />
+        )}
       </div>
 
-      {/* Bottom controls */}
-      <div className="flex items-center gap-4 pb-1">
+      {/* Status bar */}
+      <div className="flex items-center gap-3 pb-1">
         <div className={`w-2 h-2 rounded-full ${anyHand ? 'bg-green-400' : 'bg-red-500'}`} />
-        <span className="text-white/35 text-xs">{anyHand ? 'Hand detected' : 'No hand detected'}</span>
-        <button onClick={handleRestart}
-          className="px-3 py-1 rounded-lg text-white/55 text-xs font-semibold transition-all hover:text-white/80"
-          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}>
-          Restart
-        </button>
-        <button onClick={onQuit}
-          className="px-3 py-1 rounded-lg text-white/55 text-xs font-semibold transition-all hover:text-white/80"
-          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}>
-          Quit
-        </button>
+        <span className="text-white text-xs font-medium" style={{ opacity: 0.70 }}>
+          {anyHand ? 'Hand detected' : 'No hand detected'}
+        </span>
       </div>
 
       <video ref={videoRef as React.RefObject<HTMLVideoElement>}
@@ -507,56 +558,109 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
   );
 }
 
+// ── Dwell ring SVG ────────────────────────────────────────────────────────────
+
+function DwellRing({ progress, color, r = 38 }: { progress: number; color: string; r?: number }) {
+  const circ = 2 * Math.PI * r;
+  return (
+    <svg width={(r + 6) * 2} height={(r + 6) * 2} className="absolute inset-0 pointer-events-none">
+      {/* track */}
+      <circle cx={r + 6} cy={r + 6} r={r} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
+      {/* fill */}
+      <circle cx={r + 6} cy={r + 6} r={r} fill="none"
+        stroke={color} strokeWidth="4" strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={circ * (1 - progress)}
+        transform={`rotate(-90 ${r + 6} ${r + 6})`}
+        style={{ transition: 'stroke-dashoffset 0.05s linear', filter: progress > 0.1 ? `drop-shadow(0 0 6px ${color})` : 'none' }}
+      />
+    </svg>
+  );
+}
+
 // ── Game Over overlay ─────────────────────────────────────────────────────────
 
-function GameOverOverlay({ gs, onRestart, onQuit }: { gs: GameState; onRestart: () => void; onQuit: () => void }) {
-  const pct    = gs.score / (MAX_SHOTS * POINTS_PER_BASKET);
-  const stars  = pct >= 0.8 ? 3 : pct >= 0.5 ? 2 : pct >= 0.3 ? 1 : 0;
-  const emoji  = pct >= 0.8 ? '🏆' : pct >= 0.5 ? '🏀' : pct >= 0.3 ? '😤' : '😞';
-  const msg    = pct >= 0.8 ? 'Sharpshooter!' : pct >= 0.5 ? 'Solid Game!' : pct >= 0.3 ? 'Keep Practising' : 'Keep Shooting';
-  const made   = gs.score / POINTS_PER_BASKET;
+function GameOverOverlay({
+  gs, fistProgress, vProgress, onRestart, onQuit,
+}: {
+  gs: GameState; fistProgress: number; vProgress: number;
+  onRestart: () => void; onQuit: () => void;
+}) {
+  const pct  = gs.score / (MAX_SHOTS * POINTS_PER_BASKET);
+  const stars = pct >= 0.8 ? 3 : pct >= 0.5 ? 2 : pct >= 0.3 ? 1 : 0;
+  const emoji = pct >= 0.8 ? '🏆' : pct >= 0.5 ? '🏀' : pct >= 0.3 ? '😤' : '😞';
+  const msg   = pct >= 0.8 ? 'Sharpshooter!' : pct >= 0.5 ? 'Solid Game!' : pct >= 0.3 ? 'Keep Practising' : 'Keep Shooting';
+  const made  = gs.score / POINTS_PER_BASKET;
 
   return (
     <div className="absolute inset-0 rounded-xl flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.90)', backdropFilter: 'blur(8px)' }}>
-      <div className="text-center flex flex-col items-center gap-5 px-8 py-6 rounded-3xl w-full max-w-xs"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}>
+      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(10px)' }}>
+      <div className="text-center flex flex-col items-center gap-4 px-8 py-7 rounded-3xl w-full max-w-sm"
+        style={{ background: 'rgba(15,5,0,0.90)', border: '1.5px solid rgba(255,255,255,0.22)' }}>
 
         <div className="text-6xl">{emoji}</div>
         <p className="font-black text-2xl text-white">{msg}</p>
 
-        <div className="flex gap-1.5">
+        {/* Stars */}
+        <div className="flex gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <span key={i} className="text-3xl transition-all" style={{ opacity: i < stars ? 1 : 0.15, filter: i < stars ? 'drop-shadow(0 0 8px #fbbf24)' : 'none' }}>⭐</span>
+            <span key={i} className="text-3xl" style={{ opacity: i < stars ? 1 : 0.18, filter: i < stars ? 'drop-shadow(0 0 8px #fbbf24)' : 'none' }}>⭐</span>
           ))}
         </div>
 
+        {/* Score */}
         <div className="flex flex-col items-center gap-0.5">
           <span className="font-black text-5xl tabular-nums"
             style={{ color: '#fb923c', textShadow: '0 0 24px rgba(249,115,22,0.5)' }}>
             {gs.score}
           </span>
-          <span className="text-white/40 text-xs uppercase tracking-widest">/ {MAX_SHOTS * POINTS_PER_BASKET} pts</span>
+          <span className="text-white text-xs uppercase tracking-widest font-semibold" style={{ opacity: 0.65 }}>/ {MAX_SHOTS * POINTS_PER_BASKET} pts</span>
         </div>
 
+        {/* Baskets made */}
         <div className="px-4 py-2 rounded-xl w-full text-center"
-          style={{ background: 'rgba(255,255,255,0.06)' }}>
-          <span className="text-white/70 text-base font-semibold">{made} / {MAX_SHOTS}</span>
-          <span className="text-white/40 text-sm"> baskets made</span>
+          style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.22)' }}>
+          <span className="text-white text-base font-bold">{made} / {MAX_SHOTS}</span>
+          <span className="text-white font-medium text-sm" style={{ opacity: 0.75 }}> baskets made</span>
         </div>
 
-        <div className="flex gap-3 w-full">
-          <button onClick={onRestart}
-            className="flex-1 py-3 font-black text-white text-base rounded-xl transition-all active:scale-95"
-            style={{ background: 'linear-gradient(135deg,#b45309,#f97316)', boxShadow: '0 4px 20px rgba(249,115,22,0.4)' }}>
-            Play Again
-          </button>
-          <button onClick={onQuit}
-            className="flex-1 py-3 font-bold text-white/70 text-base rounded-xl transition-all active:scale-95"
-            style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            Quit
-          </button>
+        {/* Gesture buttons */}
+        <div className="flex gap-5 w-full justify-center mt-1">
+
+          {/* Fist → Restart */}
+          <div className="flex flex-col items-center gap-2">
+            <button onClick={onRestart}
+              className="relative flex items-center justify-center rounded-full transition-all active:scale-95"
+              style={{ width: 88, height: 88, background: fistProgress > 0.05 ? 'rgba(249,115,22,0.20)' : 'rgba(255,255,255,0.08)', border: '2px solid rgba(249,115,22,0.50)' }}>
+              <DwellRing progress={fistProgress} color="#f97316" r={38} />
+              <span className="text-4xl relative z-10">✊</span>
+            </button>
+            <div className="text-center">
+              <p className="text-white font-bold text-sm">Play Again</p>
+              <p className="text-white text-xs mt-0.5 font-medium" style={{ opacity: 0.65 }}>Make a fist</p>
+            </div>
+          </div>
+
+          {/* V-sign → Quit */}
+          <div className="flex flex-col items-center gap-2">
+            <button onClick={onQuit}
+              className="relative flex items-center justify-center rounded-full transition-all active:scale-95"
+              style={{ width: 88, height: 88, background: vProgress > 0.05 ? 'rgba(148,163,184,0.20)' : 'rgba(255,255,255,0.08)', border: '2px solid rgba(255,255,255,0.35)' }}>
+              <DwellRing progress={vProgress} color="#94a3b8" r={38} />
+              <span className="text-4xl relative z-10">✌️</span>
+            </button>
+            <div className="text-center">
+              <p className="text-white font-bold text-sm">Quit</p>
+              <p className="text-white text-xs mt-0.5 font-medium" style={{ opacity: 0.65 }}>Show V sign</p>
+            </div>
+          </div>
+
         </div>
+
+        {/* Instruction note */}
+        <p className="text-white text-xs font-medium text-center" style={{ opacity: 0.55 }}>
+          Hold gesture for 1.5 s · or tap button to click
+        </p>
       </div>
     </div>
   );
