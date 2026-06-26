@@ -15,13 +15,13 @@
   body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;overflow:hidden;user-select:none;}
   #app{display:flex;height:100vh;width:100vw;position:relative;}
   #canvas-area{position:relative;flex:1;overflow:hidden;}
-  #videoEl{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:0.15;pointer-events:none;}
-  #drawCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:none;}
+  #videoEl{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:0.12;pointer-events:none;}
+  #drawCanvas{position:absolute;inset:0;width:100%;height:100%;}
   #overlayCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;}
   #uiCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;}
 
   /* Side panel */
-  #panel{width:210px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;padding:18px 14px;gap:20px;z-index:10;overflow-y:auto;}
+  #panel{width:210px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;padding:18px 14px;gap:18px;z-index:10;overflow-y:auto;}
   .logo{text-align:center;padding-bottom:8px;border-bottom:1px solid var(--border);}
   .logo h1{font-size:17px;font-weight:700;letter-spacing:-0.5px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
   .logo p{font-size:10px;color:var(--text-dim);font-family:'Space Mono',monospace;margin-top:2px;}
@@ -33,18 +33,18 @@
   .dot.error{background:#fc5c5c;box-shadow:0 0 8px #fc5c5c;}
   .section-label{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);font-family:'Space Mono',monospace;}
   .gesture-list{display:flex;flex-direction:column;gap:6px;}
-  .gesture-item{display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);transition:border-color .2s;}
+  .gesture-item{position:relative;overflow:hidden;display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);transition:border-color .2s;}
   .gesture-item.active-gesture{border-color:var(--accent);box-shadow:0 0 12px var(--glow);}
   .gesture-icon{font-size:16px;line-height:1;flex-shrink:0;}
-  .gesture-text{display:flex;flex-direction:column;gap:1px;}
+  .gesture-text{display:flex;flex-direction:column;gap:1px;flex:1;}
   .gesture-name{font-size:11px;font-weight:600;color:var(--text);}
   .gesture-desc{font-size:9px;color:var(--text-dim);line-height:1.4;}
-  .action-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;width:100%;}
-  .action-btn:hover{border-color:var(--accent);background:rgba(124,92,252,.15);color:white;}
-  .action-btn.danger:hover{border-color:#fc5c5c;background:rgba(252,92,92,.12);}
-  .actions-group{display:flex;flex-direction:column;gap:8px;}
+  /* Hold-progress bar shown inside clear/save gesture cards */
+  .hold-bar{position:absolute;left:0;bottom:0;height:3px;width:0%;border-radius:0 0 8px 8px;transition:width 0.05s linear;pointer-events:none;}
+  #g-clear .hold-bar{background:#fc5c5c;}
+  #g-save  .hold-bar{background:var(--accent3);}
 
-  /* Hint banner on canvas */
+  /* Hint banner */
   #gesture-hint{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(18,18,26,.85);border:1px solid var(--border);border-radius:10px;padding:8px 18px;font-size:12px;color:var(--text-dim);font-family:'Space Mono',monospace;pointer-events:none;z-index:20;white-space:nowrap;backdrop-filter:blur(6px);}
 
   /* Toast */
@@ -56,7 +56,7 @@
   #loading.hidden{opacity:0;pointer-events:none;}
   .spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
-  #loading p{color:var(--text-dim);font-size:14px;font-family:'Space Mono',monospace;}
+  #loading p{color:var(--text-dim);font-size:14px;font-family:'Space Mono',monospace;text-align:center;max-width:260px;}
   #loading h2{font-size:24px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 
   /* Gallery */
@@ -84,7 +84,7 @@
 <div id="loading">
   <h2>✦ Air Painting</h2>
   <div class="spinner"></div>
-  <p>Loading MediaPipe…</p>
+  <p id="loadMsg">Starting camera…</p>
 </div>
 
 <div id="app">
@@ -94,7 +94,7 @@
     <canvas id="overlayCanvas"></canvas>
     <canvas id="uiCanvas"></canvas>
     <button id="gallery-btn" onclick="openGallery()">🖼 Gallery</button>
-    <div id="gesture-hint">☝️ Draw &nbsp;|&nbsp; ✌️ Erase &nbsp;|&nbsp; 🤚 Hold=Clear &nbsp;|&nbsp; 👌 Hold=Save &nbsp;|&nbsp; ☝️ Hover palette to pick</div>
+    <div id="gesture-hint">☝️ Draw &nbsp;|&nbsp; ✌️ Erase &nbsp;|&nbsp; 🤚 Hold=Clear &nbsp;|&nbsp; 👌 Hold=Save &nbsp;|&nbsp; Hover palette to pick</div>
   </div>
 
   <div id="panel">
@@ -114,21 +114,16 @@
       <div class="gesture-list">
         <div class="gesture-item" id="g-draw"><div class="gesture-icon">☝️</div><div class="gesture-text"><div class="gesture-name">Draw</div><div class="gesture-desc">Index finger up only</div></div></div>
         <div class="gesture-item" id="g-erase"><div class="gesture-icon">✌️</div><div class="gesture-text"><div class="gesture-name">Erase</div><div class="gesture-desc">Index + Middle up</div></div></div>
-        <div class="gesture-item" id="g-clear"><div class="gesture-icon">🤚</div><div class="gesture-text"><div class="gesture-name">Clear</div><div class="gesture-desc">All 5 open, hold 1s</div></div></div>
-        <div class="gesture-item" id="g-save"><div class="gesture-icon">👌</div><div class="gesture-text"><div class="gesture-name">Save</div><div class="gesture-desc">Pinch, hold 0.8s</div></div></div>
-        <div class="gesture-item" id="g-pick"><div class="gesture-icon">👆</div><div class="gesture-text"><div class="gesture-name">Pick Color/Size</div><div class="gesture-desc">Hover panel 0.3s</div></div></div>
+        <div class="gesture-item" id="g-clear"><div class="gesture-icon">🤚</div><div class="gesture-text"><div class="gesture-name">Clear canvas</div><div class="gesture-desc">All 5 open, hold 1 s</div></div><div class="hold-bar" id="bar-clear"></div></div>
+        <div class="gesture-item" id="g-save"><div class="gesture-icon">👌</div><div class="gesture-text"><div class="gesture-name">Save painting</div><div class="gesture-desc">Pinch, hold 0.8 s</div></div><div class="hold-bar" id="bar-save"></div></div>
+        <div class="gesture-item" id="g-pick"><div class="gesture-icon">👆</div><div class="gesture-text"><div class="gesture-name">Pick Color/Size</div><div class="gesture-desc">Hover palette 0.3 s</div></div></div>
       </div>
-    </div>
-
-    <div class="actions-group">
-      <button class="action-btn" onclick="saveArt()"><span>💾</span> Save painting</button>
-      <button class="action-btn danger" onclick="clearCanvas()"><span>🗑</span> Clear canvas</button>
     </div>
 
     <div style="font-size:10px;color:var(--text-dim);line-height:1.6;font-family:'Space Mono',monospace;">
       <div style="margin-bottom:4px;font-size:9px;letter-spacing:1px;text-transform:uppercase;">Current</div>
-      <div id="info-color">Color: white</div>
-      <div id="info-size">Brush: 10px</div>
+      <div id="info-color">Color: #ffffff</div>
+      <div id="info-size">Brush: 8px</div>
     </div>
   </div>
 </div>
@@ -143,10 +138,10 @@
 
 <div id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver, DrawingUtils }
+  from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm';
 
-<script>
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
@@ -155,45 +150,42 @@ const COLORS = [
   '#5cf5fc','#5cfcbc','#fc5c5c','#5c8ffc','#b4fc5c',
   '#ff9f43','#ee5a24','#0652DD','#1289A7','#C4E538',
 ];
-const SIZES  = [3, 8, 16, 28, 42];
+const SIZES      = [3, 8, 16, 28, 42];
 const ERASE_SIZE = 44;
-const HOVER_MS   = 300; // ms to hover before selecting
-
-// ─── Floating palette layout (drawn on uiCanvas) ───
-// Palette anchored LEFT side of canvas-area, vertically centered
-// Colors in a column, then sizes below
-const PAL_X    = 28;   // center x of swatches
-const SWATCH_R = 20;   // radius
-const SWATCH_GAP = 52; // spacing
-const SIZE_Y_START_OFFSET = 30; // extra gap between colors and sizes
+const HOVER_MS   = 300;
+const PAL_X      = 28;
+const SWATCH_R   = 20;
+const SWATCH_GAP = 52;
+const SIZE_Y_EXTRA = 30;
 
 // ═══════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════
 let currentColor  = COLORS[0];
 let currentSize   = SIZES[1];
-let isErasing     = false;
 let isDrawing     = false;
 let lastX = null, lastY = null;
 let strokeCount   = 0;
-let gestureMode   = 'idle';
-let clearCooldown = false;
-let saveCooldown  = false;
+let clearCooldown  = false;
+let saveCooldown   = false;
+let clearHoldStart = null;   // timestamp when 🤚 gesture began
+let saveHoldStart  = null;   // timestamp when 👌 gesture began
+const CLEAR_HOLD_MS = 1000;
+const SAVE_HOLD_MS  = 800;
+const barClear = () => document.getElementById('bar-clear');
+const barSave  = () => document.getElementById('bar-save');
 let savedPaintings = JSON.parse(localStorage.getItem('airpaint_saves') || '[]');
-
-// Hover-to-select state
-let hoverTarget   = null;  // { type:'color'|'size', index }
-let hoverStart    = null;  // timestamp when hover began
-let hoverProgress = 0;     // 0-1
+let hoverTarget = null, hoverStart = null, hoverProgress = 0;
 
 // ═══════════════════════════════════════════════════════════════
 //  DOM
 // ═══════════════════════════════════════════════════════════════
-const videoEl     = document.getElementById('videoEl');
-const drawCanvas  = document.getElementById('drawCanvas');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const uiCanvas    = document.getElementById('uiCanvas');
-const loadingEl   = document.getElementById('loading');
+const videoEl      = document.getElementById('videoEl');
+const drawCanvas   = document.getElementById('drawCanvas');
+const overlayCanvas= document.getElementById('overlayCanvas');
+const uiCanvas     = document.getElementById('uiCanvas');
+const loadingEl    = document.getElementById('loading');
+const loadMsg      = document.getElementById('loadMsg');
 const dctx = drawCanvas.getContext('2d');
 const octx = overlayCanvas.getContext('2d');
 const uctx = uiCanvas.getContext('2d');
@@ -207,147 +199,89 @@ resizeCanvases();
 window.addEventListener('resize', resizeCanvases);
 
 // ═══════════════════════════════════════════════════════════════
-//  PALETTE LAYOUT  — computed from canvas size
+//  PALETTE LAYOUT
 // ═══════════════════════════════════════════════════════════════
 function getPaletteItems() {
   const H = uiCanvas.height;
   const totalItems = COLORS.length + SIZES.length;
-  const totalH = (totalItems - 1) * SWATCH_GAP + SWATCH_GAP; // extra for gap between sections
+  const totalH = (totalItems - 1) * SWATCH_GAP + SIZE_Y_EXTRA;
   const startY = (H - totalH) / 2 + SWATCH_R;
-
   const items = [];
-  // Colors
-  COLORS.forEach((c, i) => {
-    items.push({ type:'color', index:i, cx: PAL_X, cy: startY + i * SWATCH_GAP, value: c });
-  });
-  // Size swatches — slightly offset with extra gap
-  const sizeStartY = startY + COLORS.length * SWATCH_GAP + SIZE_Y_START_OFFSET;
-  SIZES.forEach((s, i) => {
-    items.push({ type:'size', index:i, cx: PAL_X, cy: sizeStartY + i * SWATCH_GAP, value: s });
-  });
+  COLORS.forEach((c, i) => items.push({ type:'color', index:i, cx:PAL_X, cy:startY + i*SWATCH_GAP, value:c }));
+  const sizeStartY = startY + COLORS.length * SWATCH_GAP + SIZE_Y_EXTRA;
+  SIZES.forEach((s, i) => items.push({ type:'size', index:i, cx:PAL_X, cy:sizeStartY + i*SWATCH_GAP, value:s }));
   return items;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  DRAW UI PALETTE on uiCanvas
-// ═══════════════════════════════════════════════════════════════
 function drawPalette(fingerX, fingerY) {
   uctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
   const items = getPaletteItems();
   const now = performance.now();
 
-  // Section labels
   uctx.font = 'bold 8px Space Mono, monospace';
   uctx.textAlign = 'center';
   uctx.fillStyle = 'rgba(106,106,138,0.9)';
   if (items.length) {
     uctx.fillText('COLOR', PAL_X, items[0].cy - SWATCH_R - 8);
-    const sizeItem = items.find(i => i.type === 'size');
-    if (sizeItem) uctx.fillText('SIZE', PAL_X, sizeItem.cy - SWATCH_R - 8);
+    const si = items.find(i => i.type === 'size');
+    if (si) uctx.fillText('SIZE', PAL_X, si.cy - SWATCH_R - 8);
   }
 
   items.forEach(item => {
-    const isSelected = item.type === 'color'
-      ? item.value === currentColor
-      : item.value === currentSize;
+    const isSelected = item.type === 'color' ? item.value === currentColor : item.value === currentSize;
+    const dx = fingerX - item.cx, dy = fingerY - item.cy;
+    const isHovered = Math.sqrt(dx*dx + dy*dy) < SWATCH_R + 10;
+    const key = `${item.type}-${item.index}`;
 
-    const dx = fingerX - item.cx;
-    const dy = fingerY - item.cy;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const isHovered = dist < SWATCH_R + 10;
-
-    // Track hover timing
-    const thisKey = `${item.type}-${item.index}`;
     if (isHovered) {
-      if (!hoverTarget || hoverTarget.key !== thisKey) {
-        hoverTarget  = { key: thisKey, item };
-        hoverStart   = now;
-        hoverProgress = 0;
+      if (!hoverTarget || hoverTarget.key !== key) {
+        hoverTarget = { key, item }; hoverStart = now; hoverProgress = 0;
       } else {
         hoverProgress = Math.min(1, (now - hoverStart) / HOVER_MS);
-        if (hoverProgress >= 1) {
-          selectItem(item);
-          hoverTarget  = null;
-          hoverStart   = null;
-          hoverProgress = 0;
-        }
+        if (hoverProgress >= 1) { selectItem(item); hoverTarget = null; hoverStart = null; hoverProgress = 0; }
       }
-    } else if (hoverTarget && hoverTarget.key === thisKey) {
-      hoverTarget  = null;
-      hoverStart   = null;
-      hoverProgress = 0;
+    } else if (hoverTarget && hoverTarget.key === key) {
+      hoverTarget = null; hoverStart = null; hoverProgress = 0;
     }
 
     const r = isSelected ? SWATCH_R + 4 : (isHovered ? SWATCH_R + 2 : SWATCH_R);
-
-    // Draw swatch
     uctx.save();
     if (item.type === 'color') {
-      // Color circle
-      uctx.beginPath();
-      uctx.arc(item.cx, item.cy, r, 0, Math.PI*2);
-      uctx.fillStyle = item.value;
-      uctx.fill();
-      if (isSelected) {
-        uctx.strokeStyle = 'white';
-        uctx.lineWidth = 2.5;
-        uctx.stroke();
-        // glow
-        uctx.shadowColor = item.value;
-        uctx.shadowBlur  = 12;
-        uctx.stroke();
-      } else {
-        uctx.strokeStyle = 'rgba(255,255,255,0.2)';
-        uctx.lineWidth = 1;
-        uctx.stroke();
-      }
-    } else {
-      // Size button: dark pill with inner dot
-      uctx.beginPath();
-      uctx.arc(item.cx, item.cy, r, 0, Math.PI*2);
-      uctx.fillStyle = isSelected ? 'rgba(124,92,252,0.35)' : 'rgba(26,26,38,0.85)';
-      uctx.fill();
-      uctx.strokeStyle = isSelected ? '#7c5cfc' : 'rgba(255,255,255,0.15)';
-      uctx.lineWidth = isSelected ? 2 : 1;
+      uctx.beginPath(); uctx.arc(item.cx, item.cy, r, 0, Math.PI*2);
+      uctx.fillStyle = item.value; uctx.fill();
+      uctx.strokeStyle = isSelected ? 'white' : 'rgba(255,255,255,0.2)';
+      uctx.lineWidth = isSelected ? 2.5 : 1;
+      if (isSelected) { uctx.shadowColor = item.value; uctx.shadowBlur = 12; }
       uctx.stroke();
-      // Inner dot representing brush size
+    } else {
+      uctx.beginPath(); uctx.arc(item.cx, item.cy, r, 0, Math.PI*2);
+      uctx.fillStyle = isSelected ? 'rgba(124,92,252,0.35)' : 'rgba(26,26,38,0.85)'; uctx.fill();
+      uctx.strokeStyle = isSelected ? '#7c5cfc' : 'rgba(255,255,255,0.15)';
+      uctx.lineWidth = isSelected ? 2 : 1; uctx.stroke();
       const dotR = Math.min(item.value / 2, r - 5);
-      uctx.beginPath();
-      uctx.arc(item.cx, item.cy, dotR, 0, Math.PI*2);
-      uctx.fillStyle = isSelected ? '#7c5cfc' : 'rgba(255,255,255,0.6)';
-      uctx.fill();
+      uctx.beginPath(); uctx.arc(item.cx, item.cy, dotR, 0, Math.PI*2);
+      uctx.fillStyle = isSelected ? '#7c5cfc' : 'rgba(255,255,255,0.6)'; uctx.fill();
     }
-
-    // Hover progress arc
-    if (isHovered && hoverTarget && hoverTarget.key === thisKey && hoverProgress > 0) {
+    if (isHovered && hoverTarget?.key === key && hoverProgress > 0) {
       uctx.beginPath();
       uctx.arc(item.cx, item.cy, r + 5, -Math.PI/2, -Math.PI/2 + Math.PI*2*hoverProgress);
       uctx.strokeStyle = item.type === 'color' ? item.value : '#7c5cfc';
-      uctx.lineWidth = 3;
-      uctx.lineCap = 'round';
-      uctx.stroke();
+      uctx.lineWidth = 3; uctx.lineCap = 'round'; uctx.stroke();
     }
-
     uctx.restore();
   });
 
-  // Divider between color and size sections
   const sizeItems = items.filter(i => i.type === 'size');
   if (sizeItems.length) {
     const lineY = sizeItems[0].cy - SWATCH_R - 18;
-    uctx.beginPath();
-    uctx.moveTo(PAL_X - 22, lineY);
-    uctx.lineTo(PAL_X + 22, lineY);
-    uctx.strokeStyle = 'rgba(42,42,58,0.9)';
-    uctx.lineWidth = 1;
-    uctx.stroke();
+    uctx.beginPath(); uctx.moveTo(PAL_X-22, lineY); uctx.lineTo(PAL_X+22, lineY);
+    uctx.strokeStyle = 'rgba(42,42,58,0.9)'; uctx.lineWidth = 1; uctx.stroke();
   }
 }
 
 function selectItem(item) {
   if (item.type === 'color') {
     currentColor = item.value;
-    isErasing = false;
     document.getElementById('info-color').textContent = 'Color: ' + item.value;
     showToast('Color selected 🎨');
   } else {
@@ -358,7 +292,7 @@ function selectItem(item) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DRAW / ERASE
+//  DRAW / ERASE / CLEAR
 // ═══════════════════════════════════════════════════════════════
 function drawStroke(x, y) {
   if (!isDrawing) { lastX = x; lastY = y; isDrawing = true; strokeCount++; return; }
@@ -368,12 +302,8 @@ function drawStroke(x, y) {
   dctx.lineWidth   = currentSize;
   dctx.shadowColor = currentColor;
   dctx.shadowBlur  = currentSize * 0.5;
-  dctx.lineCap = 'round';
-  dctx.lineJoin = 'round';
-  dctx.beginPath();
-  dctx.moveTo(lastX, lastY);
-  dctx.lineTo(x, y);
-  dctx.stroke();
+  dctx.lineCap = 'round'; dctx.lineJoin = 'round';
+  dctx.beginPath(); dctx.moveTo(lastX, lastY); dctx.lineTo(x, y); dctx.stroke();
   dctx.restore();
   lastX = x; lastY = y;
 }
@@ -381,9 +311,7 @@ function drawStroke(x, y) {
 function eraseAt(x, y) {
   dctx.save();
   dctx.globalCompositeOperation = 'destination-out';
-  dctx.beginPath();
-  dctx.arc(x, y, ERASE_SIZE / 2, 0, Math.PI*2);
-  dctx.fill();
+  dctx.beginPath(); dctx.arc(x, y, ERASE_SIZE/2, 0, Math.PI*2); dctx.fill();
   dctx.restore();
 }
 
@@ -394,13 +322,15 @@ function clearCanvas() {
   showToast('Canvas cleared 🧹');
 }
 
+function resetClearHold() { clearHoldStart = null; barClear().style.width = '0%'; }
+function resetSaveHold()  { saveHoldStart  = null; barSave().style.width  = '0%'; }
+
 // ═══════════════════════════════════════════════════════════════
-//  SAVE
+//  SAVE / GALLERY
 // ═══════════════════════════════════════════════════════════════
 let scoreSent = false;
 function reportScore() {
-  if (scoreSent) return;
-  scoreSent = true;
+  if (scoreSent) return; scoreSent = true;
   window.parent.postMessage({ type: 'GAME_COMPLETE', score: strokeCount }, '*');
 }
 window.addEventListener('beforeunload', reportScore);
@@ -410,99 +340,97 @@ function saveArt() {
   const tmp = document.createElement('canvas');
   tmp.width = drawCanvas.width; tmp.height = drawCanvas.height;
   const tc = tmp.getContext('2d');
-  tc.fillStyle = '#0a0a0f';
-  tc.fillRect(0,0,tmp.width,tmp.height);
+  tc.fillStyle = '#0a0a0f'; tc.fillRect(0,0,tmp.width,tmp.height);
   tc.drawImage(drawCanvas,0,0);
   const url = tmp.toDataURL('image/png');
   savedPaintings.unshift({ url, date: new Date().toLocaleString() });
   if (savedPaintings.length > 20) savedPaintings.pop();
   localStorage.setItem('airpaint_saves', JSON.stringify(savedPaintings));
-  const a = document.createElement('a');
-  a.href = url; a.download = `air-painting-${Date.now()}.png`; a.click();
+  const a = document.createElement('a'); a.href = url; a.download = `air-painting-${Date.now()}.png`; a.click();
   showToast('Painting saved! 💾');
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  GALLERY
-// ═══════════════════════════════════════════════════════════════
-function openGallery() {
+window.openGallery = function() {
   const grid = document.getElementById('gallery-grid');
   grid.innerHTML = '';
   if (!savedPaintings.length) {
     grid.innerHTML = '<div class="gallery-empty">No paintings yet ✨</div>';
   } else {
     savedPaintings.forEach((p,i) => {
-      const w = document.createElement('div');
-      w.className = 'gallery-thumb';
-      w.innerHTML = `<img src="${p.url}" alt="Painting ${i+1}"/><div class="thumb-actions"><button class="thumb-btn" onclick="dlPainting(${i})">⬇ Save</button><button class="thumb-btn del" onclick="delPainting(${i})">✕</button></div>`;
+      const w = document.createElement('div'); w.className = 'gallery-thumb';
+      w.innerHTML = `<img src="${p.url}" alt="Painting ${i+1}"/>
+        <div class="thumb-actions">
+          <button class="thumb-btn" onclick="dlPainting(${i})">⬇ Save</button>
+          <button class="thumb-btn del" onclick="delPainting(${i})">✕</button>
+        </div>`;
       grid.appendChild(w);
     });
   }
   document.getElementById('gallery-overlay').classList.add('open');
-}
-function closeGallery() { document.getElementById('gallery-overlay').classList.remove('open'); }
-function dlPainting(i) { const a=document.createElement('a');a.href=savedPaintings[i].url;a.download=`air-painting-${i+1}.png`;a.click(); }
-function delPainting(i) { savedPaintings.splice(i,1);localStorage.setItem('airpaint_saves',JSON.stringify(savedPaintings));openGallery(); }
+};
+window.closeGallery = function() { document.getElementById('gallery-overlay').classList.remove('open'); };
+window.dlPainting  = function(i) { const a=document.createElement('a');a.href=savedPaintings[i].url;a.download=`air-painting-${i+1}.png`;a.click(); };
+window.delPainting = function(i) { savedPaintings.splice(i,1);localStorage.setItem('airpaint_saves',JSON.stringify(savedPaintings));window.openGallery(); };
+// keyboard shortcuts still work (see keydown handler below)
 
 // ═══════════════════════════════════════════════════════════════
-//  TOAST & STATUS
+//  STATUS / TOAST
 // ═══════════════════════════════════════════════════════════════
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
-function setStatus(id,txtId,text,state) {
-  document.getElementById(id).className = 'dot '+(state||'');
+function setStatus(id, txtId, text, state) {
+  document.getElementById(id).className = 'dot ' + (state || '');
   document.getElementById(txtId).textContent = text;
 }
 function highlightGesture(g) {
-  document.querySelectorAll('.gesture-item').forEach(el=>el.classList.remove('active-gesture'));
-  if(g) document.getElementById('g-'+g)?.classList.add('active-gesture');
+  document.querySelectorAll('.gesture-item').forEach(el => el.classList.remove('active-gesture'));
+  if (g) document.getElementById('g-'+g)?.classList.add('active-gesture');
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CURSOR / SKELETON
+//  OVERLAY / SKELETON
 // ═══════════════════════════════════════════════════════════════
-function drawOverlay(lm, W, H, X, Y, color, ringSize, gesture) {
+const HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17]
+];
+
+function drawOverlay(lm, W, H, X, Y, color, ringSize) {
   octx.clearRect(0,0,W,H);
   if (!lm) return;
 
-  const CONN = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
   octx.save();
-  octx.strokeStyle='rgba(124,92,252,0.3)';
-  octx.lineWidth=1.5; octx.lineCap='round';
-  CONN.forEach(([a,b])=>{
+  octx.strokeStyle = 'rgba(124,92,252,0.3)';
+  octx.lineWidth = 1.5; octx.lineCap = 'round';
+  HAND_CONNECTIONS.forEach(([a,b]) => {
     octx.beginPath();
     octx.moveTo((1-lm[a].x)*W, lm[a].y*H);
     octx.lineTo((1-lm[b].x)*W, lm[b].y*H);
     octx.stroke();
   });
-  lm.forEach((pt,i)=>{
+  lm.forEach((pt, i) => {
     octx.beginPath();
-    octx.arc((1-pt.x)*W, pt.y*H, i===8?5:2.5, 0, Math.PI*2);
+    octx.arc((1-pt.x)*W, pt.y*H, i===8 ? 5 : 2.5, 0, Math.PI*2);
     octx.fillStyle = i===8 ? currentColor : 'rgba(124,92,252,0.5)';
     octx.fill();
   });
   octx.restore();
 
-  // Cursor ring
   if (X != null) {
     octx.save();
-    octx.beginPath();
-    octx.arc(X, Y, ringSize/2, 0, Math.PI*2);
-    octx.strokeStyle = color;
-    octx.lineWidth = 2;
-    octx.shadowColor = color;
-    octx.shadowBlur = 10;
-    octx.stroke();
-    // tiny center dot
-    octx.beginPath();
-    octx.arc(X,Y,2,0,Math.PI*2);
-    octx.fillStyle = color;
-    octx.fill();
+    octx.beginPath(); octx.arc(X, Y, ringSize/2, 0, Math.PI*2);
+    octx.strokeStyle = color; octx.lineWidth = 2;
+    octx.shadowColor = color; octx.shadowBlur = 10; octx.stroke();
+    octx.beginPath(); octx.arc(X, Y, 2, 0, Math.PI*2);
+    octx.fillStyle = color; octx.fill();
     octx.restore();
   }
 }
@@ -510,8 +438,8 @@ function drawOverlay(lm, W, H, X, Y, color, ringSize, gesture) {
 // ═══════════════════════════════════════════════════════════════
 //  GESTURE DETECTION
 // ═══════════════════════════════════════════════════════════════
-function fingerUp(lm,tip,pip){ return lm[tip].y < lm[pip].y; }
-function dist2D(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function fingerUp(lm, tip, pip) { return lm[tip].y < lm[pip].y; }
+function dist2D(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
 function detectGesture(lm) {
   const indexUp  = fingerUp(lm,8,6);
@@ -519,148 +447,181 @@ function detectGesture(lm) {
   const ringUp   = fingerUp(lm,16,14);
   const pinkyUp  = fingerUp(lm,20,18);
   const allOpen  = indexUp && middleUp && ringUp && pinkyUp;
-  const pinchDist = dist2D(lm[4], lm[8]);
-  const isPinching = pinchDist < 0.06;
-
-  if (allOpen)   return 'clear';
-  if (isPinching) return 'save';
+  const pinchD   = dist2D(lm[4], lm[8]);
+  if (allOpen)  return 'clear';
+  if (pinchD < 0.06) return 'save';
   if (indexUp && middleUp && !ringUp && !pinkyUp) return 'erase';
   if (indexUp && !middleUp && !ringUp && !pinkyUp) return 'draw';
   return 'idle';
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  MEDIAPIPE
+//  PROCESS ONE FRAME
 // ═══════════════════════════════════════════════════════════════
-let handsReady = false;
-const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}` });
-hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.72, minTrackingConfidence:0.6 });
-
-let clearHoldTimer=null, saveHoldTimer=null;
-function clearClearTimer(){ if(clearHoldTimer){clearTimeout(clearHoldTimer);clearHoldTimer=null;} }
-function clearSaveTimer() { if(saveHoldTimer) {clearTimeout(saveHoldTimer); saveHoldTimer=null;}  }
-
-hands.onResults(results => {
-  if (!handsReady) return;
+function processFrame(lm) {
   const W = drawCanvas.width, H = drawCanvas.height;
-  const lm = results.multiHandLandmarks?.[0];
 
   if (!lm) {
-    stopDraw();
+    stopDraw(); resetClearHold(); resetSaveHold();
     setStatus('dot-hand','txt-hand','No hand','');
     setStatus('dot-mode','txt-mode','Idle','');
     highlightGesture(null);
-    drawOverlay(null,W,H,null,null,'#fff',12,'idle');
-    drawPalette(-9999,-9999); // draw palette with no hover
-    clearClearTimer(); clearSaveTimer();
+    drawOverlay(null, W, H, null, null, '#fff', 12);
+    drawPalette(-9999, -9999);
     return;
   }
 
   setStatus('dot-hand','txt-hand','Hand detected','active');
-
   const gesture = detectGesture(lm);
   const tip = lm[8];
   const X = (1 - tip.x) * W;
   const Y = tip.y * H;
 
-  // Always render palette (pass finger position for hover detection)
-  // Only check hover when in draw mode (idle index up) — not while actively drawing strokes
-  const checkHover = (gesture === 'draw' || gesture === 'idle');
+  // Palette hover only when not actively doing something else
+  const checkHover = gesture === 'draw' || gesture === 'idle';
   drawPalette(checkHover ? X : -9999, checkHover ? Y : -9999);
 
-  switch(gesture) {
+  switch (gesture) {
     case 'draw':
-      isErasing = false;
       setStatus('dot-mode','txt-mode','Drawing ✏️','drawing');
       highlightGesture('draw');
-      // Only draw on canvas if NOT hovering palette
-      if (!hoverTarget) drawStroke(X, Y);
-      else stopDraw();
-      drawOverlay(lm,W,H,X,Y,currentColor,currentSize+10,'draw');
-      clearClearTimer(); clearSaveTimer();
+      if (!hoverTarget) drawStroke(X, Y); else stopDraw();
+      drawOverlay(lm, W, H, X, Y, currentColor, currentSize + 10);
+      resetClearHold(); resetSaveHold();
       break;
 
-    case 'erase':
-      isErasing=true; stopDraw();
+    case 'erase': {
+      stopDraw();
       setStatus('dot-mode','txt-mode','Erasing 🧹','drawing');
       highlightGesture('erase');
       const mt = lm[12];
-      const MX=(1-mt.x)*W, MY=mt.y*H;
-      eraseAt(MX,MY);
-      drawOverlay(lm,W,H,MX,MY,'rgba(180,180,180,0.8)',ERASE_SIZE+8,'erase');
-      clearClearTimer(); clearSaveTimer();
+      const MX = (1-mt.x)*W, MY = mt.y*H;
+      eraseAt(MX, MY);
+      drawOverlay(lm, W, H, MX, MY, 'rgba(180,180,180,0.8)', ERASE_SIZE+8);
+      resetClearHold(); resetSaveHold();
       break;
+    }
 
-    case 'clear':
-      stopDraw();
-      setStatus('dot-mode','txt-mode','Hold to clear 🤚','');
+    case 'clear': {
+      stopDraw(); resetSaveHold();
       highlightGesture('clear');
-      drawOverlay(lm,W,H,X,Y,'#fc5c5c',22,'clear');
-      if (!clearCooldown && !clearHoldTimer) {
-        clearHoldTimer = setTimeout(()=>{
-          clearCanvas();
-          clearCooldown=true;
-          setTimeout(()=>{clearCooldown=false;},1500);
-          clearHoldTimer=null;
-        },1000);
+      drawOverlay(lm, W, H, X, Y, '#fc5c5c', 22);
+      if (clearCooldown) {
+        setStatus('dot-mode','txt-mode','Clearing… 🤚','');
+        break;
       }
-      clearSaveTimer();
+      if (clearHoldStart === null) clearHoldStart = performance.now();
+      const clearElapsed = performance.now() - clearHoldStart;
+      const clearPct = Math.min(clearElapsed / CLEAR_HOLD_MS, 1);
+      barClear().style.width = (clearPct * 100) + '%';
+      const clearLeft = Math.ceil((CLEAR_HOLD_MS - clearElapsed) / 1000) || 1;
+      setStatus('dot-mode','txt-mode', clearPct < 1 ? `Hold to clear (${clearLeft}s) 🤚` : 'Clearing…','');
+      if (clearElapsed >= CLEAR_HOLD_MS) {
+        clearCanvas(); resetClearHold();
+        clearCooldown = true; setTimeout(() => { clearCooldown = false; }, 1500);
+      }
       break;
+    }
 
-    case 'save':
-      stopDraw();
-      setStatus('dot-mode','txt-mode','Hold to save 👌','active');
+    case 'save': {
+      stopDraw(); resetClearHold();
       highlightGesture('save');
-      drawOverlay(lm,W,H,X,Y,'#5cfcbc',22,'save');
-      if (!saveCooldown && !saveHoldTimer) {
-        saveHoldTimer = setTimeout(()=>{
-          saveArt();
-          saveCooldown=true;
-          setTimeout(()=>{saveCooldown=false;},2000);
-          saveHoldTimer=null;
-        },800);
+      drawOverlay(lm, W, H, X, Y, '#5cfcbc', 22);
+      if (saveCooldown) {
+        setStatus('dot-mode','txt-mode','Saving… 👌','active');
+        break;
       }
-      clearClearTimer();
+      if (saveHoldStart === null) saveHoldStart = performance.now();
+      const saveElapsed = performance.now() - saveHoldStart;
+      const savePct = Math.min(saveElapsed / SAVE_HOLD_MS, 1);
+      barSave().style.width = (savePct * 100) + '%';
+      setStatus('dot-mode','txt-mode', savePct < 1 ? 'Hold to save 👌' : 'Saving…','active');
+      if (saveElapsed >= SAVE_HOLD_MS) {
+        saveArt(); resetSaveHold();
+        saveCooldown = true; setTimeout(() => { saveCooldown = false; }, 2000);
+      }
       break;
+    }
 
     default:
       stopDraw();
       setStatus('dot-mode','txt-mode','Idle ✋','');
       highlightGesture(null);
-      drawOverlay(lm,W,H,X,Y,'rgba(255,255,255,0.4)',14,'idle');
-      clearClearTimer(); clearSaveTimer();
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════
-//  CAMERA
-// ═══════════════════════════════════════════════════════════════
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video:{width:1280,height:720,facingMode:'user'} });
-    videoEl.srcObject = stream;
-    videoEl.onloadeddata = () => {
-      setStatus('dot-cam','txt-cam','Camera active','active');
-      loadingEl.classList.add('hidden');
-      handsReady = true;
-      const camera = new Camera(videoEl, {
-        onFrame: async () => { await hands.send({ image: videoEl }); },
-        width:1280, height:720
-      });
-      camera.start();
-    };
-  } catch(e) {
-    setStatus('dot-cam','txt-cam','Camera error','error');
-    loadingEl.querySelector('p').textContent = 'Camera access denied — please allow camera.';
+      drawOverlay(lm, W, H, X, Y, 'rgba(255,255,255,0.4)', 14);
+      resetClearHold(); resetSaveHold();
   }
 }
-startCamera();
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT: camera + hand landmarker
+// ═══════════════════════════════════════════════════════════════
+async function init() {
+  // 1. Camera
+  loadMsg.textContent = 'Starting camera…';
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+    });
+  } catch {
+    loadMsg.textContent = 'Camera access denied — please allow camera and reload.';
+    setStatus('dot-cam','txt-cam','Camera denied','error');
+    return;
+  }
+  videoEl.srcObject = stream;
+  await new Promise(r => { videoEl.onloadedmetadata = r; });
+  videoEl.play();
+  setStatus('dot-cam','txt-cam','Camera active','active');
+
+  // 2. Hand Landmarker
+  loadMsg.textContent = 'Loading hand tracking model…';
+  try {
+    const vision = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+    );
+    const handLandmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task',
+        delegate: 'GPU'
+      },
+      runningMode: 'VIDEO',
+      numHands: 1,
+      minHandDetectionConfidence: 0.6,
+      minHandPresenceConfidence: 0.6,
+      minTrackingConfidence: 0.5
+    });
+
+    loadingEl.classList.add('hidden');
+
+    // 3. Detection loop
+    let lastVideoTime = -1;
+    function detect() {
+      if (videoEl.readyState >= 2 && videoEl.currentTime !== lastVideoTime) {
+        lastVideoTime = videoEl.currentTime;
+        const results = handLandmarker.detectForVideo(videoEl, performance.now());
+        const lm = results.landmarks?.[0] ?? null;
+        processFrame(lm);
+      }
+      requestAnimationFrame(detect);
+    }
+    detect();
+
+  } catch (err) {
+    console.error('Hand landmarker failed:', err);
+    loadMsg.textContent = 'Hand tracking failed: ' + err.message;
+    setStatus('dot-hand','txt-hand','Model error','error');
+    // Still hide loader and allow mouse-only use
+    setTimeout(() => loadingEl.classList.add('hidden'), 2500);
+  }
+}
 
 document.addEventListener('keydown', e => {
-  if (e.key==='c'||e.key==='C') clearCanvas();
-  if (e.key==='s'||e.key==='S') saveArt();
-  if (e.key==='Escape') closeGallery();
+  if (e.key === 'c' || e.key === 'C') clearCanvas();
+  if (e.key === 's' || e.key === 'S') saveArt();
+  if (e.key === 'Escape') window.closeGallery();
 });
+
+init();
 </script>
 </body>
 </html>
