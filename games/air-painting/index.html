@@ -175,6 +175,7 @@ let currentSize   = SIZES[1];
 let isErasing     = false;
 let isDrawing     = false;
 let lastX = null, lastY = null;
+let strokeCount   = 0;
 let gestureMode   = 'idle';
 let clearCooldown = false;
 let saveCooldown  = false;
@@ -360,7 +361,7 @@ function selectItem(item) {
 //  DRAW / ERASE
 // ═══════════════════════════════════════════════════════════════
 function drawStroke(x, y) {
-  if (!isDrawing) { lastX = x; lastY = y; isDrawing = true; return; }
+  if (!isDrawing) { lastX = x; lastY = y; isDrawing = true; strokeCount++; return; }
   dctx.save();
   dctx.globalCompositeOperation = 'source-over';
   dctx.strokeStyle = currentColor;
@@ -396,7 +397,16 @@ function clearCanvas() {
 // ═══════════════════════════════════════════════════════════════
 //  SAVE
 // ═══════════════════════════════════════════════════════════════
+let scoreSent = false;
+function reportScore() {
+  if (scoreSent) return;
+  scoreSent = true;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: strokeCount }, '*');
+}
+window.addEventListener('beforeunload', reportScore);
+
 function saveArt() {
+  reportScore();
   const tmp = document.createElement('canvas');
   tmp.width = drawCanvas.width; tmp.height = drawCanvas.height;
   const tc = tmp.getContext('2d');

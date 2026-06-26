@@ -189,6 +189,10 @@
     </div>
 
     <div class="status-bar" id="statusBar">Loading hand tracker…</div>
+
+    <button class="play-btn" id="endGameBtn" style="margin-top:8px;background:linear-gradient(135deg,#ff4f6a,#c0392b);font-size:1rem;padding:14px 24px;" onclick="endGame()">
+      🏁 End Game &amp; Save Score
+    </button>
   </div>
 </div>
 
@@ -441,6 +445,15 @@ function pop(el, text) {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Score reporting ───────────────────────────────────────────────────────────
+let scoreSent = false;
+function endGame() {
+  if (scoreSent) return;
+  scoreSent = true;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: scores.you }, '*');
+}
+window.addEventListener('beforeunload', endGame);
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 playBtn.addEventListener('click', playRound); // still clickable with mouse
