@@ -64,8 +64,16 @@
     /* ── Game panel ── */
     .game-panel {
       flex: 1; min-width: 260px; max-width: 380px;
-      display: flex; flex-direction: column; gap: 16px;
+      display: flex; flex-direction: column; gap: 14px;
     }
+
+    /* Round counter */
+    .round-counter {
+      text-align: center; font-family: 'Space Mono', monospace;
+      font-size: 0.85rem; color: var(--muted); letter-spacing: 0.08em;
+    }
+    .round-counter span { color: var(--accent); font-weight: 700; }
+
     .score-row { display: flex; gap: 10px; }
     .score-card {
       flex: 1; background: var(--surface); border: 1px solid var(--border);
@@ -106,20 +114,19 @@
     .result-banner.lose { background: rgba(255,79,106,0.12); border-color: var(--lose); color: var(--lose); }
     .result-banner.tie  { background: rgba(255,210,79,0.12); border-color: var(--tie);  color: var(--tie); }
 
-    /* Play button — also acts as gesture hover target */
+    /* Play button */
     .play-btn {
       position: relative;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       border: none; border-radius: 12px; padding: 16px; color: #fff;
       font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700;
       letter-spacing: 0.04em; cursor: pointer;
-      transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+      transition: opacity 0.15s, transform 0.15s;
       width: 100%; overflow: hidden;
     }
     .play-btn:hover { opacity: 0.88; transform: translateY(-1px); }
     .play-btn:active { transform: translateY(0); }
     .play-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-    /* Dwell fill bar */
     .play-btn .dwell-bar {
       position: absolute; left: 0; top: 0; height: 100%;
       width: 0%; background: rgba(255,255,255,0.25);
@@ -138,9 +145,118 @@
       text-align: center; font-family: 'Space Mono', monospace;
     }
     .status-bar span { color: var(--accent); }
+
+    /* ── Results overlay ── */
+    #resultsOverlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.82); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center;
+    }
+    #resultsOverlay.show { display: flex; }
+    .results-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px 40px;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+      max-width: 380px; width: 90%; text-align: center;
+    }
+    .results-title {
+      font-size: 2rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .results-score-row { display: flex; gap: 14px; }
+    .results-score-box {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 10px; text-align: center;
+    }
+    .results-score-box .rlabel {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px;
+    }
+    .results-score-box .rnum {
+      font-family: 'Space Mono', monospace; font-size: 2.2rem; font-weight: 700;
+    }
+    .results-score-box.you .rnum  { color: var(--accent); }
+    .results-score-box.cpu .rnum  { color: var(--accent2); }
+    .results-score-box.ties .rnum { color: var(--tie); }
+    .results-verdict {
+      font-size: 1.1rem; font-weight: 600; padding: 10px 24px;
+      border-radius: 999px; border: 1px solid;
+    }
+    .results-verdict.you-win  { color: var(--win);  border-color: var(--win);  background: rgba(79,255,176,0.08); }
+    .results-verdict.cpu-win  { color: var(--lose); border-color: var(--lose); background: rgba(255,79,106,0.08); }
+    .results-verdict.draw     { color: var(--tie);  border-color: var(--tie);  background: rgba(255,210,79,0.08); }
+    .results-btns { display: flex; gap: 10px; width: 100%; }
+    .btn-primary {
+      flex: 1; padding: 14px; border: none; border-radius: 10px; cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.03em;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+
+    /* ── Round selector overlay ── */
+    #setupOverlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .setup-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px 40px;
+      display: flex; flex-direction: column; align-items: center; gap: 24px;
+      max-width: 360px; width: 90%; text-align: center;
+    }
+    .setup-card h2 {
+      font-size: 1.6rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .setup-card p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+    .rounds-row { display: flex; gap: 10px; }
+    .round-opt {
+      flex: 1; padding: 14px 0; border: 2px solid var(--border);
+      border-radius: 12px; background: var(--bg); color: var(--text);
+      font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .round-opt:hover { border-color: var(--accent); background: rgba(124,106,255,0.08); }
+    .round-opt.selected { border-color: var(--accent); background: rgba(124,106,255,0.15); color: var(--accent); }
   </style>
 </head>
 <body>
+
+<!-- Round selector -->
+<div id="setupOverlay">
+  <div class="setup-card">
+    <h2>Rock · Paper · Scissors</h2>
+    <p>Choose how many rounds to play. First to win the majority wins the match!</p>
+    <div class="rounds-row">
+      <button class="round-opt" data-rounds="5">5<br><span style="font-size:0.7rem;font-weight:400;color:var(--muted)">rounds</span></button>
+      <button class="round-opt selected" data-rounds="10">10<br><span style="font-size:0.7rem;font-weight:400;color:var(--muted)">rounds</span></button>
+      <button class="round-opt" data-rounds="15">15<br><span style="font-size:0.7rem;font-weight:400;color:var(--muted)">rounds</span></button>
+    </div>
+    <button class="btn-primary" id="startBtn">Start Game</button>
+    <p style="font-size:0.78rem;color:var(--muted)">☝️ One-finger hover activates buttons when hand tracking loads</p>
+  </div>
+</div>
+
+<!-- Results overlay -->
+<div id="resultsOverlay">
+  <div class="results-card">
+    <div class="results-title" id="resultsTitle">Game Over!</div>
+    <div class="results-score-row">
+      <div class="results-score-box you"><div class="rlabel">You</div><div class="rnum" id="resYou">0</div></div>
+      <div class="results-score-box ties"><div class="rlabel">Ties</div><div class="rnum" id="resTie">0</div></div>
+      <div class="results-score-box cpu"><div class="rlabel">CPU</div><div class="rnum" id="resCpu">0</div></div>
+    </div>
+    <div class="results-verdict" id="resultsVerdict"></div>
+    <div class="results-btns">
+      <button class="btn-primary" id="playAgainBtn">Play Again</button>
+    </div>
+  </div>
+</div>
 
 <header>
   <h1>Rock · Paper · Scissors</h1>
@@ -156,6 +272,8 @@
   </div>
 
   <div class="game-panel">
+    <div class="round-counter">Round <span id="roundNum">1</span> of <span id="roundTotal">10</span></div>
+
     <div class="score-row">
       <div class="score-card you"><div class="label">You</div><div class="num" id="scoreYou">0</div></div>
       <div class="score-card tie"><div class="label">Tie</div><div class="num" id="scoreTie">0</div></div>
@@ -189,10 +307,6 @@
     </div>
 
     <div class="status-bar" id="statusBar">Loading hand tracker…</div>
-
-    <button class="play-btn" id="endGameBtn" style="margin-top:8px;background:linear-gradient(135deg,#ff4f6a,#c0392b);font-size:1rem;padding:14px 24px;" onclick="endGame()">
-      🏁 End Game &amp; Save Score
-    </button>
   </div>
 </div>
 
@@ -201,61 +315,127 @@ import { GestureRecognizer, FilesetResolver, DrawingUtils }
   from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const video       = document.getElementById('video');
-const overlay     = document.getElementById('overlay');
-const ctx         = overlay.getContext('2d');
-const badge       = document.getElementById('gestureBadge');
-const cntDown     = document.getElementById('countdownOverlay');
-const yourEmoji   = document.getElementById('yourEmoji');
-const cpuEmoji    = document.getElementById('cpuEmoji');
-const resultBanner= document.getElementById('resultBanner');
-const playBtn     = document.getElementById('playBtn');
-const dwellBar    = document.getElementById('dwellBar');
-const statusBar   = document.getElementById('statusBar');
-const scoreYouEl  = document.getElementById('scoreYou');
-const scoreTieEl  = document.getElementById('scoreTie');
-const scoreCpuEl  = document.getElementById('scoreCpu');
+const video         = document.getElementById('video');
+const overlay       = document.getElementById('overlay');
+const ctx           = overlay.getContext('2d');
+const badge         = document.getElementById('gestureBadge');
+const cntDown       = document.getElementById('countdownOverlay');
+const yourEmoji     = document.getElementById('yourEmoji');
+const cpuEmoji      = document.getElementById('cpuEmoji');
+const resultBanner  = document.getElementById('resultBanner');
+const playBtn       = document.getElementById('playBtn');
+const dwellBar      = document.getElementById('dwellBar');
+const statusBar     = document.getElementById('statusBar');
+const scoreYouEl    = document.getElementById('scoreYou');
+const scoreTieEl    = document.getElementById('scoreTie');
+const scoreCpuEl    = document.getElementById('scoreCpu');
+const roundNumEl    = document.getElementById('roundNum');
+const roundTotalEl  = document.getElementById('roundTotal');
+const setupOverlay  = document.getElementById('setupOverlay');
+const startBtn      = document.getElementById('startBtn');
+const resultsOverlay= document.getElementById('resultsOverlay');
+const playAgainBtn  = document.getElementById('playAgainBtn');
+const resultsTitle  = document.getElementById('resultsTitle');
+const resultsVerdict= document.getElementById('resultsVerdict');
+const resYouEl      = document.getElementById('resYou');
+const resTieEl      = document.getElementById('resTie');
+const resCpuEl      = document.getElementById('resCpu');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const EMOJIS  = { rock:'✊', paper:'✋', scissors:'✌️', none:'❓', point:'☝️' };
 const CHOICES = ['rock','paper','scissors'];
-const DWELL_MS = 1500; // hold ☝️ over button for this long to activate
+const DWELL_MS = 1500;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let gestureRecognizer = null;
 let drawingUtils      = null;
-let currentGesture    = 'none'; // 'rock'|'paper'|'scissors'|'point'|'none'
+let currentGesture    = 'none';
 let scores            = { you:0, tie:0, cpu:0 };
+let totalRounds       = 10;
+let roundsPlayed      = 0;
 let busy              = false;
+let gameActive        = false;
+let dwellStart        = null;
+let dwellActive       = false;
 
-// Dwell tracking
-let dwellStart  = null;   // timestamp when ☝️ hover began
-let dwellActive = false;
+// ── Setup screen ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.round-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.round-opt').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    totalRounds = parseInt(btn.dataset.rounds);
+  });
+});
 
-// ── Gesture detection ─────────────────────────────────────────────────────────
-// Returns: 'point' | 'rock' | 'paper' | 'scissors' | 'none'
-function detectGesture(landmarks, gestureName) {
-  if (!landmarks || landmarks.length < 21) {
-    // fallback to model name only
-    return mapName(gestureName);
+startBtn.addEventListener('click', () => {
+  setupOverlay.style.display = 'none';
+  startGame();
+});
+
+function startGame() {
+  scores = { you:0, tie:0, cpu:0 };
+  roundsPlayed = 0;
+  gameActive = true;
+  scoreYouEl.textContent = '0';
+  scoreTieEl.textContent = '0';
+  scoreCpuEl.textContent = '0';
+  roundTotalEl.textContent = totalRounds;
+  roundNumEl.textContent = '1';
+  resultBanner.className = 'result-banner';
+  resultBanner.textContent = 'Make your move!';
+  yourEmoji.textContent = '✋';
+  cpuEmoji.textContent = '🤖';
+  resultsOverlay.classList.remove('show');
+  if (gestureRecognizer) playBtn.disabled = false;
+  statusBar.innerHTML = gestureRecognizer
+    ? 'Show <span>☝️</span> over the button to start'
+    : 'Loading hand tracker…';
+}
+
+// ── Results screen ────────────────────────────────────────────────────────────
+function showResults() {
+  gameActive = false;
+  playBtn.disabled = true;
+  resYouEl.textContent = scores.you;
+  resTieEl.textContent = scores.tie;
+  resCpuEl.textContent = scores.cpu;
+
+  if (scores.you > scores.cpu) {
+    resultsTitle.textContent = '🏆 You Win!';
+    resultsVerdict.textContent = `You won ${scores.you} of ${totalRounds} rounds!`;
+    resultsVerdict.className = 'results-verdict you-win';
+  } else if (scores.cpu > scores.you) {
+    resultsTitle.textContent = '🤖 CPU Wins!';
+    resultsVerdict.textContent = `CPU won ${scores.cpu} of ${totalRounds} rounds!`;
+    resultsVerdict.className = 'results-verdict cpu-win';
+  } else {
+    resultsTitle.textContent = "🤝 It's a Draw!";
+    resultsVerdict.textContent = `${scores.you} wins each — perfectly matched!`;
+    resultsVerdict.className = 'results-verdict draw';
   }
 
+  resultsOverlay.classList.add('show');
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: scores.you }, '*');
+}
+
+playAgainBtn.addEventListener('click', () => {
+  setupOverlay.style.display = 'flex';
+  resultsOverlay.classList.remove('show');
+});
+
+// ── Gesture detection ─────────────────────────────────────────────────────────
+function detectGesture(landmarks, gestureName) {
+  if (!landmarks || landmarks.length < 21) return mapName(gestureName);
   const lm = landmarks;
   const indexUp  = lm[8].y  < lm[6].y;
   const middleUp = lm[12].y < lm[10].y;
   const ringUp   = lm[16].y < lm[14].y;
   const pinkyUp  = lm[20].y < lm[18].y;
   const upCount  = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
-
-  // ☝️ pointing: only index up
   if (indexUp && !middleUp && !ringUp && !pinkyUp) return 'point';
-  // ✊ rock: no fingers up
   if (upCount === 0) return 'rock';
-  // ✋ paper: 3+ fingers up
-  if (upCount >= 3) return 'paper';
-  // ✌️ scissors: index + middle
+  if (upCount >= 3)  return 'paper';
   if (indexUp && middleUp && !ringUp && !pinkyUp) return 'scissors';
-
   return mapName(gestureName);
 }
 
@@ -305,11 +485,12 @@ async function initRecognizer() {
       numHands: 1
     });
     drawingUtils = new DrawingUtils(ctx);
-    statusBar.innerHTML = 'Ready! <span>Show ☝️ over the button to start</span>';
-    playBtn.disabled = false;
+    if (gameActive) {
+      playBtn.disabled = false;
+      statusBar.innerHTML = 'Ready! <span>Show ☝️ over the button to start</span>';
+    }
   } catch(e) {
     statusBar.innerHTML = `<span style="color:var(--lose)">Failed: ${e.message}</span>`;
-    console.error(e);
   }
 }
 
@@ -342,7 +523,6 @@ function renderLoop() {
 
   currentGesture = detectGesture(lm0, gName);
 
-  // Update badge
   if (currentGesture !== 'none') {
     badge.textContent = EMOJIS[currentGesture] + ' ' + currentGesture.toUpperCase();
     badge.style.color = currentGesture === 'point' ? 'var(--tie)' : '#fff';
@@ -351,8 +531,8 @@ function renderLoop() {
     badge.style.color = 'var(--muted)';
   }
 
-  // ── Dwell-click: ☝️ held over Play button triggers playRound ──
-  if (!busy && !playBtn.disabled) {
+  // Dwell-click on Play button
+  if (!busy && !playBtn.disabled && gameActive) {
     const isPointing = currentGesture === 'point';
     if (isPointing) {
       if (!dwellActive) { dwellActive = true; dwellStart = performance.now(); }
@@ -360,10 +540,7 @@ function renderLoop() {
       const pct = Math.min(elapsed / DWELL_MS * 100, 100);
       dwellBar.style.transition = 'none';
       dwellBar.style.width = pct + '%';
-      if (elapsed >= DWELL_MS) {
-        resetDwell();
-        playRound();
-      }
+      if (elapsed >= DWELL_MS) { resetDwell(); playRound(); }
     } else {
       resetDwell();
     }
@@ -389,13 +566,12 @@ function judge(you, cpu) {
 }
 
 async function playRound() {
-  if (busy) return;
+  if (busy || !gameActive) return;
   busy = true;
   playBtn.disabled = true;
   resultBanner.className = 'result-banner';
   resultBanner.textContent = 'Get ready…';
 
-  // Countdown 3 → 1 → snap
   for (let i = 3; i >= 1; i--) {
     cntDown.textContent = i;
     cntDown.classList.add('visible');
@@ -405,7 +581,6 @@ async function playRound() {
   await sleep(400);
   cntDown.classList.remove('visible');
 
-  // Only count RPS gestures — ignore 'point' and 'none'
   const snap = ['rock','paper','scissors'].includes(currentGesture) ? currentGesture : 'none';
   const cpu  = cpuChoice();
 
@@ -413,7 +588,7 @@ async function playRound() {
   pop(cpuEmoji,  EMOJIS[cpu]);
 
   if (snap === 'none') {
-    resultBanner.textContent = '❓ No gesture detected!';
+    resultBanner.textContent = '❓ No gesture detected — round skipped';
     resultBanner.className = 'result-banner';
   } else {
     const outcome = judge(snap, cpu);
@@ -421,7 +596,6 @@ async function playRound() {
     scoreYouEl.textContent = scores.you;
     scoreTieEl.textContent = scores.tie;
     scoreCpuEl.textContent = scores.cpu;
-
     const msgs = {
       win:  ['You win! 🎉','Nice one! ✨','Crushed it! 💪'],
       lose: ['CPU wins 🤖','Better luck! 😅','Gotcha! 💀'],
@@ -431,10 +605,18 @@ async function playRound() {
     resultBanner.className = 'result-banner ' + outcome;
   }
 
-  await sleep(800);
+  roundsPlayed++;
+  roundNumEl.textContent = Math.min(roundsPlayed + 1, totalRounds);
+
+  await sleep(1000);
   busy = false;
-  playBtn.disabled = false;
-  statusBar.innerHTML = 'Show <span>☝️</span> over the button to play again';
+
+  if (roundsPlayed >= totalRounds) {
+    showResults();
+  } else {
+    playBtn.disabled = false;
+    statusBar.innerHTML = `Round ${roundsPlayed + 1}/${totalRounds} — show <span>☝️</span> to continue`;
+  }
 }
 
 function pop(el, text) {
@@ -446,17 +628,8 @@ function pop(el, text) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── Score reporting ───────────────────────────────────────────────────────────
-let scoreSent = false;
-function endGame() {
-  if (scoreSent) return;
-  scoreSent = true;
-  window.parent.postMessage({ type: 'GAME_COMPLETE', score: scores.you }, '*');
-}
-window.addEventListener('beforeunload', endGame);
-
 // ── Boot ──────────────────────────────────────────────────────────────────────
-playBtn.addEventListener('click', playRound); // still clickable with mouse
+playBtn.addEventListener('click', playRound);
 (async () => {
   const ok = await initCamera();
   if (!ok) return;
