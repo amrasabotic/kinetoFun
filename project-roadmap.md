@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-06-25 (Gesture Volleyball — ADR-027)
+> Last updated: 2026-06-26 (Gesture Basketball — ADR-028)
 
 ---
 
@@ -58,6 +58,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-06-26] Gesture Basketball game.** Free-throw shooter: 10 shots, wrist X = arc angle, oscillating power meter + edge-triggered raise = shoot; backboard bank shots; 3 difficulty levels; Web Audio SFX; scores saved to DB; Vite game at `public/games/gesture-basketball/`. (ADR-028)
 - [x] **[2026-06-25] Gesture Volleyball game.** 2D beach volleyball vs AI; two-hand control (hand X = move, raise = smash, spread = block); 3 difficulty levels; first to 7 points; Web Audio SFX; scores saved to DB; Vite game at `public/games/gesture-volleyball/`. (ADR-027)
 - [x] **[2026-06-25] Gesture Tetris game.** Classic 10×20 Tetris; all 7 tetrominoes with 7-bag, ghost piece, SRS kicks, NES fall curve; 3 gesture controls (tilt/raise/lower); 3 difficulty levels; all menus dwell-to-select; Web Audio SFX; scores saved to DB; Vite game served from `public/games/gesture-tetris/`. (ADR-026)
 - [x] **[2026-06-25] Gesture Piano game.** 10-lane Guitar Hero piano; fingertip hover detection via MediaPipe; 3 built-in songs; Web Audio synthesis; scores saved to DB; built Vite game served from `public/games/gesture-piano/`. (ADR-025)

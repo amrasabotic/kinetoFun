@@ -496,3 +496,33 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/gesture-tetris/` — built dist (index.html + assets/)
 - `src/games/registry.ts` — added `gesture-tetris` entry
 - `supabase/seed_gesture_tetris.sql` — upsert-safe game row (Arcade, published, featured)
+
+## ADR-028 — Gesture Basketball game
+**Date:** 2026-06-26
+**Status:** Accepted
+
+**Decision:** Add a gesture-controlled free-throw basketball game as a Vite + React + TypeScript app (`games/gesture-basketball/`) built to `public/games/gesture-basketball/` and served in an `<iframe>` via the existing play screen.
+
+**Gesture mapping (two-axis):**
+- **Aim (arc angle):** Wrist X position (mirrored) → launch angle. AimX=0.0 → 30°, AimX=0.5 → 55° (ideal for hoop at canvas position), AimX=1.0 → 80°. Visualised as a dotted arc preview on the canvas while aiming.
+- **Power:** Fully automatic oscillating sin-wave meter (`power = 0.5 + 0.5*sin(phase)`, period = 4/2.6/1.8s by difficulty). A vertical bar with a green "sweet zone" overlay (38–58% power = ideal window) gives real-time feedback. Player times their shot to the meter rather than controlling power directly.
+- **Shoot:** Edge-triggered raise — wrist Y < 0.28 fires the ball with the current aim angle and live power value. Resets when wrist descends past Y=0.44.
+
+**Game rules:** 10 free throw attempts per game, 10 pts per basket (100 pts max). Difficulty bonus added to score on GAME_COMPLETE: Easy +0 / Normal +50 / Hard +100. Three difficulty levels:
+- Easy: 50px scoring proximity radius, 4 s power-meter period
+- Normal: 33px radius, 2.6 s period
+- Hard: 18px radius, 1.8 s period
+
+**Physics:** Canvas 800×500. Player at (140, 458). Ball released at (164, 360). Hoop center (625, 200). Backboard (657–672, 128–265). Ball arc: vx = speed·cos(angle), vy = −speed·sin(angle), gravity 0.40 px/frame². Speed = 12 + power × 9 (range 12–21 px/frame). Scoring: proximity check to hoop center each frame while ball is descending (vy > 0). Backboard bounce: vx = −|vx|×0.58 when ball hits backboard while moving rightward — enables bank shots.
+
+**Menu navigation:** Identical dwell-to-click system as all prior gesture games (`MenuGestureLayer` + `GestureBtn`, 900 ms dwell). Screens: Landing → How To Play → Difficulty → Game → Game-Over overlay.
+
+**Score submission:** `window.parent.postMessage({ type: 'GAME_COMPLETE', score }, '*')` on game-over (guarded by `scoreSentRef`). Parent play page handles this → `POST /api/scores`.
+
+**Audio (Web Audio API):** Shoot swoosh (noise + triangle chirp), swish (noise + ascending chord), bank (board thud + delayed swish), rim clank (sawtooth + noise), air-ball whoosh, game-over fanfare (triumphant 7-tone if score ≥ 70, sad descending otherwise).
+
+**Files added:**
+- `games/gesture-basketball/` — full Vite project (src: App.tsx, gameLogic.ts, useHandTracking.ts, useMenuHand.ts, useGesture.ts, audio.ts, main.tsx, index.css)
+- `public/games/gesture-basketball/` — built dist (index.html + assets/)
+- `src/games/registry.ts` — added `gesture-basketball` entry
+- `supabase/seed_gesture_basketball.sql` — upsert-safe game row (Sports, published, featured)
