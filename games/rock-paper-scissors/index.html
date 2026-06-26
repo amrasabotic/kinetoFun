@@ -19,6 +19,100 @@
       min-height: 100vh; display: flex; flex-direction: column;
       align-items: center; padding: 24px 16px; gap: 20px;
     }
+
+    /* ─── Screen overlays ─────────────────────────────────────────────────── */
+    .screen {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    .screen.active { display: flex; }
+
+    /* ─── Setup screen ────────────────────────────────────────────────────── */
+    #screenSetup { background: var(--bg); flex-direction: column; gap: 32px; padding: 24px; }
+
+    .setup-title {
+      font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700; text-align: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .setup-subtitle { color: var(--muted); font-size: 0.9rem; text-align: center; }
+
+    .gesture-options {
+      display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;
+    }
+    .gesture-option {
+      background: var(--surface); border: 2px solid var(--border);
+      border-radius: 20px; padding: 28px 32px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      min-width: 130px;
+    }
+    .gesture-option.active {
+      border-color: var(--accent);
+      background: rgba(124,106,255,0.15);
+      box-shadow: 0 0 24px rgba(124,106,255,0.25);
+    }
+    .gesture-option .g-emoji { font-size: 3.5rem; line-height: 1; }
+    .gesture-option .g-name  { font-family: 'Space Mono', monospace; font-size: 0.85rem; color: var(--muted); letter-spacing: 0.08em; }
+    .gesture-option .g-rounds { font-size: 1.6rem; font-weight: 700; color: var(--text); }
+    .gesture-option.active .g-rounds { color: var(--accent); }
+    .gesture-option.active .g-name   { color: var(--accent); opacity: 0.8; }
+
+    .confirm-hint {
+      text-align: center; color: var(--muted); font-size: 0.88rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 24px; max-width: 400px;
+    }
+    .confirm-hint strong { color: var(--text); }
+
+    /* Dwell ring for ☝️ confirm */
+    .dwell-ring-wrap {
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 4px;
+    }
+    #confirmRingSvg circle.bg  { stroke: rgba(124,106,255,0.2); }
+    #confirmRingSvg circle.fg  { stroke: var(--accent); transition: stroke-dasharray 0.05s linear; }
+
+    .cam-ready-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--muted); margin-right: 6px;
+      vertical-align: middle;
+    }
+    .cam-ready-dot.on { background: var(--win); box-shadow: 0 0 6px var(--win); }
+
+    /* ─── Results screen ──────────────────────────────────────────────────── */
+    #screenResults { background: rgba(0,0,0,0.88); backdrop-filter: blur(10px); }
+    .results-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px 40px;
+      display: flex; flex-direction: column; align-items: center; gap: 22px;
+      max-width: 400px; width: 90%; text-align: center;
+    }
+    .results-card h2 {
+      font-size: 2rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .res-scores { display: flex; gap: 14px; width: 100%; }
+    .res-box {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 8px; text-align: center;
+    }
+    .res-box .rl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+    .res-box .rn { font-family: 'Space Mono', monospace; font-size: 2.2rem; font-weight: 700; }
+    .res-box.you .rn  { color: var(--accent); }
+    .res-box.cpu .rn  { color: var(--accent2); }
+    .res-box.ties .rn { color: var(--tie); }
+    .res-verdict {
+      font-size: 1.05rem; font-weight: 600; padding: 10px 24px;
+      border-radius: 999px; border: 1px solid;
+    }
+    .res-verdict.you-win { color: var(--win);  border-color: var(--win);  background: rgba(79,255,176,0.08); }
+    .res-verdict.cpu-win { color: var(--lose); border-color: var(--lose); background: rgba(255,79,106,0.08); }
+    .res-verdict.draw    { color: var(--tie);  border-color: var(--tie);  background: rgba(255,210,79,0.08); }
+    .res-hint { color: var(--muted); font-size: 0.85rem; }
+
+    /* ─── Main game area ──────────────────────────────────────────────────── */
     header { text-align: center; }
     header h1 {
       font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700; letter-spacing: -0.03em;
@@ -32,7 +126,6 @@
       flex-wrap: wrap; justify-content: center; width: 100%; max-width: 960px;
     }
 
-    /* ── Camera ── */
     .cam-panel {
       position: relative; border: 1px solid var(--border);
       border-radius: 16px; overflow: hidden; background: #000; flex-shrink: 0;
@@ -42,7 +135,6 @@
       object-fit: cover; transform: scaleX(-1);
     }
     .cam-panel canvas { position: absolute; top: 0; left: 0; }
-
     .gesture-badge {
       position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
       background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
@@ -51,7 +143,6 @@
       font-size: 1rem; font-weight: 700; letter-spacing: 0.05em;
       white-space: nowrap; transition: color 0.2s;
     }
-
     .countdown-overlay {
       position: absolute; inset: 0; display: flex;
       align-items: center; justify-content: center;
@@ -61,19 +152,15 @@
     }
     .countdown-overlay.visible { opacity: 1; }
 
-    /* ── Game panel ── */
     .game-panel {
       flex: 1; min-width: 260px; max-width: 380px;
       display: flex; flex-direction: column; gap: 14px;
     }
-
-    /* Round counter */
     .round-counter {
       text-align: center; font-family: 'Space Mono', monospace;
       font-size: 0.85rem; color: var(--muted); letter-spacing: 0.08em;
     }
     .round-counter span { color: var(--accent); font-weight: 700; }
-
     .score-row { display: flex; gap: 10px; }
     .score-card {
       flex: 1; background: var(--surface); border: 1px solid var(--border);
@@ -87,7 +174,6 @@
     .score-card.you .num { color: var(--accent); }
     .score-card.cpu .num { color: var(--accent2); }
     .score-card.tie .num { color: var(--tie); }
-
     .vs-display {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 14px; padding: 20px;
@@ -98,15 +184,14 @@
       font-size: 3.2rem; line-height: 1;
       filter: drop-shadow(0 0 10px rgba(124,106,255,0.4));
     }
-    .choice-emoji.pop { animation: pop 0.35s cubic-bezier(.34,1.56,.64,1); }
-    @keyframes pop { 0% { transform: scale(0.4); } 100% { transform: scale(1); } }
+    .choice-emoji.pop { animation: zpop 0.35s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes zpop { 0% { transform: scale(0.4); } 100% { transform: scale(1); } }
     .choice-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
     .vs-sep { font-family: 'Space Mono', monospace; font-size: 1rem; color: var(--border); font-weight: 700; }
-
     .result-banner {
       border-radius: 12px; padding: 14px; text-align: center;
-      font-family: 'Space Mono', monospace; font-size: 1.25rem; font-weight: 700;
-      letter-spacing: 0.05em; transition: background 0.25s, color 0.25s;
+      font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700;
+      letter-spacing: 0.04em; transition: background 0.25s, color 0.25s;
       background: var(--surface); border: 1px solid var(--border); color: var(--muted);
       min-height: 56px; display: flex; align-items: center; justify-content: center;
     }
@@ -114,23 +199,18 @@
     .result-banner.lose { background: rgba(255,79,106,0.12); border-color: var(--lose); color: var(--lose); }
     .result-banner.tie  { background: rgba(255,210,79,0.12); border-color: var(--tie);  color: var(--tie); }
 
-    /* Play button */
+    /* Play button with dwell fill */
     .play-btn {
-      position: relative;
+      position: relative; overflow: hidden;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border: none; border-radius: 12px; padding: 16px; color: #fff;
-      font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700;
-      letter-spacing: 0.04em; cursor: pointer;
-      transition: opacity 0.15s, transform 0.15s;
-      width: 100%; overflow: hidden;
+      border: none; border-radius: 12px; padding: 18px; color: #fff;
+      font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 700;
+      letter-spacing: 0.04em; cursor: pointer; width: 100%;
     }
-    .play-btn:hover { opacity: 0.88; transform: translateY(-1px); }
-    .play-btn:active { transform: translateY(0); }
-    .play-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-    .play-btn .dwell-bar {
-      position: absolute; left: 0; top: 0; height: 100%;
-      width: 0%; background: rgba(255,255,255,0.25);
-      transition: none; pointer-events: none; border-radius: 12px;
+    .play-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .dwell-bar {
+      position: absolute; left: 0; top: 0; height: 100%; width: 0%;
+      background: rgba(255,255,255,0.3); pointer-events: none; border-radius: 12px;
     }
 
     .instructions {
@@ -139,128 +219,89 @@
       font-size: 0.82rem; color: var(--muted); line-height: 1.8;
     }
     .instructions strong { color: var(--text); }
-
     .status-bar {
       font-size: 0.78rem; color: var(--muted);
       text-align: center; font-family: 'Space Mono', monospace;
     }
     .status-bar span { color: var(--accent); }
-
-    /* ── Results overlay ── */
-    #resultsOverlay {
-      display: none;
-      position: fixed; inset: 0; z-index: 100;
-      background: rgba(0,0,0,0.82); backdrop-filter: blur(8px);
-      align-items: center; justify-content: center;
-    }
-    #resultsOverlay.show { display: flex; }
-    .results-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; padding: 36px 40px;
-      display: flex; flex-direction: column; align-items: center; gap: 20px;
-      max-width: 380px; width: 90%; text-align: center;
-    }
-    .results-title {
-      font-size: 2rem; font-weight: 700;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .results-score-row { display: flex; gap: 14px; }
-    .results-score-box {
-      flex: 1; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 12px; padding: 16px 10px; text-align: center;
-    }
-    .results-score-box .rlabel {
-      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px;
-    }
-    .results-score-box .rnum {
-      font-family: 'Space Mono', monospace; font-size: 2.2rem; font-weight: 700;
-    }
-    .results-score-box.you .rnum  { color: var(--accent); }
-    .results-score-box.cpu .rnum  { color: var(--accent2); }
-    .results-score-box.ties .rnum { color: var(--tie); }
-    .results-verdict {
-      font-size: 1.1rem; font-weight: 600; padding: 10px 24px;
-      border-radius: 999px; border: 1px solid;
-    }
-    .results-verdict.you-win  { color: var(--win);  border-color: var(--win);  background: rgba(79,255,176,0.08); }
-    .results-verdict.cpu-win  { color: var(--lose); border-color: var(--lose); background: rgba(255,79,106,0.08); }
-    .results-verdict.draw     { color: var(--tie);  border-color: var(--tie);  background: rgba(255,210,79,0.08); }
-    .results-btns { display: flex; gap: 10px; width: 100%; }
-    .btn-primary {
-      flex: 1; padding: 14px; border: none; border-radius: 10px; cursor: pointer;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: #fff; font-family: 'Space Grotesk', sans-serif;
-      font-size: 1rem; font-weight: 700; letter-spacing: 0.03em;
-      transition: opacity 0.15s;
-    }
-    .btn-primary:hover { opacity: 0.85; }
-
-    /* ── Round selector overlay ── */
-    #setupOverlay {
-      position: fixed; inset: 0; z-index: 200;
-      background: var(--bg);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .setup-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; padding: 36px 40px;
-      display: flex; flex-direction: column; align-items: center; gap: 24px;
-      max-width: 360px; width: 90%; text-align: center;
-    }
-    .setup-card h2 {
-      font-size: 1.6rem; font-weight: 700;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .setup-card p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
-    .rounds-row { display: flex; gap: 10px; }
-    .round-opt {
-      flex: 1; padding: 14px 0; border: 2px solid var(--border);
-      border-radius: 12px; background: var(--bg); color: var(--text);
-      font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 700;
-      cursor: pointer; transition: border-color 0.15s, background 0.15s;
-    }
-    .round-opt:hover { border-color: var(--accent); background: rgba(124,106,255,0.08); }
-    .round-opt.selected { border-color: var(--accent); background: rgba(124,106,255,0.15); color: var(--accent); }
   </style>
 </head>
 <body>
 
-<!-- Round selector -->
-<div id="setupOverlay">
-  <div class="setup-card">
-    <h2>Rock · Paper · Scissors</h2>
-    <p>Choose how many rounds to play. First to win the majority wins the match!</p>
-    <div class="rounds-row">
-      <button class="round-opt" data-rounds="5">5<br><span style="font-size:0.7rem;font-weight:400;color:var(--muted)">rounds</span></button>
-      <button class="round-opt selected" data-rounds="10">10<br><span style="font-size:0.7rem;font-weight:400;color:var(--muted)">rounds</span></button>
-      <button class="round-opt" data-rounds="15">15<br><span style="font-size:0.7rem;font-weight:400;color:var(--muted)">rounds</span></button>
+<!-- ══ SETUP SCREEN ══════════════════════════════════════════════════════════ -->
+<div id="screenSetup" class="screen active">
+  <div class="setup-title">✊ Rock · Paper · Scissors ✌️</div>
+  <div class="setup-subtitle">
+    <span class="cam-ready-dot" id="camDot"></span>
+    <span id="camStatusTxt">Starting camera…</span>
+  </div>
+
+  <div>
+    <p style="text-align:center;color:var(--muted);font-size:0.85rem;margin-bottom:16px;">
+      Show a gesture to choose rounds, then ☝️ point &amp; hold to confirm:
+    </p>
+    <div class="gesture-options">
+      <div class="gesture-option" id="opt5">
+        <div class="g-emoji">✊</div>
+        <div class="g-rounds">5</div>
+        <div class="g-name">ROUNDS</div>
+      </div>
+      <div class="gesture-option active" id="opt10">
+        <div class="g-emoji">✋</div>
+        <div class="g-rounds">10</div>
+        <div class="g-name">ROUNDS</div>
+      </div>
+      <div class="gesture-option" id="opt15">
+        <div class="g-emoji">✌️</div>
+        <div class="g-rounds">15</div>
+        <div class="g-name">ROUNDS</div>
+      </div>
     </div>
-    <button class="btn-primary" id="startBtn">Start Game</button>
-    <p style="font-size:0.78rem;color:var(--muted)">☝️ One-finger hover activates buttons when hand tracking loads</p>
+  </div>
+
+  <div class="confirm-hint">
+    <strong>✊ Rock</strong> = 5 rounds &nbsp;·&nbsp;
+    <strong>✋ Paper</strong> = 10 rounds &nbsp;·&nbsp;
+    <strong>✌️ Scissors</strong> = 15 rounds<br>
+    Then <strong>☝️ point &amp; hold 2 s</strong> anywhere to start
+  </div>
+
+  <div class="dwell-ring-wrap">
+    <svg id="confirmRingSvg" width="64" height="64" viewBox="0 0 64 64">
+      <circle class="bg" cx="32" cy="32" r="26" fill="none" stroke="rgba(124,106,255,0.2)" stroke-width="5"/>
+      <circle class="fg" cx="32" cy="32" r="26" fill="none" stroke="var(--accent)" stroke-width="5"
+        stroke-linecap="round" stroke-dasharray="0 164" transform="rotate(-90 32 32)"/>
+    </svg>
+    <span style="margin-left:10px;font-size:0.85rem;color:var(--muted)" id="confirmHintTxt">☝️ Point &amp; hold to start</span>
   </div>
 </div>
 
-<!-- Results overlay -->
-<div id="resultsOverlay">
+<!-- ══ RESULTS SCREEN ════════════════════════════════════════════════════════ -->
+<div id="screenResults" class="screen">
   <div class="results-card">
-    <div class="results-title" id="resultsTitle">Game Over!</div>
-    <div class="results-score-row">
-      <div class="results-score-box you"><div class="rlabel">You</div><div class="rnum" id="resYou">0</div></div>
-      <div class="results-score-box ties"><div class="rlabel">Ties</div><div class="rnum" id="resTie">0</div></div>
-      <div class="results-score-box cpu"><div class="rlabel">CPU</div><div class="rnum" id="resCpu">0</div></div>
+    <h2 id="resTitle">Game Over!</h2>
+    <div class="res-scores">
+      <div class="res-box you"><div class="rl">You</div><div class="rn" id="resYou">0</div></div>
+      <div class="res-box ties"><div class="rl">Ties</div><div class="rn" id="resTie">0</div></div>
+      <div class="res-box cpu"><div class="rl">CPU</div><div class="rn" id="resCpu">0</div></div>
     </div>
-    <div class="results-verdict" id="resultsVerdict"></div>
-    <div class="results-btns">
-      <button class="btn-primary" id="playAgainBtn">Play Again</button>
+    <div class="res-verdict" id="resVerdict"></div>
+    <div class="res-hint">☝️ Point &amp; hold anywhere to play again</div>
+    <div class="dwell-ring-wrap">
+      <svg id="againRingSvg" width="48" height="48" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(124,106,255,0.2)" stroke-width="4"/>
+        <circle id="againRingFg" cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="4"
+          stroke-linecap="round" stroke-dasharray="0 126" transform="rotate(-90 24 24)"
+          style="transition:stroke-dasharray 0.05s linear"/>
+      </svg>
     </div>
   </div>
 </div>
 
+<!-- ══ MAIN GAME ═════════════════════════════════════════════════════════════ -->
 <header>
   <h1>Rock · Paper · Scissors</h1>
-  <p>Use ☝️ one finger to hover &amp; activate the button</p>
+  <p>☝️ Point &amp; hold to start a round · ✊✋✌️ for your move during countdown</p>
 </header>
 
 <div class="arena">
@@ -268,7 +309,7 @@
     <video id="video" playsinline muted autoplay></video>
     <canvas id="overlay"></canvas>
     <div class="gesture-badge" id="gestureBadge">✋ Waiting…</div>
-    <div class="countdown-overlay" id="countdownOverlay"></div>
+    <div class="countdown-overlay" id="countdownEl"></div>
   </div>
 
   <div class="game-panel">
@@ -296,17 +337,17 @@
 
     <button class="play-btn" id="playBtn" disabled>
       <div class="dwell-bar" id="dwellBar"></div>
-      ▶ Play Round — show ☝️ to start
+      ▶ Play Round — ☝️ point &amp; hold to start
     </button>
 
     <div class="instructions">
-      <strong>☝️ One finger</strong> — hover button to activate (hold 1.5s)<br>
+      <strong>☝️ Point &amp; hold 1.5 s</strong> — starts the round<br>
       <strong>✊ Rock</strong> — closed fist<br>
-      <strong>✋ Paper</strong> — open hand, all fingers up<br>
-      <strong>✌️ Scissors</strong> — index + middle up, rest down
+      <strong>✋ Paper</strong> — open hand, fingers up<br>
+      <strong>✌️ Scissors</strong> — index + middle fingers up
     </div>
 
-    <div class="status-bar" id="statusBar">Loading hand tracker…</div>
+    <div class="status-bar" id="statusBar">Loading…</div>
   </div>
 </div>
 
@@ -314,29 +355,33 @@
 import { GestureRecognizer, FilesetResolver, DrawingUtils }
   from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm';
 
-// ── DOM refs ──────────────────────────────────────────────────────────────────
-const video         = document.getElementById('video');
-const overlay       = document.getElementById('overlay');
-const ctx           = overlay.getContext('2d');
-const badge         = document.getElementById('gestureBadge');
-const cntDown       = document.getElementById('countdownOverlay');
-const yourEmoji     = document.getElementById('yourEmoji');
-const cpuEmoji      = document.getElementById('cpuEmoji');
-const resultBanner  = document.getElementById('resultBanner');
-const playBtn       = document.getElementById('playBtn');
-const dwellBar      = document.getElementById('dwellBar');
-const statusBar     = document.getElementById('statusBar');
-const scoreYouEl    = document.getElementById('scoreYou');
-const scoreTieEl    = document.getElementById('scoreTie');
-const scoreCpuEl    = document.getElementById('scoreCpu');
-const roundNumEl    = document.getElementById('roundNum');
-const roundTotalEl  = document.getElementById('roundTotal');
-const setupOverlay  = document.getElementById('setupOverlay');
-const startBtn      = document.getElementById('startBtn');
-const resultsOverlay= document.getElementById('resultsOverlay');
-const playAgainBtn  = document.getElementById('playAgainBtn');
-const resultsTitle  = document.getElementById('resultsTitle');
-const resultsVerdict= document.getElementById('resultsVerdict');
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const video        = document.getElementById('video');
+const overlayCanvas= document.getElementById('overlay');
+const ctx          = overlayCanvas.getContext('2d');
+const badge        = document.getElementById('gestureBadge');
+const countdownEl  = document.getElementById('countdownEl');
+const yourEmoji    = document.getElementById('yourEmoji');
+const cpuEmoji     = document.getElementById('cpuEmoji');
+const resultBanner = document.getElementById('resultBanner');
+const playBtn      = document.getElementById('playBtn');
+const dwellBar     = document.getElementById('dwellBar');
+const statusBar    = document.getElementById('statusBar');
+const scoreYouEl   = document.getElementById('scoreYou');
+const scoreTieEl   = document.getElementById('scoreTie');
+const scoreCpuEl   = document.getElementById('scoreCpu');
+const roundNumEl   = document.getElementById('roundNum');
+const roundTotalEl = document.getElementById('roundTotal');
+
+const screenSetup   = document.getElementById('screenSetup');
+const screenResults = document.getElementById('screenResults');
+const camDot        = document.getElementById('camDot');
+const camStatusTxt  = document.getElementById('camStatusTxt');
+const confirmRingFg = document.querySelector('#confirmRingSvg .fg');
+const confirmHint   = document.getElementById('confirmHintTxt');
+const againRingFg   = document.getElementById('againRingFg');
+const resTitle      = document.getElementById('resTitle');
+const resVerdict    = document.getElementById('resVerdict');
 const resYouEl      = document.getElementById('resYou');
 const resTieEl      = document.getElementById('resTie');
 const resCpuEl      = document.getElementById('resCpu');
@@ -344,133 +389,72 @@ const resCpuEl      = document.getElementById('resCpu');
 // ── Constants ─────────────────────────────────────────────────────────────────
 const EMOJIS  = { rock:'✊', paper:'✋', scissors:'✌️', none:'❓', point:'☝️' };
 const CHOICES = ['rock','paper','scissors'];
-const DWELL_MS = 1500;
+const DWELL_SETUP   = 2000; // ms to hold ☝️ on setup / results screen
+const DWELL_PLAY    = 1500; // ms to hold ☝️ on play button
+const RING_C_SETUP  = 2 * Math.PI * 26; // ≈ 163.4  (r=26 in confirmRingSvg)
+const RING_C_AGAIN  = 2 * Math.PI * 20; // ≈ 125.7  (r=20 in againRingSvg)
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let gestureRecognizer = null;
 let drawingUtils      = null;
 let currentGesture    = 'none';
-let scores            = { you:0, tie:0, cpu:0 };
-let totalRounds       = 10;
-let roundsPlayed      = 0;
-let busy              = false;
-let gameActive        = false;
-let dwellStart        = null;
-let dwellActive       = false;
+let scores        = { you:0, tie:0, cpu:0 };
+let totalRounds   = 10;
+let roundsPlayed  = 0;
+let busy          = false;
+let gameActive    = false;   // true while main game screen is showing
+let currentScreen = 'setup'; // 'setup' | 'game' | 'results'
 
-// ── Setup screen ──────────────────────────────────────────────────────────────
-document.querySelectorAll('.round-opt').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.round-opt').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    totalRounds = parseInt(btn.dataset.rounds);
-  });
-});
-
-startBtn.addEventListener('click', () => {
-  setupOverlay.style.display = 'none';
-  startGame();
-});
-
-function startGame() {
-  scores = { you:0, tie:0, cpu:0 };
-  roundsPlayed = 0;
-  gameActive = true;
-  scoreYouEl.textContent = '0';
-  scoreTieEl.textContent = '0';
-  scoreCpuEl.textContent = '0';
-  roundTotalEl.textContent = totalRounds;
-  roundNumEl.textContent = '1';
-  resultBanner.className = 'result-banner';
-  resultBanner.textContent = 'Make your move!';
-  yourEmoji.textContent = '✋';
-  cpuEmoji.textContent = '🤖';
-  resultsOverlay.classList.remove('show');
-  if (gestureRecognizer) playBtn.disabled = false;
-  statusBar.innerHTML = gestureRecognizer
-    ? 'Show <span>☝️</span> over the button to start'
-    : 'Loading hand tracker…';
-}
-
-// ── Results screen ────────────────────────────────────────────────────────────
-function showResults() {
-  gameActive = false;
-  playBtn.disabled = true;
-  resYouEl.textContent = scores.you;
-  resTieEl.textContent = scores.tie;
-  resCpuEl.textContent = scores.cpu;
-
-  if (scores.you > scores.cpu) {
-    resultsTitle.textContent = '🏆 You Win!';
-    resultsVerdict.textContent = `You won ${scores.you} of ${totalRounds} rounds!`;
-    resultsVerdict.className = 'results-verdict you-win';
-  } else if (scores.cpu > scores.you) {
-    resultsTitle.textContent = '🤖 CPU Wins!';
-    resultsVerdict.textContent = `CPU won ${scores.cpu} of ${totalRounds} rounds!`;
-    resultsVerdict.className = 'results-verdict cpu-win';
-  } else {
-    resultsTitle.textContent = "🤝 It's a Draw!";
-    resultsVerdict.textContent = `${scores.you} wins each — perfectly matched!`;
-    resultsVerdict.className = 'results-verdict draw';
-  }
-
-  resultsOverlay.classList.add('show');
-  window.parent.postMessage({ type: 'GAME_COMPLETE', score: scores.you }, '*');
-}
-
-playAgainBtn.addEventListener('click', () => {
-  setupOverlay.style.display = 'flex';
-  resultsOverlay.classList.remove('show');
-});
+// Dwell tracking (context-sensitive)
+let dwellStart = null;
 
 // ── Gesture detection ─────────────────────────────────────────────────────────
-function detectGesture(landmarks, gestureName) {
-  if (!landmarks || landmarks.length < 21) return mapName(gestureName);
-  const lm = landmarks;
+function detectGesture(lm, gestureName) {
+  if (!lm || lm.length < 21) return mapName(gestureName);
   const indexUp  = lm[8].y  < lm[6].y;
   const middleUp = lm[12].y < lm[10].y;
   const ringUp   = lm[16].y < lm[14].y;
   const pinkyUp  = lm[20].y < lm[18].y;
-  const upCount  = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
+  const up = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
   if (indexUp && !middleUp && !ringUp && !pinkyUp) return 'point';
-  if (upCount === 0) return 'rock';
-  if (upCount >= 3)  return 'paper';
+  if (up === 0) return 'rock';
+  if (up >= 3)  return 'paper';
   if (indexUp && middleUp && !ringUp && !pinkyUp) return 'scissors';
   return mapName(gestureName);
 }
-
-function mapName(name) {
-  if (!name) return 'none';
-  const n = name.toLowerCase();
-  if (n === 'closed_fist')  return 'rock';
-  if (n === 'open_palm')    return 'paper';
-  if (n === 'victory')      return 'scissors';
-  if (n === 'pointing_up')  return 'point';
+function mapName(n) {
+  if (!n) return 'none';
+  n = n.toLowerCase();
+  if (n === 'closed_fist') return 'rock';
+  if (n === 'open_palm')   return 'paper';
+  if (n === 'victory')     return 'scissors';
+  if (n === 'pointing_up') return 'point';
   return 'none';
 }
 
 // ── Camera ────────────────────────────────────────────────────────────────────
 async function initCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, facingMode: 'user' }
-    });
+    const stream = await navigator.mediaDevices.getUserMedia(
+      { video: { width: 640, height: 480, facingMode: 'user' } }
+    );
     video.srcObject = stream;
-    await new Promise(r => video.onloadedmetadata = r);
-    overlay.width  = video.videoWidth;
-    overlay.height = video.videoHeight;
-    overlay.style.width  = '360px';
-    overlay.style.height = '270px';
+    await new Promise(r => { video.onloadedmetadata = r; });
+    overlayCanvas.width  = video.videoWidth;
+    overlayCanvas.height = video.videoHeight;
+    overlayCanvas.style.width  = '360px';
+    overlayCanvas.style.height = '270px';
     video.style.width  = '360px';
     video.style.height = '270px';
     return true;
-  } catch(e) {
-    statusBar.innerHTML = '<span style="color:var(--lose)">Camera access denied.</span>';
+  } catch {
+    camStatusTxt.textContent = 'Camera denied — use mouse';
+    camDot.style.background = 'var(--lose)';
     return false;
   }
 }
 
-// ── MediaPipe init ────────────────────────────────────────────────────────────
+// ── MediaPipe ─────────────────────────────────────────────────────────────────
 async function initRecognizer() {
   try {
     const vision = await FilesetResolver.forVisionTasks(
@@ -485,37 +469,75 @@ async function initRecognizer() {
       numHands: 1
     });
     drawingUtils = new DrawingUtils(ctx);
+    camDot.classList.add('on');
+    camStatusTxt.textContent = 'Hand tracking ready';
     if (gameActive) {
       playBtn.disabled = false;
-      statusBar.innerHTML = 'Ready! <span>Show ☝️ over the button to start</span>';
+      statusBar.innerHTML = 'Point ☝️ &amp; hold to start a round';
     }
-  } catch(e) {
-    statusBar.innerHTML = `<span style="color:var(--lose)">Failed: ${e.message}</span>`;
+  } catch (e) {
+    camStatusTxt.textContent = 'Hand tracking failed — use mouse';
   }
 }
 
-// ── Render loop ───────────────────────────────────────────────────────────────
+// ── Screen management ─────────────────────────────────────────────────────────
+function showScreen(name) {
+  currentScreen = name;
+  screenSetup.classList.toggle('active', name === 'setup');
+  screenResults.classList.toggle('active', name === 'results');
+  gameActive = (name === 'game');
+  dwellStart = null;
+  resetRingSetup();
+  resetRingAgain();
+  resetPlayDwell();
+}
+
+// ── Setup screen: gesture → select rounds ─────────────────────────────────────
+function updateSetupSelection(gesture) {
+  let rounds = null;
+  if (gesture === 'rock')     rounds = 5;
+  if (gesture === 'paper')    rounds = 10;
+  if (gesture === 'scissors') rounds = 15;
+  if (rounds === null) return;
+
+  document.querySelectorAll('.gesture-option').forEach(el => el.classList.remove('active'));
+  document.getElementById(`opt${rounds}`).classList.add('active');
+  totalRounds = rounds;
+}
+
+// ── Dwell rings ───────────────────────────────────────────────────────────────
+function resetRingSetup() {
+  confirmRingFg.setAttribute('stroke-dasharray', `0 ${RING_C_SETUP}`);
+  confirmHint.textContent = '☝️ Point & hold to start';
+}
+function resetRingAgain() {
+  againRingFg.setAttribute('stroke-dasharray', `0 ${RING_C_AGAIN}`);
+}
+function resetPlayDwell() {
+  dwellBar.style.width = '0%';
+}
+
+// ── Main render & gesture loop ────────────────────────────────────────────────
 function renderLoop() {
   if (!gestureRecognizer || video.readyState < 2) {
     requestAnimationFrame(renderLoop); return;
   }
 
-  const now = performance.now();
+  const now     = performance.now();
   const results = gestureRecognizer.recognizeForVideo(video, now);
 
+  // Draw landmarks
   ctx.save();
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
-  ctx.translate(overlay.width, 0);
+  ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  ctx.translate(overlayCanvas.width, 0);
   ctx.scale(-1, 1);
-
   let lm0 = null, gName = null;
   if (results.landmarks?.length) {
     lm0 = results.landmarks[0];
     for (const lm of results.landmarks) {
       drawingUtils.drawConnectors(lm, GestureRecognizer.HAND_CONNECTIONS,
         { color: 'rgba(124,106,255,0.55)', lineWidth: 2 });
-      drawingUtils.drawLandmarks(lm,
-        { color: '#ff6a9b', lineWidth: 1, radius: 3 });
+      drawingUtils.drawLandmarks(lm, { color: '#ff6a9b', lineWidth: 1, radius: 3 });
     }
   }
   if (results.gestures?.length) gName = results.gestures[0][0].categoryName;
@@ -523,6 +545,7 @@ function renderLoop() {
 
   currentGesture = detectGesture(lm0, gName);
 
+  // Badge (always visible)
   if (currentGesture !== 'none') {
     badge.textContent = EMOJIS[currentGesture] + ' ' + currentGesture.toUpperCase();
     badge.style.color = currentGesture === 'point' ? 'var(--tie)' : '#fff';
@@ -531,34 +554,134 @@ function renderLoop() {
     badge.style.color = 'var(--muted)';
   }
 
-  // Dwell-click on Play button
-  if (!busy && !playBtn.disabled && gameActive) {
-    const isPointing = currentGesture === 'point';
-    if (isPointing) {
-      if (!dwellActive) { dwellActive = true; dwellStart = performance.now(); }
-      const elapsed = performance.now() - dwellStart;
-      const pct = Math.min(elapsed / DWELL_MS * 100, 100);
-      dwellBar.style.transition = 'none';
-      dwellBar.style.width = pct + '%';
-      if (elapsed >= DWELL_MS) { resetDwell(); playRound(); }
-    } else {
-      resetDwell();
-    }
+  // ── Screen-specific gesture handling ──────────────────────────────────────
+  if (currentScreen === 'setup') {
+    handleSetupGesture(now);
+  } else if (currentScreen === 'game' && !busy) {
+    handleGameGesture(now);
+  } else if (currentScreen === 'results') {
+    handleResultsGesture(now);
   }
 
   requestAnimationFrame(renderLoop);
 }
 
-function resetDwell() {
-  dwellActive = false;
-  dwellStart  = null;
-  dwellBar.style.transition = 'width 0.2s';
-  dwellBar.style.width = '0%';
+// ── Setup screen gestures ─────────────────────────────────────────────────────
+// ✊/✋/✌️ = choose rounds; ☝️+hold = confirm start
+function handleSetupGesture(now) {
+  if (currentGesture === 'rock' || currentGesture === 'paper' || currentGesture === 'scissors') {
+    updateSetupSelection(currentGesture);
+    dwellStart = null;
+    resetRingSetup();
+    return;
+  }
+
+  if (currentGesture === 'point' && gestureRecognizer) {
+    if (dwellStart === null) dwellStart = now;
+    const elapsed = now - dwellStart;
+    const pct = Math.min(elapsed / DWELL_SETUP, 1);
+    const dash = pct * RING_C_SETUP;
+    confirmRingFg.setAttribute('stroke-dasharray', `${dash} ${RING_C_SETUP}`);
+    const remaining = Math.ceil((DWELL_SETUP - elapsed) / 1000);
+    confirmHint.textContent = remaining > 0 ? `Hold… ${remaining}` : 'Starting!';
+    if (elapsed >= DWELL_SETUP) {
+      dwellStart = null;
+      startGame();
+    }
+  } else {
+    if (dwellStart !== null) { dwellStart = null; resetRingSetup(); }
+  }
 }
 
-// ── Game logic ────────────────────────────────────────────────────────────────
-function cpuChoice() { return CHOICES[Math.floor(Math.random() * 3)]; }
+// ── Game screen gestures ──────────────────────────────────────────────────────
+// ☝️+hold = trigger play round
+function handleGameGesture(now) {
+  if (playBtn.disabled) { resetPlayDwell(); return; }
 
+  if (currentGesture === 'point') {
+    if (dwellStart === null) dwellStart = now;
+    const elapsed = now - dwellStart;
+    const pct = Math.min(elapsed / DWELL_PLAY, 1);
+    dwellBar.style.width = (pct * 100) + '%';
+    if (elapsed >= DWELL_PLAY) {
+      dwellStart = null;
+      resetPlayDwell();
+      playRound();
+    }
+  } else {
+    if (dwellStart !== null) { dwellStart = null; resetPlayDwell(); }
+  }
+}
+
+// ── Results screen gestures ───────────────────────────────────────────────────
+// ☝️+hold = play again
+function handleResultsGesture(now) {
+  if (currentGesture === 'point') {
+    if (dwellStart === null) dwellStart = now;
+    const elapsed = now - dwellStart;
+    const pct = Math.min(elapsed / DWELL_SETUP, 1);
+    againRingFg.setAttribute('stroke-dasharray', `${pct * RING_C_AGAIN} ${RING_C_AGAIN}`);
+    if (elapsed >= DWELL_SETUP) {
+      dwellStart = null;
+      resetRingAgain();
+      showScreen('setup');
+    }
+  } else {
+    if (dwellStart !== null) { dwellStart = null; resetRingAgain(); }
+  }
+}
+
+// ── Game flow ─────────────────────────────────────────────────────────────────
+function startGame() {
+  scores = { you:0, tie:0, cpu:0 };
+  roundsPlayed = 0;
+  scoreYouEl.textContent = '0';
+  scoreTieEl.textContent = '0';
+  scoreCpuEl.textContent = '0';
+  roundTotalEl.textContent = totalRounds;
+  roundNumEl.textContent  = '1';
+  resultBanner.className  = 'result-banner';
+  resultBanner.textContent= 'Make your move!';
+  yourEmoji.textContent   = '✋';
+  cpuEmoji.textContent    = '🤖';
+  resetPlayDwell();
+  showScreen('game');
+  if (gestureRecognizer) {
+    playBtn.disabled = false;
+    statusBar.innerHTML = 'Point ☝️ &amp; hold to start round 1';
+  } else {
+    playBtn.disabled = false; // allow mouse click fallback
+    statusBar.innerHTML = 'Click the button or wait for hand tracking';
+  }
+}
+
+function showResults() {
+  gameActive = false;
+  playBtn.disabled = true;
+  resYouEl.textContent = scores.you;
+  resTieEl.textContent = scores.tie;
+  resCpuEl.textContent = scores.cpu;
+
+  if (scores.you > scores.cpu) {
+    resTitle.textContent   = '🏆 You Win!';
+    resVerdict.textContent = `You won ${scores.you} of ${totalRounds} rounds!`;
+    resVerdict.className   = 'res-verdict you-win';
+  } else if (scores.cpu > scores.you) {
+    resTitle.textContent   = '🤖 CPU Wins!';
+    resVerdict.textContent = `CPU won ${scores.cpu} of ${totalRounds} rounds!`;
+    resVerdict.className   = 'res-verdict cpu-win';
+  } else {
+    resTitle.textContent   = "🤝 It's a Draw!";
+    resVerdict.textContent = `${scores.you} wins each — perfectly matched!`;
+    resVerdict.className   = 'res-verdict draw';
+  }
+
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: scores.you }, '*');
+  showScreen('results');
+}
+
+// ── Round logic ───────────────────────────────────────────────────────────────
+function cpuChoice() { return CHOICES[Math.floor(Math.random() * 3)]; }
 function judge(you, cpu) {
   if (you === cpu) return 'tie';
   if ((you==='rock'&&cpu==='scissors')||(you==='scissors'&&cpu==='paper')||(you==='paper'&&cpu==='rock')) return 'win';
@@ -569,19 +692,20 @@ async function playRound() {
   if (busy || !gameActive) return;
   busy = true;
   playBtn.disabled = true;
-  resultBanner.className = 'result-banner';
-  resultBanner.textContent = 'Get ready…';
+  resultBanner.className  = 'result-banner';
+  resultBanner.textContent= 'Get ready…';
 
+  // Countdown — capture gesture at snap moment
   for (let i = 3; i >= 1; i--) {
-    cntDown.textContent = i;
-    cntDown.classList.add('visible');
+    countdownEl.textContent = i;
+    countdownEl.classList.add('visible');
     await sleep(800);
   }
-  cntDown.textContent = '✊';
+  countdownEl.textContent = '✊';
   await sleep(400);
-  cntDown.classList.remove('visible');
+  countdownEl.classList.remove('visible');
 
-  const snap = ['rock','paper','scissors'].includes(currentGesture) ? currentGesture : 'none';
+  const snap = CHOICES.includes(currentGesture) ? currentGesture : 'none';
   const cpu  = cpuChoice();
 
   pop(yourEmoji, snap !== 'none' ? EMOJIS[snap] : '❓');
@@ -589,7 +713,7 @@ async function playRound() {
 
   if (snap === 'none') {
     resultBanner.textContent = '❓ No gesture detected — round skipped';
-    resultBanner.className = 'result-banner';
+    resultBanner.className   = 'result-banner';
   } else {
     const outcome = judge(snap, cpu);
     scores[outcome === 'win' ? 'you' : outcome === 'lose' ? 'cpu' : 'tie']++;
@@ -599,37 +723,41 @@ async function playRound() {
     const msgs = {
       win:  ['You win! 🎉','Nice one! ✨','Crushed it! 💪'],
       lose: ['CPU wins 🤖','Better luck! 😅','Gotcha! 💀'],
-      tie:  ["It's a tie! 🤝",'Draw! 🔁','Same brain? 🧠']
+      tie:  ["It's a tie! 🤝",'Draw! 🔁','Same brain? 🧠'],
     };
-    resultBanner.textContent = msgs[outcome][Math.floor(Math.random()*3)];
-    resultBanner.className = 'result-banner ' + outcome;
+    resultBanner.textContent = msgs[outcome][Math.floor(Math.random() * 3)];
+    resultBanner.className   = 'result-banner ' + outcome;
   }
 
   roundsPlayed++;
   roundNumEl.textContent = Math.min(roundsPlayed + 1, totalRounds);
 
-  await sleep(1000);
+  await sleep(1200);
   busy = false;
 
   if (roundsPlayed >= totalRounds) {
     showResults();
   } else {
     playBtn.disabled = false;
-    statusBar.innerHTML = `Round ${roundsPlayed + 1}/${totalRounds} — show <span>☝️</span> to continue`;
+    statusBar.innerHTML =
+      `Round ${roundsPlayed + 1}/${totalRounds} — point ☝️ &amp; hold to continue`;
   }
 }
 
 function pop(el, text) {
-  el.classList.remove('pop');
+  el.classList.remove('zpop');
   void el.offsetWidth;
   el.textContent = text;
-  el.classList.add('pop');
+  el.classList.add('zpop');
 }
-
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// Mouse/click fallback for play button
+playBtn.addEventListener('click', () => {
+  if (!busy && gameActive && !playBtn.disabled) playRound();
+});
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
-playBtn.addEventListener('click', playRound);
 (async () => {
   const ok = await initCamera();
   if (!ok) return;
