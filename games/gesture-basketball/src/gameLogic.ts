@@ -2,50 +2,52 @@
 
 export const CANVAS_W  = 800;
 export const CANVAS_H  = 500;
-export const FLOOR_Y   = 458;
+export const FLOOR_Y   = 440;
 
-// Player (stick figure, side view)
-export const PLAYER_X      = 140;
+// Player
+export const PLAYER_X      = 145;
 export const PLAYER_FOOT_Y = FLOOR_Y;
-export const BALL_START_X  = 164;
-export const BALL_START_Y  = 360;   // ball held at shoulder height
+export const BALL_START_X  = 168;
+export const BALL_START_Y  = 355;   // held at shoulder height
 
-// Hoop geometry
-export const HOOP_CX         = 625;   // rim center X
-export const HOOP_Y          = 200;   // rim Y
-export const RIM_LEFT        = 588;   // near rim post X
-export const RIM_RIGHT       = 662;   // far rim post X (backboard side)
-export const BACKBOARD_X1    = 657;   // backboard left edge
-export const BACKBOARD_X2    = 672;   // backboard right edge
-export const BACKBOARD_Y1    = 128;   // backboard top
-export const BACKBOARD_Y2    = 265;   // backboard bottom
+// Hoop geometry (side-view, 2D)
+export const HOOP_CX      = 625;   // rim center X
+export const HOOP_Y       = 195;   // rim Y
+export const RIM_LEFT     = 588;   // near rim post (player side)
+export const RIM_RIGHT    = 662;   // far rim post (backboard side)
+export const BACKBOARD_X1 = 657;
+export const BACKBOARD_X2 = 674;
+export const BACKBOARD_Y1 = 122;
+export const BACKBOARD_Y2 = 268;
 
 // Physics
-export const BALL_R          = 14;
-export const GRAVITY         = 0.40;
+export const BALL_R    = 14;
+export const GRAVITY   = 0.40;
 
-// Launch angle: 30° + aimX * 50° (aimX=0.5 → 55°, ideal for this geometry)
-export const AIM_ANGLE_MIN   = 30 * (Math.PI / 180);
-export const AIM_ANGLE_RANGE = 50 * (Math.PI / 180);
+// Launch angle: AIM_MIN + aimX * AIM_RANGE
+// aimX=0.5 → 55° — ideal arc from (168,355) to hoop center (625,195)
+export const AIM_ANGLE_MIN   = 28 * (Math.PI / 180);
+export const AIM_ANGLE_RANGE = 52 * (Math.PI / 180);
 
-// Speed: 12 + power * 9 (sweet spot ~0.47 → speed~16.2 for perfect arc)
-export const SPEED_MIN   = 12;
-export const SPEED_RANGE = 9;
+// Speed from power: SPEED_MIN + power * SPEED_RANGE
+// Sweet spot: power≈0.47 → speed≈16.2 → perfect arc at 55°
+export const SPEED_MIN   = 11;
+export const SPEED_RANGE = 11;
 
 // Game rules
 export const MAX_SHOTS         = 10;
 export const POINTS_PER_BASKET = 10;
-export const RESULT_PAUSE_MS   = 1400;  // pause after each shot result
+export const RESULT_PAUSE_MS   = 1600;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 
 export type GamePhase =
-  | 'aiming'        // player is positioning hand, power meter oscillates
-  | 'in_flight'     // ball is arcing toward hoop
-  | 'result_score'  // scored — brief celebration
-  | 'result_miss'   // missed — brief sad pause
+  | 'aiming'
+  | 'in_flight'
+  | 'result_score'
+  | 'result_miss'
   | 'game_over';
 
 export type AudioTrigger =
@@ -54,46 +56,42 @@ export type AudioTrigger =
   | 'bank'
   | 'miss_rim'
   | 'miss_air'
-  | 'crowd_cheer'
   | 'gameover'
   | null;
 
-export interface Ball {
-  x:  number;
-  y:  number;
-  vx: number;
-  vy: number;
-}
-
 export interface BasketGestureInput {
-  aimX:         number;  // 0–1, mirrored wrist X
+  aimX:         number;   // 0–1, mirrored wrist X
   handDetected: boolean;
-  shootFired:   boolean; // edge-triggered raise
+  shootFired:   boolean;
+  throwPower:   number;   // 0–1, rise-based throw power
+  wristY:       number;   // 0–1 current wrist Y (for UI)
+  chargeRatio:  number;   // 0–1 how charged the throw is (for UI)
 }
 
-// Per-difficulty tuning
-interface DifficultyConfig {
-  scoreRadius:    number;  // proximity to HOOP center to count as scored (px)
-  powerPeriodMs:  number;  // ms for one full power-meter oscillation
+export interface DifficultyConfig {
+  scoreRadius: number;   // proximity to hoop center to score (px)
+  label:       string;
 }
 
 export const DIFF_CONFIG: Record<Difficulty, DifficultyConfig> = {
-  easy:   { scoreRadius: 50, powerPeriodMs: 4000 },
-  normal: { scoreRadius: 33, powerPeriodMs: 2600 },
-  hard:   { scoreRadius: 18, powerPeriodMs: 1800 },
+  easy:   { scoreRadius: 52, label: 'Easy'   },
+  normal: { scoreRadius: 34, label: 'Normal' },
+  hard:   { scoreRadius: 18, label: 'Hard'   },
 };
+
+export interface Ball { x: number; y: number; vx: number; vy: number }
 
 export interface GameState {
   phase:        GamePhase;
   ball:         Ball;
-  shotsTotal:   number;   // shots taken so far
+  shotsTotal:   number;
   score:        number;
-  powerPhase:   number;   // radians, 0 → 2π per cycle; power = 0.5+0.5*sin(powerPhase)
-  powerValue:   number;   // 0–1 derived from powerPhase
-  aimAngle:     number;   // current launch angle (radians) from gesture
+  aimAngle:     number;    // current launch angle (radians), for arc preview
+  lastPower:    number;    // power used on last shot, for post-shot display
   difficulty:   Difficulty;
-  phaseTimer:   number;   // ms remaining in result pause
-  bankedShot:   boolean;  // ball bounced off backboard during this flight
+  phaseTimer:   number;
+  bankedShot:   boolean;
+  streak:       number;    // consecutive baskets
   audioTrigger: AudioTrigger;
 }
 
@@ -108,7 +106,7 @@ export function aimAngleFromX(aimX: number): number {
 }
 
 export function speedFromPower(power: number): number {
-  return SPEED_MIN + power * SPEED_RANGE;
+  return SPEED_MIN + clamp(power, 0, 1) * SPEED_RANGE;
 }
 
 export function ballAtStart(): Ball {
@@ -123,38 +121,38 @@ export function initialGameState(difficulty: Difficulty): GameState {
     ball:         ballAtStart(),
     shotsTotal:   0,
     score:        0,
-    powerPhase:   -Math.PI / 2,   // starts at power=0 (sin(-π/2) = -1 → power=0)
-    powerValue:   0,
     aimAngle:     aimAngleFromX(0.5),
+    lastPower:    0.5,
     difficulty,
     phaseTimer:   0,
     bankedShot:   false,
+    streak:       0,
     audioTrigger: null,
   };
 }
 
-// ── Pre-visualise arc ─────────────────────────────────────────────────────────
+// ── Arc preview ───────────────────────────────────────────────────────────────
 
-export interface ArcPoint { x: number; y: number }
+export interface ArcPoint { x: number; y: number; t: number }
 
-export function previewArc(aimX: number, power: number, steps = 80): ArcPoint[] {
+export function previewArc(aimX: number, power: number): ArcPoint[] {
   const angle = aimAngleFromX(aimX);
   const speed = speedFromPower(power);
-  const vx    = speed * Math.cos(angle);
-  const vy    = -speed * Math.sin(angle);
+  const vx0   = speed * Math.cos(angle);
+  const vy0   = -speed * Math.sin(angle);
 
   const pts: ArcPoint[] = [];
-  let bx = BALL_START_X;
-  let by = BALL_START_Y;
-  let bvx = vx;
-  let bvy = vy;
+  let bx = BALL_START_X, by = BALL_START_Y;
+  let bvx = vx0, bvy = vy0;
 
-  for (let i = 0; i < steps; i++) {
-    bvy = Math.min(bvy + GRAVITY, 25);
+  for (let i = 0; i < 90; i++) {
+    bvy = Math.min(bvy + GRAVITY, 26);
     bx += bvx;
     by += bvy;
-    if (by > FLOOR_Y || bx > CANVAS_W + 50) break;
-    if (i % 4 === 0) pts.push({ x: bx, y: by });
+    if (by > FLOOR_Y + 20 || bx > CANVAS_W + 60) break;
+    // Finer dots near ball, sparser further along
+    const interval = i < 20 ? 2 : i < 50 ? 3 : 5;
+    if (i % interval === 0) pts.push({ x: bx, y: by, t: i / 90 });
   }
   return pts;
 }
@@ -168,7 +166,7 @@ export function stepGame(
 ): GameState {
   if (state.phase === 'game_over') return state;
 
-  const dt = dtMs / 16.67;  // normalised delta (1.0 = one 60-fps frame)
+  const dt = dtMs / 16.67;
 
   // ── Result pause ─────────────────────────────────────────────────────────
   if (state.phase === 'result_score' || state.phase === 'result_miss') {
@@ -191,80 +189,57 @@ export function stepGame(
 
   // ── Aiming phase ─────────────────────────────────────────────────────────
   if (state.phase === 'aiming') {
-    const cfg       = DIFF_CONFIG[state.difficulty];
-    const dPhase    = (dtMs / cfg.powerPeriodMs) * Math.PI * 2;
-    const newPhase  = state.powerPhase + dPhase;
-    const newPower  = 0.5 + 0.5 * Math.sin(newPhase);
-    const newAngle  = gesture.handDetected
+    const newAngle = gesture.handDetected
       ? aimAngleFromX(gesture.aimX)
       : state.aimAngle;
 
-    // Shoot triggered by edge-triggered raise
     if (gesture.shootFired) {
       const angle = newAngle;
-      const speed = speedFromPower(newPower);
-      const vx    = speed * Math.cos(angle);
-      const vy    = -speed * Math.sin(angle);
-
+      const speed = speedFromPower(gesture.throwPower);
       return {
         ...state,
         phase:        'in_flight',
-        ball:         { x: BALL_START_X, y: BALL_START_Y, vx, vy },
+        ball:         { x: BALL_START_X, y: BALL_START_Y, vx: speed * Math.cos(angle), vy: -speed * Math.sin(angle) },
         shotsTotal:   state.shotsTotal + 1,
-        powerPhase:   newPhase,
-        powerValue:   newPower,
         aimAngle:     angle,
+        lastPower:    gesture.throwPower,
         bankedShot:   false,
         audioTrigger: 'shoot',
       };
     }
 
-    return {
-      ...state,
-      powerPhase:   newPhase,
-      powerValue:   newPower,
-      aimAngle:     newAngle,
-      audioTrigger: null,
-    };
+    return { ...state, aimAngle: newAngle, audioTrigger: null };
   }
 
   // ── In-flight phase ───────────────────────────────────────────────────────
   if (state.phase === 'in_flight') {
     let { x, y, vx, vy } = state.ball;
     let banked = state.bankedShot;
-    let audioTrigger: AudioTrigger = null;
+    let audio: AudioTrigger = null;
 
-    vy = Math.min(vy + GRAVITY * dt, 25);
+    vy = Math.min(vy + GRAVITY * dt, 26);
     x += vx * dt;
     y += vy * dt;
 
-    // Backboard bounce (ball is descending or ascending into the board)
-    if (
-      x + BALL_R >= BACKBOARD_X1 &&
-      x - BALL_R <= BACKBOARD_X2 &&
-      y >= BACKBOARD_Y1 &&
-      y <= BACKBOARD_Y2 &&
-      vx > 0
-    ) {
-      x  = BACKBOARD_X1 - BALL_R;
-      vx = -Math.abs(vx) * 0.58;
+    // Backboard bounce
+    if (x + BALL_R >= BACKBOARD_X1 && x - BALL_R <= BACKBOARD_X2 && y >= BACKBOARD_Y1 && y <= BACKBOARD_Y2 && vx > 0) {
+      x  = BACKBOARD_X1 - BALL_R - 1;
+      vx = -Math.abs(vx) * 0.55;
       banked = true;
-      audioTrigger = 'miss_rim';
+      audio  = 'miss_rim';
     }
 
-    // Side walls (shouldn't happen but safety)
     if (x - BALL_R < 0) { x = BALL_R; vx = Math.abs(vx) * 0.5; }
 
+    // Score check
     const cfg  = DIFF_CONFIG[state.difficulty];
     const dist = Math.hypot(x - HOOP_CX, y - HOOP_Y);
-
-    // Score check: ball passes near hoop center while descending
     if (vy > 0 && dist < cfg.scoreRadius) {
-      const scoredPts = state.score + POINTS_PER_BASKET;
       return {
         ...state,
         ball:         { x, y, vx, vy },
-        score:        scoredPts,
+        score:        state.score + POINTS_PER_BASKET,
+        streak:       state.streak + 1,
         phase:        'result_score',
         phaseTimer:   RESULT_PAUSE_MS,
         bankedShot:   banked,
@@ -272,20 +247,20 @@ export function stepGame(
       };
     }
 
-    // Miss: ball hits floor or leaves canvas
+    // Miss
     if (y + BALL_R >= FLOOR_Y || x > CANVAS_W + 60) {
-      const nearRim = Math.abs(x - HOOP_CX) < 80;
       return {
         ...state,
-        ball:         { x: clamp(x, -50, CANVAS_W + 60), y: Math.min(y, FLOOR_Y), vx, vy },
+        ball:         { x: clamp(x, -60, CANVAS_W + 60), y: Math.min(y, FLOOR_Y), vx, vy },
+        streak:       0,
         phase:        'result_miss',
         phaseTimer:   RESULT_PAUSE_MS,
         bankedShot:   banked,
-        audioTrigger: nearRim ? 'miss_rim' : 'miss_air',
+        audioTrigger: Math.abs(x - HOOP_CX) < 90 ? 'miss_rim' : 'miss_air',
       };
     }
 
-    return { ...state, ball: { x, y, vx, vy }, bankedShot: banked, audioTrigger };
+    return { ...state, ball: { x, y, vx, vy }, bankedShot: banked, audioTrigger: audio };
   }
 
   return state;
