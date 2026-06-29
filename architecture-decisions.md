@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-06-29 (ADR-029 — The Sniper Code game)
+> Last updated: 2026-06-29 (ADR-030 — Spear Stickman game)
 
 ---
 
@@ -561,3 +561,35 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/the-sniper-code/` — built dist (index.html + assets/)
 - `src/games/registry.ts` — added `the-sniper-code` entry
 - `supabase/seed_the_sniper_code.sql` — upsert-safe game row (Action, published, featured)
+
+---
+
+## ADR-030 — Spear Stickman game
+**Date:** 2026-06-29
+**Status:** Accepted
+
+**Decision:** Add a gesture-only arcade survival game inspired by *The Spear Stickman* (QKY Games) as a Vite + React + TypeScript app (`games/spear-stickman/`) built to `public/games/spear-stickman/` and served in an `<iframe>` via the existing play screen — identical delivery pattern to ADR-025–029. Per the brief, this **captures the core loop** (aim → throw arcing spears → headshots → survive escalating waves) rather than recreating the original; cartoon-stylized and **gore-free** for the family portal.
+
+**Rendering model:** Single full-screen canvas in **screen-space pixels** (no fixed virtual resolution). All physics is authored at a 600px reference height and multiplied by `U = ch/REF_H`, so spear arcs look identical on any screen. The player stickman is anchored bottom-left (`PLAYER_X_FRAC`); enemies spawn from the right and on procedurally-placed platforms (stored as canvas fractions so they survive resize). Six hand-drawn arenas (`data/arenas.ts`: forest/castle/desert/mountain/volcano/night-village) cycle every 3 waves; everything is canvas vector + emoji, all SFX are Web Audio synthesis (`utils/audio.ts`). No image assets.
+
+**Gesture mapping (decided):** aim uses the **palm centre `lm[9]`** (mirror-X) because it stays stable across both open hand and fist — unlike the fingertip, which curls. The launch **angle** is `atan2` from muzzle→reticle, forced rightward and clamped to `[AIM_MIN_DEG..AIM_MAX_DEG]`; a live dotted **trajectory arc** previews the shot.
+- **Charge throw (primary):** closed fist (`isFist`, ≥3 curled) charges a power meter over `CHARGE_MS`; opening the hand releases the throw (power → launch speed). Edge-detected via the engine's `charging` flag.
+- **Quick throw (secondary):** pinch (`lm[4]`↔`lm[8]`) fires instantly at `QUICK_POWER`, gated on `!fist`. A `throwMode` setting selects Fist / Pinch / Both.
+- **Dodge:** fast horizontal palm velocity (`SWIPE_VX`) grants a brief invulnerable window (`DODGE_MS`).
+- **Menus + pause:** dwell-to-select (`DwellLayer`/`DBtn`; `[data-hud-id]` + per-frame dwell loop in `GameScreen`).
+
+**Combat model:** `game/engine.ts` (`GameEngine` class, `update`/`render`/`getHud`). Enemy roster + per-wave composition is data (`data/enemies.ts`): 7 regular kinds (grunt, runner, heavy=2 body hits, archer=ranged/holds back, shield=blocks frontal body hits → must headshot, jumper=hops/airborne-bonus, ninja=teleports) + a **giant boss every 5th wave** (`isBossWave`, HP bar, 3-spear barrages + adds). Headshots (head circle) one-shot non-bosses and score double; body hits use HP. Enemies telegraph a **wind-up (`ENEMY_WINDUP_MS`)** before lobbing a gravity-arced spear at the player; reaching the player = contact hit. Player has mode-defined hearts + i-frames; 0 hearts = game over. Player spears sub-step (×3) to prevent tunnelling; support **power-ups** (`triple`/`pierce`/`explosive`/`slowmo`/`shield`/`rapid`) that drop on kills and **home to the player** (no movement needed by the stationary player) plus a heart drop.
+
+**Modes (`data/modes.ts`):** Endless Survival (primary), Time Attack (180s), One Life (1 heart), Headshots Only (body hits only stagger). **Economy:** coins from kills/headshots/bosses unlock 10 cosmetic spear skins (`data/skins.ts`, `buySkin`/`selectSkin`). **Achievements** (`data/achievements.ts`) checked against cumulative+best stats at game over. **Scoring:** body 100 / head 250 (×`scoreMult` per kind) × combo (1×→10×, reset on damage) + airborne/long/wave-clear/perfect-wave bonuses; boss = 2000×combo.
+
+**Score submission:** App posts `window.parent.postMessage({ type: 'GAME_COMPLETE', score }, '*')` on the Results screen. **Persistence (localStorage):** `spear-stickman:progress` (coins, per-mode highScore, bestWave, unlockedSkins, selectedSkin, achievements, cumulative stats) + `spear-stickman:settings` (sensitivity, smoothing, throwMode, sound, left-handed, high-contrast, aim-assist, tutorialDone).
+
+**Deferred (not built in v1):** Chaos/Rapid-Fire/Daily-Challenge modes, the full original power-up list (freeze/lightning-chain/magnet/critical/double-coins), destructible/moving platforms, multi-spear ninja barrages, the larger arena/weapon-mode breadth, and an in-game pause→settings panel. The data-driven enemy/arena/mode/skin tables leave room to add these without restructuring.
+
+**Build verification:** the game's own `tsc -p tsconfig.app.json` + `vite build` are clean and copied via `node scripts/build-games.js spear-stickman`. Like all other gesture games it is a standalone static build, not part of the repo-root Next build graph.
+
+**Files added:**
+- `games/spear-stickman/` — full Vite project (`src/App.tsx`, `hooks/useMediaPipe.ts`, `utils/{constants,gestures,audio,storage}.ts`, `data/{arenas,enemies,modes,skins,achievements}.ts`, `game/engine.ts`, `components/{GameScreen,menus}.tsx`, `main.tsx`, `index.css`)
+- `public/games/spear-stickman/` — built dist (index.html + assets/)
+- `src/games/registry.ts` — added `spear-stickman` entry
+- `supabase/seed_spear_stickman.sql` — upsert-safe game row (Action, published, featured)

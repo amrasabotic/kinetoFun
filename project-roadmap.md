@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-06-29 (The Sniper Code — ADR-029)
+> Last updated: 2026-06-29 (Spear Stickman — ADR-030)
 
 ---
 
@@ -58,6 +58,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-06-29] Spear Stickman game.** Gesture-only arcade survival inspired by *The Spear Stickman* (core loop captured, gore-free). Hand aims with a live trajectory arc; fist = charge a power throw, open = release, pinch = quick throw, swipe = dodge. 7 enemy kinds (grunt/runner/heavy/archer/shield/jumper/ninja) that telegraph + lob spears, giant boss every 5th wave; headshots one-shot + double score; combo to ×10; power-ups (triple/pierce/explosive/slow-mo/shield/rapid + heart) that home to the player; coins unlock 10 cosmetic spear skins; achievements. 6 canvas arenas, 4 modes (Endless/Time Attack/One Life/Headshots Only). All menus + pause dwell-to-select; progress/settings in localStorage; score posted via `GAME_COMPLETE`. Vite game served from `public/games/spear-stickman/`. (ADR-030)
 - [x] **[2026-06-29] The Sniper Code game.** Gesture-only sniper: hand pans a full-screen scope (crosshair centred), pinch = fire (hold + cooldown), open palm = cycle 2×/4×/8× zoom, hold-still = STEADY AIM (less sway + bonus). 14-mission campaign across 6 canvas environments (eliminate / civilian-avoidance / multi-target / escape-runner / moving-lead / VIP-protect), with night/fog/wind/decoys/limited-ammo progression; head/body hit-zones, 5× combo, 3-star ratings, Endless bonus mode. Stylized gore-free hits (family-friendly). All menus dwell-to-select; settings/progress saved to localStorage; scores posted via `GAME_COMPLETE`. Vite game served from `public/games/the-sniper-code/`. (ADR-029)
 - [x] **[2026-06-26] Gesture Basketball game.** Free-throw shooter: 10 shots, wrist X = arc angle, oscillating power meter + edge-triggered raise = shoot; backboard bank shots; 3 difficulty levels; Web Audio SFX; scores saved to DB; Vite game at `public/games/gesture-basketball/`. (ADR-028)
 - [x] **[2026-06-25] Gesture Volleyball game.** 2D beach volleyball vs AI; two-hand control (hand X = move, raise = smash, spread = block); 3 difficulty levels; first to 7 points; Web Audio SFX; scores saved to DB; Vite game at `public/games/gesture-volleyball/`. (ADR-027)

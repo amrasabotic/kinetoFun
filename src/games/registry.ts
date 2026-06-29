@@ -34,6 +34,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-basketball':    { folder: 'gesture-basketball',    indexPath: '/games/gesture-basketball/index.html' },
   'gesture-love-balls':   { folder: 'gesture-love-balls',   indexPath: '/games/gesture-love-balls/index.html' },
   'the-sniper-code':       { folder: 'the-sniper-code',       indexPath: '/games/the-sniper-code/index.html' },
+  'spear-stickman':        { folder: 'spear-stickman',        indexPath: '/games/spear-stickman/index.html' },
   'gesture-drums':         { folder: 'gesture-drums',         indexPath: '/games/gesture-drums/index.html' },
   'slingshot-bird':        { folder: 'slingshot-bird',        indexPath: '/games/slingshot-bird/index.html' },
   'simon-says-hands':      { folder: 'simon-says-hands',      indexPath: '/games/simon-says-hands/index.html' },
