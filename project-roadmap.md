@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-06-26 (Gesture Basketball — ADR-028)
+> Last updated: 2026-06-29 (The Sniper Code — ADR-029)
 
 ---
 
@@ -58,6 +58,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-06-29] The Sniper Code game.** Gesture-only sniper: hand pans a full-screen scope (crosshair centred), pinch = fire (hold + cooldown), open palm = cycle 2×/4×/8× zoom, hold-still = STEADY AIM (less sway + bonus). 14-mission campaign across 6 canvas environments (eliminate / civilian-avoidance / multi-target / escape-runner / moving-lead / VIP-protect), with night/fog/wind/decoys/limited-ammo progression; head/body hit-zones, 5× combo, 3-star ratings, Endless bonus mode. Stylized gore-free hits (family-friendly). All menus dwell-to-select; settings/progress saved to localStorage; scores posted via `GAME_COMPLETE`. Vite game served from `public/games/the-sniper-code/`. (ADR-029)
 - [x] **[2026-06-26] Gesture Basketball game.** Free-throw shooter: 10 shots, wrist X = arc angle, oscillating power meter + edge-triggered raise = shoot; backboard bank shots; 3 difficulty levels; Web Audio SFX; scores saved to DB; Vite game at `public/games/gesture-basketball/`. (ADR-028)
 - [x] **[2026-06-25] Gesture Volleyball game.** 2D beach volleyball vs AI; two-hand control (hand X = move, raise = smash, spread = block); 3 difficulty levels; first to 7 points; Web Audio SFX; scores saved to DB; Vite game at `public/games/gesture-volleyball/`. (ADR-027)
 - [x] **[2026-06-25] Gesture Tetris game.** Classic 10×20 Tetris; all 7 tetrominoes with 7-bag, ghost piece, SRS kicks, NES fall curve; 3 gesture controls (tilt/raise/lower); 3 difficulty levels; all menus dwell-to-select; Web Audio SFX; scores saved to DB; Vite game served from `public/games/gesture-tetris/`. (ADR-026)

@@ -8,13 +8,20 @@ import {
 export interface HandData {
   detected: boolean;
   landmarks: NormalizedLandmark[];
-  /** Index finger tip X in [0,1], already mirror-flipped */
+  /** Palm centre X in [0,1], mirror-flipped (for cursor / menu navigation) */
   cursorX: number;
-  /** Index finger tip Y in [0,1] */
+  /** Palm centre Y in [0,1] */
   cursorY: number;
 }
 
 const EMPTY: HandData = { detected: false, landmarks: [], cursorX: 0.5, cursorY: 0.5 };
+
+function palmCenter(lm: NormalizedLandmark[]): { x: number; y: number } {
+  const pts = [lm[0], lm[5], lm[9], lm[13], lm[17]];
+  const x = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+  const y = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  return { x: 1 - x, y }; // mirror X
+}
 
 /**
  * Runs MediaPipe Hand Landmarker in a RAF loop.
@@ -67,7 +74,7 @@ export function useMediaPipe(
             dataRef.current = {
               detected: true,
               landmarks: lm,
-              cursorX: 1 - lm[8].x,   // mirror X
+              cursorX: 1 - lm[8].x,  // index fingertip, mirror X
               cursorY: lm[8].y,
             };
           } else {
@@ -100,7 +107,7 @@ import { useState } from 'react';
 
 export interface MenuHandData {
   detected: boolean;
-  x: number;   // normalised [0,1], already mirror-flipped
+  x: number;   // normalised [0,1], mirror-flipped palm centre
   y: number;
 }
 
@@ -137,7 +144,6 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
       vid.srcObject = stream;
       await vid.play();
 
-      // Smoothed cursor
       let sx = 0.5, sy = 0.5;
       let lastMs = -1;
 
@@ -149,7 +155,7 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
           const res = landmarker.detectForVideo(vid2, performance.now());
           if (res.landmarks && res.landmarks.length > 0) {
             const lm = res.landmarks[0];
-            const rx = 1 - lm[8].x;
+            const rx = 1 - lm[8].x;  // index fingertip, mirror X
             const ry = lm[8].y;
             sx = sx + (rx - sx) * 0.28;
             sy = sy + (ry - sy) * 0.28;

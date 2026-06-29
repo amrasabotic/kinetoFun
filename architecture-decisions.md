@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-06-25 (ADR-026 — Gesture Tetris game)
+> Last updated: 2026-06-29 (ADR-029 — The Sniper Code game)
 
 ---
 
@@ -526,3 +526,38 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/gesture-basketball/` — built dist (index.html + assets/)
 - `src/games/registry.ts` — added `gesture-basketball` entry
 - `supabase/seed_gesture_basketball.sql` — upsert-safe game row (Sports, published, featured)
+
+## ADR-029 — The Sniper Code game
+**Date:** 2026-06-29
+**Status:** Accepted
+
+**Decision:** Add a gesture-only sniper game as a Vite + React + TypeScript app (`games/the-sniper-code/`) built to `public/games/the-sniper-code/` and served in an `<iframe>` via the existing play screen — same delivery pattern as every other gesture game (ADR-025–028).
+
+**Theme decision (explicit):** KinetoFun is a children/family portal, so the game is a **softened literal sniper**: it keeps the scope/aim/"eliminate" framing but uses only **stylized, gore-free** hit effects (sparks, dust puffs, ✕ markers — never blood). The user chose this over a full reskin and over a lighter shooting-gallery framing.
+
+**Rendering model:** Authentic full-screen scope. The crosshair is fixed at screen centre; the hand **pans the world** beneath it. A wide world (`WORLD_W=2400`) is drawn procedurally per environment (gradient sky + silhouette skyline/props + ground); the visible region = `aim ± (canvas/2)/(BASE_PPU·zoom)`. Hit detection is therefore "the world point under centre" (plus sway + wind drift). No image assets — canvas vector figures (head circle + body capsule + limbs) tinted by role with emoji accents; all SFX are Web Audio synthesis (`utils/audio.ts`).
+
+**Gesture mapping:**
+- **Aim:** hand X/Y → world pan within `[PAN_MIN..PAN_MAX]` (sensitivity-scaled, α-smoothed). Breathing sway (two sines) layered on, amplitude ∝ zoom.
+- **Fire:** pinch (thumb `lm[4]`↔index `lm[8]`) held `PINCH_HOLD_MS=120` + `FIRE_COOLDOWN_MS=460`, edge-triggered → hitscan with recoil + screen-shake + muzzle-flash + tracer.
+- **Zoom:** open palm held `ZOOM_HOLD_MS=750` cycles one step 2×→4×→8× (one cycle per palm-hold; drop & re-open to cycle again).
+- **Steady Aim:** rolling cursor std-dev under `STEADY_STD_MAX` for `STEADY_TIME_MS=650` → reduced sway + `STEADY_SCORE_MULT=1.25` on hits.
+- **Menus + in-game pause:** dwell-to-select (`DwellLayer`/`DBtn` for menus, `[data-hud-id]` + a per-frame dwell loop in `GameScreen` for the pause button + pause overlay).
+
+**Mission model:** `data/missions.ts` holds pure parameters; `game/engine.ts` (a plain `GameEngine` class) turns them into spawned actors with a seeded RNG (`mulberry32(hash(id))`) for deterministic campaign layouts. 14 campaign missions over 6 environments; types: `eliminate`, `civilian`, `multi` (optionally ordered), `escape` (runner exits → fail), `moving` (lead the rider), `vip` (attacker reaches VIP → fail). Roles split into **valid** `{target, attacker}` and **protected** `{civilian, vip, decoy, hostage}` — shooting any protected actor = instant mission fail. Markers are colour **and** shape (red ◆ = shoot, amber ◇? = decoy, cyan ring = VIP) for colourblind safety; an off-scope arrow points to the nearest undiscovered target. Endless mode = `makeEndlessMission(wave)` escalating waves; win advances the wave, loss ends the run with the accumulated total.
+
+**Scoring:** head +200 / body +100 / miss −25 / protected −500; combo 1×→5× (reset on miss/wrong-order); win bonuses = time (`×10/s`) + remaining ammo (`×25`) + steady shots (`×30`) + perfect (`+500`). Stars 1–3 from per-mission `star2`/`star3` thresholds.
+
+**Score submission:** App posts `window.parent.postMessage({ type: 'GAME_COMPLETE', score }, '*')` on the campaign Results screen and at Endless game-over. Parent play page → `POST /api/scores`.
+
+**Persistence (localStorage):** `sniper-code:progress` (stars/best/unlocked/endlessHigh) + `sniper-code:settings` (sensitivity, smoothing, sound, scope darkness, left-handed, high-contrast, aim-assist, tutorialDone).
+
+**Deferred (not built in v1):** Time-Attack / Accuracy / Daily modes, power-ups (slow-mo, piercing, thermal scope, etc.), full 15-environment / full mission-type breadth, hostage-specific mission. The data/engine model leaves room to add these without restructuring.
+
+**Build verification:** the game's own `tsc -p tsconfig.app.json` + `vite build` are clean and copied via `node scripts/build-games.js the-sniper-code`. The repo-root `next build` is currently **pre-broken on unrelated embedded folders** under `src/app/(app)/games/games/*` (Tailwind v4 `gap-3` utility error + missing modules) — confirmed independent of this change (no `the-sniper-code`/`registry` references in the failure). Like all other gesture games, this game is a standalone static build and is not part of the Next build graph.
+
+**Files added:**
+- `games/the-sniper-code/` — full Vite project (`src/App.tsx`, `hooks/useMediaPipe.ts`, `utils/{constants,gestures,audio,storage}.ts`, `data/missions.ts`, `game/engine.ts`, `components/{GameScreen,menus}.tsx`, `main.tsx`, `index.css`)
+- `public/games/the-sniper-code/` — built dist (index.html + assets/)
+- `src/games/registry.ts` — added `the-sniper-code` entry
+- `supabase/seed_the_sniper_code.sql` — upsert-safe game row (Action, published, featured)
