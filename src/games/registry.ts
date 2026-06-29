@@ -92,6 +92,10 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'space-defender':         { folder: 'space-defender',         indexPath: '/games/space-defender/index.html' },
   'whack-a-mole-hand':      { folder: 'whack-a-mole-hand',      indexPath: '/games/whack-a-mole-hand/index.html' },
   'wizard-academy':         { folder: 'wizard-academy',         indexPath: '/games/wizard-academy/index.html' },
+  'tic-tac-toe':            { folder: 'tic-tac-toe',            indexPath: '/games/tic-tac-toe/index.html' },
+  'air-hockey':             { folder: 'air-hockey',             indexPath: '/games/air-hockey/index.html' },
+  'connect-4':              { folder: 'connect-4',              indexPath: '/games/connect-4/index.html' },
+  'gesture-word':           { folder: 'gesture-word',           indexPath: '/games/gesture-word/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
