@@ -122,6 +122,10 @@ function AppContent() {
 
     updateProgress(newProgress);
     setShowComplete({ score, stars });
+
+    try {
+      window.parent?.postMessage({ type: 'GAME_COMPLETE', score }, '*');
+    } catch { /* cross-origin */ }
   }, [currentLevel, progress, updateProgress]);
 
   const handleNextLevel = useCallback(() => {
