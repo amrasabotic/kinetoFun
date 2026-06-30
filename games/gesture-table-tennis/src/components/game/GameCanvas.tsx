@@ -7,6 +7,7 @@ import { renderFrame } from '../../renderer/renderer';
 import HUD from '../ui/HUD';
 import GameOver from '../ui/GameOver';
 import PauseMenu from '../ui/PauseMenu';
+import GestureCursor from '../ui/GestureCursor';
 
 interface Props {
   handRef: React.MutableRefObject<HandData>;
@@ -131,19 +132,25 @@ export default function GameCanvas({ handRef, canvasRef, mode, difficulty, arena
       {/* Pause menu */}
       <AnimatePresence>
         {paused && !gameOver && (
-          <PauseMenu onResume={handleResume} onMenu={onMenu} />
+          <>
+            <PauseMenu onResume={handleResume} onMenu={onMenu} />
+            <GestureCursor handRef={handRef} />
+          </>
         )}
       </AnimatePresence>
 
       {/* Game over */}
       <AnimatePresence>
         {gameOver && gs && (
-          <GameOver
-            gs={gs}
-            coins={gameOverCoins}
-            onPlayAgain={handlePlayAgain}
-            onMenu={onMenu}
-          />
+          <>
+            <GameOver
+              gs={gs}
+              coins={gameOverCoins}
+              onPlayAgain={handlePlayAgain}
+              onMenu={onMenu}
+            />
+            <GestureCursor handRef={handRef} />
+          </>
         )}
       </AnimatePresence>
     </div>

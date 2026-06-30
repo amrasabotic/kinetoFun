@@ -2,9 +2,9 @@ import { useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMediaPipe } from './gestures/useMediaPipe';
 import { useGameStore } from './stores/useGameStore';
+import GestureCursor from './components/ui/GestureCursor';
 import MainMenu from './components/ui/MainMenu';
 import GameModes from './components/ui/GameModes';
-import Calibration from './components/ui/Calibration';
 import GameCanvas from './components/game/GameCanvas';
 import Cosmetics from './components/ui/Cosmetics';
 import StatisticsScreen from './components/ui/Statistics';
@@ -64,6 +64,9 @@ export default function App() {
         />
       </div>
 
+      {/* Gesture cursor — shown on all screens, hidden during gameplay (hand silhouette on canvas handles that) */}
+      {!isPlaying && <GestureCursor handRef={handRef} />}
+
       {/* UI screens */}
       <AnimatePresence mode="wait">
         {screen === 'menu' && (
@@ -92,19 +95,8 @@ export default function App() {
               onSelectMode={store.setPendingMode}
               onSelectDifficulty={store.setPendingDifficulty}
               onSelectArena={store.setPendingArena}
-              onPlay={() => store.setScreen('calibration')}
+              onPlay={() => store.setScreen('playing')}
               onBack={() => store.setScreen('menu')}
-            />
-          </motion.div>
-        )}
-
-        {screen === 'calibration' && (
-          <motion.div key="calibration" className="absolute inset-0"
-            initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={T}>
-            <Calibration
-              handRef={handRef}
-              onComplete={() => store.setScreen('playing')}
-              onBack={() => store.setScreen('modeSelect')}
             />
           </motion.div>
         )}

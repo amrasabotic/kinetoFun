@@ -138,6 +138,9 @@ export class GameEngine {
     // Perfect hit flash
     gs.perfectHitFlash = Math.max(0, gs.perfectHitFlash - dt * 3);
 
+    // Always update player paddle so they can move during countdown/pointWon
+    this.updatePlayerPaddleFromHand(eff, hand);
+
     switch (gs.phase) {
       case 'countdown':   this.updateCountdown(eff); break;
       case 'serving':     this.updateServing(eff, hand); break;
@@ -231,15 +234,13 @@ export class GameEngine {
 
     b.vel = { x: offX, y: vy, z: Math.max(0.5, vz) };
     b.spin = { x: rand(-0.5, 0.5), y: 0, z: rand(-0.3, 0.3) };
+    b.lastHitBy = fromPlayer ? 'player' : 'ai';
   }
 
   // ── Rally ───────────────────────────────────────────────────────────────────
 
   private updateRally(dt: number, hand: HandData) {
     const gs = this.state;
-
-    // Update player paddle from hand
-    this.updatePlayerPaddleFromHand(dt, hand);
 
     // Update power shot
     this.updatePowerShot(dt, hand);
@@ -536,9 +537,15 @@ export class GameEngine {
     const angleFactor = Math.sin(p.angle) * 0.5;
     const paddleHitX = (b.pos.x - p.pos.x) / (p.width / 2); // -1 to 1
 
+    // Parabolic arc to land in opponent's half (same formula as launchBall)
+    const vy = speed * 0.8;
+    const targetY = rand(NET_Y + 0.2, TABLE_HALF_L - 0.1);
+    const tArc = Math.max(0.05, Math.abs(targetY - b.pos.y) / vy);
+    const vzArc = Math.max(1.0, (-GRAVITY * tArc * 0.5) - (b.pos.z / tArc));
+
     b.vel.x = paddleHitX * speed * 0.4 + p.vel.x * 0.6 + angleFactor * speed;
-    b.vel.y = speed * 0.8; // toward opponent
-    b.vel.z = Math.max(0.8, p.vel.z * 0.5 + 1.2); // upward to clear net
+    b.vel.y = vy;
+    b.vel.z = vzArc + Math.max(0, p.vel.z * 0.2);
 
     // Spin from wrist angle
     const spinMult = gs.stageMods.includes('moreSpin') ? 2.0 : 1.0;
@@ -616,9 +623,15 @@ export class GameEngine {
     const paddleHitX = (b.pos.x - ai.pos.x) / (ai.width / 2);
     const spinY = profile.spinFactor * (Math.random() * 2 - 1) * (gs.stageMods.includes('moreSpin') ? 2 : 1);
 
+    // Parabolic arc to land in player's half (same formula as launchBall)
+    const vy = speed * 0.8;
+    const targetY = rand(-(TABLE_HALF_L - 0.1), -(NET_Y + 0.2));
+    const tArc = Math.max(0.05, Math.abs(targetY - b.pos.y) / vy);
+    const vzArc = Math.max(0.8, (-GRAVITY * tArc * 0.5) - (b.pos.z / tArc));
+
     b.vel.x = paddleHitX * speed * 0.35 + (Math.random() - 0.5) * 0.8;
-    b.vel.y = -speed * 0.8; // toward player
-    b.vel.z = Math.max(0.6, 1.0 + Math.random() * 0.5);
+    b.vel.y = -vy;
+    b.vel.z = vzArc;
     b.spin.x = spinY;
     b.spin.z = (Math.random() - 0.5) * profile.spinFactor;
 
@@ -640,8 +653,8 @@ export class GameEngine {
     const ai = gs.aiPaddle;
     const profile = this.aiProfile;
 
-    if (!b.isActive || b.vel.y >= 0) {
-      // Ball moving away — return to center or defensive position
+    if (!b.isActive || b.vel.y <= 0) {
+      // Ball moving away (toward player) — return to ready position
       ai.vel.x = (0 - ai.pos.x) * 3;
       ai.vel.z = (PLAYER_PADDLE_Z - ai.pos.z) * 3;
       ai.pos.x = lerp(ai.pos.x, 0, dt * 2.5);

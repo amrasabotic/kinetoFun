@@ -291,56 +291,97 @@ function drawPaddle(
   const skin = PADDLE_SKINS.find(s => s.id === skinId) ?? PADDLE_SKINS[0];
   const sc = sp.scale;
 
-  const PW = PADDLE_W * 100 * sc;
-  const PH = PADDLE_H * 100 * sc;
+  const bladeR = 28 * sc;       // circular rubber face radius (2× larger for visibility)
+  const handleW = 14 * sc;      // handle width at blade base
+  const handleWBot = 9 * sc;    // handle width at bottom (tapered)
+  const handleLen = 46 * sc;    // handle length
 
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(sp.x, sp.y);
-  ctx.rotate(angle * 0.6); // visual tilt
+  ctx.rotate(angle * 0.6);
 
-  // Shadow
+  // Drop shadow (blade + handle combined)
+  ctx.save();
   ctx.globalAlpha = alpha * 0.3;
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(2 * sc, 3 * sc, PW * 0.55, PH * 0.25, 0, 0, Math.PI * 2);
+  ctx.arc(3 * sc, 4 * sc, bladeR * 0.9, 0, Math.PI * 2);
   ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-handleW / 2 + 3 * sc, bladeR - 2 * sc + 4 * sc);
+  ctx.lineTo(-handleWBot / 2 + 3 * sc, bladeR + handleLen + 4 * sc);
+  ctx.lineTo(handleWBot / 2 + 3 * sc, bladeR + handleLen + 4 * sc);
+  ctx.lineTo(handleW / 2 + 3 * sc, bladeR - 2 * sc + 4 * sc);
+  ctx.fill();
+  ctx.restore();
 
   ctx.globalAlpha = alpha;
 
-  // Paddle body gradient
-  const grad = ctx.createLinearGradient(-PW/2, -PH/2, PW/2, PH/2);
-  grad.addColorStop(0, skin.colors[0]);
-  grad.addColorStop(1, skin.colors[1]);
-  ctx.fillStyle = grad;
+  // ── Wooden handle ───────────────────────────────────────────────────────────
   ctx.beginPath();
-  ctx.ellipse(0, 0, PW / 2, PH / 2, 0, 0, Math.PI * 2);
+  ctx.moveTo(-handleW / 2, bladeR - 3 * sc);
+  ctx.lineTo(-handleWBot / 2, bladeR + handleLen);
+  ctx.lineTo(handleWBot / 2, bladeR + handleLen);
+  ctx.lineTo(handleW / 2, bladeR - 3 * sc);
+  ctx.closePath();
+  const handleGrad = ctx.createLinearGradient(-handleW / 2, 0, handleW / 2, 0);
+  handleGrad.addColorStop(0,    '#3a1a05');
+  handleGrad.addColorStop(0.25, '#7a3a10');
+  handleGrad.addColorStop(0.55, '#b86a22');
+  handleGrad.addColorStop(0.75, '#8B4513');
+  handleGrad.addColorStop(1,    '#4a2008');
+  ctx.fillStyle = handleGrad;
   ctx.fill();
 
-  // Rubber surface texture
-  const rubberGrad = ctx.createRadialGradient(0, -PH * 0.15, 0, 0, 0, PW * 0.55);
-  rubberGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
-  rubberGrad.addColorStop(0.7, 'rgba(255,255,255,0.04)');
-  rubberGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+  // Grip texture lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  ctx.lineWidth = 0.9 * sc;
+  for (let i = 0; i < 5; i++) {
+    const gy = bladeR + 4 * sc + i * (handleLen - 6 * sc) / 4;
+    const gw = lerp(handleW / 2 - 1, handleWBot / 2 + 0.5, i / 4);
+    ctx.beginPath();
+    ctx.moveTo(-gw, gy);
+    ctx.lineTo(gw, gy);
+    ctx.stroke();
+  }
+
+  // ── Blade wood edge ─────────────────────────────────────────────────────────
+  ctx.beginPath();
+  ctx.arc(0, 0, bladeR, 0, Math.PI * 2);
+  const woodGrad = ctx.createLinearGradient(-bladeR, -bladeR, bladeR, bladeR);
+  woodGrad.addColorStop(0, '#d49040');
+  woodGrad.addColorStop(1, '#7a3e10');
+  ctx.fillStyle = woodGrad;
+  ctx.fill();
+
+  // ── Rubber face ─────────────────────────────────────────────────────────────
+  const rubberR = bladeR - 2.5 * sc;
+  ctx.beginPath();
+  ctx.arc(0, 0, rubberR, 0, Math.PI * 2);
+  const rubberGrad = ctx.createRadialGradient(
+    -rubberR * 0.2, -rubberR * 0.25, 0,
+    0, 0, rubberR
+  );
+  rubberGrad.addColorStop(0, blendColor(skin.colors[0], '#ffffff', 0.3));
+  rubberGrad.addColorStop(0.55, skin.colors[0]);
+  rubberGrad.addColorStop(1,  blendColor(skin.colors[0], skin.colors[1], 0.65));
   ctx.fillStyle = rubberGrad;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, PW / 2, PH / 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Handle
-  ctx.strokeStyle = '#6b4226';
-  ctx.lineWidth = 8 * sc;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(0, PH * 0.5);
-  ctx.lineTo(0, PH * 0.5 + 30 * sc);
-  ctx.stroke();
+  // Rubber sheen
+  const sheenGrad = ctx.createRadialGradient(-rubberR * 0.3, -rubberR * 0.35, 0, 0, 0, rubberR);
+  sheenGrad.addColorStop(0, 'rgba(255,255,255,0.22)');
+  sheenGrad.addColorStop(0.5, 'rgba(255,255,255,0.04)');
+  sheenGrad.addColorStop(1, 'rgba(0,0,0,0.12)');
+  ctx.fillStyle = sheenGrad;
+  ctx.fill();
 
-  // Rim highlight
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-  ctx.lineWidth = 2 * sc;
+  // Blade rim
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+  ctx.lineWidth = 1.2 * sc;
   ctx.beginPath();
-  ctx.ellipse(0, 0, PW / 2, PH / 2, 0, 0, Math.PI * 2);
+  ctx.arc(0, 0, bladeR, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.restore();
