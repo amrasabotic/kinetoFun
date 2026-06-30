@@ -623,6 +623,11 @@ export function useGameEngine(
       triggerCrash(gs, 'flip');
     }
 
+    // Fell off a cliff — chassis more than 500 px below the terrain at its X
+    if (!gs.crashed && gs.vehicle.chassis.position.y > terrainYUnder + 500) {
+      triggerCrash(gs, 'pit');
+    }
+
     // ── 8. Collectibles ────────────────────────────────────────────────────
     const coll = checkCollections(gs.coins, gs.fuelCans, gs.vehicle, gs.gameTime);
     if (coll.coinsCollected > 0) {
