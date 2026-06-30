@@ -593,3 +593,49 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/spear-stickman/` — built dist (index.html + assets/)
 - `src/games/registry.ts` — added `spear-stickman` entry
 - `supabase/seed_spear_stickman.sql` — upsert-safe game row (Action, published, featured)
+
+---
+
+## ADR-032 — Gesture Snake Arena game
+**Date:** 2026-06-30
+**Status:** Accepted
+
+**Summary:** Original gesture-controlled snake arena game built for KinetoFun. The player steers a growing snake using MediaPipe hand tracking — no keyboard or mouse required.
+
+**Game name:** Gesture Snake Arena
+**Game slug:** `gesture-snake-arena`
+
+**Controls:**
+- **Hand position** relative to frame center → snake heading (analog direction)
+- **Hand distance** from center → speed (near=slow, far=fast, fully analog)
+- **Closed fist** → temporary speed boost (leaves glowing trail, drains length, 2s cooldown)
+
+**Architecture:**
+- Vite + React 18 + TypeScript + TailwindCSS + Framer Motion + Zustand
+- Pure HTML5 Canvas 2D — no game engine, no physics library
+- MediaPipe Tasks Vision `HandLandmarker` (single hand, GPU delegate)
+- Modular `src/` layout: `game/{arena,camera,snake,ai,collectibles,collisions,particles,renderer,audio}`, `gestures/`, `hooks/`, `stores/`, `components/{game,ui}`, `utils/`, `types/`, `constants/`
+
+**Key systems:**
+- **Camera:** `game/camera/Camera.ts` — smooth lerp follow with look-ahead, adaptive zoom (small snake→zoom in, large snake→zoom out), world↔screen projection
+- **Player snake:** `game/snake/Snake.ts` — smooth curved body (segment chain), cartoon head with blink + mouth animation, wave animation, boost with length drain, combo timer, power-up state
+- **AI snakes (20):** `game/ai/AISnake.ts` — 5 behaviors (collector, hunter, defender, opportunist, wanderer); boundary avoidance, boost logic, behavior timer cycling
+- **Collision:** `game/collisions/CollisionSystem.ts` — `SpatialGrid` (uniform grid, cell ≈ 6×SNAKE_RADIUS) for AI-body vs player, player-body vs AI-head, head-vs-head; orb+powerup pickup radius; ghost/shield bypass
+- **Particles:** `game/particles/ParticleSystem.ts` — object pool (3000 slots); emitters: explosion, pickup, boost, combo, powerup, ambient, firefly
+- **Renderer:** `game/renderer/Renderer.ts` — layered: background, floor grid, decorations, border, orb glows, orbs, power-ups, AI bodies, player body+head, particles, floating text; minimap in `renderMinimap`
+- **Arena:** 6000×6000 world, 400 procedural decorations, randomly rotated themed environments (8 themes); soft border repulsion + danger zone visualization
+- **Collectibles:** 300 energy orbs (5 tiers: blue/green/purple/gold/rainbow), 8 power-ups (shield/magnet/double_score/ghost/freeze/giant_energy), animated glow + bob
+- **Scoring:** Survival seconds + orb value × combo × scoreMultiplier; kill bonus; combo ramp (up to ×10); floating score texts
+- **Quest system:** 3 random quests per game (6 quest types), coin rewards on completion
+- **Cosmetics:** 11 skins, 7 head accessories, 7 trails — coin-gated unlocks; selected skin colors passed to renderer
+- **Audio:** Web Audio API, generative ambient music (scale-based random notes); SFX: pickup, boost, death, kill, powerup, combo
+
+**State pattern:** `useGameEngine` hook holds all mutable game state in a `useRef<GameState>` to avoid React re-renders from physics; React state is updated every ~100ms for HUD. `loopRef.current = gameLoop` pattern prevents circular `useCallback` reference (same pattern as ADR-031).
+
+**Performance targets:** 60 FPS with 20 AI snakes, 300+ orbs, 3000-particle pool. AI body collision uses spatial grid (insert every 3rd segment). AI snakes skip freeze updates when freeze power-up active. Offscreen particles auto-expire.
+
+**Files added:**
+- `games/gesture-snake-arena/` — full Vite project
+- `public/games/gesture-snake-arena/` — built dist
+- `src/games/registry.ts` — added `gesture-snake-arena` entry
+- `supabase/seed_gesture_snake_arena.sql` — upsert-safe game row (Action, published, featured)
