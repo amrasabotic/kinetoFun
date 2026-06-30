@@ -1,9 +1,12 @@
+import DwellButton from "@/components/DwellButton";
+
 interface Props {
+  cursor: { x: number; y: number } | null;
   onPlay: () => void;
   onHowToPlay: () => void;
 }
 
-export default function MainMenu({ onPlay, onHowToPlay }: Props) {
+export default function MainMenu({ cursor, onPlay, onHowToPlay }: Props) {
   return (
     <div
       className="relative flex flex-col items-center justify-center min-h-screen overflow-hidden"
@@ -58,8 +61,8 @@ export default function MainMenu({ onPlay, onHowToPlay }: Props) {
           {[
             { label: "Knight", color: "#5b8dd9" },
             { label: "Archer", color: "#6dbf6d" },
-            { label: "Mage", color: "#b87fd9" },
-            { label: "Giant", color: "#d97a3a" },
+            { label: "Mage",   color: "#b87fd9" },
+            { label: "Giant",  color: "#d97a3a" },
           ].map(({ label, color }) => (
             <div
               key={label}
@@ -77,47 +80,37 @@ export default function MainMenu({ onPlay, onHowToPlay }: Props) {
         </p>
 
         <div className="flex flex-col gap-3 w-full max-w-xs">
-          <button
-            onClick={onPlay}
-            className="w-full px-8 py-4 text-xl font-black tracking-widest rounded-lg transition-all duration-200 uppercase"
+          <DwellButton
+            cursor={cursor}
+            onActivate={onPlay}
+            className="w-full px-8 py-4 text-xl font-black tracking-widest rounded-lg uppercase overflow-hidden"
             style={{
               background: "linear-gradient(135deg, #c0a855, #8a7030)",
               color: "#0d1a0d",
               boxShadow: "0 0 30px rgba(192,168,85,0.4)",
               fontFamily: "monospace",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.04)";
-              e.currentTarget.style.boxShadow = "0 0 50px rgba(192,168,85,0.7)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "0 0 30px rgba(192,168,85,0.4)";
-            }}
           >
             PLAY
-          </button>
+          </DwellButton>
 
-          <button
-            onClick={onHowToPlay}
-            className="w-full px-8 py-3 text-sm font-bold tracking-widest rounded-lg transition-all duration-200 uppercase border"
+          <DwellButton
+            cursor={cursor}
+            onActivate={onHowToPlay}
+            className="w-full px-8 py-3 text-sm font-bold tracking-widest rounded-lg uppercase border overflow-hidden"
             style={{
               background: "rgba(0,0,0,0.4)",
               color: "#aaa",
               borderColor: "#444",
               fontFamily: "monospace",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#888";
-              e.currentTarget.style.color = "#fff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#444";
-              e.currentTarget.style.color = "#aaa";
-            }}
           >
             HOW TO PLAY
-          </button>
+          </DwellButton>
+        </div>
+
+        <div className="text-xs text-gray-600 mt-2">
+          Point finger at a button · Hold still to select
         </div>
       </div>
     </div>

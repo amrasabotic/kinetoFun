@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
+import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 export type GestureEvent =
   | 'cursorMove'
@@ -37,6 +38,7 @@ interface GestureManagerState {
   isOpenPalm: boolean;
   pinchStartTime: number | null;
   currentGesture: GestureEvent | 'idle';
+  cameraReady: boolean;
 }
 
 interface GestureContextValue {
@@ -104,6 +106,7 @@ export function GestureProvider({ children, settings: settingsOverride }: Gestur
     isOpenPalm: false,
     pinchStartTime: null,
     currentGesture: 'idle',
+    cameraReady: false,
   });
 
   const listenersRef = useRef<Map<GestureEvent | '_all', Set<GestureListener>>>(new Map());
@@ -113,12 +116,15 @@ export function GestureProvider({ children, settings: settingsOverride }: Gestur
   const prevPinchRef = useRef(false);
   const prevFistRef = useRef(false);
   const prevHandDetectedRef = useRef(false);
+  const handLostFramesRef = useRef(0);
+  const HAND_LOST_GRACE = 18; // frames of silence before declaring hand lost (~600ms at 30fps)
   const openPalmStartRef = useRef<number | null>(null);
   const fistStartRef = useRef<number | null>(null);
   const prevNormPosRef = useRef<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const handsRef = useRef<any>(null);
   const animFrameRef = useRef<number>(0);
+  const processResultsRef = useRef<(results: any) => void>(() => {});
 
   const emit = useCallback((event: GestureEvent, cursor: CursorPosition) => {
     const data: GestureEventData = { type: event, cursor, timestamp: Date.now() };
@@ -211,12 +217,14 @@ export function GestureProvider({ children, settings: settingsOverride }: Gestur
     }
   }, [emit]);
 
-  // Process MediaPipe results
+  // Process MediaPipe results (Tasks Vision format: results.landmarks[])
+  // Stored in a ref so the camera useEffect never needs to re-run when this updates.
   const processResults = useCallback((results: any) => {
-    const hasHand = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
+    const hasHand = results.landmarks && results.landmarks.length > 0;
 
     if (!hasHand) {
-      if (prevHandDetectedRef.current) {
+      handLostFramesRef.current += 1;
+      if (handLostFramesRef.current >= HAND_LOST_GRACE && prevHandDetectedRef.current) {
         prevHandDetectedRef.current = false;
         const cursor = smoothedCursor.current;
         emit('handLost', cursor);
@@ -225,13 +233,14 @@ export function GestureProvider({ children, settings: settingsOverride }: Gestur
       return;
     }
 
+    handLostFramesRef.current = 0;
     if (!prevHandDetectedRef.current) {
       prevHandDetectedRef.current = true;
       emit('handDetected', smoothedCursor.current);
       setState((prev) => ({ ...prev, isHandDetected: true }));
     }
 
-    const hand = results.multiHandLandmarks[0];
+    const hand = results.landmarks[0];
     const indexTip = hand[8];
     const thumbTip = hand[4];
 
@@ -326,51 +335,59 @@ export function GestureProvider({ children, settings: settingsOverride }: Gestur
     });
   }, [mergedSettings, emit, updateHover, applyMagnetism]);
 
-  // Initialize MediaPipe
+  // Keep ref in sync so the camera loop always calls the latest version
+  processResultsRef.current = processResults;
+
+  // Initialize MediaPipe Tasks Vision
   useEffect(() => {
     let cancelled = false;
+    let stream: MediaStream | null = null;
+    let lastTs = 0;
 
     async function init() {
       try {
-        const { Hands } = await import('@mediapipe/hands');
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+        );
+        const landmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          numHands: 1,
+        });
+        if (cancelled) { landmarker.close(); return; }
+        handsRef.current = landmarker;
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: 'user' },
+        });
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
 
         const video = document.createElement('video');
         video.setAttribute('playsinline', '');
         video.style.display = 'none';
+        video.srcObject = stream;
         document.body.appendChild(video);
         videoRef.current = video;
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: 'user' },
-        });
-        video.srcObject = stream;
         await video.play();
+        if (!cancelled) setState(prev => ({ ...prev, cameraReady: true }));
 
-        const hands = new Hands({
-          locateFile: (file: string) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-
-        hands.setOptions({
-          maxNumHands: 1,
-          modelComplexity: 0,
-          minDetectionConfidence: 0.6,
-          minTrackingConfidence: 0.5,
-        });
-
-        hands.onResults(processResults);
-        handsRef.current = hands;
-
-        if (!cancelled) {
-          const detect = async () => {
-            if (cancelled || !videoRef.current) return;
-            try {
-              await hands.send({ image: video });
-            } catch { /* frame skip */ }
-            animFrameRef.current = requestAnimationFrame(detect);
-          };
-          detect();
-        }
+        const detect = (ts: number) => {
+          if (cancelled || !videoRef.current) return;
+          animFrameRef.current = requestAnimationFrame(detect);
+          if (ts - lastTs < 33) return; // ~30 fps
+          lastTs = ts;
+          const vid = videoRef.current;
+          if (vid.readyState < 2 || vid.paused) return;
+          try {
+            const results = landmarker.detectForVideo(vid, ts);
+            processResultsRef.current(results);
+          } catch { /* frame skip */ }
+        };
+        animFrameRef.current = requestAnimationFrame(detect);
       } catch (err: any) {
         console.error('Hand tracking init failed:', err.message);
       }
@@ -381,15 +398,15 @@ export function GestureProvider({ children, settings: settingsOverride }: Gestur
     return () => {
       cancelled = true;
       cancelAnimationFrame(animFrameRef.current);
+      stream?.getTracks().forEach(t => t.stop());
       if (videoRef.current) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream?.getTracks().forEach((t) => t.stop());
         videoRef.current.remove();
         videoRef.current = null;
       }
+      (handsRef.current as HandLandmarker | null)?.close();
       handsRef.current = null;
     };
-  }, [processResults]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const contextValue: GestureContextValue = {
     state,

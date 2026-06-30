@@ -4,6 +4,8 @@ import { Hand } from 'lucide-react';
 export default function HandLostOverlay() {
   const { state } = useGesture();
 
+  // Don't show until the camera has actually started — avoids a false flash on load
+  if (!state.cameraReady) return null;
   if (state.isHandDetected) return null;
 
   return (

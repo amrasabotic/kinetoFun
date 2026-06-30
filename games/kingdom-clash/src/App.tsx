@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { HandProvider, useHand } from "@/contexts/HandContext";
+import GestureCursor from "@/components/GestureCursor";
 import MainMenu from "@/pages/MainMenu";
 import LevelSelect from "@/pages/LevelSelect";
 import HowToPlay from "@/pages/HowToPlay";
@@ -6,16 +8,17 @@ import Game from "@/pages/Game";
 
 type Screen = "menu" | "levelSelect" | "howToPlay" | "game";
 
-export default function App() {
-  const [screen, setScreen] = useState<Screen>("menu");
+function AppContent() {
+  const [screen, setScreen]             = useState<Screen>("menu");
   const [currentLevel, setCurrentLevel] = useState(1);
+  const { cursor, isPinching }          = useHand();
 
   function startLevel(level: number) {
     setCurrentLevel(level);
     setScreen("game");
   }
 
-  function handleNextLevel(stars: number) {
+  function handleNextLevel() {
     if (currentLevel < 10) {
       setCurrentLevel((l) => l + 1);
       setScreen("game");
@@ -24,26 +27,24 @@ export default function App() {
     }
   }
 
-  function handleRetry() {
-    setScreen("game");
-  }
-
   return (
-    <div className="w-full h-screen overflow-hidden bg-black">
+    <div className="w-full h-screen overflow-hidden bg-black cursor-none">
       {screen === "menu" && (
         <MainMenu
+          cursor={cursor}
           onPlay={() => setScreen("levelSelect")}
           onHowToPlay={() => setScreen("howToPlay")}
         />
       )}
       {screen === "levelSelect" && (
         <LevelSelect
+          cursor={cursor}
           onSelectLevel={startLevel}
           onBack={() => setScreen("menu")}
         />
       )}
       {screen === "howToPlay" && (
-        <HowToPlay onBack={() => setScreen("menu")} />
+        <HowToPlay cursor={cursor} onBack={() => setScreen("menu")} />
       )}
       {screen === "game" && (
         <Game
@@ -51,9 +52,18 @@ export default function App() {
           level={currentLevel}
           onMenu={() => setScreen("menu")}
           onNextLevel={handleNextLevel}
-          onRetry={handleRetry}
+          onRetry={() => setScreen("game")}
         />
       )}
+      <GestureCursor cursor={cursor} isPinching={isPinching} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <HandProvider>
+      <AppContent />
+    </HandProvider>
   );
 }

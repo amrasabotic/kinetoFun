@@ -13,6 +13,9 @@ INSERT INTO public.games (
   accent,
   difficulty,
   age_group,
+  players,
+  min_players,
+  max_players,
   play_count
 )
 SELECT
@@ -27,6 +30,9 @@ SELECT
   '#c0a855',
   'normal',
   '8+',
+  'single',
+  1,
+  1,
   0
 FROM public.categories c
 WHERE c.name = 'Strategy'
