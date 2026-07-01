@@ -376,3 +376,165 @@ To address all issues (including breaking changes), run:
 
 Run `npm audit` for details.
   $ npm run build
+
+> vite-starter@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 6 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m 9.08 kB[22m[1m[22m[2m │ gzip: 2.11 kB[22m
+[2mdist/[22m[35massets/index-BTkJB95T.css  [39m[1m[2m16.60 kB[22m[1m[22m[2m │ gzip: 3.93 kB[22m
+[2mdist/[22m[36massets/index-DVxmvoZ7.js   [39m[1m[2m25.93 kB[22m[1m[22m[2m │ gzip: 8.02 kB[22m
+[32m✓ built in 763ms[39m
+  ✓ Built → public/games/flags-game/
+
+▶ funny-face-contest [PLAIN_HTML]
+  ✓ Copied to public/games/funny-face-contest/
+
+▶ gesture-air-hockey [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 463 packages in 3s
+
+99 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+  $ npm run build
+
+> build
+> vite build
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 16 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:  0.28 kB
+dist/assets/index-C-N_ck4u.css   95.84 kB │ gzip: 15.31 kB
+dist/assets/index-CTfNjfoc.js   208.41 kB │ gzip: 65.62 kB
+
+[32m✓ built in 1.31s[39m
+  ✓ Built → public/games/gesture-air-hockey/
+
+▶ gesture-basketball [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 238 packages in 2s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-basketball@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 37 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
+[2mdist/[22m[35massets/index-CjFtlEBS.css  [39m[1m[2m  7.29 kB[22m[1m[22m[2m │ gzip:  1.80 kB[22m
+[2mdist/[22m[36massets/index-4fNFleyy.js   [39m[1m[2m304.28 kB[22m[1m[22m[2m │ gzip: 94.90 kB[22m
+[32m✓ built in 3.98s[39m
+  ✓ Built → public/games/gesture-basketball/
+
+▶ gesture-brickbreaker [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-brickbreaker/
+
+▶ gesture-chef [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 69 packages in 2s
+
+7 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-chef@1.0.0 build
+> tsc && vite build
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 55 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  1.41 kB[22m[1m[22m[2m │ gzip:  0.71 kB[22m
+[2mdist/[22m[35massets/index-CMSCgTEM.css  [39m[1m[2m  2.47 kB[22m[1m[22m[2m │ gzip:  0.87 kB[22m
+[2mdist/[22m[36massets/index-C8c--WND.js   [39m[1m[2m218.64 kB[22m[1m[22m[2m │ gzip: 68.48 kB[22m
+[32m✓ built in 2.56s[39m
+  ✓ Built → public/games/gesture-chef/
+
+▶ gesture-dash-v2 [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-dash-v2/
+
+▶ gesture-drums [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 239 packages in 2s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-drums@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 37 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[35massets/index-CpuudgvE.css  [39m[1m[2m 13.48 kB[22m[1m[22m[2m │ gzip:  3.33 kB[22m
+[2mdist/[22m[36massets/index-CZLfgHcD.js   [39m[1m[2m299.89 kB[22m[1m[22m[2m │ gzip: 93.73 kB[22m
+[32m✓ built in 6.29s[39m
+  ✓ Built → public/games/gesture-drums/
+
+▶ gesture-hill-adventure [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 145 packages in 2s
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-hill-adventure@1.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
