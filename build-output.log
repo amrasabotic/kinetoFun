@@ -538,3 +538,968 @@ Run `npm audit` for details.
 
 [36mvite v5.4.21 [32mbuilding for production...[36m[39m
 transforming...
+[32m✓[39m 426 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.75 kB[22m[1m[22m[2m │ gzip:   0.46 kB[22m
+[2mdist/[22m[35massets/index-bLHKtTzr.css  [39m[1m[2m 14.01 kB[22m[1m[22m[2m │ gzip:   3.66 kB[22m
+[2mdist/[22m[36massets/index-CGZVn5AB.js   [39m[1m[33m531.45 kB[39m[22m[2m │ gzip: 169.85 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 19.60s[39m
+  ✓ Built → public/games/gesture-hill-adventure/
+
+▶ gesture-love-balls [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 240 packages in 3s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-love-balls@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 39 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2mdist/[22m[35massets/index-CpEJXdQ0.css  [39m[1m[2m 12.69 kB[22m[1m[22m[2m │ gzip:   3.34 kB[22m
+[2mdist/[22m[36massets/index-CS_FOKbf.js   [39m[1m[2m396.76 kB[22m[1m[22m[2m │ gzip: 124.31 kB[22m
+[32m✓ built in 10.84s[39m
+  ✓ Built → public/games/gesture-love-balls/
+
+▶ gesture-ludo-king [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-ludo-king/
+
+▶ gesture-mario [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-mario/
+
+▶ gesture-math-adventure [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-math-adventure/
+
+▶ gesture-piano [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 239 packages in 4s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-piano@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 37 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[35massets/index-Da2edcIl.css  [39m[1m[2m 12.69 kB[22m[1m[22m[2m │ gzip:  3.26 kB[22m
+[2mdist/[22m[36massets/index-rtD3IxfT.js   [39m[1m[2m294.70 kB[22m[1m[22m[2m │ gzip: 92.08 kB[22m
+[32m✓ built in 10.18s[39m
+  ✓ Built → public/games/gesture-piano/
+
+▶ gesture-pong [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 290 packages in 6s
+
+65 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (2 low, 8 moderate, 8 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+  $ npm run build
+
+> vite-react-typescript-starter@0.0.0 build
+> vite build
+
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 35 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.71 kB[22m[1m[22m[2m │ gzip:  0.38 kB[22m
+[2mdist/[22m[35massets/index-CjJbHKL2.css  [39m[1m[2m 15.51 kB[22m[1m[22m[2m │ gzip:  3.66 kB[22m
+[2mdist/[22m[36massets/index-DSMMejlQ.js   [39m[1m[2m293.13 kB[22m[1m[22m[2m │ gzip: 91.10 kB[22m
+[32m✓ built in 5.46s[39m
+  ✓ Built → public/games/gesture-pong/
+
+▶ gesture-pop [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-pop/
+
+▶ gesture-racer-v4 [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-racer-v4/
+
+▶ gesture-road-builder [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-road-builder/
+
+▶ gesture-runner [NEXT]
+  $ npm install --prefer-offline
+npm WARN deprecated next@14.2.5: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
+
+changed 23 packages, and audited 111 packages in 1m
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 critical)
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-runner@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\typescript\lib\typescript.js', but to 'c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack-config.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\handle-externals.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\handle-externals.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\typescript\lib\typescript.js', but to 'c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack-config.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs c:\Users\hp\OneDrive\Desktop\kinetoFun\games\gesture-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/11) ...
+   Generating static pages (2/11) 
+   Generating static pages (5/11) 
+   Generating static pages (8/11) 
+ ✓ Generating static pages (11/11)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    267 B          87.5 kB
+├ ○ /_not-found                          871 B          88.1 kB
+├ ○ /calibration                         2.31 kB        93.6 kB
+├ ○ /challenges                          3.53 kB        94.8 kB
+├ ○ /characters                          3.99 kB        95.3 kB
+├ ○ /game                                11.5 kB         103 kB
+├ ○ /game-over                           2.77 kB          94 kB
+├ ○ /home                                2.58 kB        93.8 kB
+└ ○ /settings                            4.65 kB        95.9 kB
++ First Load JS shared by all            87.3 kB
+  ├ chunks/23-8369c6427dc5fad9.js        31.7 kB
+  ├ chunks/fd9d1056-23bdddb1df3a91c8.js  53.6 kB
+  └ other shared chunks (total)          1.91 kB
+
+
+○  (Static)  prerendered as static content
+
+  ✓ Built → public/games/gesture-runner/out/
+
+▶ gesture-snake-arena [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 143 packages in 4s
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-snake-arena@1.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 427 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.73 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mdist/[22m[35massets/index-ByQcaz-U.css  [39m[1m[2m 15.21 kB[22m[1m[22m[2m │ gzip:   3.78 kB[22m
+[2mdist/[22m[36massets/index-BiuPES_O.js   [39m[1m[2m456.05 kB[22m[1m[22m[2m │ gzip: 144.54 kB[22m
+[32m✓ built in 10.40s[39m
+  ✓ Built → public/games/gesture-snake-arena/
+
+▶ gesture-space-shooter [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-space-shooter/
+
+▶ gesture-table-tennis [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 143 packages in 3s
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-table-tennis@1.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 420 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2mdist/[22m[35massets/index-D42xrS2l.css  [39m[1m[2m 16.94 kB[22m[1m[22m[2m │ gzip:   4.07 kB[22m
+[2mdist/[22m[36massets/index-BMrWlKh9.js   [39m[1m[2m472.49 kB[22m[1m[22m[2m │ gzip: 148.06 kB[22m
+[32m✓ built in 13.06s[39m
+  ✓ Built → public/games/gesture-table-tennis/
+
+▶ gesture-tetris [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 239 packages in 8s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-tetris@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 38 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[35massets/index-CYxaksk0.css  [39m[1m[2m 12.69 kB[22m[1m[22m[2m │ gzip:  3.29 kB[22m
+[2mdist/[22m[36massets/index-DQvt7SG7.js   [39m[1m[2m295.75 kB[22m[1m[22m[2m │ gzip: 92.74 kB[22m
+[32m✓ built in 7.46s[39m
+  ✓ Built → public/games/gesture-tetris/
+
+▶ gesture-volleyball [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 238 packages in 4s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> gesture-volleyball@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 38 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
+[2mdist/[22m[35massets/index-CGYFscu6.css  [39m[1m[2m  6.31 kB[22m[1m[22m[2m │ gzip:  1.69 kB[22m
+[2mdist/[22m[36massets/index-Ccdx9dKU.js   [39m[1m[2m297.75 kB[22m[1m[22m[2m │ gzip: 93.15 kB[22m
+[32m✓ built in 7.56s[39m
+  ✓ Built → public/games/gesture-volleyball/
+
+▶ gesture-word [PLAIN_HTML]
+  ✓ Copied to public/games/gesture-word/
+
+▶ goalkeeper-hero [PLAIN_HTML]
+  ✓ Copied to public/games/goalkeeper-hero/
+
+▶ green-red-light [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 289 packages in 7s
+
+65 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (2 low, 8 moderate, 8 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+  $ npm run build
+
+> vite-react-typescript-starter@0.0.0 build
+> vite build
+
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 32 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.73 kB[22m[1m[22m[2m │ gzip:  0.39 kB[22m
+[2mdist/[22m[35massets/index-DOG6l1xA.css  [39m[1m[2m 18.34 kB[22m[1m[22m[2m │ gzip:  4.14 kB[22m
+[2mdist/[22m[36massets/index-FtoLzAzr.js   [39m[1m[2m171.59 kB[22m[1m[22m[2m │ gzip: 53.49 kB[22m
+[32m✓ built in 20.98s[39m
+  ✓ Built → public/games/green-red-light/
+
+▶ hand-snake-pro [PLAIN_HTML]
+  ✓ Copied to public/games/hand-snake-pro/
+
+▶ handcell-game [PLAIN_HTML]
+  ✓ Copied to public/games/handcell-game/
+
+▶ happy-glass [NEXT]
+  $ npm install --prefer-offline
+npm WARN deprecated next@14.2.5: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
+
+changed 22 packages, and audited 104 packages in 58s
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 critical)
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> happy-glass@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/4) ...
+   Generating static pages (1/4) 
+   Generating static pages (2/4) 
+   Generating static pages (3/4) 
+ ✓ Generating static pages (4/4)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    8.95 kB        96.3 kB
+└ ○ /_not-found                          871 B          88.2 kB
++ First Load JS shared by all            87.4 kB
+  ├ chunks/23-3c06baa2ed20389c.js        31.7 kB
+  ├ chunks/fd9d1056-23bdddb1df3a91c8.js  53.6 kB
+  └ other shared chunks (total)          2.02 kB
+
+
+○  (Static)  prerendered as static content
+
+  ✓ Built → public/games/happy-glass/out/
+
+▶ kingdom-clash [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 139 packages in 4s
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> kingdom-clash@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 43 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.45 kB[22m[1m[22m[2m │ gzip:  0.29 kB[22m
+[2mdist/[22m[35massets/index-BozJ6j5n.css  [39m[1m[2m 11.16 kB[22m[1m[22m[2m │ gzip:  3.11 kB[22m
+[2mdist/[22m[36massets/index-CJhdhhG_.js   [39m[1m[2m303.17 kB[22m[1m[22m[2m │ gzip: 95.22 kB[22m
+[32m✓ built in 6.20s[39m
+  ✓ Built → public/games/kingdom-clash/
+
+▶ knife-hit-gesture [PLAIN_HTML]
+  ✓ Copied to public/games/knife-hit-gesture/
+
+▶ language-adventure [PLAIN_HTML]
+  ✓ Copied to public/games/language-adventure/
+
+▶ magic-cleaning [PLAIN_HTML]
+  ✓ Copied to public/games/magic-cleaning/
+
+▶ mirror-me [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 12 packages in 2s
+
+3 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> mirror-me@1.0.0 build
+> vite build
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 14 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m 1.53 kB[22m[1m[22m[2m │ gzip:  0.71 kB[22m
+[2mdist/[22m[35massets/index-DpJ3pLon.css  [39m[1m[2m 1.75 kB[22m[1m[22m[2m │ gzip:  0.79 kB[22m
+[2mdist/[22m[36massets/index-BjpHnybf.js   [39m[1m[2m31.76 kB[22m[1m[22m[2m │ gzip: 10.10 kB[22m
+[32m✓ built in 1.68s[39m
+  ✓ Built → public/games/mirror-me/
+
+▶ mix-it-up [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 464 packages in 4s
+
+99 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+  $ npm run build
+
+> build
+> vite build
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 18 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.28 kB
+dist/assets/index-CTV5DNdH.css   79.60 kB │ gzip:  13.67 kB
+dist/assets/index-BMIwMLX8.js   345.74 kB │ gzip: 106.53 kB
+
+[32m✓ built in 2.59s[39m
+  ✓ Built → public/games/mix-it-up/
+
+▶ monster-dodge [PLAIN_HTML]
+  ✓ Copied to public/games/monster-dodge/
+
+▶ mouth-open-catch [NEXT]
+  $ npm install --prefer-offline
+npm WARN deprecated next@14.2.5: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
+
+changed 23 packages, and audited 111 packages in 38s
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 critical)
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> mouth-open-catch@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\typescript\lib\typescript.js', but to 'c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack-config.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\typescript\lib\typescript.js', but to 'c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack-config.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs c:\Users\hp\OneDrive\Desktop\kinetoFun\games\mouth-open-catch\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/4) ...
+   Generating static pages (1/4) 
+   Generating static pages (2/4) 
+   Generating static pages (3/4) 
+ ✓ Generating static pages (4/4)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    1.28 kB        88.6 kB
+└ ○ /_not-found                          871 B          88.2 kB
++ First Load JS shared by all            87.3 kB
+  ├ chunks/23-d4b6b2d9f43b6b20.js        31.7 kB
+  ├ chunks/fd9d1056-23bdddb1df3a91c8.js  53.6 kB
+  └ other shared chunks (total)          1.98 kB
+
+
+○  (Static)  prerendered as static content
+
+  ✓ Built → public/games/mouth-open-catch/out/
+
+▶ neon-flow [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 466 packages in 3s
+
+101 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+  $ npm run build
+
+> build
+> vite build
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 154 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.40 kB │ gzip:   0.27 kB
+dist/assets/index-BrhtFyXs.css          80.03 kB │ gzip:  13.71 kB
+dist/assets/vision_bundle-CPFKaSOI.js  134.57 kB │ gzip:  39.86 kB
+dist/assets/index-BUcg_As6.js          368.41 kB │ gzip: 116.06 kB
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugin `vite-tsconfig-paths`. See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[32m✓ built in 3.37s[39m
+  ✓ Built → public/games/neon-flow/
+
+▶ ninja-star-throw [PLAIN_HTML]
+  ✓ Copied to public/games/ninja-star-throw/
+
+▶ penalty-shooter [PLAIN_HTML]
+  ✓ Copied to public/games/penalty-shooter/
+
+▶ pizza-maker [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 292 packages in 7s
+
+65 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (2 low, 8 moderate, 8 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+  $ npm run build
+
+> vite-react-typescript-starter@0.0.0 build
+> vite build
+
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 1477 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.73 kB[22m[1m[22m[2m │ gzip:  0.40 kB[22m
+[2mdist/[22m[35massets/index-B3HhxACw.css  [39m[1m[2m 24.70 kB[22m[1m[22m[2m │ gzip:  4.91 kB[22m
+[2mdist/[22m[36massets/index-BKzsvG8n.js   [39m[1m[2m193.19 kB[22m[1m[22m[2m │ gzip: 59.73 kB[22m
+[32m✓ built in 16.30s[39m
+  ✓ Built → public/games/pizza-maker/
+
+▶ rock-paper-scissors [PLAIN_HTML]
+  ✓ Copied to public/games/rock-paper-scissors/
+
+▶ samurai-slice [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 463 packages in 5s
+
+99 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+  $ npm run build
+
+> build
+> vite build
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 18 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:  0.28 kB
+dist/assets/index-B62VQ1f-.css   86.96 kB │ gzip: 14.41 kB
+dist/assets/index-DX0vAyNs.js   219.94 kB │ gzip: 67.91 kB
+
+[32m✓ built in 1.36s[39m
+  ✓ Built → public/games/samurai-slice/
+
+▶ shield-hero [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 290 packages in 5s
+
+65 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (2 low, 8 moderate, 8 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+  $ npm run build
+
+> vite-react-typescript-starter@0.0.0 build
+> vite build
+
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 1556 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.70 kB[22m[1m[22m[2m │ gzip:  0.38 kB[22m
+[2mdist/[22m[35massets/index-D86AcUy3.css  [39m[1m[2m 21.71 kB[22m[1m[22m[2m │ gzip:  4.75 kB[22m
+[2mdist/[22m[36massets/index-SHZDUxEx.js   [39m[1m[2m319.64 kB[22m[1m[22m[2m │ gzip: 98.59 kB[22m
+[32m✓ built in 17.75s[39m
+  ✓ Built → public/games/shield-hero/
+
+▶ simon-says-hands [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 238 packages in 4s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> simon-says-hands@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 37 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
+[2mdist/[22m[35massets/index-PWkmJKYN.css  [39m[1m[2m 12.84 kB[22m[1m[22m[2m │ gzip:  3.29 kB[22m
+[2mdist/[22m[36massets/index-CXyL7uj1.js   [39m[1m[2m294.45 kB[22m[1m[22m[2m │ gzip: 91.38 kB[22m
+[32m✓ built in 10.22s[39m
+  ✓ Built → public/games/simon-says-hands/
+
+▶ slingshot-bird [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 238 packages in 4s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> slingshot-bird@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 37 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
+[2mdist/[22m[35massets/index-DuyFVy8f.css  [39m[1m[2m 12.55 kB[22m[1m[22m[2m │ gzip:  3.18 kB[22m
+[2mdist/[22m[36massets/index-zjyC_vgB.js   [39m[1m[2m303.46 kB[22m[1m[22m[2m │ gzip: 93.73 kB[22m
+[32m✓ built in 9.18s[39m
+  ✓ Built → public/games/slingshot-bird/
+
+▶ space-defender [PLAIN_HTML]
+  ✓ Copied to public/games/space-defender/
+
+▶ spear-stickman [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 137 packages in 3s
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> spear-stickman@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 45 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2mdist/[22m[35massets/index-D0TxOmw-.css  [39m[1m[2m 16.84 kB[22m[1m[22m[2m │ gzip:   4.08 kB[22m
+[2mdist/[22m[36massets/index-CHWKtaGt.js   [39m[1m[2m334.83 kB[22m[1m[22m[2m │ gzip: 105.09 kB[22m
+[32m✓ built in 9.34s[39m
+  ✓ Built → public/games/spear-stickman/
+
+▶ target-master [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 464 packages in 4s
+
+99 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+  $ npm run build
+
+> build
+> vite build
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 122 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:   0.28 kB
+dist/assets/index-CqO8dEWd.css   79.32 kB │ gzip:  13.59 kB
+dist/assets/index-B0cZRbLj.js   518.51 kB │ gzip: 154.80 kB
+
+[32m✓ built in 2.44s[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+  ✓ Built → public/games/target-master/
+
+▶ the-sniper-code [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 238 packages in 3s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> the-sniper-code@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 41 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2mdist/[22m[35massets/index-DE2gpMFl.css  [39m[1m[2m 14.60 kB[22m[1m[22m[2m │ gzip:   3.76 kB[22m
+[2mdist/[22m[36massets/index-DjWMfpd5.js   [39m[1m[2m327.17 kB[22m[1m[22m[2m │ gzip: 102.65 kB[22m
+[32m✓ built in 9.67s[39m
+  ✓ Built → public/games/the-sniper-code/
+
+▶ tic-tac-toe [PLAIN_HTML]
+  ✓ Copied to public/games/tic-tac-toe/
+
+▶ traffic-controller [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 238 packages in 2s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> traffic-controller@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 37 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
+[2mdist/[22m[35massets/index-D4ek2Yhs.css  [39m[1m[2m 13.65 kB[22m[1m[22m[2m │ gzip:  3.38 kB[22m
+[2mdist/[22m[36massets/index-DmarAhhp.js   [39m[1m[2m300.12 kB[22m[1m[22m[2m │ gzip: 93.55 kB[22m
+[32m✓ built in 6.77s[39m
+  ✓ Built → public/games/traffic-controller/
+
+▶ whack-a-mole-hand [PLAIN_HTML]
+  ✓ Copied to public/games/whack-a-mole-hand/
+
+▶ wizard-academy [PLAIN_HTML]
+  ✓ Copied to public/games/wizard-academy/
+
+▶ word-adventure [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 463 packages in 3s
+
+99 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+  $ npm run build
+
+> build
+> vite build
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 135 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:   0.28 kB
+dist/assets/index-BgrYvwvM.css   77.72 kB │ gzip:  13.28 kB
+dist/assets/index-CxAzIEtD.js   378.94 kB │ gzip: 114.71 kB
+
+[32m✓ built in 2.92s[39m
+  ✓ Built → public/games/word-adventure/
+
+▶ world-explorer [NEXT]
+  $ npm install --prefer-offline
+npm WARN deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm WARN deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm WARN deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm WARN deprecated glob@10.3.10: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm WARN deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+npm WARN deprecated next@14.2.5: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
+
+changed 278 packages, and audited 391 packages in 1m
+
+152 packages are looking for funding
+  run `npm fund` for details
+
+8 vulnerabilities (1 moderate, 6 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> world-explorer@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+
+   Creating an optimized production build ...
+ ⚠ Attempted to load @next/swc-win32-x64-msvc, but an error occurred: \\?\c:\Users\hp\OneDrive\Desktop\kinetoFun\games\world-explorer\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node is not a valid Win32 application.
+\\?\c:\Users\hp\OneDrive\Desktop\kinetoFun\games\world-explorer\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node
+ ⨯ Failed to load SWC binary for win32/x64, see more info here: https://nextjs.org/docs/messages/failed-loading-swc
+  ✗ Failed: Command failed: npm run build
+
+────────────────────────────────────────
+Done: 75 built, 1 failed

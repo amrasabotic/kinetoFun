@@ -38,6 +38,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-hill-adventure':{ folder: 'gesture-hill-adventure', indexPath: '/games/gesture-hill-adventure/index.html' },
   'gesture-snake-arena':   { folder: 'gesture-snake-arena',   indexPath: '/games/gesture-snake-arena/index.html' },
   'gesture-table-tennis':  { folder: 'gesture-table-tennis',  indexPath: '/games/gesture-table-tennis/index.html' },
+  'maze-muncher':          { folder: 'maze-muncher',          indexPath: '/games/maze-muncher/index.html' },
   'connect-2-balls':       { folder: 'connect-2-balls',       indexPath: '/games/connect-2-balls/index.html' },
   'kingdom-clash':         { folder: 'kingdom-clash',         indexPath: '/games/kingdom-clash/index.html' },
   'gesture-drums':         { folder: 'gesture-drums',         indexPath: '/games/gesture-drums/index.html' },
@@ -102,6 +103,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'air-hockey':             { folder: 'air-hockey',             indexPath: '/games/air-hockey/index.html' },
   'connect-4':              { folder: 'connect-4',              indexPath: '/games/connect-4/index.html' },
   'gesture-word':           { folder: 'gesture-word',           indexPath: '/games/gesture-word/index.html' },
+  'flag-quest':             { folder: 'flag-quest',             indexPath: '/games/flag-quest/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
