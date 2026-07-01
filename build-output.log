@@ -1,0 +1,378 @@
+
+> kinetofun@0.1.0 build
+> node scripts/build-games.js && next build
+
+
+Building 76 game(s) into public/games/…
+
+
+▶ air-coloring-book [PLAIN_HTML]
+  ✓ Copied to public/games/air-coloring-book/
+
+▶ air-hockey [PLAIN_HTML]
+  ✓ Copied to public/games/air-hockey/
+
+▶ air-painting [PLAIN_HTML]
+  ✓ Copied to public/games/air-painting/
+
+▶ balloon-pop-adventure [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 69 packages in 1s
+
+7 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> balloon-pop-adventure@1.0.0 build
+> tsc && vite build
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 51 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.96 kB[22m[1m[22m[2m │ gzip:  0.46 kB[22m
+[2mdist/[22m[35massets/index-C5qerJxG.css  [39m[1m[2m  0.51 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
+[2mdist/[22m[36massets/index-DmbuopuI.js   [39m[1m[2m195.82 kB[22m[1m[22m[2m │ gzip: 61.34 kB[22m
+[32m✓ built in 2.30s[39m
+  ✓ Built → public/games/balloon-pop-adventure/
+
+▶ block-blast-gesture [PLAIN_HTML]
+  ✓ Copied to public/games/block-blast-gesture/
+
+▶ block-blast-gestures [PLAIN_HTML]
+  ✓ Copied to public/games/block-blast-gestures/
+
+▶ block-breaker [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 493 packages in 3s
+
+99 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+  $ npm run build
+
+> build
+> vite build
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 20 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:   0.28 kB
+dist/assets/index-DotDn363.css   68.78 kB │ gzip:  11.82 kB
+dist/assets/index-CgO5Cvh9.js   337.87 kB │ gzip: 103.99 kB
+
+[32m✓ built in 1.31s[39m
+  ✓ Built → public/games/block-breaker/
+
+▶ bubble-shooter [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 238 packages in 2s
+
+62 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> bubble-shooter@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 36 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
+[2mdist/[22m[35massets/index-D0qCE7th.css  [39m[1m[2m 11.16 kB[22m[1m[22m[2m │ gzip:  2.98 kB[22m
+[2mdist/[22m[36massets/index-CiiuZPZV.js   [39m[1m[2m291.03 kB[22m[1m[22m[2m │ gzip: 91.61 kB[22m
+[32m✓ built in 4.45s[39m
+  ✓ Built → public/games/bubble-shooter/
+
+▶ butterfly-catch [PLAIN_HTML]
+  ✓ Copied to public/games/butterfly-catch/
+
+▶ catch-the-falling-stars [PLAIN_HTML]
+  ✓ Copied to public/games/catch-the-falling-stars/
+
+▶ color-artist-gesture-quest [PLAIN_HTML]
+  ✓ Copied to public/games/color-artist-gesture-quest/
+
+▶ connect-2-balls [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 277 packages in 3s
+
+65 packages are looking for funding
+  run `npm fund` for details
+
+17 vulnerabilities (2 low, 8 moderate, 7 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+  $ npm run build
+
+> connect-2-balls@0.0.0 build
+> vite build
+
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 1494 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.77 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mdist/[22m[35massets/index-bCQ2Vme3.css  [39m[1m[2m 14.81 kB[22m[1m[22m[2m │ gzip:   3.85 kB[22m
+[2mdist/[22m[36massets/index-XY_L8ox3.js   [39m[1m[2m332.29 kB[22m[1m[22m[2m │ gzip: 101.27 kB[22m
+[32m✓ built in 7.31s[39m
+  ✓ Built → public/games/connect-2-balls/
+
+▶ connect-4 [PLAIN_HTML]
+  ✓ Copied to public/games/connect-4/
+
+▶ cookie-monster-game [PLAIN_HTML]
+  ✓ Copied to public/games/cookie-monster-game/
+
+▶ cooking-chef [NEXT]
+  $ npm install --prefer-offline
+
+up to date, audited 383 packages in 4s
+
+153 packages are looking for funding
+  run `npm fund` for details
+
+5 vulnerabilities (1 moderate, 4 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> cooking-chef@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\typescript\lib\typescript.js', but to 'c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack-config.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\handle-externals.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\handle-externals.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\typescript\lib\typescript.js', but to 'c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack-config.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs c:\Users\hp\OneDrive\Desktop\kinetoFun\games\cooking-chef\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/4) ...
+   Generating static pages (1/4) 
+   Generating static pages (2/4) 
+   Generating static pages (3/4) 
+ ✓ Generating static pages (4/4)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    25.1 kB         112 kB
+└ ○ /_not-found                          873 B          88.3 kB
++ First Load JS shared by all            87.4 kB
+  ├ chunks/117-27dc461c70ed45d7.js       31.9 kB
+  ├ chunks/fd9d1056-9049680006fd18af.js  53.6 kB
+  └ other shared chunks (total)          1.88 kB
+
+
+○  (Static)  prerendered as static content
+
+  ✓ Built → public/games/cooking-chef/out/
+
+▶ crossword-builder [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 469 packages in 2s
+
+101 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+  $ npm run build
+
+> build
+> vite build
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[36mvite v8.1.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 375 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                              0.41 kB │ gzip:   0.28 kB
+dist/assets/fredoka-hebrew-700-normal-DBqnFHCe.woff2         5.01 kB
+dist/assets/fredoka-hebrew-400-normal-CT3eDt6U.woff2         5.06 kB
+dist/assets/fredoka-hebrew-600-normal-CTBxhdlE.woff2         5.18 kB
+dist/assets/nunito-vietnamese-700-normal-Ch8EUCfz.woff2      5.96 kB
+dist/assets/nunito-vietnamese-400-normal-BHkVbP3T.woff2      6.12 kB
+dist/assets/nunito-vietnamese-800-normal-D_CZYdm9.woff2      6.22 kB
+dist/assets/fredoka-hebrew-700-normal-DiqR04Vd.woff          6.47 kB
+dist/assets/fredoka-hebrew-400-normal-S03uWvSu.woff          6.48 kB
+dist/assets/fredoka-hebrew-600-normal-BiVDObXj.woff          6.48 kB
+dist/assets/nunito-vietnamese-700-normal-C9SQsXvj.woff       8.07 kB
+dist/assets/nunito-vietnamese-400-normal-DtOtW02z.woff       8.24 kB
+dist/assets/nunito-vietnamese-800-normal-Dz0hZPb5.woff       8.30 kB
+dist/assets/nunito-cyrillic-400-normal-xAOo5cBP.woff2        8.46 kB
+dist/assets/nunito-cyrillic-800-normal-D3igD7Kl.woff2        8.49 kB
+dist/assets/nunito-cyrillic-700-normal-DP36NgGt.woff2        8.51 kB
+dist/assets/nunito-cyrillic-700-normal-DfHRUDv-.woff        10.40 kB
+dist/assets/nunito-cyrillic-400-normal-D1j0u8EH.woff        10.46 kB
+dist/assets/nunito-cyrillic-800-normal-DymMgApb.woff        10.46 kB
+dist/assets/nunito-cyrillic-ext-700-normal-BuR0mlCG.woff2   10.98 kB
+dist/assets/nunito-cyrillic-ext-400-normal-CuPM9foi.woff2   11.16 kB
+dist/assets/nunito-cyrillic-ext-800-normal-B-cvGohL.woff2   11.26 kB
+dist/assets/nunito-cyrillic-ext-700-normal-DfoqN4Gs.woff    13.87 kB
+dist/assets/nunito-cyrillic-ext-800-normal-pjRatrRO.woff    14.06 kB
+dist/assets/nunito-cyrillic-ext-400-normal-xaE7D4Sw.woff    14.10 kB
+dist/assets/nunito-latin-ext-700-normal-BWeMsAzO.woff2      15.82 kB
+dist/assets/nunito-latin-ext-400-normal-i-8OOpdj.woff2      15.88 kB
+dist/assets/fredoka-latin-700-normal-BOIZVyIN.woff2         15.90 kB
+dist/assets/fredoka-latin-400-normal-17JuUzdy.woff2         16.07 kB
+dist/assets/nunito-latin-700-normal-Dort48En.woff2          16.22 kB
+dist/assets/nunito-latin-ext-800-normal-CtU8tJOV.woff2      16.28 kB
+dist/assets/nunito-latin-400-normal-r8SDr6Up.woff2          16.31 kB
+dist/assets/fredoka-latin-600-normal-C4zohCW5.woff2         16.46 kB
+dist/assets/nunito-latin-800-normal-Dz8SOQK_.woff2          16.52 kB
+dist/assets/fredoka-latin-700-normal-C8FeHd3X.woff          19.81 kB
+dist/assets/nunito-latin-700-normal-OcDqTBcA.woff           19.98 kB
+dist/assets/fredoka-latin-400-normal-DbXSrOeS.woff          20.12 kB
+dist/assets/nunito-latin-400-normal-DKg4f3fz.woff           20.33 kB
+dist/assets/nunito-latin-800-normal-D-J0wlBY.woff           20.36 kB
+dist/assets/fredoka-latin-600-normal-CcrEjrB4.woff          20.38 kB
+dist/assets/nunito-latin-ext-700-normal-D4woHhbd.woff       21.00 kB
+dist/assets/nunito-latin-ext-400-normal-CjMJVfGn.woff       21.28 kB
+dist/assets/nunito-latin-ext-800-normal-CDcxIxx8.woff       21.42 kB
+dist/assets/index-mzJC2_vZ.css                             112.01 kB │ gzip:  33.34 kB
+dist/assets/vision_bundle-Bo-c3x1p.js                      134.93 kB │ gzip:  39.99 kB
+dist/assets/index-CnHho3mh.js                              453.83 kB │ gzip: 144.94 kB
+
+[32m✓ built in 1.29s[39m
+  ✓ Built → public/games/crossword-builder/
+
+▶ dance-freeze [PLAIN_HTML]
+  ✓ Copied to public/games/dance-freeze/
+
+▶ dino-runner [NEXT]
+  $ npm install --prefer-offline
+
+up to date, audited 110 packages in 4s
+
+25 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 critical)
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
+
+> dino-runner@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\typescript\lib\typescript.js', but to 'c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack-config.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../typescript/lib/typescript' in c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build for build dependencies doesn't lead to expected result 'C:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\typescript\lib\typescript.js', but to 'c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\typescript\lib\typescript.js' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../typescript/lib/typescript (expected C:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\typescript\lib\typescript.js)
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\load-jsconfig.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack-config.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack-config.js
+<w>  at file dependencies c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at file c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+<w>  at resolve commonjs c:\Users\hp\OneDrive\Desktop\kinetoFun\games\dino-runner\node_modules\next\dist\build\webpack\loaders\next-swc-loader.js
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/4) ...
+   Generating static pages (1/4) 
+   Generating static pages (2/4) 
+   Generating static pages (3/4) 
+ ✓ Generating static pages (4/4)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    6.92 kB        94.1 kB
+└ ○ /_not-found                          871 B          88.1 kB
++ First Load JS shared by all            87.2 kB
+  ├ chunks/23-e72f0b7505220d91.js        31.7 kB
+  ├ chunks/fd9d1056-7c4c32b969af2e75.js  53.6 kB
+  └ other shared chunks (total)          1.87 kB
+
+
+○  (Static)  prerendered as static content
+
+  ✓ Built → public/games/dino-runner/out/
+
+▶ fish-catcher [PLAIN_HTML]
+  ✓ Copied to public/games/fish-catcher/
+
+▶ flags-game [VITE]
+  $ npm install --prefer-offline
+
+up to date, audited 12 packages in 1s
+
+3 packages are looking for funding
+  run `npm fund` for details
+
+2 vulnerabilities (1 moderate, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+  $ npm run build
