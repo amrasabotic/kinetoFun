@@ -106,6 +106,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'flag-quest':             { folder: 'flag-quest',             indexPath: '/games/flag-quest/index.html' },
   'shape-color-sorter':     { folder: 'shape-color-sorter',     indexPath: '/games/shape-color-sorter/index.html' },
   'alphabet-zoo':           { folder: 'alphabet-zoo',           indexPath: '/games/alphabet-zoo/index.html' },
+  'memory-match-zoo':       { folder: 'memory-match-zoo',       indexPath: '/games/memory-match-zoo/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
