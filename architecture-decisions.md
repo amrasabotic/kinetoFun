@@ -705,3 +705,67 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/flag-quest/` — built dist
 - `src/games/registry.ts` — added `flag-quest` entry
 - `supabase/seed_flag_quest.sql` — upsert-safe game row (Puzzle, published, featured) + a commented example leaderboard query
+
+---
+
+## ADR-035 — Shape & Color Sorter game
+**Date:** 2026-07-01
+**Status:** Accepted
+
+**Decision:** Add a small, gesture-only educational sorting game (`games/shape-color-sorter/`) for the youngest KinetoFun players (ages 3-6), built to `public/games/shape-color-sorter/` and served the same way as every prior gesture game. This one was explicitly requested as a **small** follow-up after Flag Quest (ADR-034) — the user rejected a first round of bigger ideas (Solar System Quest, Animal Kingdom Safari, Gesture Escape Room, Full-Body Fitness Coach) and asked for "simple games but educational." The scoping decision that follows from that: **one mechanic, no fail state, no timer pressure, no score penalty** — sort a shape into the matching basket by hovering it.
+
+**Reuse over rebuild:** Rather than re-deriving the gesture stack, this project ports Flag Quest's proven building blocks near-verbatim: `mediaPipe/{handTrackingCore,GestureProvider}` (single shared `HandLandmarker` session, dual ref+state write), `components/common/{HoverButton,ProgressRing,GestureCursorDot,HandLostOverlay,CameraFeed,GestureSlider}`, `hooks/useDwellProgress`, and the `audio/sound.ts` Web Audio synthesis idiom (tone/gain-envelope helper). This is a deliberate consequence of the "simple" requirement — the interaction model (hover-to-select) doesn't change between games, so the fastest way to a *polished* simple game is copying infrastructure that's already typecheck-clean and battle-tested, and spending the actual new-code budget on the few things that are genuinely game-specific.
+
+**Why no hit-testing engine this time:** Flag Quest needed SVG-polygon point-in-polygon hit-testing because paint regions are arbitrary flag shapes with a fill-progress mechanic. Here, "regions" are just baskets — plain rectangular `HoverButton` dwell zones — so `game/roundLogic.ts` only needs to pick a shape+color prompt and generate N-1 distinct distractor baskets (`generateRound`), no geometry at all. Shapes render via `components/common/ShapeIcon.tsx`, six inline SVG primitives (circle/square/triangle/star/heart/diamond) built from basic shapes/polygons/a heart path — no traced art, same "original assets" standard as every prior game.
+
+**Modes & progression:** Sort by Shape, Sort by Color, and Mixed (both) are three separate prompt/basket-generation branches in `generateRound`, not three separate game modules — the same `GameplayScreen`/`Bin`/`PromptDisplay` trio handles all three, switching what a basket *displays* (shape only in Shape mode rendered in a neutral gray so color can't leak as an unintended hint, a plain circle swatch in Color mode so shape can't leak, both in Mixed mode) and what counts as correct. Basket count ramps 2→3→4 across a fixed 12-round session (`binCountForRound`) rather than a difficulty-tier system, since there's only one difficulty axis worth exposing to a 3-year-old: how many choices they're juggling at once.
+
+**No-penalty scoring (`game/scoring.ts`):** A wrong basket never subtracts points, never adds a mistake-triggered animation beyond a gentle CSS wobble (`.scs-wobble`) and a soft descending tone (`playTryAgain`, deliberately gentler than Flag Quest's harsher `playWrong` sawtooth — this audience shouldn't hear anything that reads as "you failed"). Score only rewards first-try correctness (`RoundTally.correct`) with a small, uncapped-downside speed bonus; `finalizeSession`'s star calculation starts at `1` and only upgrades to `2`/`3` on higher accuracy — it can never reach `0`, meaning **every completed session earns at least one star**, regardless of how many baskets were tried. This is the concrete mechanism behind "no harsh punishment," not just a UI intention.
+
+**Narration:** One genuinely new capability versus Flag Quest — `audio/sound.ts` adds `speak(text, enabled)`, a thin wrapper around the browser's built-in `SpeechSynthesisUtterance` (no TTS dependency pulled in), gated by the "Say the Name Aloud" setting and fired ~400ms into each round so it doesn't talk over the pop-in animation.
+
+**Calibration:** Shortened to 2 steps ("show me your hand" → "point at the star") from Flag Quest's 6-step flow (`components/menu/CalibrationScreen.tsx`), reusing the exact same hold-or-timeout dwell pattern — appropriate for a much younger, lower-patience audience where a long calibration flow would itself be the biggest churn risk.
+
+**Score submission:** Same contract as every other game — `App.tsx` accumulates a `sessionScoreRef` across completed sessions and posts `window.parent.postMessage({ type: 'GAME_COMPLETE', score }, '*')` on Exit from the main menu. No new DB table: `public.scores` already has the generic `game_id` FK, so `supabase/seed_shape_color_sorter.sql` registering the game in `public.games` is the only DB step.
+
+**Verification:** `tsc --noEmit -p tsconfig.app.json` and `vite build` both clean on the first pass (no iteration needed, unlike Flag Quest's UK/South Africa/Chile polygon fixes — a direct consequence of reusing proven infrastructure and avoiding hand-authored geometry entirely this time); built via `node scripts/build-games.js shape-color-sorter` into `public/games/shape-color-sorter/` (419KB JS / 15.6KB CSS gzipped to 134.6KB/3.9KB) and smoke-checked serving (`vite preview` → HTTP 200). No camera available in this build environment, so gesture/dwell timing and the narration toggle could not be exercised live — verify in a browser with a webcam before shipping.
+
+**Deferred (per this scoping):** more shapes/colors beyond the 6×6 set (kept small on purpose — six of each is already plenty for a 4-basket max session and keeps every basket visually distinct at a glance), a fourth "Both, harder" tier with near-miss distractors (e.g. same shape different color as a decoy) since the current Mixed mode already regenerates fully random combos, achievements surfaced anywhere outside the end screen (no dedicated achievements gallery screen, unlike a future possibility), two-hand support (single-hand only, matching every prior gesture game).
+
+**Files added:**
+- `games/shape-color-sorter/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/{shapes,colors}.ts`, `game/{roundLogic,scoring}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `hooks/useDwellProgress.ts`, `stores/{settingsStore,progressStore}.ts`, `audio/sound.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed,ShapeIcon}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{PromptDisplay,Bin,GameplayScreen,EndScreen}.tsx`)
+- `public/games/shape-color-sorter/` — built dist
+- `src/games/registry.ts` — added `shape-color-sorter` entry
+- `supabase/seed_shape_color_sorter.sql` — upsert-safe game row (Puzzle, published, featured, age_group `3-6`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-036 — Alphabet Zoo game
+**Date:** 2026-07-01
+**Status:** Accepted
+
+**Decision:** Add Alphabet Zoo, a toddler-friendly (ages 3–6) letter-recognition and early-phonics game to `games/alphabet-zoo/`, built to `public/games/alphabet-zoo/` and served the same way as Flag Quest (ADR-034) and Shape & Color Sorter (ADR-035). This is the **third game** built using the same gesture-only reusable stack, which now proves that the "port infrastructure, not the logic" approach dramatically reduces iteration and risk. Alphabet Zoo's scope is deliberately smaller than Shape & Color Sorter: a single mechanic (point-at-letter hover-to-select), a single axis (26 letters, not a 2D grid), and no painted regions — just letters.
+
+**Why reuse again (three times is the pattern):** The cost of re-deriving the gesture stack for a third time would be: the same MediaPipe initialization dance, the same `useGesture` context, the same dwell-progress hook, the same audio synthesis idiom, the same Zustand persist pattern. None of this differs between games. By porting verbatim from Shape & Color Sorter (which ported from Flag Quest), the only new code is what changes: letter data, letter prompts, letter bins, and the specific UI. Result: Alphabet Zoo built and typechecked clean on the first pass—no "fix UK flag polygon edge cases" iteration, no debugging hand-tracking edge cases, just game logic.
+
+**Game design:** A letter glyph (or animal emoji in "Animal Sounds" mode) bobs center-stage. The player hovers a fingertip over the matching **letter button** (~600ms dwell) to score. Wrong letters wobble + soft tone, no penalty ever. Three modes: **Letter Match** (bare letter glyphs, teaches shape recognition), **Animal Sounds** (emoji + word, teaches letter-to-sound, e.g., "L is for Lion"), **Mixed** (random pick each round). 26 letters (A–Z), each with one animal/word + emoji. 10-round sessions, bin count ramps 2→3→4.
+
+**Prompt representation (PromptDisplay):** Shows the letter differently per mode (bare glyph, emoji+word, or both), so the player's mental model builds differently in each mode — Letter Match teaches visual recognition, Animal Sounds teaches phonics, Mixed mixes both.
+
+**Bins:** Just letter-button `HoverButton` zones (`components/game/LetterBin.tsx`), not painted regions — `game/roundLogic.ts` picks a target letter and generates N-1 distractors, no hit-testing engine needed.
+
+**Scoring:** Exact same `finalizeSession`/`RoundTally` logic as Shape & Color Sorter — first-try correctness only, speed bonus, no negative scoring, minimum 1 star.
+
+**New achievement:** One novel per-game mechanic—**A to Z** (seen all 26 letters across all sessions). Tracked via `lettersSeen: string[]` in `SaveData`, updated by `GameplayScreen` on each round start, checked in achievement logic.
+
+**Narration:** The third (and probably the most important) use of the `speak()` function from `audio/sound.ts`. Per round: "Letter A", "A is for Ant", or "Ant, A" depending on mode, ~400ms into the round pop-in animation. Gated by the narration setting (same as the last two games).
+
+**Data files:** `data/letters.ts` — 26 entries `{ letter, word, emoji }`, with `getLetterEntry(letter)` and `randomLetter(exclude?)` helpers, same shape as the `shapes.ts`/`colors.ts` modules from the prior games. Built once, reused by both prompt selection (`roundLogic.ts`) and narration text generation (`GameplayScreen.tsx`).
+
+**Verification:** `tsc --noEmit` and `vite build` both clean on the first pass — no types iteration needed, a direct result of reusing proven infrastructure three times. Built via `node scripts/build-games.js alphabet-zoo` into `public/games/alphabet-zoo/` (418KB JS / 15.9KB CSS gzipped to 134.2KB/3.9KB) and smoke-checked serving (`vite preview` → HTTP 200). No camera in this build environment, so gesture/dwell timing and narration output could not be exercised live — recommend a quick webcam pass before shipping.
+
+**Files added:**
+- `games/alphabet-zoo/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/letters.ts`, `game/{roundLogic,scoring}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `hooks/useDwellProgress.ts`, `stores/{settingsStore,progressStore}.ts`, `audio/sound.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{PromptDisplay,Bin,GameplayScreen,EndScreen}.tsx`)
+- `public/games/alphabet-zoo/` — built dist
+- `src/games/registry.ts` — added `alphabet-zoo` entry
+- `supabase/seed_alphabet_zoo.sql` — upsert-safe game row (Puzzle, published, featured, age_group `3-6`, difficulty `easy`) + a commented example leaderboard query

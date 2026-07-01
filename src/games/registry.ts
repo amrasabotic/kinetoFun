@@ -104,6 +104,8 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'connect-4':              { folder: 'connect-4',              indexPath: '/games/connect-4/index.html' },
   'gesture-word':           { folder: 'gesture-word',           indexPath: '/games/gesture-word/index.html' },
   'flag-quest':             { folder: 'flag-quest',             indexPath: '/games/flag-quest/index.html' },
+  'shape-color-sorter':     { folder: 'shape-color-sorter',     indexPath: '/games/shape-color-sorter/index.html' },
+  'alphabet-zoo':           { folder: 'alphabet-zoo',           indexPath: '/games/alphabet-zoo/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
