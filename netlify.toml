@@ -1,8 +1,8 @@
 [build]
-  # Build all game static files first, then build the Next.js app.
+  # Build script now handles games + Next.js (defined in package.json)
   # Plain HTML games: just copied (instant).
   # Vite/Next.js games: npm install + build inside each game folder.
-  command = "node scripts/build-games.js && npm run build"
+  command = "npm run build"
   publish = ".next"
 
 [build.environment]
