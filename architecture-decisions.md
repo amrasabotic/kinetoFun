@@ -891,3 +891,53 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/coin-money-counter/` — built dist
 - `src/games/registry.ts` — added `coin-money-counter` entry
 - `supabase/seed_coin_money_counter.sql` — upsert-safe game row (Puzzle, published, featured, age_group `5-8`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-041 — Weather & Seasons Sorter game
+**Date:** 2026-07-02
+**Status:** Accepted
+
+**Decision:** Add Weather & Seasons Sorter, a gesture-only weather/season-reasoning game, to `games/weather-seasons-sorter/`, built to `public/games/weather-seasons-sorter/` and served the same way as the sibling games. This is the seventh game in the family, and it continues the hover-select-the-right-answer lineage (Flag Quest → Shape & Color Sorter → Alphabet Zoo → Clock & Time Teller → Coin & Money Counter). Unlike the two prior games, the "leftover" content ideas (Simon Says Sequence, Rock-Paper-Scissors Duel) didn't appeal to the user this round, so a fresh shortlist of not-yet-covered educational domains (Counting Balloon Pop, Emotion Faces, Opposites Match, Weather & Seasons Sorter) was proposed instead — the user picked weather/season reasoning, a domain untouched by any of the 6 existing games.
+
+**Game design maps onto Coin & Money Counter's shape exactly:** one axis of content (a weather/season scenario), presented two different ways, matched by hovering the right bin. **What to Wear** shows a weather-scene icon as the prompt and clothing/activity-icon bins as answers; **Match the Weather** reverses it (clothing prompt, weather-scene bins); **Mixed** randomly picks the direction each round. No incremental "dress the character" drag flow — that would be a new interaction paradigm; both prompt and bins stay plain `HoverButton` targets.
+
+**Content set (`data/weather.ts`):** 8 scenarios (sunny summer, snowy winter, rainy spring, windy fall, hot desert day, foggy morning, stormy day, cloudy afternoon), each with one canonical correct clothing/activity answer. `distinctDistractorScenarios()` filters candidates to a *different* clothing answer than the target — so a wrong choice is always a plausible-looking but genuinely different item, never a near-duplicate — the same "meaningfully different" distractor philosophy as the prior two games' numeric-closeness guards, just keyed by scenario identity instead of numeric distance.
+
+**New icon components:** `WeatherIcon.tsx` and `ClothingIcon.tsx` — small hand-drawn SVG icons (sun rays, snowflake, raindrops, wind swirls, umbrella, mittens, kite, etc.) in the same no-image-assets style as `ClockFace`/`CoinIcon`, one icon set per side of the content axis.
+
+**Narration** reuses `speak()` directly against plain-English content strings (`speakableScenario()` just concatenates name + description) — unlike the prior two games, no new number/vocabulary-conversion logic was needed here, since the "new domain logic" this time is the content set and icon set themselves rather than a formatting helper.
+
+**Scoring, achievements, settings, calibration, App shell:** all reused verbatim in structure from Coin & Money Counter — `finalizeSession`/`RoundTally`, the 6-achievement pattern (First Round / Weather Watcher Master / Clothing Expert Master / Mixed Master / Perfect Round / Season Sage), `settingsStore.ts`, 2-step `CalibrationScreen`, and the App.tsx screen-state-machine + `GAME_COMPLETE` postMessage contract.
+
+**Verification:** `tsc --noEmit` and `vite build` both clean on the first pass (no fixes needed this time — smart-quote lesson from ADR-040 was carried forward, using straight ASCII quotes in `EndScreen.tsx` from the start). Built via `node scripts/build-games.js weather-seasons-sorter` into `public/games/weather-seasons-sorter/` (422KB JS / 15.5KB CSS gzipped to 135.3KB/3.8KB) and smoke-checked serving (`vite preview` → HTTP 200). No camera in this build environment — gesture/dwell timing and narration output could not be exercised live; recommend a quick webcam pass before shipping.
+
+**Files added:**
+- `games/weather-seasons-sorter/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/weather.ts`, `game/{roundLogic,scoring}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `hooks/useDwellProgress.ts`, `stores/{settingsStore,progressStore}.ts`, `audio/sound.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed,WeatherIcon,ClothingIcon}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{PromptDisplay,WeatherBin,GameplayScreen,EndScreen}.tsx`)
+- `public/games/weather-seasons-sorter/` — built dist
+- `src/games/registry.ts` — added `weather-seasons-sorter` entry
+- `supabase/seed_weather_seasons_sorter.sql` — upsert-safe game row (Puzzle, published, featured, age_group `4-8`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-042 — Opposites Match game
+**Date:** 2026-07-02
+**Status:** Accepted
+
+**Decision:** Add Opposites Match, a gesture-only vocabulary-building game, to `games/opposites-match/`, built to `public/games/opposites-match/` and served the same way as the sibling games. This is the eighth game in the family, teaching opposite word pairs (big/small, hot/cold, fast/slow...) — a new content domain not covered by any of the 7 existing games.
+
+**Structurally closer to Alphabet Zoo (ADR-036) than to the last three games' Read/Set duality:** "opposite of" is a symmetric relation (opposite of big is small, opposite of small is big), so there's no natural "direction A→B vs B→A" split the way analog-clock-vs-digital or coins-vs-amount had. Instead, like Alphabet Zoo's `letter`/`animal`/`mixed` modes, the split here is **presentation style**: **Words** mode shows a text prompt and text-answer bins; **Pictures** mode shows an icon prompt and icon-answer bins (prompt and bins always share the same presentation within a round — unlike the Read/Set games where prompt and bins show *opposite* presentations of the same axis); **Mixed** randomly varies presentation per round. Direction (which word of the pair is the prompt vs. the correct answer) is randomized independently of mode every round, so both directions of every pair get practiced across a session regardless of which mode is chosen.
+
+**Content set (`data/opposites.ts`):** 12 opposite pairs, each with a simple hand-drawn SVG icon per side (`OppositeIcon.tsx`, in the same no-image-assets style as `WeatherIcon`/`CoinIcon`/`ClockFace`). `distinctDistractorWords()` draws distractors from *entirely different* pairs (never the target pair's own two words), so a wrong choice is never a near-miss synonym of the correct answer.
+
+**Types reshaped from the prior three games' `scenarioId`/lookup pattern:** because distractor words here are picked directly from a flat pool spanning all pairs (not "other whole scenarios" the way Weather's distractors were), `BinDef` carries the word/glyph directly (`{ id, word, glyph, isCorrect }`) rather than a foreign-key id to look up — there's no shared "canonical entry" a bin and the prompt both reference, since a bin's word could theoretically belong to any of the 11 non-target pairs.
+
+**Scoring, achievements, settings, calibration, App shell:** all reused verbatim in structure from Weather & Seasons Sorter — `finalizeSession`/`RoundTally`, the 6-achievement pattern (First Round / Word Master / Picture Master / Mixed Master / Perfect Round / Opposite Genius), `settingsStore.ts`, 2-step `CalibrationScreen`, and the App.tsx screen-state-machine + `GAME_COMPLETE` postMessage contract. Narration reuses `speak()` directly against plain-English question/confirmation strings ("What is the opposite of Big?" / "The opposite of Big is Small!") — no new formatting helper needed, continuing the pattern from ADR-041.
+
+**Verification:** `tsc --noEmit` and `vite build` both clean on the first pass. Built via `node scripts/build-games.js opposites-match` into `public/games/opposites-match/` (423KB JS / 15.5KB CSS gzipped to 135.3KB/3.8KB) and smoke-checked serving (`vite preview` → HTTP 200). No camera in this build environment — gesture/dwell timing and narration output could not be exercised live; recommend a quick webcam pass before shipping.
+
+**Files added:**
+- `games/opposites-match/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/opposites.ts`, `game/{roundLogic,scoring}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `hooks/useDwellProgress.ts`, `stores/{settingsStore,progressStore}.ts`, `audio/sound.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed,OppositeIcon}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{PromptDisplay,OppositeBin,GameplayScreen,EndScreen}.tsx`)
+- `public/games/opposites-match/` — built dist
+- `src/games/registry.ts` — added `opposites-match` entry
+- `supabase/seed_opposites_match.sql` — upsert-safe game row (Puzzle, published, featured, age_group `3-7`, difficulty `easy`) + a commented example leaderboard query
