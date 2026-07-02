@@ -108,6 +108,8 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'shape-color-sorter':     { folder: 'shape-color-sorter',     indexPath: '/games/shape-color-sorter/index.html' },
   'alphabet-zoo':           { folder: 'alphabet-zoo',           indexPath: '/games/alphabet-zoo/index.html' },
   'memory-match-zoo':       { folder: 'memory-match-zoo',       indexPath: '/games/memory-match-zoo/index.html' },
+  'clock-time-teller':      { folder: 'clock-time-teller',      indexPath: '/games/clock-time-teller/index.html' },
+  'coin-money-counter':     { folder: 'coin-money-counter',     indexPath: '/games/coin-money-counter/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */

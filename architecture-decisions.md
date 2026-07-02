@@ -837,3 +837,57 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/memory-match-zoo/` — built dist
 - `src/games/registry.ts` — added `memory-match-zoo` entry
 - `supabase/seed_memory_match_zoo.sql` — upsert-safe game row (Puzzle, published, featured, age_group `4-8`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-039 — Clock & Time Teller game
+**Date:** 2026-07-01
+**Status:** Accepted
+
+**Decision:** Add Clock & Time Teller, a gesture-only time-telling game, to `games/clock-time-teller/`, built to `public/games/clock-time-teller/` and served the same way as the sibling games. This is the fifth game in the small-and-simple family and, after Memory Match Zoo (ADR-038) introduced a new genre, it deliberately returns to the proven **hover-select-the-right-answer** mechanic from Flag Quest/Shape & Color Sorter/Alphabet Zoo rather than extending Memory Match Zoo's card-flip pattern — the user asked for "simple," not "a new genre," this time.
+
+**Game design maps onto Alphabet Zoo's shape almost exactly:** one axis of content (a time-of-day value), presented two different ways, matched by hovering the right bin. **Read the Clock** shows an analog clock face as the prompt and digital-time bins as answers; **Set the Clock** shows a digital time as the prompt and analog clock-face bins as answers; **Mixed** randomly picks the direction each round. No drag/rotary hand-setting UI was built — that would introduce a new interaction paradigm; instead both prompt and bins are just `HoverButton` targets, identical in spirit to `LetterBin.tsx`.
+
+**Time values:** hour 1–12, minute restricted to quarter-hour increments (`data/times.ts`) — the standard progression used to teach kids to tell time (o'clock → half past → quarter past/to). Early rounds (`minuteOptionsForRound`) only use :00/:30; rounds 4+ introduce :15/:45, mirroring the existing `binCountForRound` ramp pattern. Distractor times are generated via `distinctDistractorTimes`, which rejects any candidate within 15 minutes of the target *or* of another already-picked distractor when the hour matches — this prevents wrong-answer clock faces from being visually near-identical to the correct one, which would make the "wrong" feedback feel arbitrary rather than educational.
+
+**Narration is the one genuinely new piece of domain logic:** `speakableTime()` converts a `TimeValue` into the vocabulary actually taught in schools — "three o'clock", "quarter past three", "half past three", "quarter to four" — rather than just reading digits aloud, since the vocabulary itself is part of what this game is meant to teach.
+
+**`ClockFace.tsx`:** a small reusable SVG analog clock (12 tick marks, hour + minute hands computed from simple trigonometry) used identically for both the prompt display and for bins — one component serves both directions of the game, since "draw a clock at time X" doesn't care whether it's being used as a question or an answer choice.
+
+**Scoring, achievements, settings, calibration, App shell:** all reused verbatim in structure from Alphabet Zoo — `finalizeSession`/`RoundTally` (first-try correctness + speed bonus, 1★ floor), the 6-achievement pattern (First Round / two mode-masters / Mixed Master / Perfect Round / a 10-session milestone), `settingsStore.ts`, 2-step `CalibrationScreen`, and the App.tsx screen-state-machine + `GAME_COMPLETE` postMessage contract.
+
+**Verification:** `tsc --noEmit` and `vite build` both clean, with one small fix during the pass — `MainMenu.tsx`'s decorative header clock initially used `{ hour: 10, minute: 10 }`, which doesn't type-check against `TimeValue`'s `0 | 15 | 30 | 45` minute union (a real analog clock showing "ten past ten" for the logo doesn't map to a valid quarter-hour value in this game's domain model) — changed to `{ hour: 10, minute: 15 }`. Built via `node scripts/build-games.js clock-time-teller` into `public/games/clock-time-teller/` (418KB JS / 15.5KB CSS gzipped to 134.4KB/3.8KB) and smoke-checked serving (`vite preview` → HTTP 200). No camera in this build environment — gesture/dwell timing and narration output could not be exercised live; recommend a quick webcam pass before shipping.
+
+**Files added:**
+- `games/clock-time-teller/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/times.ts`, `game/{roundLogic,scoring}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `hooks/useDwellProgress.ts`, `stores/{settingsStore,progressStore}.ts`, `audio/sound.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed,ClockFace}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{PromptDisplay,TimeBin,GameplayScreen,EndScreen}.tsx`)
+- `public/games/clock-time-teller/` — built dist
+- `src/games/registry.ts` — added `clock-time-teller` entry
+- `supabase/seed_clock_time_teller.sql` — upsert-safe game row (Puzzle, published, featured, age_group `5-8`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-040 — Coin & Money Counter game
+**Date:** 2026-07-02
+**Status:** Accepted
+
+**Decision:** Add Coin & Money Counter, a gesture-only money-counting game, to `games/coin-money-counter/`, built to `public/games/coin-money-counter/` and served the same way as the sibling games. This is the sixth game in the family, and like Clock & Time Teller (ADR-039), it deliberately stays in the hover-select-the-right-answer family (Flag Quest → Shape & Color Sorter → Alphabet Zoo → Clock & Time Teller) rather than inventing new interaction patterns. It teaches money recognition and counting: reading coin groups and matching them to amounts, and vice versa.
+
+**Game design maps onto Clock & Time Teller's shape exactly:** one axis of content (a dollar amount in cents), presented two different ways, matched by hovering the right bin. **Count the Coins** shows coin icons as the prompt and digital-amount bins as answers; **Make the Amount** shows a digital target and coin-group bins as answers; **Mixed** randomly picks the direction each round. No incremental "tap coins one at a time to accumulate a total" flow — that would be a new interaction paradigm; instead both prompt and bins stay plain `HoverButton` targets.
+
+**Coin denominations:** penny (1¢), nickel (5¢), dime (10¢), quarter (25¢) — amounts under $1 (1¢–99¢), the standard "counting coins" range kids are actually taught, avoiding bills/dollar-complexity. Each amount is broken into coins greedily (as many quarters as possible, then dimes, then nickels, then pennies) for a simple, deterministic, always-small visual — since a bin only ever needs to *display* one canonical breakdown, not enumerate combinatorics.
+
+**Difficulty ramp:** early rounds restrict amounts to those reachable with 1–2 coins (5¢, 10¢, 25¢, 30¢...); later rounds allow any 1–99¢ amount requiring up to 4 coins, mirroring Clock & Time Teller's `minuteOptionsForRound` easy-then-harder tiering.
+
+**Narration:** `speakableAmount()` converts cents to words ("twenty-seven cents"), using age-appropriate vocabulary rather than raw digits — same philosophy as Clock & Time Teller's `speakableTime()`.
+
+**New components:** `CoinIcon.tsx` (a small SVG circle per denomination, color-coded: copper penny, silver nickel/dime, gold quarter); `CoinGroup.tsx` (lays out coins for a given amount via `breakIntoCoins()`, used identically for prompt and bins); `MoneyBin.tsx` (a `HoverButton`-wrapped bin showing either coins or digital amount).
+
+**Scoring, achievements, settings, calibration, App shell:** all reused verbatim in structure from Clock & Time Teller — `finalizeSession`/`RoundTally`, the 6-achievement pattern (First Round / Coin Counter Master / Money Maker Master / Mixed Master / Perfect Round / Money Wizard), `settingsStore.ts`, 2-step `CalibrationScreen`, and the App.tsx screen-state-machine + `GAME_COMPLETE` postMessage contract.
+
+**Verification:** `tsc --noEmit` and `vite build` both clean (one small fix along the way: smart quotes in `EndScreen.tsx` encouragement strings caused parse errors, replaced with straight ASCII quotes). Built via `node scripts/build-games.js coin-money-counter` into `public/games/coin-money-counter/` (418KB JS / 15.5KB CSS gzipped to 134.5KB/3.8KB) and smoke-checked serving (`vite preview` → HTTP 200). No camera in this build environment — gesture/dwell timing and narration output could not be exercised live; recommend a quick webcam pass before shipping.
+
+**Files added:**
+- `games/coin-money-counter/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/coins.ts`, `game/{roundLogic,scoring}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `hooks/useDwellProgress.ts`, `stores/{settingsStore,progressStore}.ts`, `audio/sound.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed,CoinIcon,CoinGroup}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{PromptDisplay,MoneyBin,GameplayScreen,EndScreen}.tsx`)
+- `public/games/coin-money-counter/` — built dist
+- `src/games/registry.ts` — added `coin-money-counter` entry
+- `supabase/seed_coin_money_counter.sql` — upsert-safe game row (Puzzle, published, featured, age_group `5-8`, difficulty `easy`) + a commented example leaderboard query
