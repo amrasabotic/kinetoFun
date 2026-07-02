@@ -38,6 +38,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-hill-adventure':{ folder: 'gesture-hill-adventure', indexPath: '/games/gesture-hill-adventure/index.html' },
   'gesture-snake-arena':   { folder: 'gesture-snake-arena',   indexPath: '/games/gesture-snake-arena/index.html' },
   'gesture-table-tennis':  { folder: 'gesture-table-tennis',  indexPath: '/games/gesture-table-tennis/index.html' },
+  'gesture-mob-rally':     { folder: 'gesture-mob-rally',     indexPath: '/games/gesture-mob-rally/index.html' },
   'maze-muncher':          { folder: 'maze-muncher',          indexPath: '/games/maze-muncher/index.html' },
   'connect-2-balls':       { folder: 'connect-2-balls',       indexPath: '/games/connect-2-balls/index.html' },
   'kingdom-clash':         { folder: 'kingdom-clash',         indexPath: '/games/kingdom-clash/index.html' },
