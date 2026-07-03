@@ -864,6 +864,11 @@ function GameFormModal({
                 onChange={(e) => set("rating", Number(e.target.value))}
                 className={inputCls}
               />
+              <p className="mt-1 text-xs text-slate-500">
+                {(form.ratingCount ?? 0) > 0
+                  ? `${form.ratingCount} user ${form.ratingCount === 1 ? "rating" : "ratings"} (auto-calculated average in use)`
+                  : "Default rating shown until the game receives real user ratings."}
+              </p>
             </Field>
           </div>
 

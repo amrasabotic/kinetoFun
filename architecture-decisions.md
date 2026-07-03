@@ -941,3 +941,29 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/opposites-match/` — built dist
 - `src/games/registry.ts` — added `opposites-match` entry
 - `supabase/seed_opposites_match.sql` — upsert-safe game row (Puzzle, published, featured, age_group `3-7`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-043 — Musical Instrument Sounds game
+**Date:** 2026-07-02
+**Status:** Accepted
+
+**Decision:** Add Musical Instrument Sounds, a gesture-only sound-recognition game, to `games/musical-instrument-sounds/`, built to `public/games/musical-instrument-sounds/` and served the same way as the sibling games. This is the ninth game in the family and the **first with an audio-first prompt**: every prior game narrates a visual prompt as an *optional* accessibility layer, but here the prompt itself has no visual content at all — the player must listen to a synthesized instrument sound and then pick the matching instrument visually.
+
+**Core loop:** each round plays a short (~0.2-0.6s) procedurally synthesized instrument sound; the player hovers the bin showing the matching instrument icon + name among 2-4 distractors. A **Replay** `HoverButton` lets the child re-trigger the prompt sound as many times as needed — necessary here since, unlike a visual prompt that stays on screen, an audio cue can be missed or forgotten mid-round. `PromptDisplay.tsx` auto-plays the sound once on round start (via a `useEffect` keyed on the instrument id) in addition to being replayable on demand.
+
+**Modes split by instrument family**, the same three-mode shape as Alphabet Zoo's `letter`/`animal`/`mixed` and Opposites Match's `word`/`picture`/`mixed` — a content-grouping split rather than a presentation-direction split, since the prompt is always audio and bins are always icon+name here: **Percussion** (drum, tambourine, xylophone, cymbal, maracas), **Melodic** (piano, guitar, flute, violin, trumpet), **Mixed** (all ten).
+
+**New audio infrastructure (`audio/instruments.ts`):** one procedural synthesis recipe per instrument built on the same `AudioContext`/oscillator/gain-envelope pattern as `audio/sound.ts`'s existing `tone()` helper, plus a new `noiseBurst()` helper (a randomized `AudioBuffer` through a highpass/bandpass `BiquadFilterNode`) for the percussion family's noise-based timbres. `sound.ts` gained two small exports (`getAudioContext()`, `getSfxVolume()`) so `instruments.ts` can share the same context and volume setting rather than opening a second `AudioContext` — the first cross-module audio dependency in the game family, since every prior game's SFX lived entirely inside its own `sound.ts`.
+
+**Types reshaped again:** like Opposites Match, `BinDef`/`RoundPrompt` reference an instrument id directly (`{ instrumentId }`) rather than a lookup-by-scenario pattern, since distractors are drawn from a flat per-family pool rather than "other whole scenarios."
+
+**Scoring, achievements, settings, calibration, App shell:** all reused verbatim in structure from Opposites Match — `finalizeSession`/`RoundTally`, the 6-achievement pattern (First Round / Percussion Master / Melodic Master / Mixed Master / Perfect Round / Music Maestro), `settingsStore.ts`, 2-step `CalibrationScreen`, and the App.tsx screen-state-machine + `GAME_COMPLETE` postMessage contract.
+
+**Verification:** `tsc --noEmit` and `vite build` both clean on the first pass. Built via `node scripts/build-games.js musical-instrument-sounds` into `public/games/musical-instrument-sounds/` (423KB JS / 15.5KB CSS gzipped to 135.5KB/3.8KB) and smoke-checked serving (`vite preview` → HTTP 200). **Extra caveat beyond the usual one:** this build environment has no audio output either, so the 10 synthesized timbres could not be listened to or distinguished live — a careful ear-check pass (are drum vs. tambourine vs. cymbal actually distinguishable to a young child?) is strongly recommended before shipping, in addition to the usual gesture/dwell check.
+
+**Files added:**
+- `games/musical-instrument-sounds/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/instruments.ts`, `audio/{sound,instruments}.ts`, `game/{roundLogic,scoring}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `hooks/useDwellProgress.ts`, `stores/{settingsStore,progressStore}.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed,InstrumentIcon}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{PromptDisplay,InstrumentBin,GameplayScreen,EndScreen}.tsx`)
+- `public/games/musical-instrument-sounds/` — built dist
+- `src/games/registry.ts` — added `musical-instrument-sounds` entry
+- `supabase/seed_musical_instrument_sounds.sql` — upsert-safe game row (Puzzle, published, featured, age_group `3-7`, difficulty `easy`) + a commented example leaderboard query

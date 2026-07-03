@@ -1137,21 +1137,19 @@ export default function HomePage() {
     <div className="space-y-12">
       {/* Hero spotlight */}
       {spotlight ? (
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br p-8 sm:p-12">
-          {spotlight.coverImage ? (
-            <Image
-              src={spotlight.coverImage}
-              alt={spotlight.title}
-              fill
-              className="absolute inset-0 object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
-              priority
-            />
-          ) : (
+        <section
+          className="relative overflow-hidden rounded-3xl p-8 sm:p-12"
+          style={{
+            backgroundImage: spotlight.coverImage ? `url(${spotlight.coverImage})` : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          {!spotlight.coverImage && (
             <div className={`absolute inset-0 bg-gradient-to-br ${spotlight.cover}`} />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-          <div className="relative max-w-2xl">
+          <div className="relative z-20 max-w-2xl">
             <Badge tone="default" className="mb-4 bg-black/40">
               Featured
             </Badge>

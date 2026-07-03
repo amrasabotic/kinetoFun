@@ -36,6 +36,8 @@ export interface Game {
   /** Accent color token used for detail/launch screens. */
   accent: string;
   rating: number; // 0 - 5
+  /** Number of real user ratings received. 0 means `rating` is still the admin default. */
+  ratingCount?: number;
   releaseYear: number;
   durationMinutes: number;
   featured?: boolean;

@@ -10,6 +10,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { StarRating } from "@/components/ui/StarRating";
 import { GameRail } from "@/components/game/GameRail";
+import { RateThisGame } from "@/components/game/RateThisGame";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { playersLabel } from "@/lib/format";
 
@@ -72,7 +73,14 @@ export default function GameDetailPage() {
           <p className="mt-3 text-lg text-white/80">{game.tagline}</p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-white/60">
-            <StarRating rating={game.rating} />
+            <div className="flex items-center gap-1.5">
+              <StarRating rating={game.rating} />
+              {(game.ratingCount ?? 0) > 0 && (
+                <span className="text-xs text-white/40">
+                  ({game.ratingCount} {game.ratingCount === 1 ? "rating" : "ratings"})
+                </span>
+              )}
+            </div>
             <span aria-hidden>·</span>
             <span>{playersLabel(game.players)}</span>
             <span aria-hidden>·</span>
@@ -110,7 +118,10 @@ export default function GameDetailPage() {
             <Stat label="Category" value={game.category} />
             <Stat label="Released" value={String(game.releaseYear)} />
             <Stat label="Session" value={`~${game.durationMinutes} min`} />
-            <Stat label="Rating" value={`${game.rating.toFixed(1)} / 5`} />
+            <Stat
+              label="Rating"
+              value={`${game.rating.toFixed(1)} / 5${(game.ratingCount ?? 0) > 0 ? ` (${game.ratingCount})` : ""}`}
+            />
             <Stat label="Mode" value={playersLabel(game.players)} />
           </dl>
         </div>
@@ -129,6 +140,12 @@ export default function GameDetailPage() {
             </ButtonLink>
           </div>
           <LeaderboardTable entries={topScores} highlightUserId={user?.id} />
+          {user && (
+            <>
+              <div className="mt-4 h-px bg-white/[0.08]" />
+              <RateThisGame gameId={game.id} />
+            </>
+          )}
         </div>
       </div>
 

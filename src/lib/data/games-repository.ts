@@ -42,6 +42,7 @@ interface GameRow {
   thumbnail: string | null;
   accent: string | null;
   rating: number | string | null;
+  rating_count: number | null;
   release_year: number | null;
   duration_minutes: number | null;
   difficulty: GameDifficulty | null;
@@ -69,6 +70,7 @@ function toGame(row: GameRow): Game {
     thumbnail: row.thumbnail ?? undefined,
     accent: row.accent ?? "",
     rating: Number(row.rating ?? 0),
+    ratingCount: row.rating_count ?? 0,
     releaseYear: row.release_year ?? 0,
     durationMinutes: row.duration_minutes ?? 0,
     difficulty: row.difficulty ?? "medium",
