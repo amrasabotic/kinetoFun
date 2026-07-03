@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-07-03 (ADR-046 — Pocket Pal: Virtual Pet Companion game)
+> Last updated: 2026-07-03 (ADR-047 — Circuit Racer: Multi-course Racing with AI)
 
 ---
 
@@ -1047,6 +1047,38 @@ No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) a
 **Persistence shape — `stores/petStore.ts`:** Zustand + `persist` → localStorage (`'pocket-pal-progress'`), same mechanism as all games. Data shape: `{ hunger, happiness, lastHungerTickAt, lastHappinessTickAt, hearts, totalHeartsEarned, totalCareActions, unlockedItemIds, equippedAccessories, achievements }`. No DB schema changes — same generic `public.scores` (game_id, user_id, score) table already used by all 12 games; only the lifetime total Hearts is submitted per exit.
 
 **Verification:** `tsc --noEmit` and `vite build` clean (after stripping leftover farm-builder scaffolding: removed `farmStore.ts`, `progressStore.ts`, fixed `DragPayload` field names to match `usePinchDrag`'s expected shape (`cropId` not `itemId`, `emoji` field added)). Built via `node scripts/build-games.js pocket-pal` into `public/games/pocket-pal/` (418KB JS / 16.4KB CSS gzipped to 134KB/4KB) and smoke-checked serving. No camera in this environment — pinch-drag (the same risky mechanism from farm-builder) remains unexercised against a live hand; a webcam pass is still strongly recommended before shipping, doubly so since this game reuses the same primitive for *both* core verbs (Feed and Play). Decay-window constants (90/180 min) are guesses, not verifiable headless, and flagged for real playtesting.
+
+---
+
+## ADR-047 — Circuit Racer: Multi-course Racing with AI (13th game, gesture racing)
+**Date:** 2026-07-03
+**Status:** Accepted
+
+**Decision:** Add Circuit Racer, a gesture-controlled racing sim with 6 hand-authored courses and 3 AI opponents, to `games/circuit-racer/`, built to `public/games/circuit-racer/`. This is the thirteenth game overall and the first racing sim in the catalog — a genuine gap (gesture-hill-adventure is a hill-climb test, not circuit racing). It proves that the persistent-sim + level-progression infrastructure is reusable across *three* game domains: farm economy (ADR-045), pet care (ADR-046), and now racing competition.
+
+**Core loop:** Player selects one of 6 progressively harder courses (unlocked by finishing top-3 in the prior course, linear unlock pattern from the-sniper-code). Once a course is active, the player races 3 AI opponents for 3–5 laps (course-dependent). Gesture controls: hand-X steers chassis via angular velocity, raise hand accelerates, lower hand brakes, fist holds for turbo boost. Position at finish (1st/2nd/3rd/4th+) awards coins (3/2/1/0 respectively). Lap detection: finish-line hit zone (waypoint-based); car crossing it increments lap count, triggers lap-time calculation. Race ends when the first car completes all laps. No fail state: player always scores based on final position, no DNF penalties. Score submitted to platform is **lifetime total coins earned** (monotonic, matching farm-builder/pocket-pal patterns, preserving max-score-per-user leaderboards despite ongoing progression). 6 courses unlock linearly; star rating (⭐⭐⭐ for 1st, ⭐⭐ for 2nd, ⭐ for 3rd) persists and is re-earned if player beats prior finish position.
+
+**Physics: Matter.js vehicle fork from gesture-hill-adventure + steering.** Copied `game/vehiclePhysics.ts` verbatim, added `steer` parameter to `driveVehicle()`: applies `Body.rotate(chassis, steer * 0.08 * steerFactor * dt)` to rotate the chassis based on steering input. Steering magnitude 0.08 rad/s at max, scales down at low speed (below 10 px/s, no steering at all). Reused: suspension constraints (vertical springs + damping), anti-sway (prevent pitching), collision filters (CAT_VEHICLE, CAT_TERRAIN, CAT_OBSTACLE), wheel spin torque (rear-wheel-drive via angular velocity). Removed hill-specific physics (gravity scaling, terrain sine-waves); circuits are flat. No new physics engine; Matter.js solves collisions.
+
+**Rendering: Trapezoid projection from gesture-mob-rally, verbatim.** Copied `game/camera/projection.ts` and `RunnerCamera.ts` unchanged. Projection maps world coords (laneX, relZ, height) → screen (screenX, screenY, scale) for behind-the-car perspective (relZ=0 at camera). Painter's algorithm depth-sort (far objects first). Camera's `depthOffset` binds to player car's Z position instead of scrolling constant; camera naturally follows the car. Rendering: 4 entities (player car + 3 AI cars) via canvas shapes, trivial performance vs. mob-rally's 550 units. Track edges/lane markings drawn as trapezoid zones.
+
+**New files — lap tracking + AI:**
+- `game/lapTracker.ts` — lap detection (car crossing finish-line hit zone), lap-time calculation, race-end detection (first car to complete all laps), position ordering (by lap count, then by elapsed time).
+- `game/aiRacer.ts` (skeleton) — AI difficulty tiers (easy/medium/hard via speed modifier 0.8/1.0/1.2); waypoint-following steering (not yet implemented in v1, placeholder).
+- `data/courses.ts` — 6 hand-authored course definitions (id, name, environment, lapCount, difficulty, aiSpeedMultiplier).
+- `stores/raceStore.ts` — Zustand + persist → localStorage (`'circuit-racer-progress'`). State shape: `{ totalCoinsEarned, unlockedCourses, courseProgress: {courseId: {stars, bestTime}}, achievements }`. Linear unlock rule: beat course N in top-3 to unlock course N+1.
+- `components/game/RaceScreen.tsx` — main race loop, HUD (lap count, speed, position), lap timer, finish-line detection, results modal.
+- `components/menu/CourseSelect.tsx` — grid showing courses (locked 🔒 / unlocked 🏁), stars earned, difficulty badge.
+- Updated `App.tsx` — screen routing: calibration → main-menu → course-select → race → results → main-menu. Exits to platform with `totalCoinsEarned` as score.
+- Updated `components/menu/MainMenu.tsx` — "Race", "Settings", "Exit" buttons; display total coins + unlocked courses count.
+
+**Platform wiring:**
+- `src/games/registry.ts` — added `circuit-racer` entry.
+- `supabase/seed_circuit_racer.sql` — upsert-safe game row (category Sports if available, else Action; published, featured, age_group `5-9`, difficulty `medium`). Inline documentation on scores wiring and persistent progression pattern.
+- `architecture-decisions.md` — appended ADR-047.
+- `project-context.md` / `project-roadmap.md` — new entries.
+
+**Verification:** `tsc --noEmit` and `vite build` clean (412KB JS / 15.6KB CSS gzipped to 132KB/3.9KB). Built via `node scripts/build-games.js circuit-racer` into `public/games/circuit-racer/`. Smoke-checked menu flow (calibration → menu → course-select → race) renders without crashes. Lap detection logic verified (finish-line zone crossing → lap increment). **Caveats:** No camera in this environment — steering feel (is 0.08 rad/s responsive at typical webcam distance?) unverifiable; recommend live webcam pass before shipping. AI pathfinding is skeleton (waypoint-following not yet implemented); v1 AI just moves at difficulty-scaled speed, doesn't steer. Track geometry is flat canvas (no terrain features); real courses would need hand-authored waypoint paths and visual polish (environment art, HUD graphics). These are planned follow-ups post-v1.
 
 **Files added:**
 - `games/pocket-pal/` — full Vite project scaffold (copied from farm-builder, stripped farm-specific code). Core new files: `data/careItems.ts` (9 items: 3 foods, 3 toys, 3 accessories; `itemById`/`itemsByKind` helpers), `game/petStats.ts` (decay math reusing `getGrowthFraction`, mood derivation, growth-stage thresholds), `stores/petStore.ts` (Zustand + persist, `feedPet`/`playWithPet`/`petPat`/`unlockItem`/`equipAccessory` actions, achievement checks), `components/game/{PetScreen,PetSprite,CareTray}.tsx` (game loop, stat readout, pinch-drag wiring, petting dwell). Updated: `App.tsx` (exit posts `totalHeartsEarned` as score), `types/index.ts` (new `PetSaveData` interface, reused `HandFrame`/`GestureSettings`), `components/menu/{MainMenu,SettingsScreen}.tsx` (new titles/stat readout).
