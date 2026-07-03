@@ -967,3 +967,55 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/musical-instrument-sounds/` — built dist
 - `src/games/registry.ts` — added `musical-instrument-sounds` entry
 - `supabase/seed_musical_instrument_sounds.sql` — upsert-safe game row (Puzzle, published, featured, age_group `3-7`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-044 — Fruit & Vegetable Sorter game
+**Date:** 2026-07-03
+**Status:** Accepted
+
+**Decision:** Add Fruit & Vegetable Sorter, a gesture-only categorization game, to `games/fruit-vegetable-sorter/`, built to `public/games/fruit-vegetable-sorter/` and served the same way as the sibling games. This is the tenth game in the family and the **first with a pure binary choice**: every prior game, even the simplest two-choice ones (Alphabet Zoo letter/animal, Opposites Match word pairs), had unique correct answers to match against distractors; here, the prompt is always "Is this a fruit or vegetable?" and the two bins are "Fruit" or "Vegetable" — categorization instead of matching.
+
+**Core loop:** each round shows a colorful emoji picture of a produce item (apple, banana, strawberry, watermelon, orange, grape, carrot, broccoli, lettuce, tomato, bell pepper, corn); the player hovers the matching bin ("Fruit" or "Vegetable") among two choices. A simple two-bin format with no distractors — the answer space is always the same. Ten rounds per session. Same no-penalty philosophy: wrong bin = gentle wobble + soft tone, no score deduction, no fail state, every session earns ≥1 star.
+
+**Modes split by content family**, the same grouping shape as Alphabet Zoo, Weather Sorter, and Opposites Match — a confidence-building and testing split: **Fruits** (apple, banana, strawberry, watermelon, orange, grape — learn what counts as fruit), **Vegetables** (carrot, broccoli, lettuce, tomato, bell pepper, corn — learn what counts as vegetable), **Mixed** (both families — the real categorization test).
+
+**New icon infrastructure (`components/common/ProduceIcon.tsx`):** emoji-based icons (simpler than SVG). A `ProduceIcon` component maps produce IDs to emoji, eliminating the need for hand-drawn SVG art per item — fast, legible, culturally recognized. Same no-image-assets philosophy, just with a different asset type (emoji instead of SVG or procedural generation).
+
+**Types reshaped for binary-choice simplicity:** `BinDef` carries just `{ category: 'fruit' | 'vegetable', isCorrect }` — no produce ID needed on the bin itself, since both bins are always present. `RoundPrompt` still carries `produceId` (which item is shown), but the bin matching is trivial (one bin for each category).
+
+**Scoring, achievements, settings, calibration, App shell:** all reused verbatim in structure from Musical Instrument Sounds — `finalizeSession`/`RoundTally`, the 6-achievement pattern (First Round / Fruit Expert / Veggie Expert / Mixed Master / Perfect Round / Food Champion), `settingsStore.ts`, 2-step `CalibrationScreen`, and the App.tsx screen-state-machine + `GAME_COMPLETE` postMessage contract.
+
+**Verification:** `tsc --noEmit` and `vite build` both clean on the first pass. Built via `node scripts/build-games.js fruit-vegetable-sorter` into `public/games/fruit-vegetable-sorter/` (418KB JS / 15.8KB CSS gzipped to 134KB/3.9KB) and smoke-checked serving (`vite preview` → HTTP 200). No camera in this build environment — gesture/dwell timing could not be exercised live; recommend a quick webcam pass before shipping.
+
+**Files added:**
+- `games/fruit-vegetable-sorter/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/produce.ts`, `game/{roundLogic,scoring}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `hooks/useDwellProgress.ts`, `stores/{settingsStore,progressStore}.ts`, `audio/sound.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed,ProduceIcon}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{PromptDisplay,CategoryBin,GameplayScreen,EndScreen}.tsx`)
+- `public/games/fruit-vegetable-sorter/` — built dist
+- `src/games/registry.ts` — added `fruit-vegetable-sorter` entry
+- `supabase/seed_fruit_vegetable_sorter.sql` — upsert-safe game row (Puzzle, published, featured, age_group `3-7`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-045 — Little Farm Builder game
+**Date:** 2026-07-03
+**Status:** Accepted
+
+**Decision:** Add Little Farm Builder, a gesture-only farming simulation, to `games/farm-builder/`, built to `public/games/farm-builder/` and served the same way as the sibling games. This is the eleventh game in the family and a deliberate step up in complexity, chosen after the user asked for "something more complex" than the session-based match/sort games. It introduces two genuinely new pieces of infrastructure the prior ten games never needed: a **persistent, evolving save state** (a farm that keeps growing in real time between visits, not a per-session best score) and **continuous pinch-and-drag** as the core interaction (not hover-and-dwell).
+
+**Core loop:** the player pinch-grabs a seed tile from the tray and drags it onto an empty plot to plant it (costs coins); the crop grows through three stages — seed → sprout → ripe — based on real elapsed wall-clock time (`game/growth.ts`'s `getGrowthFraction`/`getGrowthStage`), so it keeps maturing even while the game is closed, since growth is derived from a persisted `plantedAt` timestamp compared against `Date.now()` on load, not a running timer. Once ripe, the player pinch-grabs the crop out of its plot and drags it to the basket to harvest it for coins. Four crops with escalating pace/value — Carrot (20s, cheap, unlocked from the start), Tomato (60s), Corn (3 min), Pumpkin (8 min) — plus a 4-to-12 expandable plot grid, both gated behind coin costs and unlocked via ordinary `HoverButton` dwell (only planting/harvesting use the new pinch-drag mechanic; the shop/expansion economy deliberately stays on the proven dwell pattern). No fail state: coins only go up, plots only unlock, matching the no-punishment philosophy of every other KinetoFun game.
+
+**New gesture primitive — `isPinching`:** `mediaPipe/handTrackingCore.ts`'s `HandFrame` gains a fourth boolean classification (alongside `isPalmOpen`/`isFist`) computed as thumb-tip-to-index-tip distance < 0.07 normalized units — the exact threshold already proven in `games/gesture-love-balls`'s pinch-to-draw mechanic, reused here for consistency rather than re-derived. Unlike `isFist`/`isPalmOpen`, raw `isPinching` is jitter-prone frame to frame near the threshold boundary, so `hooks/usePinchDrag.ts` adds a 100ms sustain-before-grab debounce (`PINCH_CONFIRM_MS`) — again mirroring gesture-love-balls' `PINCH_CONFIRM_MS` fix for the same underlying noise problem. Release is intentionally *not* debounced (matches gesture-love-balls too) so letting go still feels immediate.
+
+**New interaction primitive — `usePinchDrag`:** rather than building a canvas-based drag engine, the hook extends the same DOM-rect hit-testing idiom `HoverButton` already uses (`getBoundingClientRect()` vs. `cursorX/Y * window.innerWidth/innerHeight`) to a grab/carry/drop flow: on confirmed-pinch-start it hit-tests a caller-supplied `getGrabbables()` list (computed lazily, only at that instant — not every frame) to find what's being picked up; while held, a floating emoji ghost tracks the raw cursor position; on pinch-release it hit-tests `getDropzones()` to resolve the drop target and calls back into `FarmScreen`'s `handleDrop`, which is the only place that touches `farmStore` actions (`plantCrop`/`harvestCrop`). `FarmScreen` owns the plot/tray/basket DOM refs directly rather than routing them through a context/registry — colocated state, matching how `GameplayScreen` in every other game owns its round state directly rather than distributing it.
+
+**New persistence shape — `stores/farmStore.ts`:** still zustand + `persist` → localStorage (`'farm-builder-progress'`), the exact same mechanism as every other game's `progressStore.ts`, but the data shape is new: `coins` (spendable balance), `totalCoinsEarned` (lifetime, monotonic — this is what gets submitted to `public.scores` on exit, since it only ever grows, preserving the platform's "max score per user" leaderboard semantics even though the underlying game has no discrete rounds), `totalHarvests`, `unlockedCropIds`, `unlockedPlotCount`, and the 12-slot `plots` array (`{ cropId, plantedAt }` per slot). No prior game's save data models something that evolves *outside of active play* — this is genuinely new territory, confirmed via a full explore pass that found no existing `inventory`/`currency`/`dailyState` pattern anywhere in the codebase.
+
+**No DB schema changes:** confirmed via the same explore pass that `public.scores` is a minimal, generic `(game_id, user_id, score, achieved_at)` leaderboard table with no JSON/blob column anywhere — exactly the same shape every other game already targets. The farm's actual save state stays client-side only, exactly like every other game's `bestStarsByMode`/achievements; only a single derived number (lifetime coins) gets submitted per exit.
+
+**Verification:** `tsc --noEmit` and `vite build` both clean on the first pass (after one self-caught refinement: added the `PINCH_CONFIRM_MS` debounce proactively, based on the known gesture-love-balls precedent, rather than after observing jitter). Built via `node scripts/build-games.js farm-builder` into `public/games/farm-builder/` (419KB JS / 16.3KB CSS gzipped to 134KB/3.9KB) and smoke-checked serving (`vite preview` → HTTP 200). No camera in this build environment — the pinch-drag mechanic in particular has never been exercised against a live hand here, and is the highest-risk piece of this game to get right; a webcam pass (does a 100ms confirm feel responsive? is the 0.07 pinch threshold comfortable at typical webcam distance? does the held-item ghost track cleanly?) is strongly recommended before shipping, more so than for any prior game in this family.
+
+**Files added:**
+- `games/farm-builder/` — full Vite project (`src/{App.tsx,main.tsx,index.css}`, `types/`, `data/crops.ts`, `game/growth.ts`, `hooks/{useDwellProgress,usePinchDrag}.ts`, `mediaPipe/{handTrackingCore,GestureProvider}.tsx`, `stores/{settingsStore,farmStore}.ts`, `audio/sound.ts`, `components/common/{HoverButton,ProgressRing,GestureSlider,GestureCursorDot,HandLostOverlay,CameraFeed}.tsx`, `components/menu/{CalibrationScreen,MainMenu,SettingsScreen}.tsx`, `components/game/{Plot,SeedTray,Basket,FarmScreen}.tsx`)
+- `public/games/farm-builder/` — built dist
+- `src/games/registry.ts` — added `farm-builder` entry
+- `supabase/seed_farm_builder.sql` — upsert-safe game row (Adventure category — no existing category fits a persistent building sim better; Puzzle didn't apply since there's no puzzle-solving here — published, featured, age_group `4-9`, difficulty `easy`) + a commented example leaderboard query

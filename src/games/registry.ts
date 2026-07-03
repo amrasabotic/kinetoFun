@@ -113,6 +113,8 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'weather-seasons-sorter': { folder: 'weather-seasons-sorter', indexPath: '/games/weather-seasons-sorter/index.html' },
   'opposites-match':        { folder: 'opposites-match',        indexPath: '/games/opposites-match/index.html' },
   'musical-instrument-sounds': { folder: 'musical-instrument-sounds', indexPath: '/games/musical-instrument-sounds/index.html' },
+  'fruit-vegetable-sorter': { folder: 'fruit-vegetable-sorter', indexPath: '/games/fruit-vegetable-sorter/index.html' },
+  'farm-builder':           { folder: 'farm-builder',           indexPath: '/games/farm-builder/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
