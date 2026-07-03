@@ -15,16 +15,16 @@ export const ZOO_ITEMS: ZooItemDef[] = [
   { id: 'giraffe', name: 'Giraffe', emoji: '🦒', kind: 'animal', zoneId: 'savanna', unlockCost: 25, appealValue: 9 },
   { id: 'zebra', name: 'Zebra', emoji: '🦓', kind: 'animal', zoneId: 'savanna', unlockCost: 15, appealValue: 7 },
   { id: 'acacia-tree', name: 'Acacia Tree', emoji: '🌳', kind: 'decoration', zoneId: 'savanna', unlockCost: 5, appealValue: 3 },
-  { id: 'savanna-rock', name: 'Rock Outcrop', emoji: '🪨', kind: 'decoration', zoneId: 'savanna', unlockCost: 5, appealValue: 2 },
+  { id: 'savanna-rock', name: 'Tall Grass', emoji: '🌾', kind: 'decoration', zoneId: 'savanna', unlockCost: 5, appealValue: 2 },
   { id: 'watering-hole', name: 'Watering Hole', emoji: '💧', kind: 'decoration', zoneId: 'savanna', unlockCost: 10, appealValue: 4 },
 
   // ── Arctic ───────────────────────────────────────────────────────────────
-  { id: 'polar-bear', name: 'Polar Bear', emoji: '🐻‍❄️', kind: 'animal', zoneId: 'arctic', unlockCost: 30, appealValue: 11 },
+  { id: 'polar-bear', name: 'Polar Bear', emoji: '🐻', kind: 'animal', zoneId: 'arctic', unlockCost: 30, appealValue: 11 },
   { id: 'penguin', name: 'Penguin', emoji: '🐧', kind: 'animal', zoneId: 'arctic', unlockCost: 15, appealValue: 7 },
-  { id: 'seal', name: 'Seal', emoji: '🦭', kind: 'animal', zoneId: 'arctic', unlockCost: 18, appealValue: 8 },
+  { id: 'seal', name: 'Reindeer', emoji: '🦌', kind: 'animal', zoneId: 'arctic', unlockCost: 18, appealValue: 8 },
   { id: 'arctic-fox', name: 'Arctic Fox', emoji: '🦊', kind: 'animal', zoneId: 'arctic', unlockCost: 20, appealValue: 8 },
   { id: 'igloo', name: 'Igloo', emoji: '🏔️', kind: 'decoration', zoneId: 'arctic', unlockCost: 8, appealValue: 3 },
-  { id: 'ice-block', name: 'Ice Block', emoji: '🧊', kind: 'decoration', zoneId: 'arctic', unlockCost: 5, appealValue: 2 },
+  { id: 'ice-block', name: 'Snowflake', emoji: '❄️', kind: 'decoration', zoneId: 'arctic', unlockCost: 5, appealValue: 2 },
 
   // ── Ocean / Aquarium ─────────────────────────────────────────────────────
   { id: 'dolphin', name: 'Dolphin', emoji: '🐬', kind: 'animal', zoneId: 'ocean', unlockCost: 25, appealValue: 10 },
@@ -32,7 +32,7 @@ export const ZOO_ITEMS: ZooItemDef[] = [
   { id: 'sea-turtle', name: 'Sea Turtle', emoji: '🐢', kind: 'animal', zoneId: 'ocean', unlockCost: 18, appealValue: 7 },
   { id: 'clownfish', name: 'Clownfish', emoji: '🐠', kind: 'animal', zoneId: 'ocean', unlockCost: 10, appealValue: 5 },
   { id: 'octopus', name: 'Octopus', emoji: '🐙', kind: 'animal', zoneId: 'ocean', unlockCost: 22, appealValue: 9 },
-  { id: 'coral', name: 'Coral Reef', emoji: '🪸', kind: 'decoration', zoneId: 'ocean', unlockCost: 8, appealValue: 4 },
+  { id: 'coral', name: 'Sea Shell', emoji: '🐚', kind: 'decoration', zoneId: 'ocean', unlockCost: 8, appealValue: 4 },
   { id: 'seaweed', name: 'Seaweed', emoji: '🌿', kind: 'decoration', zoneId: 'ocean', unlockCost: 5, appealValue: 2 },
 
   // ── Rainforest ───────────────────────────────────────────────────────────
