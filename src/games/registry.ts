@@ -117,6 +117,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'farm-builder':           { folder: 'farm-builder',           indexPath: '/games/farm-builder/index.html' },
   'pocket-pal':             { folder: 'pocket-pal',             indexPath: '/games/pocket-pal/index.html' },
   'circuit-racer':          { folder: 'circuit-racer',          indexPath: '/games/circuit-racer/index.html' },
+  'zoo-architect':          { folder: 'zoo-architect',          indexPath: '/games/zoo-architect/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
