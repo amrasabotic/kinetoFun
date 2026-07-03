@@ -1,6 +1,15 @@
 /**
  * Lap tracking for circuit racing.
- * Tracks lap count, times, and race positions.
+ *
+ * Lap completion is detected via waypoint-index wraparound (car's nearest-
+ * waypoint index jumps from near the END of the track's waypoint array back
+ * to near the START), not proximity to a fixed finish-line point. A
+ * proximity/radius check is fragile here: cars start clustered on a grid
+ * right next to the start/finish line, so a car can drift a short distance
+ * from its grid slot into the "finish zone" without ever actually
+ * completing a lap. Wraparound requires the car's nearest-waypoint index to
+ * have actually traversed most of the loop (>75% -> <25%) first, which a
+ * few dozen pixels of starting-grid drift can never do.
  */
 
 export interface CarState {
@@ -12,11 +21,12 @@ export interface CarState {
   totalTime: number;
   finished: boolean;
   finishTime: number | null;
+  lastWaypointIdx: number;
 }
 
 export interface LapTrackerState {
   cars: CarState[];
-  finishLine: { x: number; y: number; radius: number };
+  waypointCount: number;
   totalLaps: number;
   raceStartTime: number;
   raceFinishTime: number | null;
@@ -24,19 +34,19 @@ export interface LapTrackerState {
 
 export function createLapTracker(
   totalLaps: number,
-  finishLineX: number,
-  finishLineY: number,
+  waypointCount: number,
+  raceStartTime: number = Date.now(),
 ): LapTrackerState {
   return {
     cars: [],
-    finishLine: { x: finishLineX, y: finishLineY, radius: 100 },
+    waypointCount,
     totalLaps,
-    raceStartTime: Date.now(),
+    raceStartTime,
     raceFinishTime: null,
   };
 }
 
-export function addCar(tracker: LapTrackerState, carId: string): void {
+export function addCar(tracker: LapTrackerState, carId: string, initialWaypointIdx: number): void {
   tracker.cars.push({
     id: carId,
     lapCount: 0,
@@ -46,25 +56,23 @@ export function addCar(tracker: LapTrackerState, carId: string): void {
     totalTime: 0,
     finished: false,
     finishTime: null,
+    lastWaypointIdx: initialWaypointIdx,
   });
 }
 
 export function updateCarPosition(
   tracker: LapTrackerState,
   carId: string,
-  carX: number,
-  carY: number,
+  currentWaypointIdx: number,
   now: number,
 ): void {
   const car = tracker.cars.find((c) => c.id === carId);
   if (!car || car.finished) return;
 
-  const dx = carX - tracker.finishLine.x;
-  const dy = carY - tracker.finishLine.y;
-  const distToFinish = Math.sqrt(dx * dx + dy * dy);
+  const n = tracker.waypointCount;
+  const wrapped = car.lastWaypointIdx > n * 0.75 && currentWaypointIdx < n * 0.25;
 
-  // Detect lap completion (car crosses finish line)
-  if (distToFinish < tracker.finishLine.radius) {
+  if (wrapped) {
     const lapTime = now - car.lapStart;
     car.lapCount++;
     car.currentLapTime = lapTime;
@@ -72,7 +80,6 @@ export function updateCarPosition(
     car.totalTime = now - tracker.raceStartTime;
     car.lapStart = now;
 
-    // Check if race is finished
     if (car.lapCount >= tracker.totalLaps) {
       car.finished = true;
       car.finishTime = now - tracker.raceStartTime;
@@ -81,17 +88,16 @@ export function updateCarPosition(
       }
     }
   }
+  car.lastWaypointIdx = currentWaypointIdx;
 }
 
 export function getPositions(tracker: LapTrackerState): string[] {
   const sorted = [...tracker.cars].sort((a, b) => {
-    // Finished cars first (by finish time)
     if (a.finished && b.finished) {
       return (a.finishTime ?? 0) - (b.finishTime ?? 0);
     }
     if (a.finished) return -1;
     if (b.finished) return 1;
-    // Unfinished: most laps first, then by time
     if (a.lapCount !== b.lapCount) return b.lapCount - a.lapCount;
     return b.totalTime - a.totalTime;
   });
