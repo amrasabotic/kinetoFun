@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-07-02 (ADR-037 — Mob Rally: Gesture Crowd Runner game)
+> Last updated: 2026-07-03 (ADR-046 — Pocket Pal: Virtual Pet Companion game)
 
 ---
 
@@ -1019,3 +1019,37 @@ Already in place from ADR-013: login returns a single `Invalid email or password
 - `public/games/farm-builder/` — built dist
 - `src/games/registry.ts` — added `farm-builder` entry
 - `supabase/seed_farm_builder.sql` — upsert-safe game row (Adventure category — no existing category fits a persistent building sim better; Puzzle didn't apply since there's no puzzle-solving here — published, featured, age_group `4-9`, difficulty `easy`) + a commented example leaderboard query
+
+---
+
+## ADR-046 — Pocket Pal: Virtual Pet Companion (persistent sim, no fail state)
+**Date:** 2026-07-03
+**Status:** Accepted
+
+**Decision:** Add Pocket Pal, a gesture-only virtual pet companion game, to `games/pocket-pal/`, built to `public/games/pocket-pal/` and served the same way as sibling games. This is the twelfth game overall and the *second* persistent-state sim after Little Farm Builder (ADR-045), proving that the real-time growth-from-timestamp infrastructure is generic enough to support multiple game domains beyond farming.
+
+**Core loop:** a single fixed companion (emoji-based creature, no species picker in v1) that the player feeds, plays with, and pets via gesture. Two stats — **Hunger** and **Happiness** — deliberately not three; this family has never asked kids to juggle more core mechanics simultaneously. A separately-tracked, always-forward **Growth Stage** (Baby → Child → Teen → Adult → Elder) driven by lifetime care-action count, not by stat management. No fail state ever: both stats have a floor of 40/100, so the pet never "dies" or enters a game-over state even if totally neglected; it just looks mildly sad (💧 badge + droopy animation) and perks back up the instant the player interacts. Same no-punishment philosophy as every KinetoFun game — wrong actions wobble, never penalize.
+
+**Stat decay — reusing farm-builder's real-time growth math:** Hunger and Happiness are persisted as (value, lastTickAt) pairs, recomputed on load by comparing `lastTickAt` against `Date.now()` rather than using a running timer, exactly like farm-builder's crop growth. Decay window constants: Hunger → 40/100 over 90 min, Happiness → 40/100 over 180 min (guessed constants, flagged as needing real playtesting). Both stats use the same `getGrowthFraction` helper from `game/growth.ts` (copied from farm-builder, unchanged), rescaled onto `[40,100]`: `value = 100 - getGrowthFraction(lastTickAt, decayWindowMs, now) * 60`. The floor of 40 means the pet can never decay below "looks a little sad"; a single Feed/Play/Pet action instantly restores max or near-max (depending on item value). Mood tiers derived from `min(hunger, happiness)`: **joyful** (both ≥80), **happy** (both ≥60), **okay** (the floor state, never framed as sick/dying, only "a little droopy").
+
+**Interactions — pinch-drag for Feed/Play, hover-dwell for Pet/shop:**
+- **Feed:** pinch-drag a food tile onto the pet drop zone → `feedPet(itemId)` → hunger restores by item's `restoreAmount`, +1 Heart earned.
+- **Play:** pinch-drag a toy tile onto the pet drop zone → `playWithPet(itemId)` → happiness restores, +1 Heart earned.
+- **Pet/pat:** hover-dwell (~700ms) directly on the pet sprite → `petPat()` → +15 happiness, +1 Heart (no item consumed).
+- **Unlock items / shop navigation:** hover-dwell on locked item tiles or menu options, reusing the proven `HoverButton` dwell pattern from farm-builder.
+
+No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) and `usePinchDrag` (grab/carry/drop with 100ms confirm debounce) both inherited from ADR-045 / farm-builder unchanged. The hook works here identically: caller supplies `getGrabbables()` (food/toy tiles) and `getDropzones()` (pet drop zone), hook handles hit-testing and calls back on drop.
+
+**Currency and progression — Hearts, no cooldowns:** Every successful Feed/Play/Pet earns +1 Heart (uncapped, no per-use cost, no cooldown). Hearts only buy cosmetics (9 unlockable items: 3 foods, 3 toys, 3 accessories like hat/bandana/glasses — all CSS/emoji overlays, no new asset pipeline). Since Hearts only unlock nice-to-haves rather than enabling core play, grinding is harmless and encouraged. Using an already-unlocked food/toy is always free (no per-use cost), avoiding a "can't afford to feed my pet" state which would edge toward punishment. On exit, `GAME_COMPLETE` submits **lifetime total Hearts earned** (monotonic, like farm-builder's `totalCoinsEarned`) as the leaderboard score — preserving the "max score per user" shape despite having no discrete play sessions.
+
+**Achievements (6):** New Best Friend (first care action), Best Buddy (50 actions), All Grown Up (reach elder), Full Closet (unlock all 9 items), Heart of Gold (100 Hearts lifetime), Picture Perfect (both stats at 100 simultaneously). Achievements computed by thresholds on state after each action, cached in the store, matching farm-builder's pattern.
+
+**Persistence shape — `stores/petStore.ts`:** Zustand + `persist` → localStorage (`'pocket-pal-progress'`), same mechanism as all games. Data shape: `{ hunger, happiness, lastHungerTickAt, lastHappinessTickAt, hearts, totalHeartsEarned, totalCareActions, unlockedItemIds, equippedAccessories, achievements }`. No DB schema changes — same generic `public.scores` (game_id, user_id, score) table already used by all 12 games; only the lifetime total Hearts is submitted per exit.
+
+**Verification:** `tsc --noEmit` and `vite build` clean (after stripping leftover farm-builder scaffolding: removed `farmStore.ts`, `progressStore.ts`, fixed `DragPayload` field names to match `usePinchDrag`'s expected shape (`cropId` not `itemId`, `emoji` field added)). Built via `node scripts/build-games.js pocket-pal` into `public/games/pocket-pal/` (418KB JS / 16.4KB CSS gzipped to 134KB/4KB) and smoke-checked serving. No camera in this environment — pinch-drag (the same risky mechanism from farm-builder) remains unexercised against a live hand; a webcam pass is still strongly recommended before shipping, doubly so since this game reuses the same primitive for *both* core verbs (Feed and Play). Decay-window constants (90/180 min) are guesses, not verifiable headless, and flagged for real playtesting.
+
+**Files added:**
+- `games/pocket-pal/` — full Vite project scaffold (copied from farm-builder, stripped farm-specific code). Core new files: `data/careItems.ts` (9 items: 3 foods, 3 toys, 3 accessories; `itemById`/`itemsByKind` helpers), `game/petStats.ts` (decay math reusing `getGrowthFraction`, mood derivation, growth-stage thresholds), `stores/petStore.ts` (Zustand + persist, `feedPet`/`playWithPet`/`petPat`/`unlockItem`/`equipAccessory` actions, achievement checks), `components/game/{PetScreen,PetSprite,CareTray}.tsx` (game loop, stat readout, pinch-drag wiring, petting dwell). Updated: `App.tsx` (exit posts `totalHeartsEarned` as score), `types/index.ts` (new `PetSaveData` interface, reused `HandFrame`/`GestureSettings`), `components/menu/{MainMenu,SettingsScreen}.tsx` (new titles/stat readout).
+- `public/games/pocket-pal/` — built dist
+- `src/games/registry.ts` — added `pocket-pal` entry
+- `supabase/seed_pocket_pal.sql` — upsert-safe game row (Adventure category, published, featured, age_group `4-9`, difficulty `easy`) with inline documentation on scores wiring and persistent state pattern
