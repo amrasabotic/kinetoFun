@@ -118,6 +118,11 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'pocket-pal':             { folder: 'pocket-pal',             indexPath: '/games/pocket-pal/index.html' },
   'circuit-racer':          { folder: 'circuit-racer',          indexPath: '/games/circuit-racer/index.html' },
   'zoo-architect':          { folder: 'zoo-architect',          indexPath: '/games/zoo-architect/index.html' },
+  'word-search-hidden-words': { folder: 'word-search-hidden-words', indexPath: '/games/word-search-hidden-words/index.html' },
+  'gesture-archery-range':    { folder: 'gesture-archery-range',    indexPath: '/games/gesture-archery-range/index.html' },
+  'gesture-bowling-lane':     { folder: 'gesture-bowling-lane',     indexPath: '/games/gesture-bowling-lane/index.html' },
+  'gesture-mini-golf':        { folder: 'gesture-mini-golf',        indexPath: '/games/gesture-mini-golf/index.html' },
+  'gesture-sudoku':           { folder: 'gesture-sudoku',           indexPath: '/games/gesture-sudoku/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
