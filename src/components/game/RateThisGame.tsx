@@ -20,7 +20,9 @@ export function RateThisGame({ gameId }: { gameId: string }) {
         {rating ? "Your rating" : "Rate this game"}
       </h3>
       <RatingInput
-        onRate={submitRating}
+        onRate={(score) => {
+          void submitRating(score);
+        }}
         currentScore={rating}
       />
     </div>
