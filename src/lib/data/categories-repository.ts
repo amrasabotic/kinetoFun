@@ -1,11 +1,7 @@
-// Server-only category data access (Supabase / Postgres).
-//
-// Backs the SuperAdmin category manager. Maps the snake_case `categories` rows
-// onto the UI `Category` type and attaches a live `gamesCount` (number of games
-// whose `category_id` points here). Server-only, behind /api/admin/categories.
+// Server-only category data access (Postgres via pg).
 
 import type { Category } from "@/types";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { execute, query, queryCount, queryOne } from "@/lib/db/server";
 
 interface CategoryRow {
   id: string;
@@ -36,61 +32,47 @@ function toCategory(row: CategoryRow, gamesCount?: number): Category {
   };
 }
 
-/**
- * Map category id to count of published games.
- * Matches by category_id when set; falls back to the legacy `category` name
- * field for games that were created before category_id was backfilled.
- */
-async function gamesCountByCategory(categories: CategoryRow[]): Promise<Map<string, number>> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("games")
-    .select("category_id, category")
-    .eq("status", "published")
-    .limit(10000);
-  if (error) throw new Error(`[supabase] gamesCountByCategory: ${error.message}`);
+async function gamesCountByCategory(
+  categories: CategoryRow[],
+): Promise<Map<string, number>> {
+  const data = await query<{ category_id: string | null; category: string | null }>(
+    `SELECT category_id, category FROM public.games
+     WHERE status = 'published'
+     LIMIT 10000`,
+  );
 
   const nameToId = new Map(categories.map((c) => [c.name.toLowerCase(), c.id]));
   const counts = new Map<string, number>();
-  for (const row of (data ?? []) as { category_id: string | null; category: string | null }[]) {
+  for (const row of data) {
     const id = row.category_id ?? nameToId.get((row.category ?? "").toLowerCase());
     if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   return counts;
 }
 
-/** Public read — active categories only, no game counts needed. */
 export async function listActiveCategories(): Promise<Category[]> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("categories")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-  if (error) throw new Error(`[supabase] listActiveCategories: ${error.message}`);
-  return (data as CategoryRow[]).map((r) => toCategory(r));
+  const rows = await query<CategoryRow>(
+    `SELECT * FROM public.categories
+     WHERE is_active = true
+     ORDER BY sort_order ASC, name ASC`,
+  );
+  return rows.map((r) => toCategory(r));
 }
 
 export async function listCategories(): Promise<Category[]> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("categories")
-    .select("*")
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-  if (error) throw new Error(`[supabase] listCategories: ${error.message}`);
-  const rows = data as CategoryRow[];
+  const rows = await query<CategoryRow>(
+    `SELECT * FROM public.categories ORDER BY sort_order ASC, name ASC`,
+  );
   const counts = await gamesCountByCategory(rows);
   return rows.map((r) => toCategory(r, counts.get(r.id) ?? 0));
 }
 
 export async function getCategoryById(id: string): Promise<Category | null> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("categories")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw new Error(`[supabase] getCategoryById: ${error.message}`);
-  if (!data) return null;
-  const row = data as CategoryRow;
+  const row = await queryOne<CategoryRow>(
+    `SELECT * FROM public.categories WHERE id = $1`,
+    [id],
+  );
+  if (!row) return null;
   const counts = await gamesCountByCategory([row]);
   return toCategory(row, counts.get(row.id) ?? 0);
 }
@@ -105,83 +87,93 @@ export interface CategoryInput {
   isActive: boolean;
 }
 
-function toRow(input: Partial<CategoryInput>): Record<string, unknown> {
-  const row: Record<string, unknown> = {};
-  if (input.name !== undefined) row.name = input.name;
-  if (input.slug !== undefined) row.slug = input.slug;
-  if (input.description !== undefined) row.description = input.description;
-  if (input.icon !== undefined) row.icon = input.icon;
-  if (input.image !== undefined) row.image = input.image ?? null;
-  if (input.sortOrder !== undefined) row.sort_order = input.sortOrder;
-  if (input.isActive !== undefined) row.is_active = input.isActive;
-  return row;
-}
-
 export async function createCategory(input: CategoryInput): Promise<Category> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("categories")
-    .insert(toRow(input))
-    .select("*")
-    .single();
-  if (error) throw new Error(`[supabase] createCategory: ${error.message}`);
-  return toCategory(data as CategoryRow, 0);
+  const row = await queryOne<CategoryRow>(
+    `INSERT INTO public.categories
+       (name, slug, description, icon, image, sort_order, is_active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [
+      input.name,
+      input.slug,
+      input.description,
+      input.icon,
+      input.image ?? null,
+      input.sortOrder,
+      input.isActive,
+    ],
+  );
+  if (!row) throw new Error("[db] createCategory: no row returned");
+  return toCategory(row, 0);
 }
 
 export async function updateCategory(
   id: string,
   input: Partial<CategoryInput>,
 ): Promise<Category> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("categories")
-    .update(toRow(input))
-    .eq("id", id)
-    .select("*")
-    .single();
-  if (error) throw new Error(`[supabase] updateCategory: ${error.message}`);
-  const row = data as CategoryRow;
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  let i = 1;
+  const map: Record<string, string> = {
+    name: "name",
+    slug: "slug",
+    description: "description",
+    icon: "icon",
+    image: "image",
+    sortOrder: "sort_order",
+    isActive: "is_active",
+  };
+  for (const [key, col] of Object.entries(map)) {
+    if ((input as Record<string, unknown>)[key] !== undefined) {
+      fields.push(`${col} = $${i++}`);
+      values.push((input as Record<string, unknown>)[key] ?? null);
+    }
+  }
+  if (fields.length === 0) {
+    const existing = await getCategoryById(id);
+    if (!existing) throw new Error("[db] updateCategory: not found");
+    return existing;
+  }
+  values.push(id);
+  const row = await queryOne<CategoryRow>(
+    `UPDATE public.categories SET ${fields.join(", ")} WHERE id = $${i} RETURNING *`,
+    values,
+  );
+  if (!row) throw new Error("[db] updateCategory: not found");
   const counts = await gamesCountByCategory([row]);
   return toCategory(row, counts.get(id) ?? 0);
 }
 
-/** How many games are linked to a category (for delete safeguards). */
 export async function countGamesInCategory(id: string): Promise<number> {
-  const { count, error } = await getSupabaseAdmin()
-    .from("games")
-    .select("*", { count: "exact", head: true })
-    .eq("category_id", id);
-  if (error) throw new Error(`[supabase] countGamesInCategory: ${error.message}`);
-  return count ?? 0;
+  return queryCount(
+    `SELECT COUNT(*)::int AS count FROM public.games WHERE category_id = $1`,
+    [id],
+  );
 }
 
-/** Reassign every game in `fromId` to `toId` (null clears the link). */
-export async function moveGames(fromId: string, toId: string | null): Promise<void> {
-  const { error } = await getSupabaseAdmin()
-    .from("games")
-    .update({ category_id: toId })
-    .eq("category_id", fromId);
-  if (error) throw new Error(`[supabase] moveGames: ${error.message}`);
+export async function moveGames(
+  fromId: string,
+  toId: string | null,
+): Promise<void> {
+  await execute(
+    `UPDATE public.games SET category_id = $1 WHERE category_id = $2`,
+    [toId, fromId],
+  );
 }
 
-/** Delete every game linked to a category (cascades scores/sessions). */
 export async function deleteGamesInCategory(id: string): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("games").delete().eq("category_id", id);
-  if (error) throw new Error(`[supabase] deleteGamesInCategory: ${error.message}`);
+  await execute(`DELETE FROM public.games WHERE category_id = $1`, [id]);
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("categories").delete().eq("id", id);
-  if (error) throw new Error(`[supabase] deleteCategory: ${error.message}`);
+  await execute(`DELETE FROM public.categories WHERE id = $1`, [id]);
 }
 
-/** Persist a new ordering. `order` is an array of category ids in display order. */
 export async function reorderCategories(order: string[]): Promise<void> {
-  const db = getSupabaseAdmin();
-  // Sequential updates keep it simple and correct for a small taxonomy.
   for (let i = 0; i < order.length; i++) {
-    const { error } = await db
-      .from("categories")
-      .update({ sort_order: i + 1 })
-      .eq("id", order[i]);
-    if (error) throw new Error(`[supabase] reorderCategories: ${error.message}`);
+    await execute(
+      `UPDATE public.categories SET sort_order = $1 WHERE id = $2`,
+      [i + 1, order[i]],
+    );
   }
 }

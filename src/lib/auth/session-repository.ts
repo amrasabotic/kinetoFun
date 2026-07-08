@@ -2,14 +2,11 @@
 //
 // The JWT in the cookie carries a `sid` (session id); a matching row must exist
 // here (and not be expired) for the session to be considered valid by the DAL.
-// Deleting a row revokes that session server-side; deleting all rows for a user
-// is "sign out everywhere". Same swappable pattern as the user repository:
-// Supabase (`auth_sessions` table) when configured, a local file store otherwise.
 
 import {
-  SupabaseSessionRepository,
-  isSupabaseConfigured,
-} from "./repositories/supabase-session-repository";
+  PgSessionRepository,
+  isDbConfigured,
+} from "./repositories/pg-session-repository";
 import { LocalSessionRepository } from "./repositories/local-session-repository";
 
 /** A persisted session, as needed for the validity check. */
@@ -41,8 +38,8 @@ let cached: SessionRepository | null = null;
 /** Get the active session repository (memoized). */
 export function getSessionRepository(): SessionRepository {
   if (cached) return cached;
-  cached = isSupabaseConfigured()
-    ? new SupabaseSessionRepository()
+  cached = isDbConfigured()
+    ? new PgSessionRepository()
     : new LocalSessionRepository();
   return cached;
 }

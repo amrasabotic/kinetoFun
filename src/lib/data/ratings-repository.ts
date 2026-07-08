@@ -1,7 +1,6 @@
-// Server-only game ratings data access (Supabase).
-// Handles user-submitted 1-5 star ratings for games.
+// Server-only game ratings data access (Postgres via pg).
 
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { queryOne } from "@/lib/db/server";
 
 interface RatingRow {
   id: string;
@@ -18,26 +17,20 @@ export interface UserRating {
   updatedAt: string;
 }
 
-/**
- * Upsert a user's rating for a game (one per user/game pair).
- * If the user already rated this game, their rating is updated.
- */
 export async function upsertRating(
   userId: string,
   gameId: string,
   score: number,
 ): Promise<UserRating> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("game_ratings")
-    .upsert(
-      { user_id: userId, game_id: gameId, score },
-      { onConflict: "user_id,game_id" },
-    )
-    .select("*")
-    .single();
-
-  if (error) throw new Error(`[supabase] upsertRating: ${error.message}`);
-  const row = data as RatingRow;
+  const row = await queryOne<RatingRow>(
+    `INSERT INTO public.game_ratings (user_id, game_id, score)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, game_id)
+     DO UPDATE SET score = EXCLUDED.score, updated_at = now()
+     RETURNING *`,
+    [userId, gameId, score],
+  );
+  if (!row) throw new Error("[db] upsertRating: no row returned");
   return {
     gameId: row.game_id,
     score: row.score,
@@ -45,24 +38,16 @@ export async function upsertRating(
   };
 }
 
-/**
- * Get a user's existing rating for a game, or null if they haven't rated it.
- */
 export async function getUserRating(
   userId: string,
   gameId: string,
 ): Promise<UserRating | null> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("game_ratings")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("game_id", gameId)
-    .maybeSingle();
-
-  if (error) throw new Error(`[supabase] getUserRating: ${error.message}`);
-  if (!data) return null;
-
-  const row = data as RatingRow;
+  const row = await queryOne<RatingRow>(
+    `SELECT * FROM public.game_ratings
+     WHERE user_id = $1 AND game_id = $2`,
+    [userId, gameId],
+  );
+  if (!row) return null;
   return {
     gameId: row.game_id,
     score: row.score,

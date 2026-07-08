@@ -1,7 +1,6 @@
-// Server-only admin data access (Supabase). Users management + analytics.
-// Guarded by getAdminUser()/getSuperAdminUser() in the route handlers.
+// Server-only admin data access (Postgres via pg).
 
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { execute, query, queryCount, queryOne } from "@/lib/db/server";
 
 export interface AdminUser {
   id: string;
@@ -39,49 +38,47 @@ function toAdminUser(row: AdminUserRow): AdminUser {
 }
 
 export async function listAllUsers(): Promise<AdminUser[]> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("users")
-    .select("id, email, name, role, level, xp, created_at, active")
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`[supabase] listAllUsers: ${error.message}`);
-  return (data as AdminUserRow[]).map(toAdminUser);
+  const rows = await query<AdminUserRow>(
+    `SELECT id, email, name, role, level, xp, created_at, active
+     FROM public.users
+     ORDER BY created_at DESC`,
+  );
+  return rows.map(toAdminUser);
 }
 
-export async function setUserActive(id: string, active: boolean): Promise<AdminUser> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("users")
-    .update({ active })
-    .eq("id", id)
-    .select("id, email, name, role, level, xp, created_at, active")
-    .single();
-  if (error) throw new Error(`[supabase] setUserActive: ${error.message}`);
-  return toAdminUser(data as AdminUserRow);
+export async function setUserActive(
+  id: string,
+  active: boolean,
+): Promise<AdminUser> {
+  const row = await queryOne<AdminUserRow>(
+    `UPDATE public.users SET active = $1 WHERE id = $2
+     RETURNING id, email, name, role, level, xp, created_at, active`,
+    [active, id],
+  );
+  if (!row) throw new Error("[db] setUserActive: not found");
+  return toAdminUser(row);
 }
 
 export async function updateUserRole(
   id: string,
   role: "user" | "admin" | "superadmin",
 ): Promise<AdminUser> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("users")
-    .update({ role })
-    .eq("id", id)
-    .select("id, email, name, role, level, xp, created_at, active")
-    .single();
-  if (error) throw new Error(`[supabase] updateUserRole: ${error.message}`);
-  return toAdminUser(data as AdminUserRow);
+  const row = await queryOne<AdminUserRow>(
+    `UPDATE public.users SET role = $1 WHERE id = $2
+     RETURNING id, email, name, role, level, xp, created_at, active`,
+    [role, id],
+  );
+  if (!row) throw new Error("[db] updateUserRole: not found");
+  return toAdminUser(row);
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  // Cascades to scores, game_sessions, auth_sessions (FK on delete cascade).
-  const { error } = await getSupabaseAdmin().from("users").delete().eq("id", id);
-  if (error) throw new Error(`[supabase] deleteUser: ${error.message}`);
+  await execute(`DELETE FROM public.users WHERE id = $1`, [id]);
 }
 
 // ── Analytics ────────────────────────────────────────────────────────────────
 
 export interface DayPoint {
-  /** ISO date (YYYY-MM-DD). */
   date: string;
   value: number;
 }
@@ -89,7 +86,6 @@ export interface DayPoint {
 export interface TopGame {
   gameId: string;
   title: string;
-  /** Total recorded plays (from games.play_count). */
   playCount: number;
   category: string;
   coverImage?: string;
@@ -102,7 +98,6 @@ export interface AdminAnalytics {
   totalSessions: number;
   activeSessionsNow: number;
   totalScores: number;
-  // SuperAdmin expansion metrics:
   totalGames: number;
   publishedGames: number;
   draftGames: number;
@@ -110,17 +105,17 @@ export interface AdminAnalytics {
   totalCategories: number;
   activeCategories: number;
   gamesPlayedToday: number;
-  /** Daily new-user counts for the last 14 days. */
   userGrowth: DayPoint[];
-  /** Daily play-session counts for the last 14 days. */
   playsPerDay: DayPoint[];
   topGames: TopGame[];
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Build a zero-filled array of the last `days` ISO dates (oldest → newest). */
-function emptyDaySeries(days: number): { keys: string[]; map: Map<string, number> } {
+function emptyDaySeries(days: number): {
+  keys: string[];
+  map: Map<string, number>;
+} {
   const keys: string[] = [];
   const map = new Map<string, number>();
   const start = new Date();
@@ -144,14 +139,12 @@ export function bucketByDay(timestamps: string[], days: number): DayPoint[] {
 }
 
 export async function getAnalytics(): Promise<AdminAnalytics> {
-  const db = getSupabaseAdmin();
   const now = Date.now();
   const sevenDaysAgo = new Date(now - 7 * DAY_MS).toISOString();
   const fourteenDaysAgo = new Date(now - 14 * DAY_MS).toISOString();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const todayIso = startOfToday.toISOString();
-  const head = { count: "exact" as const, head: true };
 
   const [
     totalUsers,
@@ -169,66 +162,58 @@ export async function getAnalytics(): Promise<AdminAnalytics> {
     sessionsRecent,
     topGamesRows,
   ] = await Promise.all([
-    db.from("users").select("*", head),
-    db.from("users").select("*", head).gte("created_at", sevenDaysAgo),
-    db.from("game_sessions").select("*", head),
-    db.from("game_sessions").select("*", head).eq("status", "active"),
-    db.from("scores").select("*", head),
-    db.from("games").select("*", head),
-    db.from("games").select("*", head).eq("status", "published"),
-    db.from("games").select("*", head).eq("status", "draft"),
-    db.from("games").select("*", head).eq("featured", true),
-    db.from("categories").select("*", head),
-    db.from("categories").select("*", head).eq("is_active", true),
-    db.from("users").select("created_at").gte("created_at", fourteenDaysAgo).limit(5000),
-    db
-      .from("game_sessions")
-      .select("started_at")
-      .gte("started_at", fourteenDaysAgo)
-      .limit(10000),
-    db
-      .from("games")
-      .select("id, title, category, cover, cover_image, play_count")
-      .order("play_count", { ascending: false })
-      .limit(5),
-  ]);
-
-  const firstError =
-    totalUsers.error ??
-    newUsersLast7Days.error ??
-    totalSessions.error ??
-    activeSessionsNow.error ??
-    totalScores.error ??
-    totalGames.error ??
-    publishedGames.error ??
-    draftGames.error ??
-    featuredGames.error ??
-    totalCategories.error ??
-    activeCategories.error ??
-    usersRecent.error ??
-    sessionsRecent.error ??
-    topGamesRows.error;
-  if (firstError) throw new Error(`[supabase] getAnalytics: ${firstError.message}`);
-
-  const sessionTimes = ((sessionsRecent.data ?? []) as { started_at: string }[]).map(
-    (r) => r.started_at,
-  );
-  const userTimes = ((usersRecent.data ?? []) as { created_at: string }[]).map(
-    (r) => r.created_at,
-  );
-
-  const gamesPlayedToday = sessionTimes.filter((t) => t >= todayIso).length;
-
-  const topGames: TopGame[] = (
-    (topGamesRows.data ?? []) as Array<{
+    queryCount(`SELECT COUNT(*)::int AS count FROM public.users`),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.users WHERE created_at >= $1`,
+      [sevenDaysAgo],
+    ),
+    queryCount(`SELECT COUNT(*)::int AS count FROM public.game_sessions`),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.game_sessions WHERE status = 'active'`,
+    ),
+    queryCount(`SELECT COUNT(*)::int AS count FROM public.scores`),
+    queryCount(`SELECT COUNT(*)::int AS count FROM public.games`),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.games WHERE status = 'published'`,
+    ),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.games WHERE status = 'draft'`,
+    ),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.games WHERE featured = true`,
+    ),
+    queryCount(`SELECT COUNT(*)::int AS count FROM public.categories`),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.categories WHERE is_active = true`,
+    ),
+    query<{ created_at: string }>(
+      `SELECT created_at FROM public.users WHERE created_at >= $1 LIMIT 5000`,
+      [fourteenDaysAgo],
+    ),
+    query<{ started_at: string }>(
+      `SELECT started_at FROM public.game_sessions WHERE started_at >= $1 LIMIT 10000`,
+      [fourteenDaysAgo],
+    ),
+    query<{
       id: string;
       title: string;
       category: string;
       cover: string | null;
       cover_image: string | null;
       play_count: number | null;
-    }>
-  )
+    }>(
+      `SELECT id, title, category, cover, cover_image, play_count
+       FROM public.games
+       ORDER BY play_count DESC
+       LIMIT 5`,
+    ),
+  ]);
+
+  const sessionTimes = sessionsRecent.map((r) => r.started_at);
+  const userTimes = usersRecent.map((r) => r.created_at);
+  const gamesPlayedToday = sessionTimes.filter((t) => t >= todayIso).length;
+
+  const topGames: TopGame[] = topGamesRows
     .filter((g) => (g.play_count ?? 0) > 0)
     .map((g) => ({
       gameId: g.id,
@@ -240,17 +225,17 @@ export async function getAnalytics(): Promise<AdminAnalytics> {
     }));
 
   return {
-    totalUsers: totalUsers.count ?? 0,
-    newUsersLast7Days: newUsersLast7Days.count ?? 0,
-    totalSessions: totalSessions.count ?? 0,
-    activeSessionsNow: activeSessionsNow.count ?? 0,
-    totalScores: totalScores.count ?? 0,
-    totalGames: totalGames.count ?? 0,
-    publishedGames: publishedGames.count ?? 0,
-    draftGames: draftGames.count ?? 0,
-    featuredGames: featuredGames.count ?? 0,
-    totalCategories: totalCategories.count ?? 0,
-    activeCategories: activeCategories.count ?? 0,
+    totalUsers,
+    newUsersLast7Days,
+    totalSessions,
+    activeSessionsNow,
+    totalScores,
+    totalGames,
+    publishedGames,
+    draftGames,
+    featuredGames,
+    totalCategories,
+    activeCategories,
     gamesPlayedToday,
     userGrowth: bucketByDay(userTimes, 14),
     playsPerDay: bucketByDay(sessionTimes, 14),
@@ -280,73 +265,92 @@ export interface GameAnalytics {
   peakConcurrent: number;
 }
 
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
-export async function getGameAnalytics(gameId: string, days = 30): Promise<GameAnalytics> {
-  const db = getSupabaseAdmin();
+export async function getGameAnalytics(
+  gameId: string,
+  days = 30,
+): Promise<GameAnalytics> {
   const since = new Date(Date.now() - days * DAY_MS).toISOString();
-  const head = { count: "exact" as const, head: true };
 
-  const [game, totalSessions, allPlayers, totalScores, sessionsRecent, topLbRows] =
+  const [game, totalSessions, allPlayers, totalScores, sessionsRecent, lbRows] =
     await Promise.all([
-      db.from("games").select("id, title").eq("id", gameId).single(),
-      db.from("game_sessions").select("*", head).eq("game_id", gameId),
-      db.from("game_sessions").select("user_id").eq("game_id", gameId).limit(10000),
-      db.from("scores").select("*", head).eq("game_id", gameId),
-      db
-        .from("game_sessions")
-        .select("started_at, ended_at, status")
-        .eq("game_id", gameId)
-        .gte("started_at", since)
-        .limit(5000),
-      db
-        .from("game_leaderboards")
-        .select("user_id, best_score, rank")
-        .eq("game_id", gameId)
-        .order("rank", { ascending: true })
-        .limit(10),
+      queryOne<{ id: string; title: string }>(
+        `SELECT id, title FROM public.games WHERE id = $1`,
+        [gameId],
+      ),
+      queryCount(
+        `SELECT COUNT(*)::int AS count FROM public.game_sessions WHERE game_id = $1`,
+        [gameId],
+      ),
+      query<{ user_id: string }>(
+        `SELECT user_id FROM public.game_sessions WHERE game_id = $1 LIMIT 10000`,
+        [gameId],
+      ),
+      queryCount(
+        `SELECT COUNT(*)::int AS count FROM public.scores WHERE game_id = $1`,
+        [gameId],
+      ),
+      query<{
+        started_at: string;
+        ended_at: string | null;
+        status: string;
+      }>(
+        `SELECT started_at, ended_at, status FROM public.game_sessions
+         WHERE game_id = $1 AND started_at >= $2
+         LIMIT 5000`,
+        [gameId, since],
+      ),
+      query<{ user_id: string; best_score: number; rank: number }>(
+        `SELECT user_id, best_score, rank FROM public.game_leaderboards
+         WHERE game_id = $1
+         ORDER BY rank ASC
+         LIMIT 10`,
+        [gameId],
+      ),
     ]);
 
-  if (game.error) throw new Error(`[supabase] getGameAnalytics game: ${game.error.message}`);
+  if (!game) throw new Error("[db] getGameAnalytics: game not found");
 
-  // Unique players
-  const uniquePlayers = new Set(
-    ((allPlayers.data ?? []) as { user_id: string }[]).map((r) => r.user_id),
-  ).size;
+  const uniquePlayers = new Set(allPlayers.map((r) => r.user_id)).size;
 
-  // Avg session duration (ended sessions only)
-  const endedSessions = ((sessionsRecent.data ?? []) as {
-    started_at: string;
-    ended_at: string | null;
-    status: string;
-  }[]).filter((s) => s.ended_at && s.status === "ended");
-
+  const endedSessions = sessionsRecent.filter(
+    (s) => s.ended_at && s.status === "ended",
+  );
   let avgSessionMinutes = 0;
   if (endedSessions.length > 0) {
     const totalMs = endedSessions.reduce((sum, s) => {
-      return sum + (new Date(s.ended_at!).getTime() - new Date(s.started_at).getTime());
+      return (
+        sum +
+        (new Date(s.ended_at!).getTime() - new Date(s.started_at).getTime())
+      );
     }, 0);
-    avgSessionMinutes = Math.round((totalMs / endedSessions.length / 60000) * 10) / 10;
+    avgSessionMinutes =
+      Math.round((totalMs / endedSessions.length / 60000) * 10) / 10;
   }
 
-  // Sessions per day chart
-  const sessionTimes = ((sessionsRecent.data ?? []) as { started_at: string }[]).map(
-    (r) => r.started_at,
-  );
+  const sessionTimes = sessionsRecent.map((r) => r.started_at);
   const sessionsPerDay = bucketByDay(sessionTimes, days);
 
-  // Most active weekday
   const weekdayCount = new Array(7).fill(0) as number[];
   for (const t of sessionTimes) {
     weekdayCount[new Date(t).getDay()]++;
   }
   const maxCount = Math.max(...weekdayCount);
-  const mostActiveDay = maxCount > 0 ? (WEEKDAYS[weekdayCount.indexOf(maxCount)] ?? null) : null;
+  const mostActiveDay =
+    maxCount > 0 ? (WEEKDAYS[weekdayCount.indexOf(maxCount)] ?? null) : null;
 
-  // Peak concurrent (sweep-line over sessions in window)
   type Event = { t: number; d: 1 | -1 };
   const events: Event[] = [];
-  for (const s of (sessionsRecent.data ?? []) as { started_at: string; ended_at: string | null }[]) {
+  for (const s of sessionsRecent) {
     events.push({ t: new Date(s.started_at).getTime(), d: 1 });
     if (s.ended_at) events.push({ t: new Date(s.ended_at).getTime(), d: -1 });
   }
@@ -358,33 +362,29 @@ export async function getGameAnalytics(gameId: string, days = 30): Promise<GameA
     if (concurrent > peakConcurrent) peakConcurrent = concurrent;
   }
 
-  // Top players — fetch user names
-  const lbRows = (topLbRows.data ?? []) as { user_id: string; best_score: number; rank: number }[];
   let topPlayers: GameTopPlayer[] = [];
   if (lbRows.length > 0) {
     const userIds = lbRows.map((r) => r.user_id);
-    const { data: userRows } = await db
-      .from("users")
-      .select("id, name")
-      .in("id", userIds);
-    const nameMap = new Map(
-      ((userRows ?? []) as { id: string; name: string }[]).map((u) => [u.id, u.name]),
+    const userRows = await query<{ id: string; name: string }>(
+      `SELECT id, name FROM public.users WHERE id = ANY($1::uuid[])`,
+      [userIds],
     );
+    const nameMap = new Map(userRows.map((u) => [u.id, u.name]));
     topPlayers = lbRows.map((r) => ({
-      rank: r.rank,
+      rank: Number(r.rank),
       userId: r.user_id,
       userName: nameMap.get(r.user_id) ?? "Unknown",
-      bestScore: r.best_score,
+      bestScore: Number(r.best_score),
     }));
   }
 
   return {
     gameId,
-    gameTitle: (game.data as { id: string; title: string }).title,
-    totalSessions: totalSessions.count ?? 0,
+    gameTitle: game.title,
+    totalSessions,
     uniquePlayers,
     avgSessionMinutes,
-    totalScores: totalScores.count ?? 0,
+    totalScores,
     sessionsPerDay,
     topPlayers,
     mostActiveDay,
@@ -423,50 +423,59 @@ export async function getAdminLeaderboard(
   page: number,
   limit: number,
 ): Promise<LeaderboardPage> {
-  const db = getSupabaseAdmin();
   const offset = (page - 1) * limit;
-  const head = { count: "exact" as const, head: true };
 
-  const [countRes, lbRes] = await Promise.all([
-    db.from("game_leaderboards").select("*", head).eq("game_id", gameId),
-    db
-      .from("game_leaderboards")
-      .select("user_id, best_score, rank")
-      .eq("game_id", gameId)
-      .order("rank", { ascending: true })
-      .range(offset, offset + limit - 1),
+  const [total, lbRows] = await Promise.all([
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.game_leaderboards WHERE game_id = $1`,
+      [gameId],
+    ),
+    query<{ user_id: string; best_score: number; rank: number }>(
+      `SELECT user_id, best_score, rank FROM public.game_leaderboards
+       WHERE game_id = $1
+       ORDER BY rank ASC
+       LIMIT $2 OFFSET $3`,
+      [gameId, limit, offset],
+    ),
   ]);
 
-  if (lbRes.error) throw new Error(`[supabase] getAdminLeaderboard: ${lbRes.error.message}`);
-
-  const lbRows = (lbRes.data ?? []) as { user_id: string; best_score: number; rank: number }[];
-  const total = countRes.count ?? 0;
-
   if (lbRows.length === 0) {
-    return { players: [], total, page, totalPages: Math.max(1, Math.ceil(total / limit)) };
+    return {
+      players: [],
+      total,
+      page,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
   }
 
   const userIds = lbRows.map((r) => r.user_id);
 
-  const [userRes, scoreRes] = await Promise.all([
-    db.from("users").select("id, name, email").in("id", userIds),
-    db
-      .from("scores")
-      .select("id, user_id, score, achieved_at")
-      .eq("game_id", gameId)
-      .in("user_id", userIds),
+  const [userRows, scoreRows] = await Promise.all([
+    query<{ id: string; name: string; email: string }>(
+      `SELECT id, name, email FROM public.users WHERE id = ANY($1::uuid[])`,
+      [userIds],
+    ),
+    query<{
+      id: string;
+      user_id: string;
+      score: number;
+      achieved_at: string;
+    }>(
+      `SELECT id, user_id, score, achieved_at FROM public.scores
+       WHERE game_id = $1 AND user_id = ANY($2::uuid[])`,
+      [gameId, userIds],
+    ),
   ]);
 
   const userMap = new Map(
-    ((userRes.data ?? []) as { id: string; name: string; email: string }[]).map((u) => [
-      u.id,
-      { name: u.name, email: u.email },
-    ]),
+    userRows.map((u) => [u.id, { name: u.name, email: u.email }]),
   );
 
-  // Group scores by user_id
-  const scoresByUser = new Map<string, { id: string; score: number; achieved_at: string }[]>();
-  for (const s of (scoreRes.data ?? []) as { id: string; user_id: string; score: number; achieved_at: string }[]) {
+  const scoresByUser = new Map<
+    string,
+    { id: string; score: number; achieved_at: string }[]
+  >();
+  for (const s of scoreRows) {
     const arr = scoresByUser.get(s.user_id) ?? [];
     arr.push(s);
     scoresByUser.set(s.user_id, arr);
@@ -475,51 +484,54 @@ export async function getAdminLeaderboard(
   const players: LeaderboardPlayer[] = lbRows.map((r) => {
     const user = userMap.get(r.user_id);
     const userScores = scoresByUser.get(r.user_id) ?? [];
-    const bestScoreRow = userScores.find((s) => s.score === r.best_score) ?? userScores[0];
-    const lastPlayed =
-      userScores.reduce(
-        (max, s) => (s.achieved_at > max ? s.achieved_at : max),
-        userScores[0]?.achieved_at ?? "",
-      );
+    const bestScoreRow =
+      userScores.find((s) => Number(s.score) === Number(r.best_score)) ??
+      userScores[0];
+    const lastPlayed = userScores.reduce(
+      (max, s) => (s.achieved_at > max ? s.achieved_at : max),
+      userScores[0]?.achieved_at ?? "",
+    );
     return {
-      rank: r.rank,
+      rank: Number(r.rank),
       userId: r.user_id,
       userName: user?.name ?? "Unknown",
       userEmail: user?.email ?? "",
-      bestScore: r.best_score,
+      bestScore: Number(r.best_score),
       bestScoreId: bestScoreRow?.id ?? "",
       totalSubmissions: userScores.length,
       lastPlayed,
     };
   });
 
-  return { players, total, page, totalPages: Math.max(1, Math.ceil(total / limit)) };
+  return {
+    players,
+    total,
+    page,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
 }
 
 export async function getScoresByUserGame(
   gameId: string,
   userId: string,
 ): Promise<ScoreEntry[]> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("scores")
-    .select("id, score, achieved_at")
-    .eq("game_id", gameId)
-    .eq("user_id", userId)
-    .order("achieved_at", { ascending: false });
-  if (error) throw new Error(`[supabase] getScoresByUserGame: ${error.message}`);
-  return ((data ?? []) as { id: string; score: number; achieved_at: string }[]).map((s) => ({
+  const rows = await query<{ id: string; score: number; achieved_at: string }>(
+    `SELECT id, score, achieved_at FROM public.scores
+     WHERE game_id = $1 AND user_id = $2
+     ORDER BY achieved_at DESC`,
+    [gameId, userId],
+  );
+  return rows.map((s) => ({
     id: s.id,
-    score: s.score,
+    score: Number(s.score),
     achievedAt: s.achieved_at,
   }));
 }
 
 export async function deleteScore(id: string): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("scores").delete().eq("id", id);
-  if (error) throw new Error(`[supabase] deleteScore: ${error.message}`);
+  await execute(`DELETE FROM public.scores WHERE id = $1`, [id]);
 }
 
 export async function deleteAllScoresForGame(gameId: string): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("scores").delete().eq("game_id", gameId);
-  if (error) throw new Error(`[supabase] deleteAllScoresForGame: ${error.message}`);
+  await execute(`DELETE FROM public.scores WHERE game_id = $1`, [gameId]);
 }

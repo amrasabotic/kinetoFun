@@ -1,7 +1,6 @@
-// Server-only subscription data access (Supabase).
-// Guarded by getSuperAdminUser() in route handlers.
+// Server-only subscription data access (Postgres via pg).
 
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { execute, query, queryCount, queryOne } from "@/lib/db/server";
 
 export interface AdminSubscription {
   id: string;
@@ -24,7 +23,7 @@ export interface SubscriptionSummary {
   providerManaged: number;
 }
 
-interface SubscriptionRow {
+interface SubscriptionJoinRow {
   id: string;
   user_id: string;
   plan: string;
@@ -34,17 +33,16 @@ interface SubscriptionRow {
   provider_subscription_id: string | null;
   current_period_end: string | null;
   created_at: string;
-  // Supabase FK-join returns an array (or null) for related rows
-  users: { name: string; email: string }[] | { name: string; email: string } | null;
+  user_name: string | null;
+  user_email: string | null;
 }
 
-function toAdminSubscription(row: SubscriptionRow): AdminSubscription {
-  const user = Array.isArray(row.users) ? row.users[0] : row.users;
+function toAdminSubscription(row: SubscriptionJoinRow): AdminSubscription {
   return {
     id: row.id,
     userId: row.user_id,
-    userName: user?.name ?? "Unknown",
-    userEmail: user?.email ?? "",
+    userName: row.user_name ?? "Unknown",
+    userEmail: row.user_email ?? "",
     plan: row.plan,
     status: row.status,
     provider: row.provider,
@@ -55,97 +53,91 @@ function toAdminSubscription(row: SubscriptionRow): AdminSubscription {
   };
 }
 
+const SELECT_JOIN = `
+  SELECT s.id, s.user_id, s.plan, s.status, s.provider,
+         s.provider_customer_id, s.provider_subscription_id,
+         s.current_period_end, s.created_at,
+         u.name AS user_name, u.email AS user_email
+  FROM public.subscriptions s
+  LEFT JOIN public.users u ON u.id = s.user_id
+`;
+
 export async function listAllSubscriptions(): Promise<AdminSubscription[]> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("subscriptions")
-    .select(
-      `id, user_id, plan, status, provider,
-       provider_customer_id, provider_subscription_id,
-       current_period_end, created_at,
-       users ( name, email )`,
-    )
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`[supabase] listAllSubscriptions: ${error.message}`);
-  return (data as SubscriptionRow[]).map(toAdminSubscription);
+  const rows = await query<SubscriptionJoinRow>(
+    `${SELECT_JOIN} ORDER BY s.created_at DESC`,
+  );
+  return rows.map(toAdminSubscription);
 }
 
 export async function getSubscriptionSummary(): Promise<SubscriptionSummary> {
-  const db = getSupabaseAdmin();
-  const head = { count: "exact" as const, head: true };
   const [totalPro, activeSubscriptions, manualGrants, providerManaged] =
     await Promise.all([
-      db.from("subscriptions").select("*", head).eq("plan", "pro"),
-      db.from("subscriptions").select("*", head).eq("status", "active"),
-      db.from("subscriptions").select("*", head).eq("provider", "manual"),
-      db
-        .from("subscriptions")
-        .select("*", head)
-        .not("provider", "is", null)
-        .neq("provider", "manual"),
+      queryCount(
+        `SELECT COUNT(*)::int AS count FROM public.subscriptions WHERE plan = 'pro'`,
+      ),
+      queryCount(
+        `SELECT COUNT(*)::int AS count FROM public.subscriptions WHERE status = 'active'`,
+      ),
+      queryCount(
+        `SELECT COUNT(*)::int AS count FROM public.subscriptions WHERE provider = 'manual'`,
+      ),
+      queryCount(
+        `SELECT COUNT(*)::int AS count FROM public.subscriptions
+         WHERE provider IS NOT NULL AND provider <> 'manual'`,
+      ),
     ]);
-  return {
-    totalPro: totalPro.count ?? 0,
-    activeSubscriptions: activeSubscriptions.count ?? 0,
-    manualGrants: manualGrants.count ?? 0,
-    providerManaged: providerManaged.count ?? 0,
-  };
+  return { totalPro, activeSubscriptions, manualGrants, providerManaged };
 }
 
 export async function grantProSubscription(
   userId: string,
 ): Promise<AdminSubscription> {
-  const db = getSupabaseAdmin();
+  const existing = await queryOne<{ id: string }>(
+    `SELECT id FROM public.subscriptions WHERE user_id = $1 LIMIT 1`,
+    [userId],
+  );
 
-  // Check for an existing row for this user
-  const { data: existing } = await db
-    .from("subscriptions")
-    .select("id")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle();
-
-  let result;
+  let row: SubscriptionJoinRow | null;
   if (existing) {
-    result = await db
-      .from("subscriptions")
-      .update({ plan: "pro", status: "active", provider: "manual" })
-      .eq("id", existing.id)
-      .select(
-        `id, user_id, plan, status, provider,
-         provider_customer_id, provider_subscription_id,
-         current_period_end, created_at,
-         users ( name, email )`,
-      )
-      .single();
+    await execute(
+      `UPDATE public.subscriptions
+       SET plan = 'pro', status = 'active', provider = 'manual'
+       WHERE id = $1`,
+      [existing.id],
+    );
+    row = await queryOne<SubscriptionJoinRow>(
+      `${SELECT_JOIN} WHERE s.id = $1`,
+      [existing.id],
+    );
   } else {
-    result = await db
-      .from("subscriptions")
-      .insert({ user_id: userId, plan: "pro", status: "active", provider: "manual" })
-      .select(
-        `id, user_id, plan, status, provider,
-         provider_customer_id, provider_subscription_id,
-         current_period_end, created_at,
-         users ( name, email )`,
-      )
-      .single();
+    const inserted = await queryOne<{ id: string }>(
+      `INSERT INTO public.subscriptions (user_id, plan, status, provider)
+       VALUES ($1, 'pro', 'active', 'manual')
+       RETURNING id`,
+      [userId],
+    );
+    if (!inserted) throw new Error("[db] grantProSubscription: insert failed");
+    row = await queryOne<SubscriptionJoinRow>(
+      `${SELECT_JOIN} WHERE s.id = $1`,
+      [inserted.id],
+    );
   }
 
-  if (result.error) throw new Error(`[supabase] grantProSubscription: ${result.error.message}`);
-  return toAdminSubscription(result.data as SubscriptionRow);
+  if (!row) throw new Error("[db] grantProSubscription: no row returned");
+  return toAdminSubscription(row);
 }
 
-export async function revokeSubscription(id: string): Promise<AdminSubscription> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("subscriptions")
-    .update({ status: "inactive" })
-    .eq("id", id)
-    .select(
-      `id, user_id, plan, status, provider,
-       provider_customer_id, provider_subscription_id,
-       current_period_end, created_at,
-       users ( name, email )`,
-    )
-    .single();
-  if (error) throw new Error(`[supabase] revokeSubscription: ${error.message}`);
-  return toAdminSubscription(data as SubscriptionRow);
+export async function revokeSubscription(
+  id: string,
+): Promise<AdminSubscription> {
+  await execute(
+    `UPDATE public.subscriptions SET status = 'inactive' WHERE id = $1`,
+    [id],
+  );
+  const row = await queryOne<SubscriptionJoinRow>(
+    `${SELECT_JOIN} WHERE s.id = $1`,
+    [id],
+  );
+  if (!row) throw new Error("[db] revokeSubscription: not found");
+  return toAdminSubscription(row);
 }

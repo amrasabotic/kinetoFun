@@ -1,12 +1,10 @@
-// Server-only audit-log data access (Supabase / Postgres).
+// Server-only audit-log data access (Postgres via pg).
 //
-// Records every SuperAdmin write (category/game/user create/update/delete/…) and
-// reads them back for the audit page. `recordAudit` is intentionally best-effort:
-// a logging failure must never break the action it is describing, so callers can
-// `void recordAudit(...)` without awaiting and errors are swallowed (logged).
+// `recordAudit` is intentionally best-effort: a logging failure must never
+// break the action it is describing.
 
 import type { AuditLog } from "@/types";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { execute, query, queryCount } from "@/lib/db/server";
 
 interface AuditRow {
   id: string;
@@ -41,18 +39,21 @@ export interface AuditEvent {
   details?: Record<string, unknown>;
 }
 
-/** Best-effort insert — never throws (failures are logged, not propagated). */
 export async function recordAudit(event: AuditEvent): Promise<void> {
   try {
-    const { error } = await getSupabaseAdmin().from("audit_logs").insert({
-      admin_id: event.adminId,
-      admin_name: event.adminName,
-      action: event.action,
-      entity_type: event.entityType,
-      entity_id: event.entityId ?? null,
-      details: event.details ?? {},
-    });
-    if (error) console.error("[audit] insert failed:", error.message);
+    await execute(
+      `INSERT INTO public.audit_logs
+         (admin_id, admin_name, action, entity_type, entity_id, details)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
+      [
+        event.adminId,
+        event.adminName,
+        event.action,
+        event.entityType,
+        event.entityId ?? null,
+        JSON.stringify(event.details ?? {}),
+      ],
+    );
   } catch (err) {
     console.error("[audit] insert threw:", err);
   }
@@ -61,7 +62,6 @@ export async function recordAudit(event: AuditEvent): Promise<void> {
 export interface AuditQuery {
   entityType?: "category" | "game" | "user" | "score" | "subscription";
   adminId?: string;
-  /** ISO timestamps for an inclusive lower / exclusive upper bound. */
   from?: string;
   to?: string;
   search?: string;
@@ -72,40 +72,65 @@ export interface AuditQuery {
 export interface AuditPage {
   logs: AuditLog[];
   total: number;
-  /** Distinct admins that appear in the log (for the admin filter). */
   admins: Array<{ id: string; name: string }>;
 }
 
-export async function listAuditLogs(query: AuditQuery = {}): Promise<AuditPage> {
-  const db = getSupabaseAdmin();
-  const limit = Math.min(query.limit ?? 50, 200);
-  const offset = query.offset ?? 0;
+export async function listAuditLogs(q: AuditQuery = {}): Promise<AuditPage> {
+  const limit = Math.min(q.limit ?? 50, 200);
+  const offset = q.offset ?? 0;
 
-  let q = db
-    .from("audit_logs")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+  const where: string[] = [];
+  const params: unknown[] = [];
+  let i = 1;
 
-  if (query.entityType) q = q.eq("entity_type", query.entityType);
-  if (query.adminId) q = q.eq("admin_id", query.adminId);
-  if (query.from) q = q.gte("created_at", query.from);
-  if (query.to) q = q.lt("created_at", query.to);
-  if (query.search) {
-    const s = `%${query.search}%`;
-    q = q.or(`admin_name.ilike.${s},action.ilike.${s},entity_id.ilike.${s}`);
+  if (q.entityType) {
+    where.push(`entity_type = $${i++}`);
+    params.push(q.entityType);
+  }
+  if (q.adminId) {
+    where.push(`admin_id = $${i++}`);
+    params.push(q.adminId);
+  }
+  if (q.from) {
+    where.push(`created_at >= $${i++}`);
+    params.push(q.from);
+  }
+  if (q.to) {
+    where.push(`created_at < $${i++}`);
+    params.push(q.to);
+  }
+  if (q.search) {
+    const s = `%${q.search}%`;
+    where.push(
+      `(admin_name ILIKE $${i} OR action ILIKE $${i} OR entity_id ILIKE $${i})`,
+    );
+    params.push(s);
+    i++;
   }
 
-  const { data, error, count } = await q;
-  if (error) throw new Error(`[supabase] listAuditLogs: ${error.message}`);
-  const logs = (data as AuditRow[]).map(toAuditLog);
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  // Distinct admins across the current page — accumulated client-side across pages.
+  const countParams = [...params];
+  const total = await queryCount(
+    `SELECT COUNT(*)::int AS count FROM public.audit_logs ${whereSql}`,
+    countParams,
+  );
+
+  params.push(limit, offset);
+  const rows = await query<AuditRow>(
+    `SELECT * FROM public.audit_logs
+     ${whereSql}
+     ORDER BY created_at DESC
+     LIMIT $${i++} OFFSET $${i}`,
+    params,
+  );
+
+  const logs = rows.map(toAuditLog);
   const seen = new Map<string, string>();
   for (const l of logs) if (l.adminId) seen.set(l.adminId, l.adminName);
   const admins = Array.from(seen, ([id, name]) => ({ id, name }));
 
-  return { logs, total: count ?? logs.length, admins };
+  return { logs, total, admins };
 }
 
 export interface AuditSummary {
@@ -116,27 +141,26 @@ export interface AuditSummary {
 }
 
 export async function getAuditSummary(): Promise<AuditSummary> {
-  const db = getSupabaseAdmin();
   const now = Date.now();
   const dayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
   const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
   const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const head = { count: "exact" as const, head: true };
 
   const [today, week, month, total] = await Promise.all([
-    db.from("audit_logs").select("*", head).gte("created_at", dayAgo),
-    db.from("audit_logs").select("*", head).gte("created_at", weekAgo),
-    db.from("audit_logs").select("*", head).gte("created_at", monthAgo),
-    db.from("audit_logs").select("*", head),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.audit_logs WHERE created_at >= $1`,
+      [dayAgo],
+    ),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.audit_logs WHERE created_at >= $1`,
+      [weekAgo],
+    ),
+    queryCount(
+      `SELECT COUNT(*)::int AS count FROM public.audit_logs WHERE created_at >= $1`,
+      [monthAgo],
+    ),
+    queryCount(`SELECT COUNT(*)::int AS count FROM public.audit_logs`),
   ]);
 
-  const err = today.error ?? week.error ?? month.error ?? total.error;
-  if (err) throw new Error(`[supabase] getAuditSummary: ${err.message}`);
-
-  return {
-    today: today.count ?? 0,
-    week: week.count ?? 0,
-    month: month.count ?? 0,
-    total: total.count ?? 0,
-  };
+  return { today, week, month, total };
 }

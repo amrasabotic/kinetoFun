@@ -1,7 +1,6 @@
-// Server-only platform settings data access (Supabase).
-// The platform_settings table enforces a single row via CHECK (id = 1).
+// Server-only platform settings data access (Postgres via pg).
 
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { queryOne } from "@/lib/db/server";
 
 export interface PlatformSettings {
   maintenanceMode: boolean;
@@ -17,7 +16,9 @@ export interface PlatformSettings {
   updatedBy: string | null;
 }
 
-export type SettingsUpdate = Partial<Omit<PlatformSettings, "updatedAt" | "updatedBy">>;
+export type SettingsUpdate = Partial<
+  Omit<PlatformSettings, "updatedAt" | "updatedBy">
+>;
 
 interface SettingsRow {
   id: number;
@@ -50,41 +51,65 @@ function toSettings(row: SettingsRow): PlatformSettings {
   };
 }
 
+const DEFAULT_SETTINGS: PlatformSettings = {
+  maintenanceMode: false,
+  maintenanceMessage:
+    "We're performing scheduled maintenance. We'll be back shortly.",
+  announcementActive: false,
+  announcementText: "",
+  announcementType: "info",
+  registrationOpen: true,
+  featuredSectionTitle: "Featured Games",
+  maxLeaderboardEntries: 10,
+  defaultDifficultyFilter: "all",
+  updatedAt: new Date(0).toISOString(),
+  updatedBy: null,
+};
+
 export async function getSettings(): Promise<PlatformSettings> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("platform_settings")
-    .select("*")
-    .eq("id", 1)
-    .single();
-  if (error) throw new Error(`[supabase] getSettings: ${error.message}`);
-  return toSettings(data as SettingsRow);
+  const row = await queryOne<SettingsRow>(
+    `SELECT * FROM public.platform_settings WHERE id = 1`,
+  );
+  if (!row) return DEFAULT_SETTINGS;
+  return toSettings(row);
 }
 
 export async function updateSettings(
   patch: SettingsUpdate,
   updatedBy: string,
 ): Promise<PlatformSettings> {
-  const dbPatch: Partial<Omit<SettingsRow, "id">> = {};
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  let i = 1;
 
-  if (patch.maintenanceMode !== undefined) dbPatch.maintenance_mode = patch.maintenanceMode;
-  if (patch.maintenanceMessage !== undefined) dbPatch.maintenance_message = patch.maintenanceMessage;
-  if (patch.announcementActive !== undefined) dbPatch.announcement_active = patch.announcementActive;
-  if (patch.announcementText !== undefined) dbPatch.announcement_text = patch.announcementText;
-  if (patch.announcementType !== undefined) dbPatch.announcement_type = patch.announcementType;
-  if (patch.registrationOpen !== undefined) dbPatch.registration_open = patch.registrationOpen;
-  if (patch.featuredSectionTitle !== undefined) dbPatch.featured_section_title = patch.featuredSectionTitle;
-  if (patch.maxLeaderboardEntries !== undefined) dbPatch.max_leaderboard_entries = patch.maxLeaderboardEntries;
-  if (patch.defaultDifficultyFilter !== undefined) dbPatch.default_difficulty_filter = patch.defaultDifficultyFilter;
+  const map: [keyof SettingsUpdate, string][] = [
+    ["maintenanceMode", "maintenance_mode"],
+    ["maintenanceMessage", "maintenance_message"],
+    ["announcementActive", "announcement_active"],
+    ["announcementText", "announcement_text"],
+    ["announcementType", "announcement_type"],
+    ["registrationOpen", "registration_open"],
+    ["featuredSectionTitle", "featured_section_title"],
+    ["maxLeaderboardEntries", "max_leaderboard_entries"],
+    ["defaultDifficultyFilter", "default_difficulty_filter"],
+  ];
 
-  dbPatch.updated_at = new Date().toISOString();
-  dbPatch.updated_by = updatedBy;
+  for (const [key, col] of map) {
+    if (patch[key] !== undefined) {
+      fields.push(`${col} = $${i++}`);
+      values.push(patch[key]);
+    }
+  }
 
-  const { data, error } = await getSupabaseAdmin()
-    .from("platform_settings")
-    .update(dbPatch)
-    .eq("id", 1)
-    .select("*")
-    .single();
-  if (error) throw new Error(`[supabase] updateSettings: ${error.message}`);
-  return toSettings(data as SettingsRow);
+  fields.push(`updated_at = $${i++}`);
+  values.push(new Date().toISOString());
+  fields.push(`updated_by = $${i++}`);
+  values.push(updatedBy);
+
+  const row = await queryOne<SettingsRow>(
+    `UPDATE public.platform_settings SET ${fields.join(", ")} WHERE id = 1 RETURNING *`,
+    values,
+  );
+  if (!row) throw new Error("[db] updateSettings: not found");
+  return toSettings(row);
 }

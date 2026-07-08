@@ -1,8 +1,4 @@
-// Server-only games data access (Supabase / Postgres).
-//
-// Reads the `games` catalog table and maps snake_case rows onto the UI `Game`
-// type. Same pattern as the user repository: server-only, behind the API, never
-// imported by a Client Component.
+// Server-only games data access (Postgres via pg).
 
 import type {
   Game,
@@ -12,19 +8,12 @@ import type {
   GameDifficulty,
   GameAgeGroup,
 } from "@/types";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
-
-/**
- * True when a Postgres/PostgREST error is "undefined column" (42703) — used to
- * detect a DB that hasn't had migration 0004 applied yet, so public reads can
- * gracefully fall back instead of 500ing.
- */
-function isUndefinedColumn(error: { code?: string; message?: string }): boolean {
-  return (
-    error.code === "42703" ||
-    /column .* does not exist/i.test(error.message ?? "")
-  );
-}
+import {
+  execute,
+  isUndefinedColumn,
+  query,
+  queryOne,
+} from "@/lib/db/server";
 
 interface GameRow {
   id: string;
@@ -82,72 +71,47 @@ function toGame(row: GameRow): Game {
   };
 }
 
-/**
- * Public catalog read — PUBLISHED games only. Draft/Archived games are hidden
- * from normal users (the admin list uses `listAllGames`).
- *
- * Resilient to a pre-migration DB: if the `status` column doesn't exist yet
- * (migration 0004 not applied), it falls back to listing every game so the
- * public catalog never goes down. Once the column exists, it filters to
- * published only.
- */
 export async function listGames(): Promise<Game[]> {
-  const db = getSupabaseAdmin();
-  const first = await db
-    .from("games")
-    .select("*")
-    .eq("status", "published")
-    .order("featured", { ascending: false })
-    .order("title", { ascending: true });
-
-  if (first.error && isUndefinedColumn(first.error)) {
-    const fallback = await db
-      .from("games")
-      .select("*")
-      .order("featured", { ascending: false })
-      .order("title", { ascending: true });
-    if (fallback.error) throw new Error(`[supabase] listGames: ${fallback.error.message}`);
-    return (fallback.data as GameRow[]).map(toGame);
+  try {
+    const rows = await query<GameRow>(
+      `SELECT * FROM public.games
+       WHERE status = 'published'
+       ORDER BY featured DESC, title ASC`,
+    );
+    return rows.map(toGame);
+  } catch (err) {
+    if (!isUndefinedColumn(err)) throw err;
+    const rows = await query<GameRow>(
+      `SELECT * FROM public.games ORDER BY featured DESC, title ASC`,
+    );
+    return rows.map(toGame);
   }
-  if (first.error) throw new Error(`[supabase] listGames: ${first.error.message}`);
-  return (first.data as GameRow[]).map(toGame);
 }
 
-/** Admin read — every game regardless of status. */
 export async function listAllGames(): Promise<Game[]> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("games")
-    .select("*")
-    .order("featured", { ascending: false })
-    .order("title", { ascending: true });
-  if (error) throw new Error(`[supabase] listAllGames: ${error.message}`);
-  return (data as GameRow[]).map(toGame);
+  const rows = await query<GameRow>(
+    `SELECT * FROM public.games ORDER BY featured DESC, title ASC`,
+  );
+  return rows.map(toGame);
 }
 
 export async function getGameById(id: string): Promise<Game | null> {
-  const db = getSupabaseAdmin();
-  const first = await db
-    .from("games")
-    .select("*")
-    .eq("id", id)
-    .eq("status", "published")
-    .maybeSingle();
-
-  if (first.error && isUndefinedColumn(first.error)) {
-    const fallback = await db.from("games").select("*").eq("id", id).maybeSingle();
-    if (fallback.error) throw new Error(`[supabase] getGameById: ${fallback.error.message}`);
-    return fallback.data ? toGame(fallback.data as GameRow) : null;
+  try {
+    const row = await queryOne<GameRow>(
+      `SELECT * FROM public.games WHERE id = $1 AND status = 'published'`,
+      [id],
+    );
+    return row ? toGame(row) : null;
+  } catch (err) {
+    if (!isUndefinedColumn(err)) throw err;
+    const row = await queryOne<GameRow>(
+      `SELECT * FROM public.games WHERE id = $1`,
+      [id],
+    );
+    return row ? toGame(row) : null;
   }
-  if (first.error) throw new Error(`[supabase] getGameById: ${first.error.message}`);
-  return first.data ? toGame(first.data as GameRow) : null;
 }
 
-// ── Admin writes ─────────────────────────────────────────────────────────────
-
-/**
- * Map a UI `Game` onto the snake_case DB columns (for insert/update).
- * `play_count` is system-managed (sessions) and deliberately NOT written here.
- */
 function toGameRow(game: Game): Record<string, unknown> {
   return {
     id: game.id,
@@ -175,62 +139,117 @@ function toGameRow(game: Game): Record<string, unknown> {
 }
 
 export async function createGame(game: Game): Promise<Game> {
-  const { data, error } = await getSupabaseAdmin()
-    .from("games")
-    .insert(toGameRow(game))
-    .select("*")
-    .single();
-  if (error) throw new Error(`[supabase] createGame: ${error.message}`);
-  return toGame(data as GameRow);
+  const r = toGameRow(game);
+  const row = await queryOne<GameRow>(
+    `INSERT INTO public.games (
+       id, title, tagline, description, short_description, category, category_id,
+       players, min_players, max_players, cover, cover_image, thumbnail, accent,
+       rating, release_year, duration_minutes, difficulty, age_group, status, featured
+     ) VALUES (
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+     ) RETURNING *`,
+    [
+      r.id,
+      r.title,
+      r.tagline,
+      r.description,
+      r.short_description,
+      r.category,
+      r.category_id,
+      r.players,
+      r.min_players,
+      r.max_players,
+      r.cover,
+      r.cover_image,
+      r.thumbnail,
+      r.accent,
+      r.rating,
+      r.release_year,
+      r.duration_minutes,
+      r.difficulty,
+      r.age_group,
+      r.status,
+      r.featured,
+    ],
+  );
+  if (!row) throw new Error("[db] createGame: no row returned");
+  return toGame(row);
 }
 
 export async function updateGame(id: string, game: Game): Promise<Game> {
-  // `id` is the slug primary key — keep it stable; update everything else.
-  const { id: _omit, ...row } = toGameRow(game) as { id: string } & Record<string, unknown>;
-  void _omit;
-  const { data, error } = await getSupabaseAdmin()
-    .from("games")
-    .update(row)
-    .eq("id", id)
-    .select("*")
-    .single();
-  if (error) throw new Error(`[supabase] updateGame: ${error.message}`);
-  return toGame(data as GameRow);
+  const r = toGameRow(game);
+  const row = await queryOne<GameRow>(
+    `UPDATE public.games SET
+       title = $2, tagline = $3, description = $4, short_description = $5,
+       category = $6, category_id = $7, players = $8, min_players = $9,
+       max_players = $10, cover = $11, cover_image = $12, thumbnail = $13,
+       accent = $14, rating = $15, release_year = $16, duration_minutes = $17,
+       difficulty = $18, age_group = $19, status = $20, featured = $21
+     WHERE id = $1
+     RETURNING *`,
+    [
+      id,
+      r.title,
+      r.tagline,
+      r.description,
+      r.short_description,
+      r.category,
+      r.category_id,
+      r.players,
+      r.min_players,
+      r.max_players,
+      r.cover,
+      r.cover_image,
+      r.thumbnail,
+      r.accent,
+      r.rating,
+      r.release_year,
+      r.duration_minutes,
+      r.difficulty,
+      r.age_group,
+      r.status,
+      r.featured,
+    ],
+  );
+  if (!row) throw new Error("[db] updateGame: not found");
+  return toGame(row);
 }
 
 export async function deleteGame(id: string): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("games").delete().eq("id", id);
-  if (error) throw new Error(`[supabase] deleteGame: ${error.message}`);
+  await execute(`DELETE FROM public.games WHERE id = $1`, [id]);
 }
 
-// ── Bulk admin actions ───────────────────────────────────────────────────────
-
-/** Set the publication status on many games at once. */
-export async function bulkSetStatus(ids: string[], status: GameStatus): Promise<void> {
+export async function bulkSetStatus(
+  ids: string[],
+  status: GameStatus,
+): Promise<void> {
   if (ids.length === 0) return;
-  const { error } = await getSupabaseAdmin()
-    .from("games")
-    .update({ status })
-    .in("id", ids);
-  if (error) throw new Error(`[supabase] bulkSetStatus: ${error.message}`);
+  await execute(`UPDATE public.games SET status = $1 WHERE id = ANY($2::text[])`, [
+    status,
+    ids,
+  ]);
 }
 
-/** Reassign many games to a category (also syncs the legacy enum when known). */
 export async function bulkSetCategory(
   ids: string[],
   categoryId: string,
   categoryName?: GameCategory,
 ): Promise<void> {
   if (ids.length === 0) return;
-  const patch: Record<string, unknown> = { category_id: categoryId };
-  if (categoryName) patch.category = categoryName;
-  const { error } = await getSupabaseAdmin().from("games").update(patch).in("id", ids);
-  if (error) throw new Error(`[supabase] bulkSetCategory: ${error.message}`);
+  if (categoryName) {
+    await execute(
+      `UPDATE public.games SET category_id = $1, category = $2 WHERE id = ANY($3::text[])`,
+      [categoryId, categoryName, ids],
+    );
+  } else {
+    await execute(
+      `UPDATE public.games SET category_id = $1 WHERE id = ANY($2::text[])`,
+      [categoryId, ids],
+    );
+  }
 }
 
-/** Delete many games (cascades scores/sessions). */
 export async function bulkDeleteGames(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const { error } = await getSupabaseAdmin().from("games").delete().in("id", ids);
-  if (error) throw new Error(`[supabase] bulkDeleteGames: ${error.message}`);
+  await execute(`DELETE FROM public.games WHERE id = ANY($1::text[])`, [ids]);
 }
