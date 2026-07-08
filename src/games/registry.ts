@@ -123,6 +123,10 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-bowling-lane':     { folder: 'gesture-bowling-lane',     indexPath: '/games/gesture-bowling-lane/index.html' },
   'gesture-mini-golf':        { folder: 'gesture-mini-golf',        indexPath: '/games/gesture-mini-golf/index.html' },
   'gesture-sudoku':           { folder: 'gesture-sudoku',           indexPath: '/games/gesture-sudoku/index.html' },
+  'gesture-darts':            { folder: 'gesture-darts',            indexPath: '/games/gesture-darts/index.html' },
+  'liquid-puzzle':            { folder: 'liquid-puzzle',            indexPath: '/games/liquid-puzzle/index.html' },
+  'gesture-tower-defense':    { folder: 'gesture-tower-defense',    indexPath: '/games/gesture-tower-defense/index.html' },
+  'gesture-trivia-arena':     { folder: 'gesture-trivia-arena',     indexPath: '/games/gesture-trivia-arena/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
