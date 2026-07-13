@@ -1,7 +1,7 @@
 # KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
-> Last updated: 2026-07-06 (ADR-049 — Cascade Arrows)
+> Last updated: 2026-07-13 (ADR-061 — Password reset via Resend)
 
 ---
 
@@ -1374,3 +1374,43 @@ No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) a
 **Files added:** `games/gesture-trivia-arena/` — full Vite+Tailwind project (`types.ts`; `data/questions.ts`; `utils/helpers.ts`; `systems/{quizEngine,aiOpponent,matchEngine,audio,save}.ts`; `mediaPipe/{handTrackingCore,GestureProvider}.tsx`; `hooks/{useGesture,useDwellButton,useMatch}.ts`; `components/AnswerTile.tsx`; `App.tsx`, `main.tsx`, `index.css`). `public/games/gesture-trivia-arena/` — built via `npm run build:games gesture-trivia-arena`. `src/games/registry.ts` — added `gesture-trivia-arena` entry. `supabase/seed_gesture_trivia_arena.sql` — upsert-safe game row (Puzzle category, published, not featured, age_group `6-14`, difficulty `easy`).
 
 **Caveat:** no camera in this build environment — but this is the lowest-risk gesture surface built so far (plain fingertip tracking, no pose classifier of any kind to get wrong), so the usual "reasoned, not tuned" caveat applies with less force than for any prior game. Verified in a headless Playwright check with a fake camera device: the Main Menu renders correctly (mode/difficulty/Daily toggle/Start Match) with zero console errors; a standalone render of the question screen (`AnswerTile` in its correct/wrong/unselected/idle states, alongside the HUD and reveal row) confirmed all visual states render as intended. Actually progressing past the menu via hover-dwell requires a real tracked hand, so full match play is unverified against live input — the quiz/match engine itself is deterministically verified (above); `typecheck` and `build` both pass clean.
+
+---
+
+## ADR-060 — Database migrated off Supabase to direct Postgres on AWS RDS (retroactive)
+
+**Date:** 2026-07-13 (documenting a change made 2026-07-08; not recorded in an ADR at the time)
+**Status:** Accepted
+
+**Decision:** Replace the Supabase JS client (`@supabase/supabase-js`, service-role REST access) with a direct `pg` `Pool` connection (`src/lib/db/server.ts`) against a self-managed AWS RDS Postgres instance. `DATABASE_URL` (+ `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`) replaces `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` as the configured-backend signal (`isDbConfigured()`); every repository under `src/lib/data/` and `src/lib/auth/repositories/` now issues raw parameterized SQL via `query`/`queryOne`/`execute`/`queryCount` instead of the Supabase query builder. The app now runs live against KinetoFun's own AWS deployment rather than a Supabase-hosted project.
+
+**Why this matters for anyone picking this project back up:** every design doc written before this date (`project-context.md`, `project-roadmap.md`, most ADRs referencing "Supabase") describes the *previous* backend. The database schema/migrations themselves didn't change shape — `supabase/migrations/*.sql` is still the source of truth for table definitions and is still applied by hand — but the connection layer, credential shape, and hosting are entirely different now. Old references to "Supabase Dashboard → SQL editor" for running migrations no longer apply, and note that this move also **broke `scripts/run-migration.mjs`**, which still called the old Supabase REST `exec_sql` RPC; it was rewritten (as part of ADR-061 below) to connect via `pg` directly.
+
+**A real gap found while fixing this retroactively:** the `kintofun_user` application role connecting via `DATABASE_URL` does **not** have `CREATE` privilege on the `public` schema (confirmed by ADR-061's migration 0010 failing with `permission denied for schema public`). Migrations 0006–0009 were evidently applied through some other, undocumented path (admin credentials via psql, the RDS console, etc.) — that path is not captured anywhere in this repo's scripts or docs. Future migrations need either the app role granted `CREATE`, or a documented admin-credential path; right now the only way to apply new migrations is whatever the user did outside this repo.
+
+---
+
+## ADR-061 — Password reset via Resend (email-dependent auth follow-up)
+
+**Date:** 2026-07-13
+**Status:** Accepted
+
+**Decision:** Implement the "forgot password" flow that ADR-019's auth hardening had explicitly deferred for lack of an email provider. Chose **Resend** as the provider (simple API, generous free tier) over AWS SES (would keep everything in one cloud, but more setup friction — domain verification, sandbox mode) since the priority was shipping the feature quickly. Email verification at signup was considered as part of the same "email-dependent auth follow-ups" backlog item but deliberately **not** built this round — scope was narrowed to password reset only, per explicit user direction.
+
+**New table `password_reset_tokens` (migration 0010), storing only a SHA-256 hash of the token — never the raw value — mirroring how `auth_sessions` never stores the raw JWT.** The raw token exists only in the emailed link and briefly in the request handler's memory; a leaked database row can't be replayed as a working reset link. A partial index (`WHERE used_at is null`) keeps the hot-path lookup (an unused, unexpired token) fast without indexing spent tokens forever.
+
+**Swappable repository pattern extended to a third domain, following `session-repository.ts`'s established shape exactly:** `password-reset-repository.ts` defines the interface + a memoized `getPasswordResetRepository()` picking `PgPasswordResetRepository` or `LocalPasswordResetRepository` based on `isDbConfigured()`, so local dev without `DATABASE_URL` still works end-to-end against a git-ignored `.data/password-reset-tokens.json` file, same as users/sessions already do.
+
+**`UserRepository` gained `updatePassword(id, passwordHash)`**, implemented in both the Postgres and local backends — the only interface change needed, since every other piece (hashing, validation, rate limiting) already existed and was reused directly: `hashPassword`/`verifyPassword` from `password.ts`, the same scrypt scheme as registration; `rateLimit`/`clientIp`/`tooManyRequests` from the existing auth rate-limit module, applied per-IP and per-(IP, email) on `forgot-password` (mirroring login's dual-gate shape) and per-IP on `reset-password`.
+
+**`forgot-password` always returns the same generic success message regardless of whether the email is registered** — the classic email-enumeration defense, matching login's existing "constant-ish work whether or not the user exists" comment. A DB or send failure inside the handler is swallowed and still returns the generic success shape, since there's nothing actionable a client could do differently, and leaking a 500 here would itself be a signal about account existence.
+
+**Completing a reset revokes every existing session for that account** (`destroyAllSessions`, the same function "sign out everywhere" already uses) — a password reset is exactly the kind of event ADR-019's revocable-sessions infrastructure was built for: if credentials were compromised, a reset should kill any session an attacker already holds, not just gate future logins.
+
+**A real bug caught during manual verification, not by typecheck:** `resend.ts` initially resolved the `from` address with `process.env.EMAIL_FROM ?? "KinetoFun <onboarding@resend.dev>"`. `.env.local` had `EMAIL_FROM=` (present but empty), and `??` only falls back on `null`/`undefined` — not on an empty string — so the app was silently sending `from: ""` to Resend, which rejected it with an opaque empty error object (`{}`) that gave no hint about the actual cause. Diagnosed by calling the Resend SDK directly with the exact same params outside the app (succeeded), which isolated the bug to how the app computed its arguments rather than Resend itself. Fixed by switching to `||`, which treats an empty string the same as unset. Worth remembering as a general env-var lesson: `??` is only safe for values that are meaningfully valid when empty-string; anything meant to have "real content or fall back" needs `||` (or an explicit `.trim()` check) instead.
+
+**Verified end-to-end against the live AWS RDS database and a real Resend account (not simulated):** `npm install pg` (missing from `node_modules` despite being in `package.json`, from an earlier incomplete install — separately fixed before this feature) + a fresh `.next` cache; migration 0010 applied by the user through their existing out-of-band admin path (see ADR-060); a real `forgot-password` call for the live superadmin account sent an actual email, confirmed `delivered` via the Resend API's `/emails` list endpoint; the emailed token was confirmed (read-only, by hashing and querying `password_reset_tokens`) to match a valid, unused, unexpired row before the user completed the reset themselves through the `/reset-password` UI; afterward, the token's `used_at` was confirmed set (unusable a second time) and the account's `auth_sessions` row count matched "all prior sessions revoked, one fresh session from re-login" exactly as designed.
+
+**Files added:** `supabase/migrations/0010_password_reset_tokens.sql`; `src/lib/auth/password-reset-repository.ts` + `repositories/{pg,local}-password-reset-repository.ts`; `src/lib/email/{resend,templates}.ts`; `src/app/api/auth/{forgot-password,reset-password}/route.ts`; `src/app/(auth)/{forgot-password,reset-password}/page.tsx`. **Files modified:** `src/lib/auth/repository.ts` + both `UserRepository` implementations (`updatePassword`); `src/lib/auth/validation.ts` (`forgotPasswordSchema`/`resetPasswordSchema`); `src/services/auth.service.ts` (`forgotPassword`/`resetPassword` client methods); `src/app/(auth)/login/page.tsx` ("Forgot password?" link); `.env.example`/`.env.local` (`RESEND_API_KEY`, `EMAIL_FROM`); `scripts/run-migration.mjs` (rewritten for raw `pg`, see ADR-060); `package.json` (added `resend` + reinstalled `pg`).
+
+**Known gaps, same "not built this round" scope as stated above:** email verification at signup, refresh-token rotation, OAuth/social login all remain deferred. `EMAIL_FROM` is currently unset, so email is sent from Resend's shared sandbox address (`onboarding@resend.dev`), which **only delivers to the email address on the Resend account itself** — a verified sending domain + `EMAIL_FROM` must be configured before this works for real end users, not just the account owner.

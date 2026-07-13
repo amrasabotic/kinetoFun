@@ -1,9 +1,10 @@
 // Usage: node scripts/run-migration.mjs <migration-file>
-// Reads Supabase credentials from .env.local and runs the SQL via the REST API.
+// Reads DATABASE_URL from .env.local and runs the SQL directly against Postgres (AWS RDS).
 
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { Client } from "pg";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
@@ -21,10 +22,9 @@ try {
   process.exit(1);
 }
 
-const url = env.SUPABASE_URL ?? env.NEXT_PUBLIC_SUPABASE_URL;
-const key = env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) {
-  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local");
+const connectionString = env.DATABASE_URL;
+if (!connectionString) {
+  console.error("Missing DATABASE_URL in .env.local");
   process.exit(1);
 }
 
@@ -36,24 +36,14 @@ if (!migrationFile) {
 
 const sql = readFileSync(resolve(root, migrationFile), "utf8");
 
-// Supabase doesn't expose a generic SQL endpoint via JS client for DDL.
-// Use the pg REST endpoint via fetch with the service role key.
-const response = await fetch(`${url}/rest/v1/rpc/exec_sql`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-  },
-  body: JSON.stringify({ sql }),
-});
-
-if (!response.ok) {
-  // exec_sql may not exist — print the SQL for manual run
-  console.log("\nexec_sql RPC not available. Run this SQL manually in your Supabase SQL editor:\n");
-  console.log("─".repeat(60));
-  console.log(sql);
-  console.log("─".repeat(60));
-} else {
-  console.log("Migration applied successfully.");
+const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
+await client.connect();
+try {
+  await client.query(sql);
+  console.log(`Migration applied successfully: ${migrationFile}`);
+} catch (err) {
+  console.error("Migration failed:", err.message);
+  process.exit(1);
+} finally {
+  await client.end();
 }

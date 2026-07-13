@@ -76,16 +76,27 @@ function LoginForm() {
           required
           icon={<Mail className="h-4 w-4" />}
         />
-        <TextField
-          label="Password"
-          type="password"
-          autoComplete="current-password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          icon={<Lock className="h-4 w-4" />}
-        />
+        <div className="space-y-2">
+          <TextField
+            label="Password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            icon={<Lock className="h-4 w-4" />}
+          />
+          <div className="pl-1 text-right">
+            <Link
+              href="/forgot-password"
+              data-focusable
+              className="text-xs font-semibold text-primary transition-colors hover:text-primary/80 focus:outline-none"
+            >
+              Forgot password?
+            </Link>
+          </div>
+        </div>
 
         {error && (
           <p

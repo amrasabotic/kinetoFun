@@ -31,6 +31,7 @@ export interface UserRepository {
     }>,
   ): Promise<UserRecord>;
   addXp(id: string, amount: number): Promise<{ xp: number; level: number }>;
+  updatePassword(id: string, passwordHash: string): Promise<void>;
 }
 
 let cached: UserRepository | null = null;

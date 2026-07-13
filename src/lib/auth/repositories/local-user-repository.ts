@@ -77,4 +77,12 @@ export class LocalUserRepository implements UserRepository {
     await writeAll(rows);
     return { xp: newXp, level: newLevel };
   }
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    const rows = await readAll();
+    const idx = rows.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error(`[local] updatePassword: User not found (id=${id})`);
+    rows[idx] = { ...rows[idx], password_hash: passwordHash };
+    await writeAll(rows);
+  }
 }

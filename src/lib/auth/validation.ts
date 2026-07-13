@@ -24,6 +24,20 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required."),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.email("Enter a valid email address."),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Missing reset token."),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters.")
+    .max(200, "Password is too long.")
+    .regex(/[a-zA-Z]/, "Password must include at least one letter.")
+    .regex(/[0-9]/, "Password must include at least one number."),
+});
+
 /**
  * Flatten a ZodError into `{ field: [messages] }`. Written by hand (instead of
  * `error.flatten()`) so it stays stable across zod versions.

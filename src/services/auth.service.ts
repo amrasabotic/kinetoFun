@@ -121,4 +121,38 @@ export const authService = {
     const data = (await res.json().catch(() => null)) as AuthSuccess | null;
     return data?.user ? toAppUser(data.user) : null;
   },
+
+  /** Request a password reset email. Always resolves — the server never reveals whether the email exists. */
+  async forgotPassword(email: string): Promise<void> {
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as AuthError | null;
+      throw new AuthRequestError(
+        data?.error ?? "Something went wrong. Please try again.",
+        res.status,
+        data?.fields,
+      );
+    }
+  },
+
+  /** Consume a reset token and set a new password. */
+  async resetPassword(token: string, password: string): Promise<void> {
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as AuthError | null;
+      throw new AuthRequestError(
+        data?.error ?? "Something went wrong. Please try again.",
+        res.status,
+        data?.fields,
+      );
+    }
+  },
 };

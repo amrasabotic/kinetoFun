@@ -79,6 +79,13 @@ export class PgUserRepository implements UserRepository {
     if (!rows.length) throw new Error("[db] addXp: no result returned");
     return { xp: rows[0].xp, level: rows[0].level };
   }
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await query(
+      `UPDATE public.users SET password_hash = $1 WHERE id = $2`,
+      [passwordHash, id],
+    );
+  }
 }
 
 /** @deprecated Use PgUserRepository */
