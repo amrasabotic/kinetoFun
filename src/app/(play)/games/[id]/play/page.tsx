@@ -50,12 +50,23 @@ function GameLaunchContent() {
   const [xpEarned, setXpEarned] = useState(0);
   const sessionIdRef = useRef<string | null>(null);
   const sessionStartedRef = useRef(false);
+  const sessionEndedRef = useRef(false);
 
   useEffect(() => {
     if (!game) return;
     const boot = setTimeout(() => setPhase("playing"), 1800);
     return () => clearTimeout(boot);
   }, [game]);
+
+  const endSessionOnce = useCallback(async () => {
+    if (sessionEndedRef.current || !sessionIdRef.current) return;
+    sessionEndedRef.current = true;
+    try {
+      await endSession(sessionIdRef.current);
+    } catch {
+      // non-fatal
+    }
+  }, []);
 
   useEffect(() => {
     if (!game || sessionStartedRef.current) return;
@@ -66,7 +77,11 @@ function GameLaunchContent() {
         if (id) invalidateContinuePlaying();
       })
       .catch(() => { /* non-fatal */ });
-  }, [game]);
+
+    return () => {
+      endSessionOnce();
+    };
+  }, [game, endSessionOnce]);
 
   useEffect(() => {
     if (phase !== "playing") return;
@@ -80,7 +95,7 @@ function GameLaunchContent() {
     try {
       const earned = await postScore(game.id, score);
       setXpEarned(earned);
-      await endSession(sessionIdRef.current);
+      await endSessionOnce();
       invalidateContinuePlaying();
       await refresh();
     } catch (err) {
@@ -89,7 +104,7 @@ function GameLaunchContent() {
     } finally {
       setPhase("done");
     }
-  }, [game, refresh]);
+  }, [game, refresh, endSessionOnce]);
 
   useEffect(() => {
     if (phase !== "done") return;
@@ -98,6 +113,30 @@ function GameLaunchContent() {
     }, 2000);
     return () => clearTimeout(timeout);
   }, [phase, game, router]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (sessionEndedRef.current || !sessionIdRef.current) return;
+      sessionEndedRef.current = true;
+      fetch(`/api/sessions/${sessionIdRef.current}`, {
+        method: "PATCH",
+        keepalive: true,
+      }).catch(() => { /* non-fatal */ });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handleBeforeUnload();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   if (loading) {
     return <FullScreenOverlay><Spinner /></FullScreenOverlay>;
@@ -153,12 +192,15 @@ function GameLaunchContent() {
       {/* Slim top bar */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
-          <Link
-            href={`/games/${game.id}`}
+          <button
+            onClick={async () => {
+              await endSessionOnce();
+              router.push(`/games/${game.id}`);
+            }}
             className="rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white/70 hover:text-white hover:bg-black/70 transition-colors"
           >
             ← Exit
-          </Link>
+          </button>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
             {game.title}

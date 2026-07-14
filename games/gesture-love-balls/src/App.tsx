@@ -531,6 +531,11 @@ function GameScreen({ levelId, onComplete, onQuit, onNext }: {
   const videoRef  = useRef<HTMLVideoElement>(null);
   const handRef   = useMediaPipe(videoRef as React.RefObject<HTMLVideoElement>);
 
+  const handleQuit = () => {
+    window.parent?.postMessage({ type: 'GAME_COMPLETE', score: 0 }, '*');
+    onQuit();
+  };
+
   // React state — only for HUD/overlay rendering
   const [phase,    setPhase]    = useState<Phase>('idle');
   const [inkPct,   setInkPct]   = useState(1);
@@ -983,9 +988,11 @@ function GameScreen({ levelId, onComplete, onQuit, onNext }: {
         }
         if ((aFall || bFall || spiked) && !gs.wonSent) {
           gs.phase = 'fail';
+          gs.wonSent = true;
           setPhase('fail');
           gs.shakeX = 12; gs.shakeY = 12;
           playFailure();
+          window.parent?.postMessage({ type: 'GAME_COMPLETE', score: 0 }, '*');
         }
       }
     }
@@ -1082,7 +1089,7 @@ function GameScreen({ levelId, onComplete, onQuit, onNext }: {
       <div className="flex items-center justify-between w-full px-3 pb-2"
         style={{ maxWidth: GAME_W * scale }}>
         <div className="flex items-center gap-2">
-          <HBtn ha={hudActive} hp={hudProg} hid="quit" onClick={onQuit}
+          <HBtn ha={hudActive} hp={hudProg} hid="quit" onClick={handleQuit}
             className="px-3 py-1.5 rounded-lg text-white/80 text-xs font-bold"
             style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.2)' }}>
             ✕ Quit
@@ -1162,7 +1169,7 @@ function GameScreen({ levelId, onComplete, onQuit, onNext }: {
                   Next ▶
                 </HBtn>
               )}
-              <HBtn ha={hudActive} hp={hudProg} hid="win-quit" onClick={onQuit}
+              <HBtn ha={hudActive} hp={hudProg} hid="win-quit" onClick={handleQuit}
                 className="px-5 py-2.5 rounded-2xl text-white/80 font-bold"
                 style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)' }}>
                 Levels
@@ -1183,7 +1190,7 @@ function GameScreen({ levelId, onComplete, onQuit, onNext }: {
                 style={{ background: 'linear-gradient(135deg,#6d28d9,#a855f7)', boxShadow: '0 4px 20px rgba(168,85,247,0.5)' }}>
                 ↺ Try Again
               </HBtn>
-              <HBtn ha={hudActive} hp={hudProg} hid="fail-quit" onClick={onQuit}
+              <HBtn ha={hudActive} hp={hudProg} hid="fail-quit" onClick={handleQuit}
                 className="px-5 py-3 rounded-2xl text-white/80 font-bold"
                 style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.2)' }}>
                 Levels
