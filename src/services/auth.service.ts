@@ -116,6 +116,24 @@ export const authService = {
     await fetch("/api/auth/logout-all", { method: "POST" });
   },
 
+  /** Permanently delete the signed-in user's own account. Throws on failure
+   *  (e.g. wrong password) — the caller decides what to show. */
+  async deleteAccount(password: string): Promise<void> {
+    const res = await fetch("/api/auth/me", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as AuthError | null;
+      throw new AuthRequestError(
+        data?.error ?? "Something went wrong. Please try again.",
+        res.status,
+        data?.fields,
+      );
+    }
+  },
+
   /** Restore the session from the cookie. Returns `null` when not signed in. */
   async me(): Promise<User | null> {
     const res = await fetch("/api/auth/me", { cache: "no-store" });

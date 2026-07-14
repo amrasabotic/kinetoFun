@@ -26,6 +26,8 @@ interface SessionState {
   logout: () => Promise<void>;
   /** Revoke every session for the user ("sign out everywhere"). */
   logoutAll: () => Promise<void>;
+  /** Permanently delete the account. Throws on failure (e.g. wrong password). */
+  deleteAccount: (password: string) => Promise<void>;
   /** Re-fetch the current user from the server. */
   refresh: () => Promise<void>;
 }
@@ -83,6 +85,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     invalidateFavorites();
   }, []);
 
+  const deleteAccount = useCallback(async (password: string) => {
+    await authService.deleteAccount(password);
+    setUser(null);
+    invalidateFavorites();
+  }, []);
+
   const value = useMemo<SessionState>(
     () => ({
       user,
@@ -92,9 +100,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       signup,
       logout,
       logoutAll,
+      deleteAccount,
       refresh,
     }),
-    [user, isLoading, login, signup, logout, logoutAll, refresh],
+    [user, isLoading, login, signup, logout, logoutAll, deleteAccount, refresh],
   );
 
   return (

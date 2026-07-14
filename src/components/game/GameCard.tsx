@@ -24,10 +24,10 @@ export function GameCard({
       data-focusable
       className={cn(
         "group relative flex w-full flex-col overflow-hidden rounded-2xl",
-        "border border-white/10 bg-white/5",
+        "border border-border/40 bg-card/40",
         "transition-all duration-300 ease-out",
         "hover:-translate-y-2 hover:shadow-[0_20px_60px_rgba(26,172,224,0.25)]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1AACE0]/60",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
         className,
       )}
     >
@@ -94,15 +94,12 @@ export function GameCard({
       </div>
 
       {/* ── Footer strip ────────────────────────────────────────── */}
-      <div className="flex items-center justify-between border-t border-white/8 bg-[#0a1438]/70 px-3 py-2 backdrop-blur-sm">
-        <div className="flex items-center gap-1 text-[10px] text-white/50">
+      <div className="flex items-center justify-between border-t border-border/40 bg-card/80 px-3 py-2 backdrop-blur-sm">
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <Users className="h-3 w-3 shrink-0" />
           <span className="truncate">{playersLabel(game.players)}</span>
         </div>
-        <span
-          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors duration-200 group-hover:bg-[#1AACE0]/25 group-hover:text-[#1AACE0]"
-          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.40)" }}
-        >
+        <span className="shrink-0 rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-bold text-muted-foreground transition-colors duration-200 group-hover:bg-primary/15 group-hover:text-primary">
           Play →
         </span>
       </div>

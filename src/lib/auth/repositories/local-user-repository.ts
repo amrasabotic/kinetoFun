@@ -92,4 +92,13 @@ export class LocalUserRepository implements UserRepository {
     rows[idx] = { ...rows[idx], password_hash: passwordHash };
     await writeAll(rows);
   }
+
+  async deleteAccount(id: string): Promise<void> {
+    // Local fallback only removes the user row itself — unlike Postgres's FK
+    // cascade, it doesn't hunt down and clean every other local JSON store
+    // (sessions, ratings, favorites, password-reset tokens). Acceptable for
+    // this dev-only fallback; the real deployment always uses PgUserRepository.
+    const rows = await readAll();
+    await writeAll(rows.filter((r) => r.id !== id));
+  }
 }

@@ -42,7 +42,7 @@ export function RatingInput({
             aria-label={`Rate ${score} stars`}
             className={cn(
               "text-2xl transition-colors duration-75",
-              score <= displayScore ? "text-amber-400" : "text-zinc-600",
+              score <= displayScore ? "text-amber-400" : "text-muted-foreground/40",
               !disabled && !isSubmitting && "cursor-pointer hover:text-amber-300",
               (disabled || isSubmitting) && "cursor-not-allowed opacity-50",
             )}
@@ -52,7 +52,7 @@ export function RatingInput({
         ))}
       </div>
       {displayScore > 0 && (
-        <span className="text-sm font-medium text-zinc-300">
+        <span className="text-sm font-medium text-foreground/80">
           {displayScore}
         </span>
       )}

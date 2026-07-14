@@ -34,6 +34,9 @@ export interface UserRepository {
   ): Promise<UserRecord>;
   addXp(id: string, amount: number): Promise<{ xp: number; level: number }>;
   updatePassword(id: string, passwordHash: string): Promise<void>;
+  /** Permanently delete the account. Postgres cascades to every owned row
+   *  (sessions, scores, favorites, ratings, etc.) via FK `on delete cascade`. */
+  deleteAccount(id: string): Promise<void>;
 }
 
 let cached: UserRepository | null = null;

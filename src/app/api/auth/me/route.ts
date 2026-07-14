@@ -2,11 +2,16 @@
 // This is the secure check (verifies the JWT AND loads the user from the DB),
 // and powers the frontend's auto session-restore on refresh.
 // PATCH /api/auth/me — update user profile fields (username, bio, avatar_color).
+// DELETE /api/auth/me — permanently delete the caller's own account.
 
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { getUserRepository } from "@/lib/auth/repository";
 import { toAuthUser } from "@/lib/auth/serialize";
+import { verifyPassword } from "@/lib/auth/password";
+import { destroySession } from "@/lib/auth/session";
+import { rateLimit, clientIp } from "@/lib/auth/rate-limit";
+import { tooManyRequests } from "@/lib/auth/http";
 import type { AuthError, AuthSuccess } from "@/types/auth";
 
 // Always evaluated at request time (reads the session cookie); never cached.
@@ -126,6 +131,62 @@ export async function PATCH(req: Request) {
     console.error("Failed to update user:", err);
     return NextResponse.json(
       { error: "Failed to update user profile." } satisfies AuthError,
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(req: Request) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json(
+      { error: "Not authenticated." } satisfies AuthError,
+      { status: 401 },
+    );
+  }
+
+  // Per-account cap on password attempts, same shape as login's brute-force
+  // gate — this endpoint is exactly as sensitive (it's another "prove the
+  // password" check) even though it's destructive rather than authenticating.
+  const ip = clientIp(req);
+  const gate = rateLimit(`delete-account:${user.id}:${ip}`, 5, 15 * 60 * 1000);
+  if (!gate.ok) return tooManyRequests(gate.retryAfterSec);
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON." } satisfies AuthError,
+      { status: 400 },
+    );
+  }
+
+  if (typeof body.password !== "string" || body.password.length === 0) {
+    return NextResponse.json(
+      { error: "Password is required to delete your account." } satisfies AuthError,
+      { status: 400 },
+    );
+  }
+
+  try {
+    const repo = getUserRepository();
+    const record = await repo.findById(user.id);
+    if (!record || !(await verifyPassword(body.password, record.password_hash))) {
+      return NextResponse.json(
+        { error: "Incorrect password." } satisfies AuthError,
+        { status: 401 },
+      );
+    }
+
+    await repo.deleteAccount(user.id);
+    await destroySession();
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to delete account:", err);
+    return NextResponse.json(
+      { error: "Failed to delete account." } satisfies AuthError,
       { status: 500 },
     );
   }

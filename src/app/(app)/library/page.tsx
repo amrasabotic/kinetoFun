@@ -66,6 +66,7 @@ function LibraryContent() {
             placeholder="Search games…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            className="!border-border/50 !bg-card/40"
           />
         </div>
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  User, Monitor, Keyboard, Info, type LucideIcon,
+  User, Monitor, Keyboard, Info, AlertTriangle, type LucideIcon,
 } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
 import { useSettings } from "@/features/settings/useSettings";
@@ -23,7 +23,7 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const router = useRouter();
-  const { user, isAuthenticated, logout, logoutAll, refresh } = useSession();
+  const { user, isAuthenticated, logout, logoutAll, deleteAccount, refresh } = useSession();
   const { settings, updateSettings } = useSettings();
   const [signingOut, setSigningOut] = useState(false);
   const [signingOutAll, setSigningOutAll] = useState(false);
@@ -34,6 +34,10 @@ function SettingsContent() {
   const [editAvatarColor, setEditAvatarColor] = useState(user?.avatarColor || "");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function handleSignOut() {
     if (signingOut || signingOutAll) return;
@@ -49,6 +53,26 @@ function SettingsContent() {
     await logoutAll();
     router.replace("/login");
     router.refresh();
+  }
+
+  async function handleDeleteAccount() {
+    if (isDeleting) return;
+    if (!deletePassword) {
+      setDeleteError("Enter your password to confirm.");
+      return;
+    }
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount(deletePassword);
+      toast.success("Account deleted.");
+      router.replace("/");
+      router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete account.";
+      setDeleteError(msg);
+      setIsDeleting(false);
+    }
   }
 
   async function handleSaveProfile() {
@@ -344,8 +368,6 @@ function SettingsContent() {
           {[
             { label: "App", value: "KinetoFun" },
             { label: "Version", value: "0.1.0 (Phase 2 — Auth)" },
-            { label: "Auth", value: "Custom JWT · revocable httpOnly session" },
-            { label: "Database", value: "Supabase Postgres (local fallback)" },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between py-2.5 first:pt-0 last:pb-0">
               <dt className="text-muted-foreground">{label}</dt>
@@ -354,6 +376,71 @@ function SettingsContent() {
           ))}
         </dl>
       </Section>
+
+      {/* ── Danger Zone ──────────────────────────────────────────────────── */}
+      {isAuthenticated && user && (
+        <Section title="Danger Zone" Icon={AlertTriangle} accent="zinc">
+          {!showDeleteConfirm ? (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-semibold text-foreground">Delete account</p>
+                <p className="text-sm text-muted-foreground">
+                  Permanently deletes your account, scores, sessions, and favorites. This can&apos;t be undone.
+                </p>
+              </div>
+              <Button
+                variant="danger"
+                className="shrink-0"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Delete account
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-foreground">
+                Enter your password to permanently delete your account.
+              </p>
+              <input
+                type="password"
+                autoFocus
+                className={inputCls}
+                placeholder="Password"
+                value={deletePassword}
+                onChange={(e) => {
+                  setDeletePassword(e.target.value);
+                  setDeleteError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleDeleteAccount();
+                }}
+              />
+              {deleteError && <p className="text-sm text-red-500">{deleteError}</p>}
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={isDeleting}
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeletePassword("");
+                    setDeleteError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  disabled={isDeleting}
+                  className={cn(isDeleting && "pointer-events-none opacity-60")}
+                  onClick={handleDeleteAccount}
+                >
+                  {isDeleting ? "Deleting…" : "Permanently delete"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
     </div>
   );
 }

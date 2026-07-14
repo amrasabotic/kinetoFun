@@ -88,6 +88,10 @@ export class PgUserRepository implements UserRepository {
       [passwordHash, id],
     );
   }
+
+  async deleteAccount(id: string): Promise<void> {
+    await query(`DELETE FROM public.users WHERE id = $1`, [id]);
+  }
 }
 
 /** @deprecated Use PgUserRepository */
