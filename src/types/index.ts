@@ -102,6 +102,9 @@ export interface User {
   /** Access role. Optional on the UI type (mock users omit it). */
   role?: "user" | "admin" | "superadmin";
   active?: boolean;
+  /** Server-persisted display settings (cross-device); see useSettings. */
+  largeText?: boolean;
+  reduceMotion?: boolean;
 }
 
 export interface Score {

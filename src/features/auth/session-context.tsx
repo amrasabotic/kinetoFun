@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { User } from "@/types";
 import { authService } from "@/services/auth.service";
+import { invalidateFavorites } from "@/features/games/useFavorites";
 
 interface SessionState {
   user: User | null;
@@ -73,11 +74,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
+    invalidateFavorites();
   }, []);
 
   const logoutAll = useCallback(async () => {
     await authService.logoutAll();
     setUser(null);
+    invalidateFavorites();
   }, []);
 
   const value = useMemo<SessionState>(

@@ -15,6 +15,7 @@ function LibraryContent() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const featuredOnly = searchParams.get("featured") === "1";
 
   useEffect(() => {
     fetch("/api/categories")
@@ -31,14 +32,19 @@ function LibraryContent() {
   }, [searchParams, categories]);
 
   const results = useMemo(() => {
-    const searched = searchGames(games, query);
-    if (!selectedCategory) return searched;
-    return searched.filter(
-      (g) =>
-        g.categoryId === selectedCategory.id ||
-        g.category.toLowerCase() === selectedCategory.name.toLowerCase(),
-    );
-  }, [games, query, selectedCategory]);
+    let filtered = searchGames(games, query);
+    if (selectedCategory) {
+      filtered = filtered.filter(
+        (g) =>
+          g.categoryId === selectedCategory.id ||
+          g.category.toLowerCase() === selectedCategory.name.toLowerCase(),
+      );
+    }
+    if (featuredOnly) {
+      filtered = filtered.filter((g) => g.featured);
+    }
+    return filtered;
+  }, [games, query, selectedCategory, featuredOnly]);
 
   return (
     <div className="space-y-8">
@@ -49,7 +55,7 @@ function LibraryContent() {
         <p className="text-muted-foreground">
           {loading
             ? "Loading games…"
-            : `${results.length} ${results.length === 1 ? "game" : "games"} available`}
+            : `${results.length} ${results.length === 1 ? "game" : "games"} available${featuredOnly ? " — Featured" : ""}`}
         </p>
       </header>
 

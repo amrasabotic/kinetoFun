@@ -6,14 +6,16 @@ import Image from "next/image";
 import {
   Sparkles, ShieldCheck, ArrowRight, Play, BookOpen, Palette, Map, Rocket,
   Star, TrendingUp, BadgeCheck, Users, Trophy, Activity, Compass, Gamepad2,
-  Gift, Ticket, Quote, ChevronUp, ChevronLeft, ChevronRight, X, Camera, MessageCircle,
+  Gift, Ticket, Quote, ChevronUp, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useGames } from "@/features/games/useGames";
+import { useFavorites } from "@/features/games/useFavorites";
 import { useContinuePlaying } from "@/features/sessions/useContinuePlaying";
 import { useLeaderboard } from "@/features/scores/useLeaderboard";
 import { selectFeatured, selectByCategory } from "@/services/games.service";
 import { useSession } from "@/features/auth/session-context";
 import { GameRail } from "@/components/game/GameRail";
+import { WaveDivider } from "@/components/layout/WaveDivider";
 import { ButtonLink } from "@/components/ui/Button";
 import { StarRating } from "@/components/ui/StarRating";
 import { Badge } from "@/components/ui/Badge";
@@ -38,20 +40,6 @@ const C = {
 };
 
 // ─── Shared decorative + structural helpers ───────────────────────────────────
-
-/** Soft SVG wave that bleeds one section's bottom into the next section's color. */
-function WaveDivider({ color }: { color: string }) {
-  return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] leading-[0]" aria-hidden>
-      <svg className="block h-[44px] w-full sm:h-[72px]" viewBox="0 0 1440 72" preserveAspectRatio="none">
-        <path
-          fill={color}
-          d="M0,34 C160,72 320,72 480,48 C680,18 760,6 960,30 C1120,49 1280,66 1440,38 L1440,72 L0,72 Z"
-        />
-      </svg>
-    </div>
-  );
-}
 
 /** A floating rounded bubble (rotation on the wrapper, float on the inner node so
  *  the two transforms never fight each other). */
@@ -970,95 +958,6 @@ function FinalCtaSection() {
   );
 }
 
-// ─── Footer ───────────────────────────────────────────────────────────────────
-
-function Footer() {
-  const socials = [
-    { Icon: X, label: "X / Twitter", href: "#" },
-    { Icon: Play, label: "YouTube", href: "#" },
-    { Icon: Camera, label: "Instagram", href: "#" },
-    { Icon: MessageCircle, label: "Discord", href: "#" },
-  ];
-
-  return (
-    <footer className="relative z-10 -mx-6 -mb-8 border-t border-white/5 py-12 sm:-mx-10" style={{ background: "#091440" }}>
-      <div className="mx-auto max-w-[1600px] px-6 sm:px-10">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-
-          <div>
-            <p className="mb-1 font-display text-xl font-extrabold text-white">KinetoFun</p>
-            <p className="text-sm text-white/45">Where kids level up through play.</p>
-            <div className="mt-4 flex gap-3">
-              {socials.map(({ Icon, label, href }) => {
-                const I = Icon;
-                return (
-                  <a
-                    key={label}
-                    href={href}
-                    aria-label={label}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/45 transition-all hover:border-white/30 hover:text-white"
-                  >
-                    <I className="h-4 w-4" />
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-3 text-xs font-extrabold uppercase tracking-widest" style={{ color: C.blue }}>Learn</p>
-            {[
-              { label: "Browse Games", href: "/library" },
-              { label: "Featured", href: "/library" },
-              { label: "New Worlds", href: "/library" },
-              { label: "Leaderboard", href: "/leaderboard" },
-            ].map(({ label, href }) => (
-              <Link key={label} href={href} className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
-                {label}
-              </Link>
-            ))}
-          </div>
-
-          <div>
-            <p className="mb-3 text-xs font-extrabold uppercase tracking-widest" style={{ color: C.green }}>Platform</p>
-            {[
-              { label: "Profile", href: "/profile" },
-              { label: "Settings", href: "/settings" },
-              { label: "Contact", href: "/contact" },
-              { label: "How It Works", href: "/" },
-            ].map(({ label, href }) => (
-              <Link key={label} href={href} className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
-                {label}
-              </Link>
-            ))}
-          </div>
-
-          <div>
-            <p className="mb-3 text-xs font-extrabold uppercase tracking-widest" style={{ color: C.yellow }}>Legal</p>
-            {[
-              { label: "Privacy Policy", href: "/privacy" },
-              { label: "Terms of Service", href: "/terms" },
-              { label: "Cookie Policy", href: "/cookies" },
-              { label: "Contact", href: "/contact" },
-            ].map(({ label, href }) => (
-              <Link key={label} href={href} className="block py-1 text-sm text-white/45 transition-colors hover:text-white">
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-8 text-xs text-white/25 sm:flex-row">
-          <p>© {new Date().getFullYear()} KinetoFun. All rights reserved.</p>
-          <p>Made with ❤️ for curious kids</p>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 // ─── Back to Top ─────────────────────────────────────────────────────────────
 
 function BackToTop() {
@@ -1089,7 +988,11 @@ function BackToTop() {
 
 function LandingPage() {
   return (
-    <div className="landing-root">
+    // -mb-8 cancels the shared layout's <main> bottom padding so the CTA
+    // section's WaveDivider (colored to match the Footer's background) sits
+    // flush against the footer with zero gap. Other pages don't opt into this
+    // and keep the normal gap before the (plain, wave-less) footer.
+    <div className="landing-root -mb-8">
       <HeroSection />
       {/* <CategoryStrip /> */}
       <EducationalExcellenceSection />
@@ -1100,7 +1003,6 @@ function LandingPage() {
       <TestimonialsSection />
       <IconStripSection />
       <FinalCtaSection />
-      <Footer />
       <BackToTop />
     </div>
   );
@@ -1112,6 +1014,7 @@ export default function HomePage() {
   const { user, isAuthenticated } = useSession();
   const { games, loading } = useGames();
   const { gameIds: recentIds } = useContinuePlaying(isAuthenticated);
+  const { isFavorite } = useFavorites();
   const featured = selectFeatured(games);
   const spotlight = featured[0];
 
@@ -1120,6 +1023,12 @@ export default function HomePage() {
       .map((id) => games.find((g) => g.id === id))
       .filter((g): g is Game => Boolean(g));
   }, [recentIds, games]);
+
+  // Not memoized: `isFavorite` is a stable callback reading a module-level Set,
+  // so a useMemo keyed on it wouldn't recompute when favorites actually change.
+  // useFavorites() itself re-renders this component on every toggle, so a plain
+  // filter here always reflects the latest state.
+  const favoriteGames = games.filter((g) => isFavorite(g.id));
 
   if (!isAuthenticated || !user) {
     return <LandingPage />;
@@ -1140,17 +1049,20 @@ export default function HomePage() {
         <section
           className="relative overflow-hidden rounded-3xl p-8 sm:p-12"
           style={{
-            backgroundImage: spotlight.coverImage ? `url(${spotlight.coverImage})` : undefined,
+            backgroundImage: (spotlight.coverImage || spotlight.thumbnail)
+              ? `url(${spotlight.coverImage || spotlight.thumbnail})`
+              : undefined,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         >
-          {!spotlight.coverImage && (
+          {!(spotlight.coverImage || spotlight.thumbnail) && (
             <div className={`absolute inset-0 bg-gradient-to-br ${spotlight.cover}`} />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/15" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
           <div className="relative z-20 max-w-2xl">
-            <Badge tone="default" className="mb-4 bg-black/40">
+            <Badge tone="default" className="mb-4 bg-black/40 !text-white/90">
               Featured
             </Badge>
             <p className="text-sm font-medium text-zinc-200">
@@ -1190,7 +1102,16 @@ export default function HomePage() {
         <GameRail title="Continue playing" games={continuePlaying} />
       ) : null}
 
-      <GameRail title="Featured games" games={featured} />
+      {favoriteGames.length > 0 ? (
+        <GameRail title="Favorites" games={favoriteGames} />
+      ) : null}
+
+      <GameRail
+        title="Featured games"
+        games={featured}
+        subtitle="View all"
+        viewAllHref="/library?featured=1"
+      />
 
       {CATEGORY_RAILS.map((category) => (
         <GameRail
@@ -1202,7 +1123,7 @@ export default function HomePage() {
         />
       ))}
 
-      <GameRail title="All games" games={games} />
+      <GameRail title="All games" games={games} subtitle="View all" viewAllHref="/library" />
     </div>
   );
 }

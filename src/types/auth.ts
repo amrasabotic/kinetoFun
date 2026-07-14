@@ -21,6 +21,8 @@ export interface AuthUser {
   active?: boolean;
   xp?: number;
   level?: number;
+  largeText?: boolean;
+  reduceMotion?: boolean;
 }
 
 /**
@@ -41,6 +43,8 @@ export interface UserRecord {
   active?: boolean;
   xp?: number;
   level?: number;
+  large_text?: boolean;
+  reduce_motion?: boolean;
 }
 
 /** Claims embedded in the signed JWT. `sub` is the user id. */

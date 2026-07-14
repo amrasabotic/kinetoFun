@@ -46,6 +46,8 @@ export function toAppUser(authUser: AuthUser): User {
     bio: authUser.bio,
     role: authUser.role,
     active: authUser.active ?? true,
+    largeText: authUser.largeText,
+    reduceMotion: authUser.reduceMotion,
   };
 }
 

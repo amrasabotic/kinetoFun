@@ -45,7 +45,14 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const updates: Partial<{ name: string; username: string; bio: string; avatar_color: string }> = {};
+  const updates: Partial<{
+    name: string;
+    username: string;
+    bio: string;
+    avatar_color: string;
+    large_text: boolean;
+    reduce_motion: boolean;
+  }> = {};
 
   if (typeof body.name === "string") {
     const trimmed = body.name.trim();
@@ -94,6 +101,14 @@ export async function PATCH(req: Request) {
 
   if (typeof body.avatarColor === "string") {
     updates.avatar_color = body.avatarColor;
+  }
+
+  if (typeof body.largeText === "boolean") {
+    updates.large_text = body.largeText;
+  }
+
+  if (typeof body.reduceMotion === "boolean") {
+    updates.reduce_motion = body.reduceMotion;
   }
 
   if (Object.keys(updates).length === 0) {

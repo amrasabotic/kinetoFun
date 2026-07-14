@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { SessionProvider } from "@/features/auth/session-context";
 import { SpatialNavigation } from "@/components/navigation/SpatialNavigation";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { DisplaySettingsSync } from "@/features/settings/DisplaySettingsSync";
 
 export const metadata: Metadata = {
   title: "KinetoFun — Play with a wave",
@@ -31,6 +32,7 @@ export default function RootLayout({
         />
         <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
           <SessionProvider>
+            <DisplaySettingsSync />
             <SpatialNavigation>{children}</SpatialNavigation>
           </SessionProvider>
           <Toaster position="bottom-right" richColors />

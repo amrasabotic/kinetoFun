@@ -28,6 +28,8 @@ export interface UserRepository {
       username: string;
       bio: string;
       avatar_color: string;
+      large_text: boolean;
+      reduce_motion: boolean;
     }>,
   ): Promise<UserRecord>;
   addXp(id: string, amount: number): Promise<{ xp: number; level: number }>;

@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { playersLabel } from "@/lib/format";
+import { useSession } from "@/features/auth/session-context";
+import { FavoriteButton } from "./FavoriteButton";
 import type { Game } from "@/types";
 import { Play, Users, Star } from "lucide-react";
 
@@ -14,6 +16,8 @@ export function GameCard({
   game: Game;
   className?: string;
 }) {
+  const { isAuthenticated } = useSession();
+
   return (
     <Link
       href={`/games/${game.id}`}
@@ -55,14 +59,17 @@ export function GameCard({
           >
             {game.category}
           </span>
-          <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-amber-400/30 bg-black/35 px-2 py-0.5 text-[10px] font-bold text-amber-300 backdrop-blur-md">
-            <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-            {game.rating.toFixed(1)}
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className="flex items-center gap-0.5 rounded-full border border-amber-400/30 bg-black/35 px-2 py-0.5 text-[10px] font-bold text-amber-300 backdrop-blur-md">
+              <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+              {game.rating.toFixed(1)}
+            </span>
+            {isAuthenticated && <FavoriteButton gameId={game.id} />}
+          </div>
         </div>
 
         {/* Centre: play button — slides up on hover */}
-        <div className="absolute inset-0 z-20 flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
           <div
             className={cn(
               "flex h-12 w-12 translate-y-3 scale-90 items-center justify-center rounded-full opacity-0",

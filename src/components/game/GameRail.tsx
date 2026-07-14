@@ -64,11 +64,11 @@ export function GameRail({
           {title}
         </h2>
         {subtitle && viewAllHref ? (
-          <Link href={viewAllHref} className="text-sm text-muted transition-colors hover:text-primary">
+          <Link href={viewAllHref} className="text-sm text-muted-foreground transition-colors hover:text-primary">
             {subtitle}
           </Link>
         ) : subtitle ? (
-          <span className="text-sm text-muted">{subtitle}</span>
+          <span className="text-sm text-muted-foreground">{subtitle}</span>
         ) : null}
       </div>
 

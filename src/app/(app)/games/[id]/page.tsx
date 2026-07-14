@@ -62,7 +62,8 @@ export default function GameDetailPage() {
         ) : (
           <div className={`absolute inset-0 bg-gradient-to-br ${game.cover}`} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/15" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
         <div className="relative max-w-2xl">
           <Badge tone="accent" className="mb-4">
             {game.category}

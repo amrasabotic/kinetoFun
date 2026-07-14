@@ -44,6 +44,8 @@ export class PgUserRepository implements UserRepository {
       username: string;
       bio: string;
       avatar_color: string;
+      large_text: boolean;
+      reduce_motion: boolean;
     }>,
   ): Promise<UserRecord> {
     const fields: string[] = [];
