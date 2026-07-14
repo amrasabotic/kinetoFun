@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hand Air Hockey</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f; color: #fff;
+    font-family: 'Courier New', monospace;
+    overflow: hidden; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #loading-screen {
+    position: fixed; inset: 0; background: #0a0a0f;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; z-index: 100; gap: 20px;
+  }
+  #loading-screen h1 {
+    font-size: 2.2rem; letter-spacing: 0.3em; text-transform: uppercase;
+    background: linear-gradient(90deg, #00f5ff, #bf00ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .loading-bar-wrap { width: 300px; height: 4px; background: #1a1a2e; border-radius: 2px; overflow: hidden; }
+  .loading-bar { height: 100%; background: linear-gradient(90deg,#00f5ff,#bf00ff); width: 0%; transition: width 0.3s; }
+  #loading-status { color: #888; font-size: 0.8rem; letter-spacing: 0.1em; }
+  #game-container { position: relative; display: none; }
+  /* Single canvas — everything drawn on it */
+  #main-canvas { display: block; border-radius: 14px; border: 1px solid #1e1e3f; }
+  /* Webcam behind canvas */
+  #webcam {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    object-fit: cover; opacity: 0.13; transform: scaleX(-1); border-radius: 14px;
+    z-index: 0;
+  }
+  #main-canvas { position: relative; z-index: 1; }
+  #camera-error {
+    display: none; position: fixed; inset: 0; background: #0a0a0f;
+    align-items: center; justify-content: center; flex-direction: column;
+    gap: 16px; z-index: 200; color: #ff4466; text-align: center; padding: 24px;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <h1>✋ Hand Air Hockey</h1>
+  <div class="loading-bar-wrap"><div class="loading-bar" id="loading-bar"></div></div>
+  <div id="loading-status">Loading MediaPipe…</div>
+</div>
+
+<div id="camera-error">
+  <div style="font-size:3rem">📷</div>
+  <h2 style="font-size:1.2rem;letter-spacing:.1em">Camera Access Required</h2>
+  <p style="color:#666;max-width:340px;line-height:1.8">Allow camera access and reload.</p>
+</div>
+
+<div id="game-container">
+  <video id="webcam" autoplay playsinline muted></video>
+  <canvas id="main-canvas"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ── Sizing ──────────────────────────────────────────────────────────────────
+const W = Math.min(window.innerWidth - 24, 960);
+const H = Math.min(window.innerHeight - 24, 600);
+
+const canvas = document.getElementById('main-canvas');
+const ctx    = canvas.getContext('2d');
+const video  = document.getElementById('webcam');
+const container = document.getElementById('game-container');
+canvas.width = W; canvas.height = H;
+container.style.width  = W + 'px';
+container.style.height = H + 'px';
+
+// ── Constants ───────────────────────────────────────────────────────────────
+const PADDLE_R   = 36;
+const PUCK_R     = 18;
+const GOAL_W     = H * 0.34;
+const FRICTION   = 0.988;
+const GAME_SECS  = 120;
+const HOLD_MS    = 500;   // 0.5 second hover to activate
+
+// ── State ───────────────────────────────────────────────────────────────────
+let state     = 'menu';  // menu | countdown | playing | gameover
+let scoreL    = 0, scoreR = 0;
+let timeLeft  = GAME_SECS;
+let timerInterval  = null;
+let countdownVal   = 3;
+let countdownTimer = null;
+let goalFlash      = null;
+let lastTick       = Date.now();
+
+// Hand cursors (screen-space, already correctly mapped)
+// Each: { x, y, side, fist }
+let cursors = [];
+
+// Paddles
+const paddles = {
+  left:  { x: W*0.18, y: H/2, vx:0, vy:0, fist:false, visible:false },
+  right: { x: W*0.82, y: H/2, vx:0, vy:0, fist:false, visible:false }
+};
+
+// Puck
+const puck = { x:W/2, y:H/2, vx:3.5, vy:2.2, trail:[] };
+
+// Gesture buttons
+// { label, x, y, w, h, color, hoverMs, fired, action }
+let buttons = [];
+
+// ── Hand landmark helpers ────────────────────────────────────────────────────
+function mirrorX(nx) { return (1 - nx) * W; }
+function toY(ny)     { return ny * H; }
+
+function palmCenter(lm) {
+  // average of wrist + 4 knuckle bases
+  const idx = [0,5,9,13,17];
+  let sx=0, sy=0;
+  idx.forEach(i => { sx+=lm[i].x; sy+=lm[i].y; });
+  return { x: mirrorX(sx/idx.length), y: toY(sy/idx.length) };
+}
+
+function indexTip(lm) {
+  // landmark 8 = index fingertip
+  return { x: mirrorX(lm[8].x), y: toY(lm[8].y) };
+}
+
+function isFist(lm) {
+  const tips = [8,12,16,20];
+  const pip  = [6,10,14,18];
+  let curled = 0;
+  tips.forEach((t,i) => { if (lm[t].y > lm[pip[i]].y) curled++; });
+  return curled >= 3;
+}
+
+// ── MediaPipe callback ───────────────────────────────────────────────────────
+let rawHands = []; // { side, palm, tip, fist, lm }
+
+function onResults(results) {
+  rawHands = [];
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    cursors = [];
+    return;
+  }
+
+  results.multiHandLandmarks.forEach((lm, i) => {
+    // MediaPipe labels are from camera POV (mirrored), so:
+    // label "Right" = user's LEFT hand (since we mirror)
+    const label = results.multiHandedness[i].label;
+    const side  = label === 'Right' ? 'left' : 'right';
+    const fist  = isFist(lm);
+    const palm  = palmCenter(lm);
+    const tip   = indexTip(lm);
+    rawHands.push({ side, palm, tip, fist, lm });
+  });
+
+  // Build cursors array — use index fingertip as pointer
+  cursors = rawHands.map(h => ({
+    x: h.tip.x,
+    y: h.tip.y,
+    side: h.side,
+    fist: h.fist
+  }));
+}
+
+// ── Button system ────────────────────────────────────────────────────────────
+function makeButton(label, sublabel, x, y, w, h, color, action) {
+  return { label, sublabel, x, y, w, h, color, action, hoverMs: 0, fired: false };
+}
+
+function setupMenuButtons() {
+  buttons = [
+    makeButton('START GAME', 'hover to select', W/2-110, H*0.62, 220, 56, '#00f5ff', beginCountdown)
+  ];
+}
+
+function setupGameoverButtons() {
+  buttons = [
+    makeButton('PLAY AGAIN', 'hover to select', W/2-110, H*0.65, 220, 56, '#bf00ff', beginCountdown)
+  ];
+}
+
+function updateButtons(dt) {
+  if (state !== 'menu' && state !== 'gameover') return;
+
+  buttons.forEach(btn => {
+    // Check if ANY cursor fingertip is inside this button
+    let inside = false;
+    cursors.forEach(c => {
+      if (c.x >= btn.x && c.x <= btn.x+btn.w &&
+          c.y >= btn.y && c.y <= btn.y+btn.h) {
+        inside = true;
+      }
+    });
+
+    if (inside) {
+      btn.hoverMs += dt;
+      if (btn.hoverMs >= HOLD_MS && !btn.fired) {
+        btn.fired = true;
+        btn.action();
+      }
+    } else {
+      btn.hoverMs = Math.max(0, btn.hoverMs - dt * 2); // drain faster than fill
+      if (btn.hoverMs === 0) btn.fired = false;
+    }
+  });
+}
+
+// ── Game flow ────────────────────────────────────────────────────────────────
+function beginCountdown() {
+  buttons = [];
+  clearInterval(timerInterval);
+  clearInterval(countdownTimer);
+  state = 'countdown';
+  countdownVal = 3;
+  scoreL = 0; scoreR = 0;
+  timeLeft = GAME_SECS;
+  puck.trail = [];
+  puck.x = W/2; puck.y = H/2; puck.vx = 4; puck.vy = 2;
+
+  countdownTimer = setInterval(() => {
+    countdownVal--;
+    if (countdownVal < 0) {
+      clearInterval(countdownTimer);
+      startPlaying();
+    }
+  }, 900);
+}
+
+function startPlaying() {
+  state = 'playing';
+  goalFlash = null;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    if (timeLeft <= 0) { clearInterval(timerInterval); endGame(); }
+  }, 1000);
+}
+
+function endGame() {
+  state = 'gameover';
+  setupGameoverButtons();
+}
+
+function scoreGoal(side) {
+  if (side === 'left') scoreL++;
+  else                 scoreR++;
+  goalFlash = { side, t: 0 };
+  // reset puck
+  puck.trail = [];
+  puck.x = W/2; puck.y = H/2;
+  puck.vx = (side === 'left' ? 1 : -1) * 4;
+  puck.vy = (Math.random()-0.5) * 5;
+}
+
+// ── Physics ──────────────────────────────────────────────────────────────────
+function updatePaddles() {
+  // map rawHands to paddles
+  const seen = { left: false, right: false };
+  rawHands.forEach(h => {
+    const p = paddles[h.side];
+    seen[h.side] = true;
+    p.visible = true;
+    p.fist    = h.fist;
+
+    if (state === 'playing') {
+      const px = h.palm.x, py = h.palm.y;
+      const prevX = p.x, prevY = p.y;
+      p.x += (px - p.x) * 0.30;
+      p.y += (py - p.y) * 0.30;
+      // constrain to own half
+      if (h.side === 'left')
+        p.x = Math.max(PADDLE_R, Math.min(W/2 - PADDLE_R, p.x));
+      else
+        p.x = Math.max(W/2 + PADDLE_R, Math.min(W - PADDLE_R, p.x));
+      p.y = Math.max(PADDLE_R, Math.min(H - PADDLE_R, p.y));
+      p.vx = p.x - prevX;
+      p.vy = p.y - prevY;
+    } else {
+      // still update position for visual even in menu/gameover
+      p.x = h.palm.x;
+      p.y = h.palm.y;
+    }
+  });
+
+  if (!seen.left)  { paddles.left.visible  = false; paddles.left.vx  = 0; paddles.left.vy  = 0; }
+  if (!seen.right) { paddles.right.visible = false; paddles.right.vx = 0; paddles.right.vy = 0; }
+}
+
+function updatePuck() {
+  if (state !== 'playing') return;
+
+  puck.trail.push({ x: puck.x, y: puck.y });
+  if (puck.trail.length > 14) puck.trail.shift();
+
+  puck.x += puck.vx;
+  puck.y += puck.vy;
+  puck.vx *= FRICTION;
+  puck.vy *= FRICTION;
+
+  // speed clamp
+  const spd = Math.hypot(puck.vx, puck.vy);
+  if (spd < 2)  { puck.vx = puck.vx/spd*2;  puck.vy = puck.vy/spd*2; }
+  if (spd > 22) { puck.vx = puck.vx/spd*22; puck.vy = puck.vy/spd*22; }
+
+  // top/bottom walls
+  if (puck.y - PUCK_R < 0)  { puck.y = PUCK_R;     puck.vy =  Math.abs(puck.vy); }
+  if (puck.y + PUCK_R > H)  { puck.y = H - PUCK_R; puck.vy = -Math.abs(puck.vy); }
+
+  // goal zones
+  const gt = (H - GOAL_W)/2, gb = (H + GOAL_W)/2;
+  const inY = puck.y > gt && puck.y < gb;
+
+  if (puck.x - PUCK_R < 0) {
+    if (inY) { scoreGoal('right'); return; }
+    puck.x = PUCK_R; puck.vx = Math.abs(puck.vx);
+  }
+  if (puck.x + PUCK_R > W) {
+    if (inY) { scoreGoal('left'); return; }
+    puck.x = W - PUCK_R; puck.vx = -Math.abs(puck.vx);
+  }
+
+  // paddle collisions
+  ['left','right'].forEach(side => {
+    const p = paddles[side];
+    if (!p.visible) return;
+    const dx = puck.x - p.x, dy = puck.y - p.y;
+    const dist = Math.hypot(dx, dy);
+    const minD = PUCK_R + PADDLE_R;
+    if (dist < minD && dist > 0.01) {
+      const nx = dx/dist, ny = dy/dist;
+      puck.x = p.x + nx * minD;
+      puck.y = p.y + ny * minD;
+      const relVx = puck.vx - p.vx, relVy = puck.vy - p.vy;
+      const dot = relVx*nx + relVy*ny;
+      const bounce = p.fist ? 1.7 : 1.3;
+      if (dot < 0) {
+        puck.vx -= (1 + bounce) * dot * nx;
+        puck.vy -= (1 + bounce) * dot * ny;
+      }
+      puck.vx += p.vx * (p.fist ? 1.8 : 0.9);
+      puck.vy += p.vy * (p.fist ? 1.8 : 0.9);
+    }
+  });
+}
+
+// ── Draw helpers ─────────────────────────────────────────────────────────────
+function rrect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y,   x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x,   y+h, r);
+  ctx.arcTo(x,   y+h, x,   y,   r);
+  ctx.arcTo(x,   y,   x+w, y,   r);
+  ctx.closePath();
+}
+
+// ── Main draw ────────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0,0,W,H);
+
+  drawTable();
+
+  if (state === 'playing' || state === 'gameover') {
+    drawPuckTrail();
+    drawPuck();
+    drawGoalFlash();
+  }
+
+  drawPaddles(); // always draw paddles
+
+  // Overlay screens
+  if (state === 'menu')      drawMenuOverlay();
+  if (state === 'countdown') drawCountdownOverlay();
+  if (state === 'gameover')  drawGameoverOverlay();
+
+  // HUD (scores + timer) when playing or game over
+  if (state === 'playing' || state === 'gameover') drawHUD();
+
+  // Buttons
+  drawButtons();
+
+  // Cursor on top of everything
+  drawCursors();
+}
+
+// ── Table ────────────────────────────────────────────────────────────────────
+function drawTable() {
+  const bg = ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#0d0d1f'); bg.addColorStop(1,'#090914');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.strokeStyle = '#1e1e50'; ctx.lineWidth = 2;
+  ctx.strokeRect(2,2,W-4,H-4);
+  ctx.restore();
+
+  // centre line
+  ctx.save();
+  ctx.setLineDash([10,8]); ctx.strokeStyle = '#ffffff14'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke();
+  ctx.restore();
+
+  // centre circle
+  ctx.save();
+  ctx.setLineDash([]); ctx.strokeStyle = '#ffffff14'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(W/2,H/2,58,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+
+  // goals
+  const gt = (H-GOAL_W)/2, gb = (H+GOAL_W)/2;
+  ctx.save();
+  // Left goal line
+  ctx.strokeStyle = '#00f5ffaa'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(2,gt); ctx.lineTo(2,gb); ctx.stroke();
+  // Right goal line
+  ctx.strokeStyle = '#bf00ffaa';
+  ctx.beginPath(); ctx.moveTo(W-2,gt); ctx.lineTo(W-2,gb); ctx.stroke();
+  ctx.restore();
+}
+
+// ── HUD ──────────────────────────────────────────────────────────────────────
+function drawHUD() {
+  const m = Math.floor(timeLeft/60), s = timeLeft%60;
+  const timeStr = m + ':' + String(s).padStart(2,'0');
+
+  // Timer
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.font = `bold ${Math.round(H*0.055)}px Courier New`;
+  ctx.fillStyle = '#ffffff88';
+  ctx.fillText(timeStr, W/2, 48);
+  ctx.restore();
+
+  // Scores
+  ctx.save();
+  ctx.font = `bold ${Math.round(H*0.1)}px Courier New`;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#00f5ff';
+  ctx.shadowBlur = 18; ctx.shadowColor = '#00f5ff';
+  ctx.fillText(scoreL, 32, 72);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#bf00ff';
+  ctx.shadowBlur = 18; ctx.shadowColor = '#bf00ff';
+  ctx.fillText(scoreR, W-32, 72);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ── Menu overlay ─────────────────────────────────────────────────────────────
+function drawMenuOverlay() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,8,18,0.87)'; ctx.fillRect(0,0,W,H);
+
+  // Title
+  ctx.textAlign = 'center';
+  const tg = ctx.createLinearGradient(W*0.25,0,W*0.75,0);
+  tg.addColorStop(0,'#00f5ff'); tg.addColorStop(1,'#bf00ff');
+  ctx.font = `bold ${Math.round(W*0.052)}px Courier New`;
+  ctx.fillStyle = tg; ctx.shadowBlur = 22; ctx.shadowColor = '#00f5ff88';
+  ctx.fillText('✋  HAND AIR HOCKEY', W/2, H*0.17);
+  ctx.shadowBlur = 0;
+
+  // Gesture cards
+  const cards = [
+    { icon:'🤚', name:'OPEN PALM', desc:'Move paddle' },
+    { icon:'✊', name:'FIST',      desc:'Power smash!' },
+    { icon:'👆', name:'POINT',    desc:'Aim at buttons' },
+  ];
+  const cW = Math.min(160, W*0.17), cH = 82, gap = W*0.05;
+  const total = cards.length * cW + (cards.length-1)*gap;
+  let cx = W/2 - total/2;
+  const cy = H*0.29;
+  cards.forEach(c => {
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.strokeStyle = '#ffffff18'; ctx.lineWidth = 1;
+    rrect(cx, cy, cW, cH, 10); ctx.fill(); ctx.stroke();
+    ctx.font = '1.6rem Arial'; ctx.textAlign = 'center'; ctx.fillStyle='#fff';
+    ctx.fillText(c.icon, cx+cW/2, cy+30);
+    ctx.font = `bold ${Math.round(W*0.012)}px Courier New`; ctx.fillStyle='#aaa';
+    ctx.fillText(c.name, cx+cW/2, cy+50);
+    ctx.font = `${Math.round(W*0.011)}px Courier New`; ctx.fillStyle='#555';
+    ctx.fillText(c.desc, cx+cW/2, cy+67);
+    cx += cW + gap;
+  });
+
+  // Instruction
+  ctx.font = `${Math.round(W*0.013)}px Courier New`;
+  ctx.fillStyle = '#ffffff33'; ctx.textAlign='center';
+  ctx.fillText('Point your index finger at the button below and hold for 0.5s', W/2, H*0.55);
+
+  ctx.restore();
+}
+
+// ── Countdown overlay ────────────────────────────────────────────────────────
+function drawCountdownOverlay() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,8,18,0.6)'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign = 'center';
+  const label = countdownVal > 0 ? String(countdownVal) : 'GO!';
+  ctx.font = `bold ${Math.round(H*0.28)}px Courier New`;
+  const tg = ctx.createLinearGradient(0,0,W,0);
+  tg.addColorStop(0,'#00f5ff'); tg.addColorStop(1,'#bf00ff');
+  ctx.fillStyle = tg; ctx.shadowBlur = 40; ctx.shadowColor='#00f5ff';
+  ctx.fillText(label, W/2, H/2+60);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ── Gameover overlay ─────────────────────────────────────────────────────────
+function drawGameoverOverlay() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,8,18,0.88)'; ctx.fillRect(0,0,W,H);
+
+  const winner = scoreL > scoreR ? { txt:'Left Hand Wins! 🏆', color:'#00f5ff' }
+               : scoreR > scoreL ? { txt:'Right Hand Wins! 🏆', color:'#bf00ff' }
+               :                   { txt:"It's a Draw! 🤝",      color:'#ffffff' };
+
+  ctx.textAlign = 'center';
+  ctx.font = `bold ${Math.round(W*0.048)}px Courier New`;
+  ctx.fillStyle = winner.color; ctx.shadowBlur = 24; ctx.shadowColor = winner.color;
+  ctx.fillText(winner.txt, W/2, H*0.22);
+  ctx.shadowBlur = 0;
+
+  ctx.font = `bold ${Math.round(W*0.078)}px Courier New`;
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`${scoreL}  —  ${scoreR}`, W/2, H*0.42);
+
+  ctx.font = `${Math.round(W*0.013)}px Courier New`;
+  ctx.fillStyle = '#ffffff33';
+  ctx.fillText('Point at button below and hold 0.5s to play again', W/2, H*0.55);
+  ctx.restore();
+}
+
+// ── Buttons ──────────────────────────────────────────────────────────────────
+function drawButtons() {
+  buttons.forEach(btn => {
+    const pct = Math.min(1, btn.hoverMs / HOLD_MS);
+    const hot = btn.hoverMs > 0;
+    const col = btn.color;
+
+    // bg
+    ctx.save();
+    ctx.fillStyle = hot ? `rgba(0,245,255,${0.08 + pct*0.15})` : 'rgba(255,255,255,0.05)';
+    if (btn.color === '#bf00ff') ctx.fillStyle = hot ? `rgba(191,0,255,${0.08+pct*0.15})` : 'rgba(255,255,255,0.05)';
+    rrect(btn.x, btn.y, btn.w, btn.h, 10); ctx.fill();
+
+    ctx.strokeStyle = hot ? col : '#ffffff28'; ctx.lineWidth = hot ? 2 : 1;
+    rrect(btn.x, btn.y, btn.w, btn.h, 10); ctx.stroke();
+
+    // progress bar along top edge
+    if (hot && pct < 1) {
+      ctx.strokeStyle = col; ctx.lineWidth = 3;
+      ctx.shadowBlur = 10; ctx.shadowColor = col;
+      ctx.beginPath();
+      ctx.moveTo(btn.x+4, btn.y+1);
+      ctx.lineTo(btn.x+4 + (btn.w-8)*pct, btn.y+1);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    if (pct >= 1) {
+      ctx.fillStyle = col + '33';
+      rrect(btn.x, btn.y, btn.w, btn.h, 10); ctx.fill();
+    }
+
+    // label
+    ctx.font = `bold ${Math.round(W*0.017)}px Courier New`;
+    ctx.textAlign = 'center'; ctx.fillStyle = hot ? col : '#ffffff77';
+    if (hot) { ctx.shadowBlur = 10; ctx.shadowColor = col; }
+    ctx.fillText(btn.label, btn.x + btn.w/2, btn.y + btn.h*0.52);
+    ctx.shadowBlur = 0;
+
+    // sub label
+    ctx.font = `${Math.round(W*0.011)}px Courier New`;
+    ctx.fillStyle = '#ffffff30';
+    ctx.fillText(btn.sublabel, btn.x + btn.w/2, btn.y + btn.h*0.82);
+    ctx.restore();
+  });
+}
+
+// ── Cursors ──────────────────────────────────────────────────────────────────
+function drawCursors() {
+  cursors.forEach(cur => {
+    const col = cur.side === 'left' ? '#00f5ff' : '#bf00ff';
+    ctx.save();
+    ctx.shadowBlur = 16; ctx.shadowColor = col;
+
+    // outer ring
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cur.x, cur.y, 12, 0, Math.PI*2); ctx.stroke();
+
+    // inner dot
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(cur.x, cur.y, 4, 0, Math.PI*2); ctx.fill();
+
+    // crosshair lines
+    ctx.strokeStyle = col+'99'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cur.x-20, cur.y); ctx.lineTo(cur.x-14, cur.y);
+    ctx.moveTo(cur.x+14, cur.y); ctx.lineTo(cur.x+20, cur.y);
+    ctx.moveTo(cur.x, cur.y-20); ctx.lineTo(cur.x, cur.y-14);
+    ctx.moveTo(cur.x, cur.y+14); ctx.lineTo(cur.x, cur.y+20);
+    ctx.stroke();
+
+    ctx.restore();
+  });
+}
+
+// ── Hand skeleton ────────────────────────────────────────────────────────────
+function drawHandSkeletons() {
+  const CONNECTIONS = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [0,9],[9,10],[10,11],[11,12],
+    [0,13],[13,14],[14,15],[15,16],
+    [0,17],[17,18],[18,19],[19,20],
+    [5,9],[9,13],[13,17]
+  ];
+  rawHands.forEach(h => {
+    const col = h.side === 'left' ? '#00f5ff' : '#bf00ff';
+    const lm  = h.lm;
+    ctx.save();
+    ctx.strokeStyle = col+'55'; ctx.lineWidth = 1.5;
+    CONNECTIONS.forEach(([a,b]) => {
+      ctx.beginPath();
+      ctx.moveTo(mirrorX(lm[a].x), toY(lm[a].y));
+      ctx.lineTo(mirrorX(lm[b].x), toY(lm[b].y));
+      ctx.stroke();
+    });
+    lm.forEach((pt, i) => {
+      const tip = [4,8,12,16,20].includes(i);
+      ctx.fillStyle = tip ? col : col+'55';
+      ctx.beginPath();
+      ctx.arc(mirrorX(pt.x), toY(pt.y), tip ? 5 : 2.5, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.restore();
+  });
+}
+
+// ── Puck ─────────────────────────────────────────────────────────────────────
+function drawPuckTrail() {
+  puck.trail.forEach((pt,i) => {
+    const a = (i/puck.trail.length)*0.45;
+    const r = PUCK_R*(i/puck.trail.length)*0.8;
+    ctx.save(); ctx.globalAlpha=a;
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,r,0,Math.PI*2);
+    ctx.fillStyle='#ffffff'; ctx.fill(); ctx.restore();
+  });
+}
+
+function drawPuck() {
+  const spd = Math.hypot(puck.vx,puck.vy);
+  ctx.save();
+  ctx.shadowBlur = Math.min(28,spd*2.5); ctx.shadowColor='#ffffffbb';
+  const g = ctx.createRadialGradient(puck.x-4,puck.y-4,2,puck.x,puck.y,PUCK_R);
+  g.addColorStop(0,'#ffffff'); g.addColorStop(0.4,'#ccd'); g.addColorStop(1,'#446');
+  ctx.beginPath(); ctx.arc(puck.x,puck.y,PUCK_R,0,Math.PI*2);
+  ctx.fillStyle=g; ctx.fill(); ctx.restore();
+}
+
+function drawGoalFlash() {
+  if (!goalFlash) return;
+  goalFlash.t++;
+  if (goalFlash.t > 38) { goalFlash=null; return; }
+  const a = Math.max(0, 1-goalFlash.t/38)*0.32;
+  const col = goalFlash.side==='left' ? '#00f5ff' : '#bf00ff';
+  const sx = goalFlash.side==='left' ? 0 : W;
+  const g = ctx.createRadialGradient(sx,H/2,0,sx,H/2,W*0.7);
+  g.addColorStop(0, col+Math.round(a*255).toString(16).padStart(2,'0'));
+  g.addColorStop(1,'transparent');
+  ctx.save(); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const ta = Math.max(0,1-goalFlash.t/25);
+  ctx.globalAlpha=ta; ctx.font=`bold ${Math.min(W*0.09,76)}px Courier New`;
+  ctx.textAlign='center'; ctx.fillStyle=col;
+  ctx.shadowBlur=28; ctx.shadowColor=col;
+  ctx.fillText('GOAL!',W/2,H/2+14); ctx.restore();
+}
+
+// ── Paddles ──────────────────────────────────────────────────────────────────
+function drawPaddles() {
+  ['left','right'].forEach(side => {
+    const p = paddles[side];
+    const col = side==='left' ? '#00f5ff' : '#bf00ff';
+    if (!p.visible) {
+      ctx.save(); ctx.globalAlpha=0.18; ctx.strokeStyle=col; ctx.lineWidth=2;
+      ctx.setLineDash([6,5]);
+      ctx.beginPath(); ctx.arc(p.x,p.y,PADDLE_R,0,Math.PI*2); ctx.stroke(); ctx.restore();
+      return;
+    }
+    ctx.save();
+    ctx.shadowBlur = p.fist?30:16; ctx.shadowColor=col;
+    const gr = ctx.createRadialGradient(p.x-5,p.y-5,4,p.x,p.y,PADDLE_R);
+    gr.addColorStop(0,col+'ff'); gr.addColorStop(0.45,col+'bb'); gr.addColorStop(1,col+'33');
+    ctx.beginPath(); ctx.arc(p.x,p.y,PADDLE_R,0,Math.PI*2);
+    ctx.fillStyle=gr; ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=p.fist?3:2; ctx.stroke();
+    if (p.fist) {
+      ctx.globalAlpha=0.45; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(p.x,p.y,PADDLE_R+8+Math.sin(Date.now()/90)*4,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.globalAlpha=1; ctx.fillStyle='#fff9';
+    ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+}
+
+// ── Main loop ────────────────────────────────────────────────────────────────
+function loop() {
+  const now = Date.now();
+  const dt  = Math.min(now - lastTick, 100);
+  lastTick  = now;
+
+  updatePaddles();
+  updatePuck();
+  updateButtons(dt);
+
+  draw();
+  drawHandSkeletons(); // drawn on top
+
+  requestAnimationFrame(loop);
+}
+
+// ── MediaPipe init ───────────────────────────────────────────────────────────
+function setLoading(msg, pct) {
+  document.getElementById('loading-status').textContent = msg;
+  document.getElementById('loading-bar').style.width = pct + '%';
+}
+
+async function init() {
+  setLoading('Loading model…', 20);
+
+  const hands = new Hands({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  });
+  hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.6
+  });
+  hands.onResults(onResults);
+
+  setLoading('Starting camera…', 55);
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ width:W, height:H, facingMode:'user' }});
+  } catch(e) {
+    document.getElementById('loading-screen').style.display='none';
+    document.getElementById('camera-error').style.display='flex';
+    return;
+  }
+
+  video.srcObject = stream;
+  await new Promise(r => video.onloadedmetadata = r);
+  setLoading('Warming up…', 78);
+
+  const cam = new Camera(video, {
+    onFrame: async () => { await hands.send({ image: video }); },
+    width: W, height: H
+  });
+  cam.start();
+  setLoading('Ready! ✋', 100);
+
+  setTimeout(() => {
+    document.getElementById('loading-screen').style.display = 'none';
+    container.style.display = 'block';
+    setupMenuButtons();
+    lastTick = Date.now();
+    requestAnimationFrame(loop);
+  }, 700);
+}
+
+init();
+</script>
+</body>
+</html>

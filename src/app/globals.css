@@ -1,0 +1,432 @@
+@import "tailwindcss";
+
+:root {
+  /* ── Backgrounds ─────────────────────────────── */
+  --background: #c8deff;
+  --card:       #ffffff;
+  --popover:    #ffffff;
+  --sidebar:    #d8eaff;
+  /* ── Foreground / Text ───────────────────────── */
+  --foreground:          #1A2E74;
+  --card-foreground:     #1A2E74;
+  --popover-foreground:  #1A2E74;
+  --sidebar-foreground:  #1A2E74;
+  --muted-foreground:    #4a62a0;
+  /* ── Primary: Brand Sky Blue ─────────────────── */
+  --primary:            #1AACE0;
+  --primary-foreground: #ffffff;
+  /* ── Secondary: light blue wash ─────────────── */
+  --secondary:            #d4e8ff;
+  --secondary-foreground: #1A2E74;
+  /* ── Accent: Brand Golden Yellow ─────────────── */
+  --accent:            #FFE878;
+  --accent-foreground: #7a5200;
+  /* ── Muted ───────────────────────────────────── */
+  --muted:            #dde8ff;
+  /* ── Borders, Inputs, Focus ──────────────────── */
+  --border: #60b8f0;
+  --input:  #d4e8ff;
+  --ring:   #1AACE0;
+  /* ── Destructive: Brand Pink ─────────────────── */
+  --destructive:            #F7267C;
+  --destructive-foreground: #ffffff;
+  /* ── Radius ──────────────────────────────────── */
+  --radius: 1.4rem;
+  /* ── Charts — full brand palette ─────────────── */
+  --chart-1: #5ABB47;
+  --chart-2: #1AACE0;
+  --chart-3: #F9B233;
+  --chart-4: #F7267C;
+  --chart-5: #7B68EE;
+  /* ── Fonts ───────────────────────────────────── */
+  --spacing: 0.27rem;
+  --font-mono: IBM Plex Mono, monospace;
+  --font-sans: Plus Jakarta Sans, sans-serif;
+  --font-serif: Lora, serif;
+  --letter-spacing: -0.025em;
+  /* ── Shadows ─────────────────────────────────── */
+  --shadow-blur:     4px;
+  --shadow-color:    hsl(210 80% 40%);
+  --shadow-spread:   0px;
+  --shadow-opacity:  0.18;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 2px;
+  /* ── Sidebar ─────────────────────────────────── */
+  --sidebar-ring:                #1AACE0;
+  --sidebar-primary:             #1AACE0;
+  --sidebar-primary-foreground:  #ffffff;
+  --sidebar-accent:              #d4e8ff;
+  --sidebar-accent-foreground:   #1A2E74;
+  --sidebar-border:              #60b8f0;
+}
+
+.dark {
+  /* ── Backgrounds: deep game-world ───────────── */
+  --background: #050a1a;
+  --card:       #0a1438;
+  --popover:    #0a1438;
+  --sidebar:    #060c24;
+  /* ── Foreground ──────────────────────────────── */
+  --foreground:          #e8f0ff;
+  --card-foreground:     #e8f0ff;
+  --popover-foreground:  #e8f0ff;
+  --sidebar-foreground:  #e8f0ff;
+  --muted-foreground:    #7090c8;
+  /* ── Primary: Brand Sky Blue ─────────────────── */
+  --primary:            #1AACE0;
+  --primary-foreground: #ffffff;
+  /* ── Secondary ───────────────────────────────── */
+  --secondary:            #102060;
+  --secondary-foreground: #e8f0ff;
+  /* ── Accent: Yellow ──────────────────────────── */
+  --accent:            #2a1e00;
+  --accent-foreground: #F9B233;
+  /* ── Muted ───────────────────────────────────── */
+  --muted:            #0c1840;
+  --muted-foreground: #7090c8;
+  /* ── Borders ─────────────────────────────────── */
+  --border: #2248b0;
+  --input:  #142060;
+  --ring:   #1AACE0;
+  /* ── Destructive ─────────────────────────────── */
+  --destructive:            #F7267C;
+  --destructive-foreground: #ffffff;
+  /* ── Radius ──────────────────────────────────── */
+  --radius: 1.4rem;
+  /* ── Charts ──────────────────────────────────── */
+  --chart-1: #5ABB47;
+  --chart-2: #1AACE0;
+  --chart-3: #F9B233;
+  --chart-4: #F7267C;
+  --chart-5: #9C8FFF;
+  /* ── Fonts ───────────────────────────────────── */
+  --spacing: 0.27rem;
+  --font-mono: IBM Plex Mono, monospace;
+  --font-sans: Plus Jakarta Sans, sans-serif;
+  --font-serif: Lora, serif;
+  --letter-spacing: -0.025em;
+  /* ── Shadows ─────────────────────────────────── */
+  --shadow-blur:     6px;
+  --shadow-color:    hsl(210 100% 60%);
+  --shadow-spread:   0px;
+  --shadow-opacity:  0.30;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 2px;
+  /* ── Sidebar ─────────────────────────────────── */
+  --sidebar-ring:                #1AACE0;
+  --sidebar-primary:             #1AACE0;
+  --sidebar-primary-foreground:  #ffffff;
+  --sidebar-accent:              #102060;
+  --sidebar-accent-foreground:   #e8f0ff;
+  --sidebar-border:              #2248b0;
+}
+
+@theme inline {
+  --color-card: var(--card);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-radius: var(--radius);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-popover: var(--popover);
+  --color-primary: var(--primary);
+  --color-sidebar: var(--sidebar);
+  --color-spacing: var(--spacing);
+  --color-font-mono: var(--font-mono);
+  --color-font-sans: var(--font-sans);
+  --color-secondary: var(--secondary);
+  --color-background: var(--background);
+  --color-font-serif: var(--font-serif);
+  --color-foreground: var(--foreground);
+  --color-destructive: var(--destructive);
+  --color-shadow-blur: var(--shadow-blur);
+  --color-shadow-color: var(--shadow-color);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-shadow-spread: var(--shadow-spread);
+  --color-letter-spacing: var(--letter-spacing);
+  --color-shadow-opacity: var(--shadow-opacity);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-card-foreground: var(--card-foreground);
+  --color-shadow-offset-x: var(--shadow-offset-x);
+  --color-shadow-offset-y: var(--shadow-offset-y);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-card: 24px;
+  --shadow-card: 0 8px 40px rgba(26, 172, 224, 0.35), 0 0 0 1px rgba(26, 172, 224, 0.18);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ─── Unified global background ─────────────────────────────────────────────── */
+/* One calm, soft sky-blue → white gradient behind the whole platform. The         */
+/* background stays quiet on every page; playfulness lives in the foreground UI.    */
+
+body {
+  background:
+    linear-gradient(175deg,
+      #E7F2FF 0%,
+      #F1F8FF 45%,
+      #F8FCFF 75%,
+      #FFFFFF 100%
+    );
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  position: relative;
+}
+
+.dark body {
+  background:
+    linear-gradient(175deg,
+      #0a1430 0%,
+      #070e22 55%,
+      #05091a 100%
+    );
+  background-attachment: fixed;
+}
+
+/* ─── Glass surfaces ─────────────────────────────────────────────────────────── */
+
+.bg-surface {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(2.2) brightness(1.04);
+  -webkit-backdrop-filter: blur(20px) saturate(2.2) brightness(1.04);
+  border: 1.5px solid rgba(26, 172, 224, 0.40);
+  box-shadow:
+    0 8px 32px rgba(26, 172, 224, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.dark .bg-surface {
+  background: rgba(8, 14, 52, 0.75);
+  backdrop-filter: blur(20px) saturate(2) brightness(1.06);
+  -webkit-backdrop-filter: blur(20px) saturate(2) brightness(1.06);
+  border: 1.5px solid rgba(26, 172, 224, 0.50);
+  box-shadow:
+    0 8px 36px rgba(26, 172, 224, 0.32),
+    inset 0 1px 0 rgba(26, 172, 224, 0.18);
+}
+
+.bg-surface-2 {
+  background: rgba(240, 248, 255, 0.78);
+  backdrop-filter: blur(20px) saturate(2) brightness(1.04);
+  -webkit-backdrop-filter: blur(20px) saturate(2) brightness(1.04);
+  border: 1.5px solid rgba(26, 172, 224, 0.30);
+  box-shadow:
+    0 4px 20px rgba(26, 172, 224, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+}
+
+.dark .bg-surface-2 {
+  background: rgba(12, 22, 70, 0.80);
+  backdrop-filter: blur(20px) saturate(2) brightness(1.04);
+  -webkit-backdrop-filter: blur(20px) saturate(2) brightness(1.04);
+  border: 1.5px solid rgba(26, 172, 224, 0.38);
+  box-shadow:
+    0 4px 20px rgba(26, 172, 224, 0.25),
+    inset 0 1px 0 rgba(26, 172, 224, 0.12);
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
+
+* {
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ─── Spatial navigation focus ──────────────────────────────────────────────── */
+
+[data-focusable] {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+[data-focusable]:focus {
+  outline: none;
+}
+
+[data-focusable]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--background),
+    0 0 0 6px var(--ring);
+}
+
+/* ─── Playful Animations ────────────────────────────────────────────────────── */
+
+@keyframes kf-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes kf-float-alt {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50%       { transform: translateY(-8px) rotate(1.5deg); }
+}
+
+@keyframes kf-pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+
+.animate-float {
+  animation: kf-float 3.2s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: kf-float 3.8s ease-in-out 0.9s infinite;
+}
+
+.animate-float-slow {
+  animation: kf-float-alt 5s ease-in-out 1.5s infinite;
+}
+
+.animate-pulse-glow {
+  animation: kf-pulse-glow 2s ease-in-out infinite;
+}
+
+/* ─── GlowCard dark-mode override (beats inline style via !important) ───────── */
+
+.dark [data-glow] {
+  --backdrop: rgba(8, 14, 52, 0.84) !important;
+  --backup-border: rgba(26, 172, 224, 0.52) !important;
+}
+
+/* ─── SuperAdmin chart + entrance micro-interactions ─────────────────────────── */
+
+@keyframes kf-chart-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes kf-chart-fade {
+  to { opacity: 1; }
+}
+
+@keyframes kf-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.kf-chart-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: kf-chart-draw 0.9s ease-out forwards;
+}
+
+.kf-chart-area {
+  opacity: 0;
+  animation: kf-chart-fade 0.6s ease-out 0.3s forwards;
+}
+
+.kf-rise {
+  animation: kf-rise 0.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kf-chart-line,
+  .kf-chart-area,
+  .kf-rise {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ─── ABCmouse-style landing: scoped rounded typography ─────────────────────── */
+/* Only the logged-out homepage opts into these fonts (via .landing-root /        */
+/* .font-display). The rest of the app keeps its existing type system untouched.  */
+
+.landing-root {
+  font-family: "Nunito", var(--font-sans), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: "Baloo 2", "Nunito", var(--font-sans), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+}
+
+/* ─── Landing playful animations ────────────────────────────────────────────── */
+
+@keyframes kf-wiggle {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50%      { transform: rotate(2.5deg); }
+}
+
+@keyframes kf-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+
+@keyframes kf-drift {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(26px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes kf-spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes kf-grow-up {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+.animate-wiggle    { animation: kf-wiggle 3.4s ease-in-out infinite; }
+.animate-bob       { animation: kf-bob 4s ease-in-out infinite; }
+.animate-drift     { animation: kf-drift 14s ease-in-out infinite; }
+.animate-spin-slow { animation: kf-spin-slow 22s linear infinite; }
+.animate-grow-up   { transform-origin: bottom; animation: kf-grow-up 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-wiggle,
+  .animate-bob,
+  .animate-drift,
+  .animate-spin-slow,
+  .animate-grow-up {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ─── Display Settings ──────────────────────────────────────────────────────── */
+
+html[data-large-text] {
+  font-size: 18px;
+}
+
+html[data-large-text] h1,
+html[data-large-text] h2,
+html[data-large-text] h3 {
+  font-size: 1.2em;
+}
+
+html[data-reduce-motion] * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

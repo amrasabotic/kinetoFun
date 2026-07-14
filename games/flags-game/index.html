@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flags Quiz — Multi-Mode Survival</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <meta property="og:image" content="https://bolt.new/static/og_default.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
+  </head>
+  <body>
+    <div id="app">
+      <!-- Camera + debug -->
+      <video id="camera-feed" playsinline></video>
+      <canvas id="debug-canvas"></canvas>
+
+      <!-- ══════════════ HOME SCREEN ══════════════ -->
+      <div id="home-screen" class="screen active">
+        <div class="home-content">
+          <div class="home-logo">
+            <div class="logo-globe">🌍</div>
+            <h1 class="game-title">FLAGS QUIZ</h1>
+            <div class="game-subtitle">HAND-CONTROLLED · GESTURE POWERED</div>
+          </div>
+
+          <div class="mode-cards">
+            <div class="mode-card selectable" data-mode="campaign">
+              <div class="mode-icon">🗺️</div>
+              <div class="mode-name">CAMPAIGN</div>
+              <div class="mode-desc">Europe → Asia → Africa → Americas → World Final</div>
+              <div class="mode-tag">PROGRESSION</div>
+            </div>
+            <div class="mode-card selectable" data-mode="arcade">
+              <div class="mode-icon">🎯</div>
+              <div class="mode-name">ARCADE</div>
+              <div class="mode-desc">Choose any continent — free play, no locks</div>
+              <div class="mode-tag">FREE PLAY</div>
+            </div>
+            <div class="mode-card selectable" data-mode="survival">
+              <div class="mode-icon">🔥</div>
+              <div class="mode-name">SURVIVAL</div>
+              <div class="mode-desc">All flags, 3 lives, endless increasing difficulty</div>
+              <div class="mode-tag">ENDLESS</div>
+            </div>
+          </div>
+
+          <div class="home-controls">
+            <div class="ctrl-item"><span class="ctrl-icon">☝️</span> Point to hover</div>
+            <div class="ctrl-sep">·</div>
+            <div class="ctrl-item"><span class="ctrl-icon">👍</span> Thumbs up to select</div>
+          </div>
+          <div id="camera-status" class="camera-status">Initializing camera...</div>
+        </div>
+      </div>
+
+      <!-- ══════════════ ARCADE SELECT SCREEN ══════════════ -->
+      <div id="arcade-select-screen" class="screen">
+        <div class="arcade-select-content">
+          <h2 class="select-title">SELECT REGION</h2>
+          <div class="continent-cards">
+            <div class="continent-card selectable" data-continent="europe">
+              <div class="cont-emoji">🇪🇺</div>
+              <div class="cont-name">Europe</div>
+            </div>
+            <div class="continent-card selectable" data-continent="asia">
+              <div class="cont-emoji">🌏</div>
+              <div class="cont-name">Asia</div>
+            </div>
+            <div class="continent-card selectable" data-continent="africa">
+              <div class="cont-emoji">🌍</div>
+              <div class="cont-name">Africa</div>
+            </div>
+            <div class="continent-card selectable" data-continent="americas">
+              <div class="cont-emoji">🌎</div>
+              <div class="cont-name">Americas</div>
+            </div>
+            <div class="continent-card selectable" data-continent="world">
+              <div class="cont-emoji">🌐</div>
+              <div class="cont-name">Hard Mix</div>
+            </div>
+          </div>
+          <div class="back-hint">✊ Fist to go back</div>
+        </div>
+      </div>
+
+      <!-- ══════════════ TRANSITION SCREEN ══════════════ -->
+      <div id="transition-screen" class="screen">
+        <div class="transition-content">
+          <div class="transition-badge"></div>
+          <div class="transition-title"></div>
+          <div class="transition-sub"></div>
+          <div class="transition-score"></div>
+          <div class="transition-next"></div>
+          <div class="transition-hint"></div>
+        </div>
+      </div>
+
+      <!-- ══════════════ GAME SCREEN ══════════════ -->
+      <div id="game-screen" class="screen">
+        <!-- HUD -->
+        <div id="hud">
+          <div id="score-display">
+            <div class="hud-label">SCORE</div>
+            <div id="score-value">0</div>
+          </div>
+          <div id="streak-display">
+            <div class="hud-label">STREAK</div>
+            <div id="streak-value">0</div>
+            <div id="multiplier-badge" class="multiplier hidden">x1</div>
+          </div>
+          <div id="lives-display">
+            <div class="hud-label">LIVES</div>
+            <div id="lives-hearts"></div>
+          </div>
+        </div>
+
+        <!-- Campaign progress bar -->
+        <div id="stage-progress-wrap">
+          <div id="continent-badge">Stage 1: 🇪🇺 Europe</div>
+          <div id="stage-progress-track">
+            <div id="stage-progress-bar"></div>
+          </div>
+          <div id="stage-progress-label"></div>
+        </div>
+
+        <!-- Flag + question -->
+        <div id="question-area">
+          <div id="flag-container">
+            <img id="flag-image" src="" alt="Flag" />
+          </div>
+          <div id="question-text">Which country does this flag belong to?</div>
+        </div>
+
+        <!-- Answer cards -->
+        <div id="answers-grid">
+          <div class="answer-card selectable" data-index="0">
+            <div class="answer-label">A</div>
+            <div class="answer-text"></div>
+          </div>
+          <div class="answer-card selectable" data-index="1">
+            <div class="answer-label">B</div>
+            <div class="answer-text"></div>
+          </div>
+          <div class="answer-card selectable" data-index="2">
+            <div class="answer-label">C</div>
+            <div class="answer-text"></div>
+          </div>
+          <div class="answer-card selectable" data-index="3">
+            <div class="answer-label">D</div>
+            <div class="answer-text"></div>
+          </div>
+        </div>
+
+        <!-- Pause overlay -->
+        <div id="pause-overlay" class="hidden">
+          <div class="pause-content">
+            <div class="pause-icon">⏸</div>
+            <h2>PAUSED</h2>
+            <p>✋ Open palm to resume</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════ FEEDBACK OVERLAY ══════════════ -->
+      <div id="feedback-overlay" class="hidden">
+        <div id="feedback-content">
+          <div id="feedback-icon"></div>
+          <div id="feedback-text"></div>
+          <div id="feedback-country"></div>
+        </div>
+      </div>
+
+      <!-- ══════════════ GAME OVER SCREEN ══════════════ -->
+      <div id="gameover-screen" class="screen">
+        <div class="gameover-content">
+          <div class="gameover-title">GAME OVER</div>
+          <div id="gameover-mode" class="gameover-mode"></div>
+          <div class="gameover-stats">
+            <div class="stat-box">
+              <div class="stat-label">FINAL SCORE</div>
+              <div id="final-score" class="stat-value">0</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">BEST STREAK</div>
+              <div id="final-streak" class="stat-value">0</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">CORRECT</div>
+              <div id="final-correct" class="stat-value">0</div>
+            </div>
+          </div>
+          <div id="gameover-retry-hint" class="gameover-retry-hint"></div>
+          <div class="gameover-actions">
+            <div class="action-hint"><span class="action-icon">✊</span> Fist to retry</div>
+            <div class="action-sep">·</div>
+            <div class="action-hint"><span class="action-icon">👍</span> Thumbs up to go home</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════ GESTURE INDICATOR ══════════════ -->
+      <div id="gesture-indicator">
+        <div id="gesture-icon"></div>
+        <div id="gesture-label"></div>
+        <div id="gesture-confidence">
+          <div id="confidence-bar"></div>
+        </div>
+      </div>
+
+      <!-- Debug toggle (mouse only) -->
+      <button id="debug-toggle" title="Toggle debug overlay">DEBUG</button>
+    </div>
+
+    <script type="module" src="/script.js"></script>
+  </body>
+</html>

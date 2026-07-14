@@ -1,0 +1,13 @@
+[build]
+  # Build script now handles games + Next.js (defined in package.json)
+  # Plain HTML games: just copied (instant).
+  # Vite/Next.js games: npm install + build inside each game folder.
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Cache game node_modules between Netlify builds to speed up re-deploys.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

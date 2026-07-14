@@ -1,0 +1,375 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 20%, #1c2b1a 0%, #0f1a12 55%, #070c08 100%);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #eef6e8;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+* { box-sizing: border-box; }
+
+.gar-app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ---------- Cursor ---------- */
+.gar-cursor-dot {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(163,230,53,0.9) 0%, rgba(163,230,53,0.2) 70%);
+  border: 2px solid #bef264;
+  box-shadow: 0 0 16px rgba(163,230,53,0.8);
+  pointer-events: none;
+  z-index: 500;
+}
+
+/* ---------- Menu ---------- */
+.gar-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+}
+
+.gar-menu__title {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  background: linear-gradient(90deg, #bef264, #facc15);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}
+
+.gar-menu__subtitle {
+  color: #cde8b5;
+  margin: 0 0 12px;
+  max-width: 520px;
+}
+
+.gar-menu__section h3 {
+  margin: 0 0 8px;
+  color: #a3e635;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.gar-menu__row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.gar-menu-btn {
+  position: relative;
+  overflow: hidden;
+  min-width: 120px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(163,230,53,0.4);
+  text-transform: capitalize;
+  font-weight: 600;
+  color: #eef6e8;
+}
+
+.gar-menu-btn--active {
+  border-color: #bef264;
+  box-shadow: 0 0 14px rgba(190,242,100,0.5);
+}
+
+.gar-menu-btn__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(163,230,53,0.3);
+  transition: width 0.05s linear;
+  z-index: 0;
+}
+
+.gar-menu-btn span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Game layout ---------- */
+.gar-game-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.gar-board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 16px 24px;
+  min-height: 0;
+}
+
+/* ---------- Range / target ---------- */
+.gar-range {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.gar-target {
+  position: relative;
+  border-radius: 50%;
+  overflow: visible;
+  box-shadow: 0 0 40px rgba(0,0,0,0.5) inset, 0 0 30px rgba(0,0,0,0.6);
+}
+
+.gar-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.25);
+}
+
+.gar-reticle {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+  margin-top: -17px;
+  border: 3px solid #f87171;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(248,113,113,0.7);
+  pointer-events: none;
+}
+
+.gar-reticle::before, .gar-reticle::after {
+  content: '';
+  position: absolute;
+  background: #f87171;
+}
+
+.gar-reticle::before { left: 50%; top: -8px; width: 2px; height: 8px; transform: translateX(-50%); }
+.gar-reticle::after { left: -8px; top: 50%; width: 8px; height: 2px; transform: translateY(-50%); }
+
+.gar-arrow-flight {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #fef3c7;
+  box-shadow: 0 0 10px rgba(254,243,199,0.9), 0 0 20px rgba(250,204,21,0.5);
+  pointer-events: none;
+  z-index: 6;
+}
+
+.gar-impact-mark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 2px solid #fefce8;
+  z-index: 5;
+}
+
+.gar-stuck-arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: #292524;
+  border: 1px solid #fefce8;
+  z-index: 4;
+}
+
+.gar-result-flash {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(24px, 4vw, 40px);
+  font-weight: 800;
+  color: #facc15;
+  text-shadow: 0 0 16px rgba(250,204,21,0.8);
+  z-index: 20;
+  animation: gar-flash-pop 1.1s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes gar-flash-pop {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -55%) scale(1); }
+}
+
+/* ---------- Power meter ---------- */
+.gar-power-meter {
+  width: min(480px, 90%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.gar-power-meter__track {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(163,230,53,0.35);
+  overflow: hidden;
+}
+
+.gar-power-meter__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #facc15, #f87171);
+  transition: width 0.05s linear;
+}
+
+.gar-power-meter__fill--active {
+  box-shadow: 0 0 10px rgba(250,204,21,0.6) inset;
+}
+
+.gar-power-meter__needed {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  background: #fff;
+  z-index: 2;
+}
+
+.gar-power-meter__label {
+  font-size: 13px;
+  color: #cde8b5;
+}
+
+/* ---------- HUD / buttons ---------- */
+.gar-ui-overlay {
+  position: relative;
+  z-index: 10;
+  padding: 14px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gar-hud {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  color: #cde8b5;
+  flex-wrap: wrap;
+}
+
+.gar-hud__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(163,230,53,0.2);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.gar-hud__stat {
+  font-weight: 600;
+}
+
+.gar-hud__timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #facc15;
+}
+
+.gar-button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gar-dwell-btn {
+  position: relative;
+  overflow: hidden;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(163,230,53,0.35);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gar-dwell-btn--warn {
+  border-color: rgba(248,113,113,0.5);
+}
+
+.gar-dwell-btn__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(163,230,53,0.3);
+  z-index: 0;
+  transition: width 0.05s linear;
+}
+
+.gar-dwell-btn span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Overlays ---------- */
+.gar-camera-gate, .gar-pause-overlay, .gar-victory-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+  background: rgba(7,12,8,0.85);
+  z-index: 50;
+}
+
+.gar-victory-overlay h2, .gar-pause-overlay h2 {
+  font-size: 32px;
+  background: linear-gradient(90deg, #bef264, #facc15);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}

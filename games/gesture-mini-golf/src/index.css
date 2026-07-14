@@ -1,0 +1,415 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 15%, #0f2a1a 0%, #0a1c11 55%, #05100a 100%);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #e7fbe9;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+* { box-sizing: border-box; }
+
+.gmg-app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ---------- Cursor ---------- */
+.gmg-cursor-dot {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(74,222,128,0.9) 0%, rgba(74,222,128,0.2) 70%);
+  border: 2px solid #86efac;
+  box-shadow: 0 0 16px rgba(74,222,128,0.8);
+  pointer-events: none;
+  z-index: 500;
+}
+
+/* ---------- Menu ---------- */
+.gmg-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+}
+
+.gmg-menu__title {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  background: linear-gradient(90deg, #86efac, #4ade80);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}
+
+.gmg-menu__subtitle {
+  color: #bdf0c4;
+  margin: 0 0 12px;
+  max-width: 520px;
+}
+
+.gmg-menu__section h3 {
+  margin: 0 0 8px;
+  color: #4ade80;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.gmg-menu__row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.gmg-menu-btn {
+  position: relative;
+  overflow: hidden;
+  min-width: 120px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(74,222,128,0.4);
+  text-transform: capitalize;
+  font-weight: 600;
+  color: #e7fbe9;
+}
+
+.gmg-menu-btn--active {
+  border-color: #86efac;
+  box-shadow: 0 0 14px rgba(134,239,172,0.5);
+}
+
+.gmg-menu-btn__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(74,222,128,0.3);
+  transition: width 0.05s linear;
+  z-index: 0;
+}
+
+.gmg-menu-btn span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Game layout ---------- */
+.gmg-game-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.gmg-board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 24px 16px;
+  min-height: 0;
+}
+
+/* ---------- Course ---------- */
+.gmg-course-wrap {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.gmg-course {
+  position: relative;
+  width: min(64vh, 70vmin);
+  aspect-ratio: 4 / 5;
+  max-height: 68vh;
+  background: linear-gradient(180deg, #2f6b3c 0%, #245430 55%, #1a3f24 100%);
+  border-radius: 12px;
+  border: 3px solid #143820;
+  box-shadow: 0 0 30px rgba(0,0,0,0.5) inset;
+  overflow: visible;
+}
+
+.gmg-obstacle {
+  position: absolute;
+  border-radius: 6px;
+}
+
+.gmg-obstacle--wall {
+  background: linear-gradient(180deg, #8a6236, #5c3d1f);
+  border: 1px solid #3a2512;
+}
+
+.gmg-obstacle--sand {
+  background: repeating-linear-gradient(45deg, #e0c078, #e0c078 6px, #d4b06a 6px, #d4b06a 12px);
+  border: 1px solid #b8985a;
+}
+
+.gmg-obstacle--water {
+  background: linear-gradient(180deg, #38bdf8, #0284c7);
+  border: 1px solid #0369a1;
+}
+
+.gmg-obstacle--slope {
+  background: rgba(255,255,255,0.08);
+  border: 1px dashed rgba(255,255,255,0.3);
+}
+
+.gmg-tee {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  z-index: 2;
+}
+
+.gmg-cup {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #05100a 60%, #143820 100%);
+  border: 2px solid #0a1c11;
+  z-index: 2;
+}
+
+.gmg-aim-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.gmg-aim-line {
+  stroke: rgba(134,239,172,0.7);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 2;
+}
+
+.gmg-ball {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #cbd5e1 70%);
+  box-shadow: 0 0 6px rgba(0,0,0,0.5);
+  z-index: 4;
+}
+
+/* ---------- Swing meter ---------- */
+.gmg-swing-meter {
+  width: min(480px, 90%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.gmg-swing-meter__track {
+  width: 100%;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(74,222,128,0.35);
+  overflow: hidden;
+}
+
+.gmg-swing-meter__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #fde047, #f87171);
+  transition: width 0.05s linear;
+}
+
+.gmg-swing-meter__fill--active {
+  box-shadow: 0 0 10px rgba(74,222,128,0.6) inset;
+}
+
+.gmg-swing-meter__label {
+  font-size: 13px;
+  color: #bdf0c4;
+  text-align: center;
+}
+
+/* ---------- Scoreboard ---------- */
+.gmg-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 4px;
+  padding: 6px 24px 0;
+}
+
+.gmg-scoreboard__hole {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 2px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(74,222,128,0.2);
+  font-size: 11px;
+}
+
+.gmg-scoreboard__hole--current {
+  border-color: #86efac;
+  box-shadow: 0 0 8px rgba(134,239,172,0.4);
+}
+
+.gmg-scoreboard__num {
+  color: #bdf0c4;
+  opacity: 0.8;
+}
+
+.gmg-scoreboard__par {
+  opacity: 0.6;
+}
+
+.gmg-scoreboard__strokes {
+  font-weight: 800;
+  color: #86efac;
+}
+
+/* ---------- HUD / buttons ---------- */
+.gmg-ui-overlay {
+  position: relative;
+  z-index: 10;
+  padding: 14px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gmg-hud {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  color: #bdf0c4;
+  flex-wrap: wrap;
+}
+
+.gmg-hud__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(74,222,128,0.2);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.gmg-hud__stat {
+  font-weight: 600;
+}
+
+.gmg-hud__timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #fde047;
+}
+
+.gmg-button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gmg-dwell-btn {
+  position: relative;
+  overflow: hidden;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(74,222,128,0.35);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gmg-dwell-btn--warn {
+  border-color: rgba(248,113,113,0.5);
+}
+
+.gmg-dwell-btn__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(74,222,128,0.3);
+  z-index: 0;
+  transition: width 0.05s linear;
+}
+
+.gmg-dwell-btn span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Result flash ---------- */
+.gmg-result-flash {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(22px, 4vw, 38px);
+  font-weight: 800;
+  color: #86efac;
+  text-shadow: 0 0 16px rgba(134,239,172,0.8);
+  z-index: 20;
+  animation: gmg-flash-pop 1.1s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes gmg-flash-pop {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -55%) scale(1); }
+}
+
+/* ---------- Overlays ---------- */
+.gmg-camera-gate, .gmg-pause-overlay, .gmg-victory-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+  background: rgba(5,16,10,0.85);
+  z-index: 50;
+}
+
+.gmg-victory-overlay h2, .gmg-pause-overlay h2 {
+  font-size: 32px;
+  background: linear-gradient(90deg, #86efac, #4ade80);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}

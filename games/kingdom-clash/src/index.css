@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #060d06;
+  --foreground: #f0f0f4;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  body {
+    background: #060d06;
+    color: #f0f0f4;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+canvas {
+  display: block;
+  image-rendering: auto;
+}
+
+button {
+  font-family: inherit;
+}

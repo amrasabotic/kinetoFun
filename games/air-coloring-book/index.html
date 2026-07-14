@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Air Coloring Book ✋🎨</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0f0f1a;
+    --panel: #1a1a2e;
+    --accent: #ff6b9d;
+    --accent2: #c084fc;
+    --accent3: #60d8ff;
+    --text: #f0e6ff;
+    --text-muted: #8888aa;
+    --card: #22224a;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family:'Nunito',sans-serif;
+    background:var(--bg); color:var(--text);
+    overflow:hidden; height:100vh; width:100vw;
+    display:flex; flex-direction:column;
+  }
+
+  /* TOP BAR */
+  #topbar {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 16px; background:var(--panel);
+    border-bottom:2px solid #2a2a4a; flex-shrink:0; z-index:20;
+  }
+  #topbar h1 {
+    font-family:'Fredoka One',cursive; font-size:1.4rem;
+    background:linear-gradient(135deg,var(--accent),var(--accent2),var(--accent3));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .stat-pill {
+    background:var(--card); border-radius:999px; padding:4px 12px;
+    font-size:0.8rem; font-weight:700; display:inline-flex;
+    align-items:center; gap:5px; border:1px solid #3a3a6a; margin-left:8px;
+  }
+  .stat-pill span { color:var(--accent2); }
+
+  /* MAIN LAYOUT */
+  #main { display:flex; flex:1; overflow:hidden; }
+
+  /* LEFT PANEL */
+  #animal-panel {
+    width:110px; background:var(--panel); border-right:2px solid #2a2a4a;
+    overflow-y:auto; padding:8px 5px; display:flex; flex-direction:column;
+    gap:5px; flex-shrink:0;
+  }
+  #animal-panel::-webkit-scrollbar{width:3px;}
+  #animal-panel::-webkit-scrollbar-thumb{background:#3a3a6a;border-radius:3px;}
+
+  .animal-btn {
+    background:var(--card); border:2px solid transparent; border-radius:10px;
+    padding:6px 3px; cursor:pointer; display:flex; flex-direction:column;
+    align-items:center; gap:2px; color:var(--text); font-size:0.65rem;
+    font-weight:700; text-align:center; position:relative; overflow:hidden;
+    transition:border-color 0.15s;
+  }
+  .animal-btn .emoji { font-size:1.6rem; }
+  .animal-btn.active { border-color:var(--accent); background:#2e1a3a; }
+  .animal-btn.hovering { border-color:var(--accent2); }
+
+  /* hover fill ring inside button */
+  .animal-btn .hover-ring {
+    position:absolute; bottom:0; left:0; height:3px; width:0%;
+    background:var(--accent2); border-radius:0 0 8px 8px;
+    transition:none;
+  }
+
+  /* CANVAS AREA */
+  #canvas-area { flex:1; position:relative; overflow:hidden; }
+
+  #drawing-canvas, #outline-canvas, #cursor-canvas {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+  }
+  #outline-canvas  { pointer-events:none; }
+  #cursor-canvas   { pointer-events:none; z-index:10; }
+
+  /* WEBCAM */
+  #video-wrap {
+    position:absolute; bottom:10px; right:10px; border-radius:12px;
+    overflow:hidden; border:2px solid var(--accent2); z-index:15;
+    box-shadow:0 0 18px rgba(192,132,252,0.4);
+  }
+  #webcam { width:150px; height:112px; object-fit:cover; transform:scaleX(-1); display:block; }
+
+  /* RIGHT PANEL */
+  #tool-panel {
+    width:108px; background:var(--panel); border-left:2px solid #2a2a4a;
+    display:flex; flex-direction:column; gap:5px; padding:8px 5px;
+    overflow-y:auto; flex-shrink:0;
+  }
+  #tool-panel::-webkit-scrollbar{width:3px;}
+  #tool-panel::-webkit-scrollbar-thumb{background:#3a3a6a;border-radius:3px;}
+
+  .tool-label {
+    font-size:0.6rem; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.08em; padding:0 3px; font-weight:700; flex-shrink:0;
+  }
+
+  .color-swatch {
+    width:100%; height:34px; border-radius:8px; cursor:pointer;
+    border:3px solid transparent; flex-shrink:0; position:relative; overflow:hidden;
+    transition:border-color 0.15s;
+  }
+  .color-swatch.active { border-color:white; }
+  .color-swatch.hovering { border-color:var(--accent2); }
+  .color-swatch .hover-ring {
+    position:absolute; bottom:0; left:0; height:3px; width:0%;
+    background:rgba(255,255,255,0.8); border-radius:0;
+  }
+
+  .tool-btn {
+    background:var(--card); border:2px solid transparent; border-radius:8px;
+    padding:7px 3px; cursor:pointer; display:flex; flex-direction:column;
+    align-items:center; gap:2px; font-size:0.65rem; font-weight:700;
+    color:var(--text); position:relative; overflow:hidden; flex-shrink:0;
+    transition:border-color 0.15s;
+  }
+  .tool-btn .icon { font-size:1.3rem; }
+  .tool-btn.active { border-color:var(--accent); background:#2e1a2a; }
+  .tool-btn.hovering { border-color:var(--accent2); }
+  .tool-btn .hover-ring {
+    position:absolute; bottom:0; left:0; height:3px; width:0%;
+    background:var(--accent2); border-radius:0;
+  }
+
+  /* GESTURE HINT */
+  #gesture-hint {
+    position:absolute; top:8px; left:50%; transform:translateX(-50%);
+    background:rgba(26,26,46,0.93); border:1px solid var(--accent2);
+    border-radius:8px; padding:5px 14px; font-size:0.78rem; font-weight:700;
+    color:var(--accent2); z-index:16; pointer-events:none; white-space:nowrap;
+  }
+
+  /* PROGRESS BAR */
+  #progress-bar-wrap {
+    position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    width:260px; background:rgba(26,26,46,0.88); border-radius:999px;
+    padding:5px 10px; display:flex; align-items:center; gap:8px;
+    border:1px solid #3a3a6a; z-index:16; pointer-events:none;
+  }
+  #progress-bar { flex:1; height:9px; background:#2a2a4a; border-radius:999px; overflow:hidden; }
+  #progress-fill {
+    height:100%; width:0%;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    border-radius:999px; transition:width 0.3s;
+  }
+  #progress-pct { font-size:0.78rem; font-weight:800; color:var(--accent2); width:34px; text-align:right; }
+
+  /* COMPLETION */
+  #completion-overlay {
+    display:none; position:absolute; inset:0;
+    background:rgba(15,15,26,0.85); z-index:50;
+    align-items:center; justify-content:center; flex-direction:column; gap:16px;
+  }
+  #completion-overlay.show { display:flex; }
+  #completion-overlay h2 {
+    font-family:'Fredoka One',cursive; font-size:2.8rem;
+    background:linear-gradient(135deg,#ffdd57,#ff6b9d,#c084fc);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  #completion-overlay p { font-size:1rem; color:var(--text-muted); }
+  .big-emoji { font-size:4.5rem; animation:bounce 0.8s infinite alternate; }
+  @keyframes bounce { from{transform:scale(1) translateY(0)} to{transform:scale(1.15) translateY(-10px)} }
+
+  /* LOADER */
+  #loader {
+    position:fixed; inset:0; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:16px; z-index:200;
+  }
+  #loader h2 { font-family:'Fredoka One',cursive; font-size:1.9rem; color:var(--accent2); }
+  #loader p  { color:var(--text-muted); font-size:0.88rem; text-align:center; max-width:280px; }
+  .spinner {
+    width:44px; height:44px; border:4px solid #2a2a4a;
+    border-top-color:var(--accent); border-radius:50%;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <h2>✋ Air Coloring Book</h2>
+  <p id="loader-msg">Loading MediaPipe Hand Tracking…</p>
+</div>
+
+<div id="topbar">
+  <h1>✋ Air Coloring Book</h1>
+  <div>
+    <span class="stat-pill">🖐 <span id="hand-status">Searching…</span></span>
+    <span class="stat-pill">🎨 <span id="mode-label">Draw</span></span>
+    <span class="stat-pill">⭐ Score: <span id="score">0</span></span>
+  </div>
+</div>
+
+<div id="main">
+  <div id="animal-panel"></div>
+
+  <div id="canvas-area">
+    <canvas id="drawing-canvas"></canvas>
+    <canvas id="outline-canvas"></canvas>
+    <canvas id="cursor-canvas"></canvas>
+    <div id="gesture-hint">☝️ Point = Draw · ✌️ Peace = Hover panels · 👊 Fist = Clear · 🖐 Open = Next</div>
+    <div id="progress-bar-wrap">
+      <span style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap">Coverage</span>
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+      <div id="progress-pct">0%</div>
+    </div>
+    <div id="completion-overlay">
+      <div class="big-emoji" id="completion-emoji">🎉</div>
+      <h2>Amazing! 🎨</h2>
+      <p>You colored the whole picture!</p>
+    </div>
+    <div id="video-wrap"><video id="webcam" autoplay muted playsinline></video></div>
+  </div>
+
+  <div id="tool-panel">
+    <div class="tool-label">Colors</div>
+    <div id="color-swatches"></div>
+    <div class="tool-label" style="margin-top:4px">Tools</div>
+    <div class="tool-btn active" id="btn-draw" data-action="tool:draw">
+      <span class="icon">✏️</span>Draw
+      <div class="hover-ring"></div>
+    </div>
+    <div class="tool-btn" id="btn-erase" data-action="tool:erase">
+      <span class="icon">🧹</span>Erase
+      <div class="hover-ring"></div>
+    </div>
+    <div class="tool-btn" id="btn-clear" data-action="clear">
+      <span class="icon">🗑️</span>Clear
+      <div class="hover-ring"></div>
+    </div>
+    <div class="tool-btn" id="btn-next" data-action="next">
+      <span class="icon">➡️</span>Next
+      <div class="hover-ring"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script>
+// ═══════════════════════════════════════════════
+//  ANIMALS DATA
+// ═══════════════════════════════════════════════
+const ANIMALS = [
+  { name:"Cat",       emoji:"🐱", draw:(c,x,y,s)=>drawCat(c,x,y,s) },
+  { name:"Dog",       emoji:"🐶", draw:(c,x,y,s)=>drawDog(c,x,y,s) },
+  { name:"Fish",      emoji:"🐟", draw:(c,x,y,s)=>drawFish(c,x,y,s) },
+  { name:"Elephant",  emoji:"🐘", draw:(c,x,y,s)=>drawElephant(c,x,y,s) },
+  { name:"Butterfly", emoji:"🦋", draw:(c,x,y,s)=>drawButterfly(c,x,y,s) },
+  { name:"Dinosaur",  emoji:"🦕", draw:(c,x,y,s)=>drawDino(c,x,y,s) },
+  { name:"Rabbit",    emoji:"🐰", draw:(c,x,y,s)=>drawRabbit(c,x,y,s) },
+  { name:"Owl",       emoji:"🦉", draw:(c,x,y,s)=>drawOwl(c,x,y,s) },
+  { name:"Turtle",    emoji:"🐢", draw:(c,x,y,s)=>drawTurtle(c,x,y,s) },
+  { name:"Fox",       emoji:"🦊", draw:(c,x,y,s)=>drawFox(c,x,y,s) },
+  { name:"Whale",     emoji:"🐳", draw:(c,x,y,s)=>drawWhale(c,x,y,s) },
+  { name:"Bear",      emoji:"🐻", draw:(c,x,y,s)=>drawBear(c,x,y,s) },
+];
+
+const COLORS = [
+  "#ff6b9d","#ff6b35","#ffdd57","#4ade80",
+  "#60d8ff","#c084fc","#ffffff","#f97316",
+  "#a16207","#6366f1","#14b8a6","#000000"
+];
+
+// ═══════════════════════════════════════════════
+//  ANIMAL DRAWING FUNCTIONS
+// ═══════════════════════════════════════════════
+function style(ctx){ ctx.strokeStyle="#fff"; ctx.lineWidth=3; ctx.lineCap="round"; ctx.lineJoin="round"; }
+
+function drawCat(ctx,cx,cy,s){
+  style(ctx);
+  // body
+  ctx.beginPath();ctx.ellipse(cx,cy+s*.15,s*.38,s*.28,0,0,Math.PI*2);ctx.stroke();
+  // head
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.22,s*.24,s*.22,0,0,Math.PI*2);ctx.stroke();
+  // ears
+  ctx.beginPath();ctx.moveTo(cx-s*.22,cy-s*.38);ctx.lineTo(cx-s*.30,cy-s*.58);ctx.lineTo(cx-s*.10,cy-s*.44);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.22,cy-s*.38);ctx.lineTo(cx+s*.30,cy-s*.58);ctx.lineTo(cx+s*.10,cy-s*.44);ctx.closePath();ctx.stroke();
+  // eyes
+  ctx.beginPath();ctx.arc(cx-s*.09,cy-s*.24,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.09,cy-s*.24,s*.04,0,Math.PI*2);ctx.stroke();
+  // nose
+  ctx.beginPath();ctx.arc(cx,cy-s*.16,s*.025,0,Math.PI*2);ctx.stroke();
+  // whiskers
+  [[cx-s*.28,cx-s*.05],[cx+s*.05,cx+s*.28]].forEach(([x1,x2])=>{
+    [-s*.16,-s*.12].forEach(wy=>{ctx.beginPath();ctx.moveTo(x1,cy+wy);ctx.lineTo(x2,cy+wy);ctx.stroke();});
+  });
+  // tail
+  ctx.beginPath();ctx.moveTo(cx+s*.38,cy+s*.15);ctx.bezierCurveTo(cx+s*.65,cy+s*.05,cx+s*.65,cy-s*.2,cx+s*.45,cy-s*.3);ctx.stroke();
+  // legs
+  [-s*.2,s*.2].forEach(ox=>{ctx.beginPath();ctx.moveTo(cx+ox,cy+s*.42);ctx.lineTo(cx+ox,cy+s*.58);ctx.stroke();});
+}
+
+function drawDog(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.ellipse(cx,cy+s*.12,s*.40,s*.30,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.22,s*.26,s*.24,0,0,Math.PI*2);ctx.stroke();
+  // floppy ears
+  ctx.beginPath();ctx.moveTo(cx-s*.24,cy-s*.36);ctx.bezierCurveTo(cx-s*.42,cy-s*.36,cx-s*.44,cy-s*.04,cx-s*.28,cy-s*.04);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.24,cy-s*.36);ctx.bezierCurveTo(cx+s*.42,cy-s*.36,cx+s*.44,cy-s*.04,cx+s*.28,cy-s*.04);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.12,s*.13,s*.09,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.1,cy-s*.28,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.1,cy-s*.28,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-s*.16,s*.03,0,Math.PI*2);ctx.stroke();
+  [-s*.25,-s*.08,s*.08,s*.25].forEach(ox=>{ctx.beginPath();ctx.moveTo(cx+ox,cy+s*.40);ctx.lineTo(cx+ox,cy+s*.58);ctx.stroke();});
+  ctx.beginPath();ctx.moveTo(cx+s*.40,cy);ctx.bezierCurveTo(cx+s*.62,cy-s*.15,cx+s*.55,cy-s*.38,cx+s*.40,cy-s*.30);ctx.stroke();
+}
+
+function drawFish(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.moveTo(cx+s*.40,cy);ctx.bezierCurveTo(cx+s*.20,cy-s*.28,cx-s*.30,cy-s*.28,cx-s*.40,cy);ctx.bezierCurveTo(cx-s*.30,cy+s*.28,cx+s*.20,cy+s*.28,cx+s*.40,cy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.40,cy);ctx.lineTo(cx-s*.65,cy-s*.22);ctx.lineTo(cx-s*.65,cy+s*.22);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.22,cy-s*.06,s*.055,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy-s*.24);ctx.bezierCurveTo(cx+s*.1,cy-s*.46,cx-s*.1,cy-s*.46,cx,cy-s*.24);ctx.stroke();
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(cx+(i-1)*s*.18,cy,s*.10,Math.PI*.2,Math.PI*.8);ctx.stroke();}
+}
+
+function drawElephant(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.ellipse(cx,cy+s*.12,s*.42,s*.32,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx-s*.26,cy-s*.22,s*.26,s*.24,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx-s*.50,cy-s*.24,s*.18,s*.28,Math.PI*.2,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.38,cy-s*.08);ctx.bezierCurveTo(cx-s*.52,cy+s*.02,cx-s*.54,cy+s*.22,cx-s*.42,cy+s*.28);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.26,cy-s*.08);ctx.bezierCurveTo(cx-s*.38,cy-s*.02,cx-s*.46,cy+s*.04,cx-s*.44,cy+s*.12);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.24,cy-s*.28,s*.035,0,Math.PI*2);ctx.stroke();
+  [-s*.24,-s*.08,s*.08,s*.24].forEach(ox=>{ctx.beginPath();ctx.moveTo(cx+ox,cy+s*.42);ctx.lineTo(cx+ox,cy+s*.60);ctx.stroke();});
+  ctx.beginPath();ctx.moveTo(cx+s*.42,cy+s*.05);ctx.bezierCurveTo(cx+s*.56,cy+s*.10,cx+s*.56,cy+s*.25,cx+s*.46,cy+s*.28);ctx.stroke();
+}
+
+function drawButterfly(ctx,cx,cy,s){
+  style(ctx);
+  [[cx-s*.12,cx-s*.52,cx-s*.46,cx-s*.38,cx-s*.10],[cx+s*.12,cx+s*.52,cx+s*.46,cx+s*.38,cx+s*.10]].forEach(([b1x,b2x,b3x,b4x,b5x])=>{
+    ctx.beginPath();ctx.moveTo(cx,cy-s*.04);ctx.bezierCurveTo(b1x,cy-s*.38,b2x,cy-s*.42,b3x,cy-s*.10);ctx.bezierCurveTo(b4x,cy+s*.06,b5x,cy+s*.02,cx,cy-s*.04);ctx.stroke();
+  });
+  [[cx-s*.08,cx-s*.38,cx-s*.32,cx-s*.22,cx-s*.06],[cx+s*.08,cx+s*.38,cx+s*.32,cx+s*.22,cx+s*.06]].forEach(([b1x,b2x,b3x,b4x,b5x])=>{
+    ctx.beginPath();ctx.moveTo(cx,cy+s*.06);ctx.bezierCurveTo(b1x,cy+s*.22,b2x,cy+s*.36,b3x,cy+s*.18);ctx.bezierCurveTo(b4x,cy+s*.08,b5x,cy+s*.08,cx,cy+s*.06);ctx.stroke();
+  });
+  ctx.beginPath();ctx.ellipse(cx,cy,s*.04,s*.26,0,0,Math.PI*2);ctx.stroke();
+  [[-s*.02,-s*.10,-s*.18,-s*.20],[s*.02,s*.10,s*.18,s*.20]].forEach(([ox1,ox2,ox3,ox4])=>{
+    ctx.beginPath();ctx.moveTo(cx+ox1,cy-s*.24);ctx.bezierCurveTo(cx+ox2,cy-s*.40,cx+ox3,cy-s*.44,cx+ox4,cy-s*.48);ctx.stroke();
+    ctx.beginPath();ctx.arc(cx+ox4,cy-s*.50,s*.025,0,Math.PI*2);ctx.stroke();
+  });
+  ctx.beginPath();ctx.arc(cx-s*.24,cy-s*.12,s*.06,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.24,cy-s*.12,s*.06,0,Math.PI*2);ctx.stroke();
+}
+
+function drawDino(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.ellipse(cx+s*.06,cy+s*.08,s*.36,s*.26,-0.2,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.22,cy-s*.12);ctx.bezierCurveTo(cx-s*.28,cy-s*.38,cx-s*.18,cy-s*.52,cx-s*.06,cy-s*.52);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.54,s*.18,s*.12,0.3,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.08,cy-s*.58,s*.03,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.16,cy-s*.52);ctx.lineTo(cx+s*.14,cy-s*.46);ctx.stroke();
+  for(let i=0;i<5;i++){
+    let bx=cx+(-s*.30+i*s*.16);
+    ctx.beginPath();ctx.moveTo(bx,cy-s*.18+i*s*.04);ctx.lineTo(bx+s*.04,cy-s*.32+i*s*.03);ctx.lineTo(bx+s*.08,cy-s*.18+i*s*.04);ctx.stroke();
+  }
+  [-s*.18,s*.12].forEach(ox=>{
+    ctx.beginPath();ctx.moveTo(cx+ox,cy+s*.30);ctx.lineTo(cx+ox-s*.04,cy+s*.52);ctx.lineTo(cx+ox+s*.10,cy+s*.52);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+ox+s*.16,cy+s*.28);ctx.lineTo(cx+ox+s*.12,cy+s*.52);ctx.lineTo(cx+ox+s*.26,cy+s*.52);ctx.stroke();
+  });
+  ctx.beginPath();ctx.moveTo(cx+s*.40,cy+s*.15);ctx.bezierCurveTo(cx+s*.60,cy+s*.10,cx+s*.72,cy+s*.02,cx+s*.68,cy-s*.08);ctx.stroke();
+}
+
+function drawRabbit(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.ellipse(cx,cy+s*.14,s*.32,s*.36,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.28,s*.22,s*.20,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx-s*.12,cy-s*.62,s*.07,s*.22,-0.1,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx+s*.12,cy-s*.62,s*.07,s*.22,0.1,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.08,cy-s*.32,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.08,cy-s*.32,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-s*.22,s*.025,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy-s*.20);ctx.lineTo(cx-s*.07,cy-s*.14);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy-s*.20);ctx.lineTo(cx+s*.07,cy-s*.14);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.24,cy-s*.20);ctx.lineTo(cx-s*.04,cy-s*.22);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.24,cy-s*.20);ctx.lineTo(cx+s*.04,cy-s*.22);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.30,cy+s*.28,s*.06,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.20,cy+s*.50,s*.06,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.20,cy+s*.50,s*.06,0,Math.PI*2);ctx.stroke();
+}
+
+function drawOwl(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.ellipse(cx,cy+s*.12,s*.28,s*.36,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.28,s*.24,s*.22,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.18,cy-s*.44);ctx.lineTo(cx-s*.10,cy-s*.56);ctx.lineTo(cx-s*.02,cy-s*.44);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.18,cy-s*.44);ctx.lineTo(cx+s*.10,cy-s*.56);ctx.lineTo(cx+s*.02,cy-s*.44);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.10,cy-s*.30,s*.09,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.10,cy-s*.30,s*.09,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.10,cy-s*.30,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.10,cy-s*.30,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.04,cy-s*.18);ctx.lineTo(cx,cy-s*.10);ctx.lineTo(cx+s*.04,cy-s*.18);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.28,cy-s*.10);ctx.bezierCurveTo(cx-s*.48,cy+s*.04,cx-s*.46,cy+s*.30,cx-s*.28,cy+s*.42);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.28,cy-s*.10);ctx.bezierCurveTo(cx+s*.48,cy+s*.04,cx+s*.46,cy+s*.30,cx+s*.28,cy+s*.42);ctx.stroke();
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(cx-s*.18,cy-s*.04+i*s*.14);ctx.lineTo(cx+s*.18,cy-s*.04+i*s*.14);ctx.stroke();}
+  [-s*.10,s*.10].forEach(ox=>{
+    ctx.beginPath();ctx.moveTo(cx+ox,cy+s*.48);ctx.lineTo(cx+ox-s*.08*Math.sign(ox),cy+s*.58);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+ox,cy+s*.48);ctx.lineTo(cx+ox+s*.04*Math.sign(ox),cy+s*.60);ctx.stroke();
+  });
+}
+
+function drawTurtle(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.ellipse(cx,cy,s*.36,s*.28,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy,s*.18,s*.14,0,0,Math.PI*2);ctx.stroke();
+  for(let a=0;a<6;a++){let ax=Math.cos(a*Math.PI/3)*s*.24,ay=Math.sin(a*Math.PI/3)*s*.18;ctx.beginPath();ctx.arc(cx+ax,cy+ay,s*.07,0,Math.PI*2);ctx.stroke();}
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.36,s*.11,s*.09,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.05,cy-s*.38,s*.025,0,Math.PI*2);ctx.stroke();
+  [[-s*.28,-s*.16],[s*.28,-s*.16],[-s*.28,s*.16],[s*.28,s*.16]].forEach(([lx,ly])=>{
+    ctx.beginPath();ctx.ellipse(cx+lx,cy+ly,s*.09,s*.06,lx<0?-0.4:0.4,0,Math.PI*2);ctx.stroke();
+  });
+  ctx.beginPath();ctx.moveTo(cx,cy+s*.28);ctx.lineTo(cx,cy+s*.40);ctx.stroke();
+}
+
+function drawFox(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.ellipse(cx,cy+s*.12,s*.36,s*.26,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.24,s*.24,s*.20,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.20,cy-s*.38);ctx.lineTo(cx-s*.28,cy-s*.58);ctx.lineTo(cx-s*.08,cy-s*.42);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.20,cy-s*.38);ctx.lineTo(cx+s*.28,cy-s*.58);ctx.lineTo(cx+s*.08,cy-s*.42);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.12,s*.12,s*.08,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.10,cy-s*.28,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.10,cy-s*.28,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-s*.16,s*.03,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.36,cy+s*.12);ctx.bezierCurveTo(cx+s*.60,cy+s*.08,cx+s*.72,cy-s*.06,cx+s*.68,cy-s*.22);ctx.bezierCurveTo(cx+s*.62,cy-s*.36,cx+s*.48,cy-s*.30,cx+s*.46,cy-s*.16);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.62,cy-s*.28,s*.08,0,Math.PI*2);ctx.stroke();
+  [-s*.22,-s*.08,s*.08,s*.22].forEach(ox=>{ctx.beginPath();ctx.moveTo(cx+ox,cy+s*.36);ctx.lineTo(cx+ox,cy+s*.58);ctx.stroke();});
+}
+
+function drawWhale(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.moveTo(cx-s*.50,cy);ctx.bezierCurveTo(cx-s*.52,cy-s*.28,cx+s*.38,cy-s*.28,cx+s*.52,cy);ctx.bezierCurveTo(cx+s*.38,cy+s*.24,cx-s*.52,cy+s*.24,cx-s*.50,cy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*.50,cy);ctx.lineTo(cx-s*.72,cy-s*.20);ctx.lineTo(cx-s*.64,cy);ctx.lineTo(cx-s*.72,cy+s*.20);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.08,cy-s*.24);ctx.bezierCurveTo(cx+s*.04,cy-s*.50,cx+s*.22,cy-s*.52,cx+s*.22,cy-s*.24);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.14,cy+s*.12);ctx.bezierCurveTo(cx+s*.22,cy+s*.38,cx+s*.38,cy+s*.36,cx+s*.36,cy+s*.16);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.34,cy-s*.08,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.40,cy+s*.06,s*.10,0,Math.PI);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.18,cy-s*.28);ctx.bezierCurveTo(cx+s*.14,cy-s*.50,cx+s*.22,cy-s*.60,cx+s*.18,cy-s*.52);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.22,cy-s*.28);ctx.bezierCurveTo(cx+s*.28,cy-s*.52,cx+s*.32,cy-s*.58,cx+s*.26,cy-s*.50);ctx.stroke();
+}
+
+function drawBear(ctx,cx,cy,s){
+  style(ctx);
+  ctx.beginPath();ctx.ellipse(cx,cy+s*.16,s*.38,s*.34,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.24,s*.28,s*.26,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.24,cy-s*.44,s*.10,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.24,cy-s*.44,s*.10,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(cx,cy-s*.10,s*.14,s*.10,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx-s*.11,cy-s*.30,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+s*.11,cy-s*.30,s*.04,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-s*.14,s*.035,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-s*.07,s*.06,0.1*Math.PI,0.9*Math.PI);ctx.stroke();
+  [-s*.25,s*.25].forEach(ox=>{ctx.beginPath();ctx.ellipse(cx+ox,cy+s*.50,s*.10,s*.08,0,0,Math.PI*2);ctx.stroke();});
+  ctx.beginPath();ctx.moveTo(cx-s*.38,cy+s*.04);ctx.bezierCurveTo(cx-s*.56,cy+s*.08,cx-s*.58,cy+s*.28,cx-s*.46,cy+s*.34);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+s*.38,cy+s*.04);ctx.bezierCurveTo(cx+s*.56,cy+s*.08,cx+s*.58,cy+s*.28,cx+s*.46,cy+s*.34);ctx.stroke();
+}
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let currentAnimalIdx = 0;
+let currentColor = COLORS[0];
+let currentTool = 'draw';
+let isDrawing = false;
+let lastX = -1, lastY = -1;
+let score = 0;
+let completed = new Set();
+let handDetected = false;
+let progressTimer = null;
+
+// Dwell-hover state
+let dwellEl = null;        // element currently being hovered
+let dwellStart = 0;        // when hover started
+let dwellAnimFrame = null;
+const DWELL_MS = 300;      // 0.3 seconds
+
+const drawingCanvas = document.getElementById('drawing-canvas');
+const outlineCanvas = document.getElementById('outline-canvas');
+const cursorCanvas  = document.getElementById('cursor-canvas');
+const dCtx = drawingCanvas.getContext('2d');
+const oCtx = outlineCanvas.getContext('2d');
+const cCtx = cursorCanvas.getContext('2d');
+
+// ═══════════════════════════════════════════════
+//  CANVAS RESIZE
+// ═══════════════════════════════════════════════
+function resizeCanvases() {
+  const area = document.getElementById('canvas-area');
+  const w = area.clientWidth, h = area.clientHeight;
+  [drawingCanvas, outlineCanvas, cursorCanvas].forEach(c => { c.width=w; c.height=h; });
+  renderOutline();
+}
+window.addEventListener('resize', resizeCanvases);
+
+// ═══════════════════════════════════════════════
+//  OUTLINE — draw white strokes on transparent bg
+//  so we can count white pixels reliably
+// ═══════════════════════════════════════════════
+function renderOutline() {
+  const w = outlineCanvas.width, h = outlineCanvas.height;
+  oCtx.clearRect(0, 0, w, h);
+
+  // dark backdrop (DOES NOT use fillRect over everything — only subtle vignette)
+  const grd = oCtx.createRadialGradient(w/2,h/2,40,w/2,h/2,Math.max(w,h)*.72);
+  grd.addColorStop(0,'rgba(18,12,40,0.88)');
+  grd.addColorStop(1,'rgba(8,6,18,0.96)');
+  oCtx.fillStyle = grd;
+  oCtx.fillRect(0,0,w,h);
+
+  const a = ANIMALS[currentAnimalIdx];
+  const s = Math.min(w, h) * 0.36;
+  oCtx.save();
+  oCtx.lineWidth = 3.5;
+  a.draw(oCtx, w/2, h/2, s);
+  oCtx.restore();
+
+  oCtx.font = "bold 20px 'Fredoka One',cursive";
+  oCtx.fillStyle = "rgba(255,255,255,0.40)";
+  oCtx.textAlign = "center";
+  oCtx.fillText(a.emoji + " " + a.name, w/2, h - 52);
+}
+
+// ═══════════════════════════════════════════════
+//  TOOL / COLOR / ANIMAL SWITCHING
+// ═══════════════════════════════════════════════
+function setTool(t) {
+  currentTool = t;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn-' + t);
+  if(btn) btn.classList.add('active');
+  document.getElementById('mode-label').textContent = t === 'draw' ? 'Draw' : 'Erase';
+}
+
+function setColor(c) {
+  currentColor = c;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  const sw = document.querySelector(`[data-color="${c}"]`);
+  if(sw) sw.classList.add('active');
+}
+
+function clearCanvas() {
+  dCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+  updateProgress();
+}
+
+function nextAnimal() {
+  switchAnimal((currentAnimalIdx + 1) % ANIMALS.length);
+}
+
+function switchAnimal(idx) {
+  currentAnimalIdx = idx;
+  document.querySelectorAll('.animal-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+  dCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+  document.getElementById('completion-overlay').classList.remove('show');
+  renderOutline();
+  updateProgress();
+}
+
+// ═══════════════════════════════════════════════
+//  DRAWING
+// ═══════════════════════════════════════════════
+function drawStroke(x, y) {
+  if(lastX < 0){ lastX=x; lastY=y; }
+  if(currentTool === 'erase'){
+    dCtx.globalCompositeOperation = 'destination-out';
+    dCtx.strokeStyle = 'rgba(0,0,0,1)';
+    dCtx.lineWidth = 36;
+  } else {
+    dCtx.globalCompositeOperation = 'source-over';
+    dCtx.strokeStyle = currentColor;
+    dCtx.lineWidth = 24;
+  }
+  dCtx.lineCap = 'round'; dCtx.lineJoin = 'round';
+  dCtx.beginPath(); dCtx.moveTo(lastX,lastY); dCtx.lineTo(x,y); dCtx.stroke();
+  lastX=x; lastY=y;
+  clearTimeout(progressTimer);
+  progressTimer = setTimeout(updateProgress, 350);
+}
+
+function stopDrawing() { lastX=-1; lastY=-1; isDrawing=false; }
+
+// ═══════════════════════════════════════════════
+//  PROGRESS — sample a grid of points; check if
+//  each sampled point has paint AND is inside the
+//  animal bounding region
+// ═══════════════════════════════════════════════
+function updateProgress() {
+  const w = drawingCanvas.width, h = drawingCanvas.height;
+  // Sample drawing canvas pixels on a coarse grid
+  const step = 6; // every 6 pixels
+  const dData = dCtx.getImageData(0, 0, w, h).data;
+  // Define the "animal region" as the central 60% of the canvas
+  const mx = w * 0.20, my = h * 0.10;
+  const mw = w * 0.60, mh = h * 0.80;
+  let total = 0, painted = 0;
+  for(let y = my; y < my+mh; y += step){
+    for(let x = mx; x < mx+mw; x += step){
+      total++;
+      const i = (Math.floor(y)*w + Math.floor(x)) * 4;
+      if(dData[i+3] > 40) painted++;
+    }
+  }
+  const pct = total > 0 ? Math.min(100, Math.round(painted/total*100)) : 0;
+  document.getElementById('progress-fill').style.width = pct+'%';
+  document.getElementById('progress-pct').textContent = pct+'%';
+  if(pct >= 60 && !completed.has(currentAnimalIdx)){
+    completed.add(currentAnimalIdx);
+    score += 100;
+    document.getElementById('score').textContent = score;
+    window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
+    showCompletion();
+  }
+}
+
+function showCompletion(){
+  document.getElementById('completion-emoji').textContent = ANIMALS[currentAnimalIdx].emoji;
+  document.getElementById('completion-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('completion-overlay').classList.remove('show'), 3200);
+}
+
+// ═══════════════════════════════════════════════
+//  CURSOR on canvas overlay
+// ═══════════════════════════════════════════════
+function drawCursor(x, y, active, hoverPct) {
+  cCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+  if(x < 0) return;
+
+  const r = active ? 16 : 11;
+  const col = active ? currentColor : 'rgba(255,255,255,0.65)';
+
+  // outer ring
+  cCtx.beginPath(); cCtx.arc(x,y,r,0,Math.PI*2);
+  cCtx.strokeStyle = col; cCtx.lineWidth = active ? 3.5 : 2;
+  cCtx.stroke();
+
+  // inner dot
+  if(active){
+    cCtx.beginPath(); cCtx.arc(x,y,5,0,Math.PI*2);
+    cCtx.fillStyle = currentColor; cCtx.fill();
+  }
+
+  // dwell arc (fills clockwise)
+  if(hoverPct > 0 && hoverPct < 1){
+    cCtx.beginPath();
+    cCtx.arc(x, y, r+5, -Math.PI/2, -Math.PI/2 + Math.PI*2*hoverPct);
+    cCtx.strokeStyle = '#c084fc'; cCtx.lineWidth = 3;
+    cCtx.stroke();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  DWELL HOVER SELECTION
+// ═══════════════════════════════════════════════
+// Returns the hoverable element under screen point (sx, sy)
+// sx/sy are in page coords
+function getHoverableAt(sx, sy) {
+  // We need to map the cursor canvas coords back to page coords.
+  // The cursor is drawn in canvas-area space but we stored page-level x/y.
+  const els = document.querySelectorAll('.animal-btn, .color-swatch, .tool-btn');
+  for(const el of els){
+    const r = el.getBoundingClientRect();
+    if(sx >= r.left && sx <= r.right && sy >= r.top && sy <= r.bottom) return el;
+  }
+  return null;
+}
+
+function fireHoverAction(el) {
+  el.classList.remove('hovering');
+  const ring = el.querySelector('.hover-ring');
+  if(ring) ring.style.width = '0%';
+
+  // animal button
+  if(el.classList.contains('animal-btn')){
+    const idx = [...document.querySelectorAll('.animal-btn')].indexOf(el);
+    if(idx >= 0) switchAnimal(idx);
+    return;
+  }
+  // color swatch
+  if(el.classList.contains('color-swatch')){
+    setColor(el.dataset.color);
+    return;
+  }
+  // tool buttons
+  const action = el.dataset.action;
+  if(action === 'tool:draw') setTool('draw');
+  else if(action === 'tool:erase') setTool('erase');
+  else if(action === 'clear') clearCanvas();
+  else if(action === 'next') nextAnimal();
+}
+
+// Called every frame with the finger tip position in PAGE coords
+function processDwell(pageX, pageY) {
+  const el = getHoverableAt(pageX, pageY);
+
+  if(!el){
+    // left all elements
+    if(dwellEl){
+      dwellEl.classList.remove('hovering');
+      const ring = dwellEl.querySelector('.hover-ring');
+      if(ring) ring.style.width = '0%';
+      dwellEl = null;
+    }
+    return 0;
+  }
+
+  if(el !== dwellEl){
+    // new element
+    if(dwellEl){
+      dwellEl.classList.remove('hovering');
+      const ring = dwellEl.querySelector('.hover-ring');
+      if(ring) ring.style.width = '0%';
+    }
+    dwellEl = el;
+    dwellStart = performance.now();
+    el.classList.add('hovering');
+  }
+
+  const elapsed = performance.now() - dwellStart;
+  const pct = Math.min(1, elapsed / DWELL_MS);
+  const ring = el.querySelector('.hover-ring');
+  if(ring) ring.style.width = (pct*100)+'%';
+
+  if(pct >= 1){
+    fireHoverAction(el);
+    dwellEl = null;
+  }
+  return pct;
+}
+
+// ═══════════════════════════════════════════════
+//  BUILD UI
+// ═══════════════════════════════════════════════
+function buildUI(){
+  const ap = document.getElementById('animal-panel');
+  ANIMALS.forEach((a,i)=>{
+    const btn = document.createElement('div');
+    btn.className = 'animal-btn'+(i===0?' active':'');
+    btn.innerHTML = `<span class="emoji">${a.emoji}</span>${a.name}<div class="hover-ring"></div>`;
+    btn.onclick = ()=>switchAnimal(i);
+    ap.appendChild(btn);
+  });
+
+  const sc = document.getElementById('color-swatches');
+  COLORS.forEach((c,i)=>{
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch'+(i===0?' active':'');
+    sw.dataset.color = c;
+    sw.style.background = c;
+    if(c==='#ffffff') sw.style.border='3px solid #555';
+    sw.innerHTML = `<div class="hover-ring"></div>`;
+    sw.onclick = ()=>setColor(c);
+    sc.appendChild(sw);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  MEDIAPIPE
+// ═══════════════════════════════════════════════
+let hands, camera;
+
+function gestureFromLandmarks(lms){
+  const index  = lms[8].y  < lms[6].y;
+  const middle = lms[12].y < lms[10].y;
+  const ring   = lms[16].y < lms[14].y;
+  const pinky  = lms[20].y < lms[18].y;
+  // thumb: tip x vs mcp x (works for right hand in mirrored view)
+  const thumb  = lms[4].x  < lms[3].x;
+  const count = [index,middle,ring,pinky].filter(Boolean).length;
+  if(count===0) return 'fist';
+  if(index && !middle && !ring && !pinky) return 'point';
+  if(index && middle && !ring && !pinky) return 'peace';
+  if(thumb && !index && !middle && !ring && !pinky) return 'thumbsup';
+  if(count>=4) return 'open';
+  return 'other';
+}
+
+let gestureBuffer = [];
+const SMOOTH = 5;
+let lastGesture = 'none';
+
+// Translate raw MediaPipe [0..1] to page coordinates for cursor + hover
+function landmarkToPage(lm) {
+  const area = document.getElementById('canvas-area');
+  const rect = area.getBoundingClientRect();
+  // mirror X
+  const cx = (1 - lm.x) * rect.width  + rect.left;
+  const cy =        lm.y  * rect.height + rect.top;
+  return { cx, cy, // canvas-area relative (for drawing canvas):
+           dx: (1-lm.x)*drawingCanvas.width,
+           dy: lm.y*drawingCanvas.height };
+}
+
+function onHandResults(results){
+  document.getElementById('hand-status').textContent =
+    (results.multiHandLandmarks && results.multiHandLandmarks.length) ? 'Detected ✓' : 'Searching…';
+
+  if(!results.multiHandLandmarks || !results.multiHandLandmarks.length){
+    handDetected=false; stopDrawing(); drawCursor(-1,-1,false,0); return;
+  }
+  handDetected = true;
+  const lms = results.multiHandLandmarks[0];
+  const g = gestureFromLandmarks(lms);
+  gestureBuffer.push(g);
+  if(gestureBuffer.length>SMOOTH) gestureBuffer.shift();
+  const stable = gestureBuffer.filter(x=>x===gestureBuffer[gestureBuffer.length-1]).length>=3
+    ? gestureBuffer[gestureBuffer.length-1] : lastGesture;
+
+  const {cx:pageX, cy:pageY, dx, dy} = landmarkToPage(lms[8]);
+  const hint = document.getElementById('gesture-hint');
+
+  // If pointing → draw on canvas; peace → hover UI panels
+  if(stable === 'point'){
+    // are we over a side panel?
+    const hoverEl = getHoverableAt(pageX, pageY);
+    if(hoverEl){
+      // hovering over a button/swatch — show dwell, don't draw
+      stopDrawing();
+      const pct = processDwell(pageX, pageY);
+      drawCursor(dx, dy, false, pct);
+      hint.textContent = '☝️ Hold to select…';
+    } else {
+      // clear any dwell
+      if(dwellEl){ dwellEl.classList.remove('hovering'); const r=dwellEl.querySelector('.hover-ring');if(r)r.style.width='0%'; dwellEl=null; }
+      isDrawing=true;
+      drawStroke(dx, dy);
+      drawCursor(dx, dy, true, 0);
+      hint.textContent = '☝️ Drawing…';
+    }
+  } else if(stable === 'thumbsup'){
+    const hoverEl = getHoverableAt(pageX, pageY);
+    if(hoverEl){
+      stopDrawing();
+      const pct = processDwell(pageX, pageY);
+      drawCursor(dx, dy, false, pct);
+    } else {
+      if(dwellEl){ dwellEl.classList.remove('hovering'); const r=dwellEl.querySelector('.hover-ring');if(r)r.style.width='0%'; dwellEl=null; }
+      setTool('erase');
+      isDrawing=true;
+      drawStroke(dx, dy);
+      drawCursor(dx, dy, true, 0);
+      hint.textContent = '👍 Erasing…';
+    }
+  } else {
+    if(dwellEl){ dwellEl.classList.remove('hovering'); const r=dwellEl.querySelector('.hover-ring');if(r)r.style.width='0%'; dwellEl=null; }
+    stopDrawing();
+    drawCursor(dx, dy, false, 0);
+    if(stable==='peace' && stable!==lastGesture)    { hint.textContent='✌️ Pen lifted'; }
+    if(stable==='fist'  && stable!==lastGesture)    { clearCanvas(); hint.textContent='👊 Cleared!'; }
+    if(stable==='open'  && stable!==lastGesture)    { nextAnimal();  hint.textContent='🖐 Next animal!'; }
+    // peace: also allow hovering by pointing index to panel
+    if(stable==='peace'){
+      const pct2 = processDwell(pageX, pageY);
+      drawCursor(dx, dy, false, pct2);
+    }
+  }
+  lastGesture = stable;
+}
+
+async function initMediaPipe(){
+  document.getElementById('loader-msg').textContent = 'Starting webcam…';
+  const video = document.getElementById('webcam');
+  hands = new Hands({ locateFile: f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+  hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.7, minTrackingConfidence:0.5 });
+  hands.onResults(onHandResults);
+  camera = new Camera(video, {
+    onFrame: async()=>{ await hands.send({image:video}); },
+    width:320, height:240
+  });
+  try {
+    await camera.start();
+    document.getElementById('loader').style.display='none';
+  } catch(e){
+    document.getElementById('loader-msg').textContent='⚠️ Allow camera access, then click here.';
+    document.getElementById('loader').style.cursor='pointer';
+    document.getElementById('loader').onclick=async()=>{ await camera.start(); document.getElementById('loader').style.display='none'; };
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  MOUSE / TOUCH FALLBACK
+// ═══════════════════════════════════════════════
+drawingCanvas.addEventListener('mousedown', e=>{
+  if(handDetected) return;
+  isDrawing=true;
+  const r=drawingCanvas.getBoundingClientRect();
+  drawStroke(e.clientX-r.left, e.clientY-r.top);
+});
+drawingCanvas.addEventListener('mousemove', e=>{
+  if(!isDrawing||handDetected) return;
+  const r=drawingCanvas.getBoundingClientRect();
+  drawStroke(e.clientX-r.left, e.clientY-r.top);
+});
+drawingCanvas.addEventListener('mouseup', ()=>{ if(!handDetected) stopDrawing(); });
+drawingCanvas.addEventListener('mouseleave', ()=>{ if(!handDetected) stopDrawing(); });
+drawingCanvas.addEventListener('touchstart', e=>{ e.preventDefault(); if(handDetected) return; isDrawing=true; const r=drawingCanvas.getBoundingClientRect(),t=e.touches[0]; drawStroke(t.clientX-r.left,t.clientY-r.top); },{passive:false});
+drawingCanvas.addEventListener('touchmove',  e=>{ e.preventDefault(); if(!isDrawing||handDetected) return; const r=drawingCanvas.getBoundingClientRect(),t=e.touches[0]; drawStroke(t.clientX-r.left,t.clientY-r.top); },{passive:false});
+drawingCanvas.addEventListener('touchend',  ()=>{ if(!handDetected) stopDrawing(); });
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e=>{
+  if(e.key==='e') setTool('erase');
+  if(e.key==='d') setTool('draw');
+  if(e.key==='c') clearCanvas();
+  if(e.key==='ArrowRight') nextAnimal();
+  if(e.key==='ArrowLeft'){ currentAnimalIdx=(currentAnimalIdx-1+ANIMALS.length)%ANIMALS.length; switchAnimal(currentAnimalIdx); }
+});
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+buildUI();
+resizeCanvases();
+initMediaPipe();
+</script>
+</body>
+</html>

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧟 Monster Dodge</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: #07071a;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+}
+#game-canvas {
+  display: block;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+}
+#cam-canvas { display: none; }
+#gesture-bar {
+  position: fixed;
+  bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px; padding: 7px 20px;
+  font-size: 14px; color: #fff;
+  pointer-events: none; z-index: 10;
+  white-space: nowrap;
+}
+#hud {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between;
+  padding: 12px 18px; z-index: 10; pointer-events: none;
+}
+.hud-pill {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px; padding: 6px 16px;
+  font-size: 14px; font-weight: 600; color: #fff;
+}
+</style>
+</head>
+<body>
+<canvas id="cam-canvas"></canvas>
+<canvas id="game-canvas"></canvas>
+<div id="hud" style="display:none">
+  <div class="hud-pill" id="hud-score">Score: 0</div>
+  <div class="hud-pill" id="hud-lives">❤️❤️❤️</div>
+  <div class="hud-pill" id="hud-level">Lv 1</div>
+</div>
+<div id="gesture-bar">⏳ Loading…</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+<script>
+(function(){
+'use strict';
+
+const GW = 960, GH = 540;
+const LANES = 3, LANE_W = GW/LANES;
+const ROW_Y = [GH*0.22, GH*0.52, GH*0.80];
+const ROW_LABELS = ['HIGH','MID','LOW'];
+const PLAYER_SIZE = 54, MON_SIZE = 48, COIN_SIZE = 34;
+const CAM_W = 640, CAM_H = 480;
+const RAISE_FRAMES = 40;
+const TPOSE_FRAMES = 45;
+
+let phase = 'loading'; // loading | start | calibrating | playing | paused | over
+let gs = null, highScore = 0, animId = null;
+let poseResults = null, videoEl = null;
+let raiseTimer = 0, tposeTimer = 0;
+
+const gameCanvas = document.getElementById('game-canvas');
+const camCanvas  = document.getElementById('cam-canvas');
+gameCanvas.width  = GW; gameCanvas.height = GH;
+camCanvas.width   = CAM_W; camCanvas.height = CAM_H;
+const ctx    = gameCanvas.getContext('2d');
+const camCtx = camCanvas.getContext('2d');
+
+const $g = id => document.getElementById(id);
+
+// ── draw a frame immediately so canvas is never blank ──
+function drawLoading(msg) {
+  ctx.fillStyle = '#07071a';
+  ctx.fillRect(0,0,GW,GH);
+  drawBgStars();
+  ctx.fillStyle = '#e8e8f0';
+  ctx.font = 'bold 28px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🧟 Monster Dodge', GW/2, GH/2 - 30);
+  ctx.fillStyle = 'rgba(232,232,240,0.55)';
+  ctx.font = '16px system-ui';
+  ctx.fillText(msg, GW/2, GH/2 + 14);
+}
+
+// static stars (no gs needed)
+const bgStars = Array.from({length:130}, ()=>({
+  x: Math.random()*GW, y: Math.random()*GH,
+  r: Math.random()*1.2+0.3, alpha: Math.random()*0.5+0.2
+}));
+function drawBgStars() {
+  bgStars.forEach(s=>{
+    ctx.globalAlpha = s.alpha;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ── init ──
+async function init() {
+  drawLoading('Starting camera…');
+  $g('gesture-bar').textContent = '⏳ Starting camera…';
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width:{ideal:CAM_W}, height:{ideal:CAM_H}, facingMode:'user' }
+    });
+  } catch(e) {
+    drawLoading('⚠️ Camera denied — please allow webcam and reload');
+    $g('gesture-bar').textContent = '⚠️ Camera access denied — reload and allow camera';
+    return;
+  }
+
+  drawLoading('Loading pose model… (first load may take ~10s)');
+  $g('gesture-bar').textContent = '⏳ Loading pose model…';
+
+  videoEl = document.createElement('video');
+  videoEl.width = CAM_W; videoEl.height = CAM_H;
+  videoEl.srcObject = stream;
+  videoEl.play();
+
+  const pose = new Pose({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${f}`
+  });
+  pose.setOptions({
+    modelComplexity: 0, smoothLandmarks: true,
+    minDetectionConfidence: 0.5, minTrackingConfidence: 0.5
+  });
+  pose.onResults(r => { poseResults = r; });
+
+  try {
+    await pose.initialize();
+  } catch(e) {
+    drawLoading('⚠️ Pose model failed to load — check connection and reload');
+    $g('gesture-bar').textContent = '⚠️ Model failed — check connection and reload';
+    return;
+  }
+
+  const cam = new Camera(videoEl, {
+    onFrame: async () => { if(pose) await pose.send({image:videoEl}); },
+    width: CAM_W, height: CAM_H
+  });
+  cam.start();
+
+  phase = 'start';
+  animId = requestAnimationFrame(loop);
+}
+
+// ── game state ──
+const MONSTER_POOL = ['👾','🐉','🦇','🕷️','🤖','💀','🐊','👻','🦑','🧟'];
+
+function initGameState() {
+  gs = {
+    score:0, lives:3, level:1, tick:0,
+    coinsCollected:0, dodged:0,
+    player:{ lane:1, row:1, shield:0, invincible:0, shakeFrames:0 },
+    monsters:[], coins:[], particles:[],
+    framesSinceLast:0, spawnInterval:80,
+    lastGesture:'stand',
+    calibrating:true, calibFrames:0, calibSumHipY:0, baseHipY:null,
+    over:false, overTick:0,
+    stars: Array.from({length:130}, ()=>({
+      x:Math.random()*GW, y:Math.random()*GH,
+      r:Math.random()*1.2+0.3, speed:Math.random()*0.35+0.08,
+      alpha:Math.random()*0.55+0.2
+    }))
+  };
+}
+
+// ── gesture detection ──
+function readGesture() {
+  const lm = poseResults && poseResults.poseLandmarks ? poseResults.poseLandmarks : null;
+  if (!lm) return { move:'none', raise:false, tpose:false };
+
+  const lsh=lm[11], rsh=lm[12], lhip=lm[23], rhip=lm[24];
+  const lwr=lm[15], rwr=lm[16], lel=lm[13], rel=lm[14];
+  const lear=lm[7],  rear=lm[8];
+  if (!lsh||!rsh||!lhip||!rhip) return { move:'none', raise:false, tpose:false };
+
+  const smx = (lsh.x+rsh.x)/2;
+  const hipY = (lhip.y+rhip.y)/2;
+  const earY = (lear&&rear) ? (lear.y+rear.y)/2 : (lsh.y+rsh.y)/2 - 0.05;
+
+  // raise: both wrists above ears
+  const raise = !!(lwr&&rwr && lwr.y < earY-0.03 && rwr.y < earY-0.03);
+
+  // t-pose: elbows near shoulder height, wrists wide
+  const tpose = !!(lel&&rel&&lwr&&rwr
+    && Math.abs(lel.y-lsh.y)<0.07 && Math.abs(rel.y-rsh.y)<0.07
+    && Math.abs(lwr.x-rwr.x)>0.65);
+
+  // calibration
+  if (gs && gs.calibrating) {
+    gs.calibFrames++;
+    gs.calibSumHipY += hipY;
+    if (gs.calibFrames >= 45) {
+      gs.baseHipY = gs.calibSumHipY / gs.calibFrames;
+      gs.calibrating = false;
+    }
+    return { move:'calibrate', raise, tpose };
+  }
+
+  let move = 'stand';
+  if (gs && gs.baseHipY != null) {
+    const d = hipY - gs.baseHipY;
+    if (d < -0.09) move = 'jump';
+    else if (d > 0.09) move = 'duck';
+    else if (lwr&&rwr&&Math.abs(lwr.x-rwr.x)>0.55) move = 'shield';
+    else if (smx < 0.5-0.08) move = 'right';
+    else if (smx > 0.5+0.08) move = 'left';
+  }
+  return { move, raise, tpose };
+}
+
+// ── spawn / collisions ──
+function spawnObject() {
+  const lane=Math.floor(Math.random()*LANES), row=Math.floor(Math.random()*3);
+  if (Math.random()<0.22) {
+    gs.coins.push({x:lane*LANE_W+LANE_W/2, y:-COIN_SIZE, row, lane, alive:true});
+  } else {
+    gs.monsters.push({x:lane*LANE_W+LANE_W/2, y:-MON_SIZE-10, row, lane,
+      emoji:MONSTER_POOL[Math.floor(Math.random()*MONSTER_POOL.length)], alive:true});
+  }
+}
+function burst(x,y,color,n) {
+  for (let i=0;i<n;i++) {
+    const a=(Math.PI*2*i/n)+Math.random()*0.5, sp=2+Math.random()*3;
+    gs.particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,color,life:1,size:3+Math.random()*3});
+  }
+}
+function checkCollisions() {
+  const px=gs.player.lane*LANE_W+LANE_W/2, py=ROW_Y[gs.player.row];
+  gs.coins.forEach(c=>{
+    if(!c.alive)return;
+    if(c.lane===gs.player.lane&&c.row===gs.player.row&&Math.abs(c.y-py)<MON_SIZE*0.85){
+      c.alive=false; gs.score+=5; gs.coinsCollected++; burst(c.x,c.y,'#ffd166',8);
+    }
+  });
+  if(gs.player.shield>0||gs.player.invincible>0) return;
+  gs.monsters.forEach(m=>{
+    if(!m.alive||m.lane!==gs.player.lane||m.row!==gs.player.row) return;
+    if(Math.abs(m.y-py)<MON_SIZE*0.65){
+      m.alive=false; gs.lives--; gs.player.invincible=70; gs.player.shakeFrames=20;
+      burst(px,py,'#ff4a6e',12);
+      if(gs.lives<=0) gs.over=true;
+    }
+  });
+}
+
+// ── draw helpers ──
+function drawGameStars() {
+  gs.stars.forEach(s=>{
+    s.y+=s.speed; if(s.y>GH) s.y=0;
+    ctx.globalAlpha=s.alpha; ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+function drawLanes() {
+  for(let l=1;l<LANES;l++){
+    ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.setLineDash([14,10]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(l*LANE_W,0); ctx.lineTo(l*LANE_W,GH); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ROW_Y.forEach((ry,i)=>{
+    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,ry); ctx.lineTo(GW,ry); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.font='10px monospace';
+    ctx.textAlign='left'; ctx.fillText(ROW_LABELS[i],6,ry-5);
+  });
+}
+function drawCamThumb() {
+  if(!videoEl) return;
+  try { camCtx.drawImage(videoEl,0,0,CAM_W,CAM_H); } catch(e){}
+  const tw=GW*0.16, th=tw*(CAM_H/CAM_W);
+  ctx.save();
+  ctx.globalAlpha=0.3;
+  ctx.translate(GW-tw-8, GH-th-8);
+  ctx.scale(-1,1);
+  ctx.drawImage(camCanvas,-tw,0,tw,th);
+  ctx.restore();
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.strokeRect(GW-tw-8, GH-th-8, tw, th);
+}
+function drawParticles() {
+  gs.particles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life-=0.04;
+    if(p.life<=0)return;
+    ctx.globalAlpha=p.life; ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  gs.particles=gs.particles.filter(p=>p.life>0);
+}
+function drawPlayer() {
+  const px=gs.player.lane*LANE_W+LANE_W/2, py=ROW_Y[gs.player.row];
+  if(gs.player.shield>0){
+    const a=gs.player.shield/100;
+    ctx.save(); ctx.globalAlpha=a*0.3; ctx.fillStyle='#7c6bff';
+    ctx.beginPath(); ctx.arc(px,py,PLAYER_SIZE*0.9,0,Math.PI*2); ctx.fill(); ctx.restore();
+    ctx.strokeStyle=`rgba(124,107,255,${a})`; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(px,py,PLAYER_SIZE*0.9,0,Math.PI*2); ctx.stroke(); ctx.lineWidth=1;
+  }
+  const blink=gs.player.invincible>0&&Math.floor(gs.tick/4)%2===0;
+  if(!blink){
+    ctx.font=`${PLAYER_SIZE}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🧍',px,py);
+  }
+  ctx.fillStyle='rgba(124,107,255,0.1)';
+  ctx.beginPath(); ctx.ellipse(px,py+PLAYER_SIZE*0.42,PLAYER_SIZE*0.5,7,0,0,Math.PI*2); ctx.fill();
+}
+function rArc(cx,cy,r,prog,color) {
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2,false); ctx.stroke();
+  if(prog>0){
+    ctx.strokeStyle=color; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*prog,false); ctx.stroke();
+  }
+  ctx.lineWidth=1;
+}
+
+// ── phase draw functions ──
+function drawStart() {
+  ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
+  drawBgStars(); drawCamThumb();
+  // title
+  ctx.font='bold 52px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#a78bfa'; ctx.fillText('🧟 Monster Dodge', GW/2, GH*0.18);
+  ctx.fillStyle='rgba(232,232,240,0.55)'; ctx.font='17px system-ui';
+  ctx.fillText('No buttons — your body is the controller', GW/2, GH*0.27);
+
+  // gesture grid
+  const items=[
+    ['⬅️','Lean Left','shift left'],['🏃','Stand','middle lane'],['➡️','Lean Right','shift right'],
+    ['🦅','Duck','lower body'],['🦘','Jump','rise up'],['👐','Arms Wide','shield']
+  ];
+  const cw=136,ch=72,cols=3,gap=10;
+  const totalW=cols*cw+(cols-1)*gap;
+  const ox=GW/2-totalW/2, oy=GH*0.35;
+  items.forEach((it,i)=>{
+    const col=i%3, row=Math.floor(i/3);
+    const x=ox+col*(cw+gap), y=oy+row*(ch+gap);
+    ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=0.5;
+    rRect(x,y,cw,ch,10); ctx.fill(); ctx.stroke();
+    ctx.font='24px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff';
+    ctx.fillText(it[0],x+cw/2,y+ch*0.38);
+    ctx.font='bold 12px system-ui'; ctx.fillStyle='rgba(232,232,240,0.9)';
+    ctx.fillText(it[1],x+cw/2,y+ch*0.66);
+    ctx.font='11px system-ui'; ctx.fillStyle='rgba(232,232,240,0.45)';
+    ctx.fillText(it[2],x+cw/2,y+ch*0.84);
+  });
+
+  const prog=Math.min(raiseTimer/RAISE_FRAMES,1);
+  ctx.fillStyle='rgba(232,232,240,0.6)'; ctx.font='15px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🙌  Raise both hands above your head to start', GW/2, GH*0.86);
+  rArc(GW/2, GH*0.93, 18, prog, '#7c6bff');
+}
+
+function drawCalib() {
+  ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
+  drawBgStars(); drawCamThumb();
+  const pct=gs ? Math.round((gs.calibFrames/45)*100) : 0;
+  ctx.fillStyle='rgba(7,7,26,0.75)'; ctx.fillRect(0,GH/2-70,GW,140);
+  ctx.fillStyle='#e8e8f0'; ctx.font='bold 22px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(`📐 Calibrating… stand still (${pct}%)`, GW/2, GH/2-16);
+  ctx.fillStyle='rgba(232,232,240,0.5)'; ctx.font='15px system-ui';
+  ctx.fillText('Hold your normal standing pose', GW/2, GH/2+14);
+  const bw=300,bh=6,bx=GW/2-150,by=GH/2+42;
+  ctx.fillStyle='rgba(255,255,255,0.1)'; rRect(bx,by,bw,bh,3); ctx.fill();
+  ctx.fillStyle='#7c6bff'; rRect(bx,by,bw*(pct/100),bh,3); ctx.fill();
+}
+
+function drawPlay() {
+  const shake=gs.player.shakeFrames>0?Math.floor(Math.random()*6)-3:0;
+  if(gs.player.shakeFrames>0) gs.player.shakeFrames--;
+  ctx.save(); if(shake) ctx.translate(shake,shake*0.5);
+  ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
+  drawGameStars(); drawLanes(); drawCamThumb();
+  const spd=3.2+gs.level*0.55;
+  gs.coins=gs.coins.filter(c=>c.alive&&c.y<GH+40);
+  gs.coins.forEach(c=>{
+    c.y+=spd;
+    ctx.font=`${COIN_SIZE}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🪙',c.x,c.y+Math.sin(gs.tick*0.12+c.x)*3);
+  });
+  gs.monsters=gs.monsters.filter(m=>m.alive&&m.y<GH+40);
+  gs.monsters.forEach(m=>{
+    m.y+=spd;
+    const near=m.lane===gs.player.lane&&m.row===gs.player.row&&Math.abs(m.y-ROW_Y[m.row])<90;
+    if(near){ctx.shadowColor='#ff4a6e';ctx.shadowBlur=16+Math.sin(gs.tick*0.3)*5;}
+    ctx.font=`${MON_SIZE}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(m.emoji,m.x,m.y+Math.sin(gs.tick*0.15+m.x)*2);
+    ctx.shadowBlur=0;
+    if(m.y>GH-10){gs.dodged++;m.alive=false;}
+  });
+  drawParticles(); drawPlayer(); ctx.restore();
+}
+
+function drawPause() {
+  drawPlay();
+  ctx.fillStyle='rgba(7,7,26,0.8)'; ctx.fillRect(0,0,GW,GH);
+  ctx.fillStyle='#e8e8f0'; ctx.font='bold 40px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('⏸ Paused', GW/2, GH/2-30);
+  ctx.fillStyle='rgba(232,232,240,0.55)'; ctx.font='16px system-ui';
+  ctx.fillText('Hold T-pose (arms fully horizontal) to resume', GW/2, GH/2+12);
+  rArc(GW/2, GH/2+56, 22, Math.min(tposeTimer/TPOSE_FRAMES,1), '#7c6bff');
+}
+
+function drawOver() {
+  ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
+  drawBgStars(); drawCamThumb();
+  ctx.font='bold 46px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#ff4a6e'; ctx.fillText('💀 Game Over', GW/2, GH*0.2);
+  ctx.fillStyle='#e8e8f0'; ctx.font='bold 72px system-ui';
+  ctx.fillText(gs.score, GW/2, GH*0.38);
+  ctx.fillStyle='rgba(232,232,240,0.45)'; ctx.font='13px system-ui';
+  ctx.fillText('FINAL SCORE', GW/2, GH*0.5);
+  if(highScore>0){
+    ctx.fillStyle='#ffd166'; ctx.font='14px system-ui';
+    ctx.fillText(`🏆 Best: ${highScore}`, GW/2, GH*0.57);
+  }
+  const stats=[['Level',gs.level],['Coins',gs.coinsCollected],['Dodged',gs.dodged]];
+  stats.forEach((s,i)=>{
+    const sx=GW/2+(i-1)*150;
+    ctx.fillStyle='#e8e8f0'; ctx.font='bold 22px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s[1],sx,GH*0.67);
+    ctx.fillStyle='rgba(232,232,240,0.4)'; ctx.font='11px system-ui';
+    ctx.fillText(s[0].toUpperCase(),sx,GH*0.74);
+  });
+  ctx.fillStyle='rgba(232,232,240,0.55)'; ctx.font='15px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🙌  Raise both hands above your head to play again', GW/2, GH*0.85);
+  rArc(GW/2, GH*0.92, 18, Math.min(raiseTimer/RAISE_FRAMES,1), '#7c6bff');
+}
+
+// ── HUD ──
+const GLABELS = {
+  stand:'🏃 Standing',left:'⬅️ Lean Left',right:'➡️ Lean Right',
+  jump:'🦘 Jumping!',duck:'🦅 Ducking!',shield:'👐 Shield!',
+  calibrate:'📐 Calibrating…',none:'🤔 No pose'
+};
+function setHUD(on) {
+  $g('hud').style.display = on ? '' : 'none';
+}
+function updateHUD() {
+  $g('hud-score').textContent=`Score: ${gs.score}`;
+  $g('hud-lives').textContent='❤️'.repeat(Math.max(0,gs.lives))+'🖤'.repeat(Math.max(0,3-gs.lives));
+  $g('hud-level').textContent=`Lv ${gs.level}`;
+  $g('gesture-bar').textContent=GLABELS[gs.lastGesture]||'🤔';
+}
+
+// ── main loop ──
+function loop() {
+  const g = readGesture();
+
+  switch(phase) {
+    case 'start':
+      if(g.raise) raiseTimer++; else raiseTimer=0;
+      drawStart();
+      setHUD(false);
+      $g('gesture-bar').textContent = raiseTimer>0 ? `🙌 Hold… ${Math.round(raiseTimer/RAISE_FRAMES*100)}%` : '🙌 Raise both hands to start';
+      if(raiseTimer>=RAISE_FRAMES){ raiseTimer=0; initGameState(); phase='calibrating'; }
+      break;
+
+    case 'calibrating':
+      readGesture(); // drives calibration side-effect
+      drawCalib();
+      setHUD(false);
+      $g('gesture-bar').textContent = '📐 Stand still — calibrating…';
+      if(gs&&!gs.calibrating){ phase='playing'; }
+      break;
+
+    case 'playing':
+      gs.lastGesture=g.move;
+      if(g.move==='jump')       { gs.player.row=0; gs.player.lane=1; }
+      else if(g.move==='duck')  { gs.player.row=2; gs.player.lane=1; }
+      else if(g.move==='left')  { gs.player.lane=0; gs.player.row=1; }
+      else if(g.move==='right') { gs.player.lane=2; gs.player.row=1; }
+      else if(g.move==='stand') { gs.player.lane=1; gs.player.row=1; }
+      if(g.move==='shield') gs.player.shield=100;
+
+      if(g.tpose) tposeTimer++; else tposeTimer=0;
+      if(tposeTimer>=TPOSE_FRAMES){ tposeTimer=0; phase='paused'; }
+
+      if(gs.player.shield>0) gs.player.shield--;
+      if(gs.player.invincible>0) gs.player.invincible--;
+      gs.framesSinceLast++;
+      if(gs.framesSinceLast>=gs.spawnInterval){ spawnObject(); gs.framesSinceLast=0; gs.score++; }
+      gs.tick++;
+      gs.level=1+Math.floor(gs.score/40);
+      gs.spawnInterval=Math.max(28,80-gs.level*7);
+      checkCollisions();
+      drawPlay();
+      setHUD(true); updateHUD();
+      if(gs.over){ gs.overTick++; if(gs.overTick>80){ highScore=Math.max(highScore,gs.score); window.parent.postMessage({ type: 'GAME_COMPLETE', score: gs.score }, '*'); phase='over'; } }
+      break;
+
+    case 'paused':
+      if(g.tpose) tposeTimer++; else tposeTimer=0;
+      drawPause();
+      setHUD(false);
+      $g('gesture-bar').textContent = tposeTimer>0 ? `🤸 Hold T-pose… ${Math.round(tposeTimer/TPOSE_FRAMES*100)}%` : '🤸 T-pose to resume';
+      if(tposeTimer>=TPOSE_FRAMES){ tposeTimer=0; phase='playing'; }
+      break;
+
+    case 'over':
+      if(g.raise) raiseTimer++; else raiseTimer=0;
+      drawOver();
+      setHUD(false);
+      $g('gesture-bar').textContent = raiseTimer>0 ? `🙌 Hold… ${Math.round(raiseTimer/RAISE_FRAMES*100)}%` : '🙌 Raise both hands to restart';
+      if(raiseTimer>=RAISE_FRAMES){ raiseTimer=0; initGameState(); phase='calibrating'; }
+      break;
+  }
+
+  animId = requestAnimationFrame(loop);
+}
+
+// ── util ──
+function rRect(x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+init();
+})();
+</script>
+</body>
+</html>

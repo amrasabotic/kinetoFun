@@ -1,0 +1,51 @@
+// User persistence boundary.
+//
+// Everything above this line (route handlers, DAL, session) depends only on the
+// `UserRepository` interface — never on a concrete database.
+
+import type { UserRecord } from "@/types/auth";
+import {
+  PgUserRepository,
+  isDbConfigured,
+} from "./repositories/pg-user-repository";
+import { LocalUserRepository } from "./repositories/local-user-repository";
+
+/** Fields needed to create a user. The hash is computed before it gets here. */
+export interface NewUser {
+  email: string;
+  name: string;
+  passwordHash: string;
+}
+
+export interface UserRepository {
+  findByEmail(email: string): Promise<UserRecord | null>;
+  findById(id: string): Promise<UserRecord | null>;
+  create(input: NewUser): Promise<UserRecord>;
+  update(
+    id: string,
+    updates: Partial<{
+      name: string;
+      username: string;
+      bio: string;
+      avatar_color: string;
+      large_text: boolean;
+      reduce_motion: boolean;
+    }>,
+  ): Promise<UserRecord>;
+  addXp(id: string, amount: number): Promise<{ xp: number; level: number }>;
+  updatePassword(id: string, passwordHash: string): Promise<void>;
+  /** Permanently delete the account. Postgres cascades to every owned row
+   *  (sessions, scores, favorites, ratings, etc.) via FK `on delete cascade`. */
+  deleteAccount(id: string): Promise<void>;
+}
+
+let cached: UserRepository | null = null;
+
+/** Get the active user repository (memoized). */
+export function getUserRepository(): UserRepository {
+  if (cached) return cached;
+  cached = isDbConfigured()
+    ? new PgUserRepository()
+    : new LocalUserRepository();
+  return cached;
+}

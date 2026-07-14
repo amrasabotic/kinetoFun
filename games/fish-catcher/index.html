@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fish Catcher 🐟</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #020d1a;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  #app {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* Game canvas */
+  #gameCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+  }
+
+  /* Camera feed (mirrored) */
+  #video {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    opacity: 0.18;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 18px 28px;
+    pointer-events: none;
+  }
+
+  .hud-block {
+    background: rgba(0,30,60,0.7);
+    border: 1px solid rgba(0,180,255,0.25);
+    border-radius: 12px;
+    padding: 8px 18px;
+    color: #a8e4ff;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .hud-block span {
+    color: #00d4ff;
+    font-size: 22px;
+    font-weight: 700;
+    display: block;
+    line-height: 1.1;
+  }
+
+  #gesture-indicator {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(0,30,60,0.75);
+    border: 1px solid rgba(0,180,255,0.3);
+    border-radius: 50px;
+    padding: 9px 26px;
+    color: #60c8f0;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  /* Screens */
+  .screen {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 13, 26, 0.88);
+    backdrop-filter: blur(6px);
+  }
+
+  .screen h1 {
+    font-size: clamp(2.4rem, 6vw, 4.5rem);
+    color: #00d4ff;
+    letter-spacing: 0.06em;
+    text-shadow: 0 0 40px rgba(0,212,255,0.6);
+    margin-bottom: 8px;
+  }
+
+  .screen .sub {
+    color: #4a9fc4;
+    font-size: clamp(0.85rem, 2vw, 1.1rem);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 38px;
+  }
+
+  .instructions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    max-width: 700px;
+    width: 90%;
+    margin-bottom: 42px;
+  }
+
+  .inst-card {
+    background: rgba(0,40,80,0.6);
+    border: 1px solid rgba(0,180,255,0.2);
+    border-radius: 14px;
+    padding: 18px 14px;
+    text-align: center;
+    color: #a8d8f0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .inst-card .icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+  .inst-card strong { color: #00d4ff; display: block; margin-bottom: 4px; }
+
+  .start-prompt {
+    color: #00d4ff;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  #loading-screen .spinner {
+    width: 48px; height: 48px;
+    border: 3px solid rgba(0,180,255,0.2);
+    border-top-color: #00d4ff;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    margin-bottom: 20px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #loading-screen p {
+    color: #4a9fc4;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  #game-over-screen h2 {
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    color: #ff4d6d;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 30px rgba(255,77,109,0.5);
+    margin-bottom: 12px;
+  }
+
+  #game-over-screen .final-score {
+    font-size: clamp(1rem, 3vw, 1.4rem);
+    color: #a8d8f0;
+    margin-bottom: 10px;
+  }
+
+  #game-over-screen .final-score span {
+    color: #00d4ff;
+    font-weight: 700;
+    font-size: 1.8em;
+  }
+
+  /* Finger cursor */
+  #finger-cursor {
+    position: absolute;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(0,212,255,0.35);
+    border: 2px solid #00d4ff;
+    pointer-events: none;
+    z-index: 30;
+    transform: translate(-50%, -50%);
+    transition: width 0.1s, height 0.1s, background 0.15s;
+    box-shadow: 0 0 12px rgba(0,212,255,0.5);
+  }
+
+  #finger-cursor.hover {
+    width: 44px; height: 44px;
+    background: rgba(0,212,255,0.55);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-block">Score<span id="score-display">0</span></div>
+    <div class="hud-block">Lives<span id="lives-display">❤️❤️❤️</span></div>
+    <div class="hud-block">Level<span id="level-display">1</span></div>
+  </div>
+
+  <div id="gesture-indicator">✋ Open hand – move net &nbsp;|&nbsp; ✊ Fist – catch!</div>
+
+  <!-- Screens -->
+  <div id="loading-screen" class="screen">
+    <div class="spinner"></div>
+    <p>Starting camera & loading AI…</p>
+  </div>
+
+  <div id="start-screen" class="screen" style="display:none">
+    <h1>🐟 Fish Catcher</h1>
+    <p class="sub">Hand gesture game</p>
+    <div class="instructions">
+      <div class="inst-card">
+        <span class="icon">☝️</span>
+        <strong>Point finger</strong>
+        Navigate menus & start the game
+      </div>
+      <div class="inst-card">
+        <span class="icon">✋</span>
+        <strong>Open hand</strong>
+        Move your net around the ocean
+      </div>
+      <div class="inst-card">
+        <span class="icon">✊</span>
+        <strong>Close fist</strong>
+        Catch the fish under your net!
+      </div>
+      <div class="inst-card">
+        <span class="icon">🦈🪼</span>
+        <strong>Avoid dangers</strong>
+        Sharks & jellyfish cost you a life
+      </div>
+    </div>
+    <p class="start-prompt">☝️ Point at the screen to start</p>
+  </div>
+
+  <div id="game-over-screen" class="screen" style="display:none">
+    <h1>🐟 Fish Catcher</h1>
+    <h2>Game Over</h2>
+    <div class="final-score">Score: <span id="final-score">0</span></div>
+    <div class="final-score">Best: <span id="best-score">0</span></div>
+    <p class="start-prompt" style="margin-top:30px">☝️ Point at screen to play again</p>
+  </div>
+
+  <div id="finger-cursor"></div>
+</div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────────
+const FISH_TYPES = [
+  { emoji:'🐠', pts:10, speed:1.6, size:38 },
+  { emoji:'🐡', pts:15, speed:1.2, size:40 },
+  { emoji:'🐟', pts:8,  speed:2.0, size:36 },
+  { emoji:'🦐', pts:20, speed:2.5, size:30 },
+];
+const DANGER_TYPES = [
+  { emoji:'🦈', pts:-20, speed:2.4, size:52 },
+  { emoji:'🪼', pts:-15, speed:1.3, size:44 },
+];
+
+// ─── State ────────────────────────────────────────────────────────
+let state = 'loading'; // loading | start | playing | gameover
+let score = 0, lives = 3, level = 1, bestScore = 0;
+let entities = [];
+let netPos = { x: -200, y: -200 };
+let gesture = 'none'; // none | point | open | fist
+let prevGesture = 'none';
+let catchFlash = 0;
+let particles = [];
+let frameCount = 0;
+let lastSpawn = 0;
+let pointDwell = 0; // frames finger has been pointing at screen
+let ocean = { bubbles: [] };
+
+// ─── Canvas setup ─────────────────────────────────────────────────
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  initOcean();
+}
+window.addEventListener('resize', resize);
+resize();
+
+function initOcean() {
+  ocean.bubbles = Array.from({length: 28}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: 2 + Math.random() * 4,
+    speed: 0.3 + Math.random() * 0.5,
+    alpha: 0.1 + Math.random() * 0.2
+  }));
+}
+
+// ─── Screens ──────────────────────────────────────────────────────
+function showScreen(id) {
+  ['loading-screen','start-screen','game-over-screen'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? 'flex' : 'none';
+  });
+  document.getElementById('hud').style.display = id === 'game-over-screen' || id === 'start-screen' ? 'none' : 'flex';
+  document.getElementById('gesture-indicator').style.display = id === 'playing' || id === null ? 'flex' : 'none';
+}
+document.getElementById('gesture-indicator').style.display = 'none';
+
+// ─── Gesture detection ────────────────────────────────────────────
+function detectGesture(landmarks) {
+  // Landmark indices: WRIST=0, INDEX_TIP=8, MIDDLE_TIP=12, RING_TIP=16, PINKY_TIP=20
+  // MCP (knuckles): INDEX=5, MIDDLE=9, RING=13, PINKY=17
+  const lm = landmarks;
+  const wrist = lm[0];
+
+  const fingerExtended = (tip, pip, mcp) => {
+    return lm[tip].y < lm[pip].y && lm[pip].y < lm[mcp].y;
+  };
+
+  const indexUp   = fingerExtended(8, 7, 5);
+  const middleUp  = fingerExtended(12, 11, 9);
+  const ringUp    = fingerExtended(16, 15, 13);
+  const pinkyUp   = fingerExtended(20, 19, 17);
+
+  // Thumb: compare tip x to IP joint (accounting for hand laterality)
+  const thumbUp = lm[4].x < lm[3].x; // rough for right hand mirrored
+
+  const extended = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
+
+  if (indexUp && !middleUp && !ringUp && !pinkyUp) return 'point';
+  if (extended >= 3) return 'open';
+  if (extended === 0) return 'fist';
+  return 'none';
+}
+
+// ─── MediaPipe Hands ──────────────────────────────────────────────
+const hands = new Hands({
+  locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.7,
+  minTrackingConfidence: 0.6
+});
+
+hands.onResults(results => {
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    const lm = results.multiHandLandmarks[0];
+    // Mirror x because video is mirrored
+    const raw = lm[8]; // index tip for pointing cursor
+    const mirroredX = 1 - raw.x;
+    netPos.x = mirroredX * canvas.width;
+    netPos.y = raw.y * canvas.height;
+
+    gesture = detectGesture(lm);
+
+    // Update finger cursor (use index tip always)
+    const fc = document.getElementById('finger-cursor');
+    fc.style.left = netPos.x + 'px';
+    fc.style.top  = netPos.y + 'px';
+    fc.style.display = 'block';
+  } else {
+    gesture = 'none';
+    document.getElementById('finger-cursor').style.display = 'none';
+  }
+});
+
+const video = document.getElementById('video');
+const camera = new Camera(video, {
+  onFrame: async () => { await hands.send({ image: video }); },
+  width: 640, height: 480
+});
+
+camera.start().then(() => {
+  setTimeout(() => {
+    state = 'start';
+    showScreen('start-screen');
+  }, 1800);
+}).catch(err => {
+  document.querySelector('#loading-screen p').textContent = 'Camera denied – allow access & reload';
+});
+
+// ─── Entity helpers ───────────────────────────────────────────────
+function spawnEntity() {
+  const isDanger = Math.random() < 0.22 + level * 0.02;
+  const pool = isDanger ? DANGER_TYPES : FISH_TYPES;
+  const type = pool[Math.floor(Math.random() * pool.length)];
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const spd = (type.speed + level * 0.18) * dir;
+  entities.push({
+    ...type,
+    x: dir > 0 ? -type.size : canvas.width + type.size,
+    y: 60 + Math.random() * (canvas.height - 140),
+    vx: spd,
+    vy: (Math.random() - 0.5) * 0.6,
+    danger: isDanger,
+    id: Math.random()
+  });
+}
+
+// ─── Particles ────────────────────────────────────────────────────
+function spawnParticles(x, y, color, n=12) {
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 / n) * i + Math.random() * 0.4;
+    const spd = 2 + Math.random() * 4;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd,
+      life: 1, decay: 0.03 + Math.random() * 0.02,
+      r: 3 + Math.random() * 4, color
+    });
+  }
+}
+
+// ─── Drawing ──────────────────────────────────────────────────────
+function drawBackground() {
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, '#020d1a');
+  grad.addColorStop(1, '#041e38');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Caustic light beams
+  ctx.save();
+  for (let i = 0; i < 6; i++) {
+    const bx = (canvas.width / 6) * i + Math.sin(frameCount * 0.008 + i) * 30;
+    const grad2 = ctx.createLinearGradient(bx, 0, bx + 80, canvas.height);
+    grad2.addColorStop(0, 'rgba(0,180,255,0.04)');
+    grad2.addColorStop(0.5, 'rgba(0,180,255,0.07)');
+    grad2.addColorStop(1, 'rgba(0,180,255,0.0)');
+    ctx.fillStyle = grad2;
+    ctx.beginPath();
+    ctx.moveTo(bx, 0);
+    ctx.lineTo(bx + 80, 0);
+    ctx.lineTo(bx + 200, canvas.height);
+    ctx.lineTo(bx + 120, canvas.height);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Bubbles
+  ocean.bubbles.forEach(b => {
+    b.y -= b.speed;
+    b.x += Math.sin(frameCount * 0.03 + b.r) * 0.3;
+    if (b.y < -10) { b.y = canvas.height + 10; b.x = Math.random() * canvas.width; }
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(120,200,255,${b.alpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // Ocean floor
+  ctx.fillStyle = 'rgba(0,20,50,0.8)';
+  ctx.fillRect(0, canvas.height - 28, canvas.width, 28);
+  // Seaweed
+  for (let wx = 40; wx < canvas.width; wx += 90) {
+    const sway = Math.sin(frameCount * 0.04 + wx * 0.01) * 8;
+    ctx.strokeStyle = 'rgba(0,120,60,0.5)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(wx, canvas.height - 28);
+    ctx.quadraticCurveTo(wx + sway, canvas.height - 55, wx + sway * 0.5, canvas.height - 80);
+    ctx.stroke();
+  }
+}
+
+function drawNet(x, y, isActive) {
+  const r = isActive ? 60 : 52;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Net glow
+  const glow = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 1.1);
+  glow.addColorStop(0, isActive ? 'rgba(0,255,200,0.18)' : 'rgba(0,180,255,0.10)');
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2); ctx.fill();
+
+  // Net ring
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.strokeStyle = isActive ? '#00ffc8' : '#00a8f0';
+  ctx.lineWidth = isActive ? 3 : 2;
+  ctx.shadowColor = isActive ? '#00ffc8' : '#00a8f0';
+  ctx.shadowBlur = 14;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Net mesh
+  ctx.strokeStyle = isActive ? 'rgba(0,255,200,0.35)' : 'rgba(0,168,240,0.25)';
+  ctx.lineWidth = 1;
+  const grid = 5;
+  for (let ix = -grid; ix <= grid; ix++) {
+    for (let iy = -grid; iy <= grid; iy++) {
+      const gx = (ix / grid) * r;
+      const gy = (iy / grid) * r;
+      if (gx * gx + gy * gy <= r * r) {
+        // horizontal line
+        const nx = ((ix + 1) / grid) * r;
+        if ((ix + 1) <= grid && (gx * gx + gy * gy <= r * r) && (nx * nx + gy * gy <= r * r)) {
+          ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(nx, gy); ctx.stroke();
+        }
+        // vertical line
+        const ny = ((iy + 1) / grid) * r;
+        if ((iy + 1) <= grid && (gx * gx + gy * gy <= r * r) && (gx * gx + ny * ny <= r * r)) {
+          ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx, ny); ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // Handle
+  ctx.strokeStyle = isActive ? '#00ffc8' : '#00a8f0';
+  ctx.lineWidth = isActive ? 4 : 3;
+  ctx.beginPath(); ctx.moveTo(0, r); ctx.lineTo(0, r + 38); ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawEntity(e) {
+  ctx.save();
+  ctx.font = `${e.size}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Flip emoji if moving left
+  if (e.vx < 0) { ctx.scale(-1, 1); ctx.fillText(e.emoji, -e.x, e.y); }
+  else           { ctx.fillText(e.emoji, e.x, e.y); }
+  ctx.restore();
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ─── Catch-flash overlay ──────────────────────────────────────────
+function drawFlash() {
+  if (catchFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = catchFlash * 0.4;
+    ctx.fillStyle = '#00ffc8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    catchFlash -= 0.07;
+  }
+}
+
+// ─── Point hover for start/restart ───────────────────────────────
+let pointHoverFrames = 0;
+function checkPointAction() {
+  if (gesture === 'point') {
+    pointHoverFrames++;
+    if (pointHoverFrames >= 45) { // ~1.5s at 30fps
+      pointHoverFrames = 0;
+      if (state === 'start') startGame();
+      else if (state === 'gameover') startGame();
+    }
+  } else {
+    pointHoverFrames = 0;
+  }
+
+  // Draw dwell ring around finger
+  if ((state === 'start' || state === 'gameover') && gesture === 'point' && pointHoverFrames > 0) {
+    const progress = pointHoverFrames / 45;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(netPos.x, netPos.y, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 4;
+    ctx.shadowColor = '#00d4ff';
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ─── Game logic ───────────────────────────────────────────────────
+function startGame() {
+  score = 0; lives = 3; level = 1;
+  entities = []; particles = [];
+  frameCount = 0; lastSpawn = 0; catchFlash = 0;
+  updateHUD();
+  state = 'playing';
+  showScreen(null);
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('gesture-indicator').style.display = 'flex';
+}
+
+function updateHUD() {
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('lives-display').textContent = '❤️'.repeat(Math.max(0, lives));
+  document.getElementById('level-display').textContent = level;
+}
+
+function updateGame() {
+  frameCount++;
+
+  // Spawn
+  const spawnRate = Math.max(38, 90 - level * 7);
+  if (frameCount - lastSpawn > spawnRate) {
+    spawnEntity();
+    lastSpawn = frameCount;
+  }
+
+  // Level up
+  level = 1 + Math.floor(score / 80);
+
+  // Entities
+  const NET_R = 58;
+  const isFist = gesture === 'fist';
+  const isOpen = gesture === 'open';
+
+  entities = entities.filter(e => {
+    e.x += e.vx;
+    e.y += e.vy;
+
+    // Remove off-screen
+    if (e.x < -100 || e.x > canvas.width + 100) return false;
+
+    // Check collision with net
+    const dx = e.x - netPos.x;
+    const dy = e.y - netPos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const hitR = NET_R + e.size * 0.35;
+
+    if (dist < hitR) {
+      if (!e.danger && isFist) {
+        // Caught fish!
+        score += e.pts;
+        catchFlash = 1;
+        spawnParticles(e.x, e.y, '#00ffc8', 14);
+        updateHUD();
+        return false;
+      } else if (e.danger && isOpen) {
+        // Hit a danger with open hand
+        lives--;
+        catchFlash = 0;
+        spawnParticles(e.x, e.y, '#ff4d6d', 16);
+        updateHUD();
+        if (lives <= 0) { endGame(); }
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Particles
+  particles = particles.filter(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.94; p.vy *= 0.94;
+    p.life -= p.decay;
+    return p.life > 0;
+  });
+}
+
+function endGame() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
+  state = 'gameover';
+  bestScore = Math.max(bestScore, score);
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('best-score').textContent = bestScore;
+  showScreen('game-over-screen');
+}
+
+// ─── Gesture label display ────────────────────────────────────────
+const gestureLabels = { none:'No hand detected', point:'☝️ Pointing', open:'✋ Open hand – moving net', fist:'✊ Fist – catching!' };
+
+// ─── Main loop ────────────────────────────────────────────────────
+function loop() {
+  requestAnimationFrame(loop);
+  drawBackground();
+
+  if (state === 'playing') {
+    updateGame();
+
+    entities.forEach(e => drawEntity(e));
+
+    const isActive = gesture === 'fist';
+    if (gesture === 'open' || gesture === 'fist') {
+      drawNet(netPos.x, netPos.y, isActive);
+    }
+
+    drawParticles();
+    drawFlash();
+
+    // Gesture indicator
+    const gi = document.getElementById('gesture-indicator');
+    gi.textContent = gestureLabels[gesture] || '–';
+
+  } else if (state === 'start' || state === 'gameover') {
+    checkPointAction();
+  }
+
+  prevGesture = gesture;
+}
+
+loop();
+</script>
+</body>
+</html>

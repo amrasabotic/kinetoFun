@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #0b1020;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+* { box-sizing: border-box; }
+
+@keyframes fq-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.fq-pop { animation: fq-pop 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+@keyframes fq-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+.fq-shake { animation: fq-shake 0.4s ease-in-out; }
+
+@keyframes fq-sparkle-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fq-hint-pulse-anim {
+  0%, 100% { stroke: rgba(255,255,255,0.35); stroke-width: 1.2; }
+  50% { stroke: #FFD700; stroke-width: 3.5; }
+}
+.fq-hint-pulse { animation: fq-hint-pulse-anim 1s ease-in-out infinite; }
+
+@keyframes fq-glow-border {
+  0%, 100% { box-shadow: 0 0 0px 0px rgba(255,215,0,0); }
+  50% { box-shadow: 0 0 30px 6px rgba(255,215,0,0.45); }
+}
+.fq-hint-glow { animation: fq-glow-border 1.6s ease-in-out infinite; }

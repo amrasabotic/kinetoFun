@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mirror Me — Gesture Reaction Game</title>
+
+  <!-- MediaPipe CDN — must load synchronously before our modules -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
+
+  <!-- Google Fonts preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+<body>
+  <div id="root">
+    <!-- Live camera feed -->
+    <video id="camera" playsinline muted autoplay></video>
+
+    <!-- Skeleton overlay (player landmark drawing) -->
+    <canvas id="overlay"></canvas>
+
+    <!-- Game UI (HUD, prompts, score, etc.) -->
+    <canvas id="ui"></canvas>
+
+    <!-- Pose progress dots -->
+    <div id="progress-bar-container"></div>
+
+    <!-- Status / error text -->
+    <div id="status">Starting...</div>
+  </div>
+
+  <!-- Vite entry point -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

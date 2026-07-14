@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✋ Gesture Ludo King</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: #1a1a2e; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #fff; }
+
+#game-wrap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#ludo {
+  display: block;
+  border-radius: 18px;
+  box-shadow: 0 8px 60px rgba(0,0,0,0.6);
+  cursor: none;
+}
+
+/* HUD top */
+#hud {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  pointer-events: none;
+}
+.hud-pill {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  white-space: nowrap;
+}
+.hud-pill strong { color: #fff; font-weight: 600; }
+#turn-pill { border-color: var(--tc, rgba(255,255,255,0.18)); }
+
+/* Message bar bottom center */
+#msg-bar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 8px 20px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.9);
+  pointer-events: none;
+  text-align: center;
+  max-width: 500px;
+  white-space: nowrap;
+}
+
+/* Camera PiP — bottom left */
+#cam-pip {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  width: 200px;
+  height: 150px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  background: #000;
+}
+#webcam {
+  width: 200px;
+  height: 150px;
+  object-fit: cover;
+  transform: scaleX(-1);
+  display: block;
+  opacity: 0.85;
+}
+#cam-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 200px; height: 150px;
+  transform: scaleX(-1);
+}
+#cam-status {
+  position: absolute;
+  top: 6px; left: 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.4);
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+
+/* Gesture badge bottom-left above cam */
+#gesture-badge {
+  position: absolute;
+  bottom: 176px;
+  left: 16px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #fff;
+  min-width: 200px;
+  text-align: center;
+  pointer-events: none;
+}
+#gesture-text { font-size: 15px; font-weight: 500; min-height: 22px; }
+#gesture-bar-wrap { height: 3px; background: rgba(255,255,255,0.15); border-radius: 3px; margin-top: 5px; overflow: hidden; }
+#gesture-bar { height: 3px; background: #378ADD; width: 0%; transition: width 0.05s; border-radius: 3px; }
+
+/* Splash screen */
+#splash {
+  position: absolute;
+  inset: 0;
+  background: rgba(15,15,30,0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+#splash h2 { font-size: 36px; font-weight: 700; letter-spacing: -0.5px; }
+#splash p { font-size: 15px; color: rgba(255,255,255,0.65); max-width: 400px; text-align: center; line-height: 1.6; }
+.splash-gestures { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.sg { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.8); }
+.sg span { font-size: 22px; }
+.sg strong { display: block; color: #fff; font-size: 14px; }
+#splash-progress { width: 260px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 10px; }
+#splash-bar { height: 4px; background: #378ADD; width: 0%; border-radius: 4px; transition: width 0.3s; }
+#splash-hint { font-size: 13px; color: rgba(255,255,255,0.4); }
+
+body.turn-red    #turn-pill { --tc: #E24B4A; }
+body.turn-blue   #turn-pill { --tc: #378ADD; }
+body.turn-green  #turn-pill { --tc: #639922; }
+body.turn-yellow #turn-pill { --tc: #EF9F27; }
+</style>
+</head>
+<body class="turn-red">
+
+<div id="game-wrap">
+  <canvas id="ludo"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-pill" id="turn-pill">Turn: <strong id="turn-label">Red</strong></div>
+    <div class="hud-pill">Dice: <strong id="dice-val">—</strong></div>
+    <div class="hud-pill">Phase: <strong id="phase-label">Roll</strong></div>
+  </div>
+
+  <div id="msg-bar" id="msg">Open palm 🖐️ to roll — point ☝️ at a piece to move it</div>
+
+  <!-- Camera PiP -->
+  <div id="cam-pip">
+    <video id="webcam" autoplay muted playsinline></video>
+    <canvas id="cam-overlay"></canvas>
+    <div id="cam-status">⏳ loading…</div>
+  </div>
+
+  <!-- Gesture badge -->
+  <div id="gesture-badge">
+    <div id="gesture-text">—</div>
+    <div id="gesture-bar-wrap"><div id="gesture-bar"></div></div>
+  </div>
+
+  <!-- Splash / intro -->
+  <div id="splash">
+    <h2>✋ Gesture Ludo King</h2>
+    <p>Play Ludo entirely with your hand. Point your finger to select pieces, open your palm to roll the dice.</p>
+    <div class="splash-gestures">
+      <div class="sg"><span>🖐️</span><div><strong>Open Palm</strong>Roll the dice</div></div>
+      <div class="sg"><span>☝️</span><div><strong>Point finger</strong>Hover piece 0.2s → auto-move</div></div>
+      <div class="sg"><span>✊</span><div><strong>Fist</strong>Neutral / nothing</div></div>
+      <div class="sg"><span>🤟</span><div><strong>Start screen</strong>Point at START to begin</div></div>
+    </div>
+    <div id="splash-progress"><div id="splash-bar"></div></div>
+    <div id="splash-hint">Starting camera…</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+// ═══════════════════════════════════════════════════
+// BOARD SETUP
+// ═══════════════════════════════════════════════════
+const COLS     = ['red','blue','green','yellow'];
+const COL_HEX  = { red:'#E24B4A', blue:'#378ADD', green:'#639922', yellow:'#EF9F27' };
+const COL_LITE = { red:'#FCEBEB', blue:'#E6F1FB', green:'#EAF3DE', yellow:'#FAEEDA' };
+
+const HOME_POS = {
+  red:    [[1,1],[1,2],[2,1],[2,2]],
+  blue:   [[1,12],[2,12],[1,13],[2,13]],
+  green:  [[12,12],[13,12],[12,13],[13,13]],
+  yellow: [[12,1],[13,1],[12,2],[13,2]]
+};
+
+const PATHS = {
+  red: [
+    [6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],
+    [0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],
+    [8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],
+    [14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],
+    [7,1],[7,2],[7,3],[7,4],[7,5],[7,6]
+  ],
+  blue: [
+    [1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],
+    [8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],
+    [14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],
+    [6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],
+    [1,7],[2,7],[3,7],[4,7],[5,7],[6,7]
+  ],
+  green: [
+    [8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],
+    [14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],
+    [6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],
+    [0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],
+    [7,13],[7,12],[7,11],[7,10],[7,9],[7,8]
+  ],
+  yellow: [
+    [13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],
+    [6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],
+    [0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],
+    [8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],
+    [13,7],[12,7],[11,7],[10,7],[9,7],[8,7]
+  ]
+};
+
+const GRID = 15;
+
+// Dynamic sizing
+const lc  = document.getElementById('ludo');
+const ctx = lc.getContext('2d');
+let SZ = 0, CELL = 0;
+
+function resize() {
+  const avail = Math.min(window.innerWidth - 40, window.innerHeight - 100);
+  SZ = Math.floor(avail / GRID) * GRID;
+  CELL = SZ / GRID;
+  lc.width  = SZ;
+  lc.height = SZ;
+  drawBoard();
+}
+window.addEventListener('resize', resize);
+
+// ═══════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════
+const state = {
+  turn: 0,
+  dice: null,
+  rolled: false,
+  winner: null,
+  phase: 'roll', // 'roll' | 'select' | 'done'
+  gameStarted: false
+};
+
+function initPieces() {
+  state.pieces = {};
+  COLS.forEach(col => {
+    state.pieces[col] = HOME_POS[col].map(([r,c]) => ({
+      row: r, col: c, inPlay: false, steps: -1, finished: false
+    }));
+  });
+}
+initPieces();
+
+// ═══════════════════════════════════════════════════
+// DRAWING
+// ═══════════════════════════════════════════════════
+function rr(x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+// pointer position in board coords (0-1)
+let pointer = { x: -1, y: -1, visible: false };
+// hover state per piece
+let hoverPiece = { col: null, idx: null, startTime: 0, pct: 0 };
+const HOVER_MS = 200; // 0.2s to select
+
+function drawBoard() {
+  if (!SZ) return;
+  ctx.clearRect(0,0,SZ,SZ);
+
+  // Board bg
+  ctx.fillStyle = '#f7f6f2';
+  rr(0,0,SZ,SZ,18); ctx.fill();
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+  ctx.lineWidth = 0.5;
+  for(let i=0;i<=GRID;i++){
+    ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,SZ); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,i*CELL); ctx.lineTo(SZ,i*CELL); ctx.stroke();
+  }
+
+  // Home quadrants
+  [
+    {col:'red',    r1:0, c1:0, r2:5, c2:5},
+    {col:'blue',   r1:0, c1:9, r2:5, c2:14},
+    {col:'green',  r1:9, c1:9, r2:14,c2:14},
+    {col:'yellow', r1:9, c1:0, r2:14,c2:5}
+  ].forEach(h => {
+    ctx.fillStyle = COL_LITE[h.col];
+    ctx.fillRect(h.c1*CELL+1, h.r1*CELL+1, (h.c2-h.c1+1)*CELL-2, (h.r2-h.r1+1)*CELL-2);
+    ctx.strokeStyle = COL_HEX[h.col]; ctx.lineWidth = 2.5;
+    ctx.strokeRect(h.c1*CELL+1, h.r1*CELL+1, (h.c2-h.c1+1)*CELL-2, (h.r2-h.r1+1)*CELL-2);
+    // inner circle
+    const cx = (h.c1 + (h.c2-h.c1+1)/2) * CELL;
+    const cy = (h.r1 + (h.r2-h.r1+1)/2) * CELL;
+    ctx.beginPath(); ctx.arc(cx, cy, CELL*1.35, 0, Math.PI*2);
+    ctx.fillStyle = COL_HEX[h.col]; ctx.fill();
+  });
+
+  // Colored path strips
+  const strips = {
+    red:    [[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[7,1],[7,2],[7,3],[7,4],[7,5]],
+    blue:   [[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[1,7],[2,7],[3,7],[4,7],[5,7]],
+    green:  [[8,9],[8,10],[8,11],[8,12],[8,13],[9,8],[10,8],[11,8],[12,8],[13,8],[7,9],[7,10],[7,11],[7,12],[7,13]],
+    yellow: [[9,6],[10,6],[11,6],[12,6],[13,6],[8,1],[8,2],[8,3],[8,4],[8,5],[9,7],[10,7],[11,7],[12,7],[13,7]]
+  };
+  COLS.forEach(col => {
+    ctx.fillStyle = COL_HEX[col] + '45';
+    strips[col].forEach(([r,c]) => ctx.fillRect(c*CELL+0.5,r*CELL+0.5,CELL-1,CELL-1));
+  });
+
+  // Center triangles
+  [{col:'red',pts:[[6,6],[8,6],[7,7]]},{col:'blue',pts:[[6,6],[6,8],[7,7]]},
+   {col:'green',pts:[[8,6],[8,8],[7,7]]},{col:'yellow',pts:[[6,8],[8,8],[7,7]]}
+  ].forEach(t => {
+    ctx.fillStyle = COL_HEX[t.col];
+    ctx.beginPath();
+    ctx.moveTo(t.pts[0][1]*CELL,t.pts[0][0]*CELL);
+    ctx.lineTo(t.pts[1][1]*CELL,t.pts[1][0]*CELL);
+    ctx.lineTo(t.pts[2][1]*CELL,t.pts[2][0]*CELL);
+    ctx.closePath(); ctx.fill();
+  });
+
+  // Safe stars
+  [[2,6],[6,2],[8,2],[2,8],[6,12],[12,6],[8,12],[12,8]].forEach(([r,c]) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.font = `${Math.floor(CELL*0.5)}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('★', c*CELL+CELL/2, r*CELL+CELL/2);
+  });
+
+  // Dice
+  if (state.dice !== null) {
+    const cur = COLS[state.turn];
+    const dx=7*CELL+3, dy=7*CELL+3, ds=CELL-6;
+    ctx.fillStyle='#fff'; rr(dx,dy,ds,ds,5); ctx.fill();
+    ctx.strokeStyle=COL_HEX[cur]; ctx.lineWidth=2.5; rr(dx,dy,ds,ds,5); ctx.stroke();
+    ctx.fillStyle=COL_HEX[cur];
+    ctx.font=`bold ${Math.floor(CELL*0.6)}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(state.dice, dx+ds/2, dy+ds/2+1);
+  }
+
+  // Pieces
+  COLS.forEach(col => {
+    state.pieces[col].forEach((p, idx) => {
+      if (p.finished) return;
+      const isCurTurn = COLS[state.turn] === col && !state.winner;
+      const isHovered = hoverPiece.col===col && hoverPiece.idx===idx;
+      const px = p.col*CELL + CELL/2;
+      const py = p.row*CELL + CELL/2;
+      const rad = CELL * 0.34;
+
+      // Hover progress ring
+      if (isHovered && hoverPiece.pct > 0) {
+        ctx.beginPath();
+        ctx.arc(px, py, rad+8, -Math.PI/2, -Math.PI/2 + Math.PI*2*hoverPiece.pct);
+        ctx.strokeStyle = COL_HEX[col];
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      }
+
+      // Glow for current turn pieces
+      if (isCurTurn && state.phase==='select') {
+        ctx.beginPath(); ctx.arc(px,py,rad+6,0,Math.PI*2);
+        ctx.fillStyle = COL_HEX[col]+'30'; ctx.fill();
+      }
+
+      // Body
+      ctx.beginPath(); ctx.arc(px,py,rad,0,Math.PI*2);
+      ctx.fillStyle = isCurTurn && state.phase==='select' ? COL_HEX[col] : '#fff';
+      ctx.fill();
+      ctx.strokeStyle = COL_HEX[col]; ctx.lineWidth = 2.5; ctx.stroke();
+
+      // Label
+      ctx.fillStyle = isCurTurn && state.phase==='select' ? '#fff' : COL_HEX[col];
+      ctx.font = `bold ${Math.floor(CELL*0.36)}px sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(idx+1, px, py+1);
+    });
+  });
+
+  // Finger pointer on board
+  if (pointer.visible && pointer.x >= 0) {
+    const px = pointer.x * SZ;
+    const py = pointer.y * SZ;
+    ctx.beginPath(); ctx.arc(px,py,10,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1.5; ctx.stroke();
+  }
+
+  // Winner overlay
+  if (state.winner) {
+    ctx.fillStyle='rgba(0,0,0,0.65)';
+    rr(0,0,SZ,SZ,18); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font=`bold ${Math.floor(SZ*0.07)}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(`🎉 ${state.winner.toUpperCase()} WINS!`, SZ/2, SZ/2-SZ*0.04);
+    ctx.font=`${Math.floor(SZ*0.035)}px sans-serif`;
+    ctx.fillStyle='rgba(255,255,255,0.65)';
+    ctx.fillText('Point ☝️ at NEW GAME to restart', SZ/2, SZ/2+SZ*0.05);
+    // Draw new game button on canvas
+    drawCanvasBtn('NEW GAME', SZ/2, SZ/2+SZ*0.14, '#378ADD');
+  }
+
+  // Board border = turn color
+  lc.style.borderColor = state.winner ? 'rgba(255,255,255,0.2)' : COL_HEX[COLS[state.turn]];
+
+  // Roll hint overlay if not rolled
+  if (!state.rolled && !state.winner && state.gameStarted && state.phase==='roll') {
+    const bx=SZ/2, by=SZ*0.07;
+    ctx.fillStyle='rgba(0,0,0,0.55)';
+    const tw=200, th=36;
+    rr(bx-tw/2,by-th/2,tw,th,10); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font=`14px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(`🖐️  Open palm to roll dice`, bx, by+1);
+  }
+}
+
+function drawCanvasBtn(label, cx, cy, color) {
+  const w=200, h=44;
+  ctx.fillStyle = color;
+  rr(cx-w/2, cy-h/2, w, h, 10); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font=`bold 16px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(label, cx, cy+1);
+  // register click zone
+  canvasBtns['NEW GAME'] = {x:cx-w/2, y:cy-h/2, w, h};
+}
+
+const canvasBtns = {};
+
+// ═══════════════════════════════════════════════════
+// GAME LOGIC
+// ═══════════════════════════════════════════════════
+function rollDice() {
+  if (state.rolled || state.winner || !state.gameStarted) return;
+  state.dice = Math.floor(Math.random()*6)+1;
+  state.rolled = true;
+  state.phase = 'select';
+  setDiceUI(state.dice);
+  setPhaseUI('Select');
+  setMsg(`${cap(COLS[state.turn])} rolled ${state.dice}! ☝️ Point at a piece to move`);
+
+  // Check if any move is possible; if not, auto-pass after 1.5s
+  if (!hasAnyMove()) {
+    setMsg(`${cap(COLS[state.turn])} rolled ${state.dice} — no valid moves. Passing…`);
+    setTimeout(() => { nextTurn(); drawBoard(); }, 1500);
+  }
+  drawBoard();
+}
+
+function hasAnyMove() {
+  const col = COLS[state.turn];
+  return state.pieces[col].some(p => {
+    if (p.finished) return false;
+    if (!p.inPlay) return state.dice === 6;
+    return true;
+  });
+}
+
+function movePieceByIndex(idx) {
+  if (!state.rolled || state.winner) return false;
+  const col   = COLS[state.turn];
+  const piece = state.pieces[col][idx];
+  const path  = PATHS[col];
+  if (piece.finished) return false;
+
+  if (!piece.inPlay) {
+    if (state.dice !== 6) { setMsg(`Need a 6 to enter! Point at another piece.`); return false; }
+    piece.inPlay = true;
+    piece.steps  = 0;
+    piece.row    = path[0][0];
+    piece.col    = path[0][1];
+    setMsg(`${cap(col)} piece ${idx+1} enters the board!`);
+  } else {
+    const ns = piece.steps + state.dice;
+    if (ns >= path.length - 1) {
+      piece.finished = true;
+      piece.row = 7; piece.col = 7;
+      setMsg(`${cap(col)} piece ${idx+1} reached home! 🏆`);
+      if (state.pieces[col].every(p => p.finished)) {
+        state.winner = col;
+        window.parent.postMessage({ type: 'GAME_COMPLETE', score: 1 }, '*');
+        drawBoard(); return true;
+      }
+    } else {
+      piece.steps = ns;
+      piece.row   = path[ns][0];
+      piece.col   = path[ns][1];
+      setMsg(`${cap(col)} moved piece ${idx+1}!`);
+    }
+  }
+
+  if (state.dice !== 6) {
+    nextTurn();
+  } else {
+    state.rolled = false;
+    state.phase  = 'roll';
+    setDiceUI('—');
+    setPhaseUI('Roll');
+    setMsg(`${cap(col)} rolled 6! Open palm 🖐️ to roll again`);
+  }
+  drawBoard();
+  return true;
+}
+
+function nextTurn() {
+  state.turn   = (state.turn+1) % 4;
+  state.rolled = false;
+  state.dice   = null;
+  state.phase  = 'roll';
+  const col = COLS[state.turn];
+  document.getElementById('turn-label').textContent = cap(col);
+  setDiceUI('—');
+  setPhaseUI('Roll');
+  document.body.className = `turn-${col}`;
+  setMsg(`${cap(col)}'s turn — open palm 🖐️ to roll`);
+}
+
+function newGame() {
+  state.turn=0; state.dice=null; state.rolled=false;
+  state.winner=null; state.phase='roll'; state.gameStarted=true;
+  initPieces();
+  document.getElementById('turn-label').textContent = 'Red';
+  setDiceUI('—'); setPhaseUI('Roll');
+  document.body.className='turn-red';
+  hoverPiece={col:null,idx:null,startTime:0,pct:0};
+  setMsg('Game started! Open palm 🖐️ to roll');
+  drawBoard();
+}
+
+function cap(s) { return s[0].toUpperCase()+s.slice(1); }
+function setMsg(m) { document.getElementById('msg-bar').textContent = m; }
+function setDiceUI(v) { document.getElementById('dice-val').textContent = v; }
+function setPhaseUI(v) { document.getElementById('phase-label').textContent = v; }
+
+// ═══════════════════════════════════════════════════
+// POINTER → PIECE HIT TEST
+// ═══════════════════════════════════════════════════
+function getPieceAtPointer(nx, ny) {
+  // nx, ny in 0-1 board space
+  if (!SZ) return null;
+  const px = nx * SZ, py = ny * SZ;
+  const col = COLS[state.turn];
+  for (let idx=0; idx<4; idx++) {
+    const p = state.pieces[col][idx];
+    if (p.finished) continue;
+    const cx = p.col*CELL+CELL/2, cy = p.row*CELL+CELL/2;
+    const dist = Math.hypot(px-cx, py-cy);
+    if (dist < CELL*0.55) return idx;
+  }
+  return null;
+}
+
+function getCanvasBtnAtPointer(nx, ny) {
+  const px=nx*SZ, py=ny*SZ;
+  for (const [name, b] of Object.entries(canvasBtns)) {
+    if (px>=b.x && px<=b.x+b.w && py>=b.y && py<=b.y+b.h) return name;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════
+// MEDIAPIPE
+// ═══════════════════════════════════════════════════
+let mpHands=null, mpCam=null;
+
+// Gesture detection
+function countExtendedFingers(lm) {
+  let c=0;
+  if (lm[4].x < lm[3].x) c++; // thumb (left hand in mirrored view)
+  for (const t of [8,12,16,20]) if (lm[t].y < lm[t-2].y) c++;
+  return c;
+}
+
+function isOpenPalm(lm) {
+  for (const t of [8,12,16,20]) if (lm[t].y >= lm[t-2].y) return false;
+  return true;
+}
+
+function isFist(lm) {
+  for (const t of [8,12,16,20]) if (lm[t].y < lm[t-2].y) return false;
+  return true;
+}
+
+function isPointingOne(lm) {
+  // Index extended, others closed
+  if (lm[8].y >= lm[6].y) return false;
+  if (lm[12].y < lm[10].y) return false;
+  if (lm[16].y < lm[14].y) return false;
+  if (lm[20].y < lm[18].y) return false;
+  return true;
+}
+
+function detectGesture(lm) {
+  if (isFist(lm)) return 'fist';
+  if (isOpenPalm(lm)) return 'open';
+  if (isPointingOne(lm)) return 'point';
+  return 'other';
+}
+
+// Gesture hold tracking
+let lastGesture='', gHoldFrames=0, gLastFired='';
+const OPEN_FRAMES = 15; // ~0.5s at 30fps for open palm
+const FIST_RESET  = true;
+
+// Splash start-button hover
+let splashHover = { active:false, startTime:0 };
+const SPLASH_HOLD_MS = 500;
+
+function onResults(res) {
+  const oc   = document.getElementById('cam-overlay');
+  const octx = oc.getContext('2d');
+  octx.clearRect(0,0,200,150);
+
+  if (!res.multiHandLandmarks || !res.multiHandLandmarks.length) {
+    pointer.visible = false;
+    gHoldFrames = 0; lastGesture=''; gLastFired='';
+    document.getElementById('gesture-text').textContent='—';
+    document.getElementById('gesture-bar').style.width='0%';
+    hoverPiece={col:null,idx:null,startTime:0,pct:0};
+    drawBoard();
+    return;
+  }
+
+  const lm = res.multiHandLandmarks[0];
+
+  // Draw skeleton on pip
+  const conn=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
+  octx.strokeStyle='#378ADD'; octx.lineWidth=1.5;
+  conn.forEach(([a,b])=>{
+    octx.beginPath(); octx.moveTo(lm[a].x*200,lm[a].y*150);
+    octx.lineTo(lm[b].x*200,lm[b].y*150); octx.stroke();
+  });
+  lm.forEach((pt,i)=>{
+    octx.beginPath(); octx.arc(pt.x*200,pt.y*150,[4,8,12,16,20].includes(i)?5:2.5,0,Math.PI*2);
+    octx.fillStyle=[4,8,12,16,20].includes(i)?'#E24B4A':'rgba(255,255,255,0.8)'; octx.fill();
+  });
+
+  // Fingertip position (index tip = lm[8]) mapped to board
+  // webcam is mirrored, so flip x: boardX = 1 - lm[8].x
+  const tipX = 1 - lm[8].x;
+  const tipY = lm[8].y;
+
+  const gesture = detectGesture(lm);
+
+  const gLabels = { fist:'✊ Neutral', open:'🖐️ Open palm', point:'☝️ Pointing', other:'…' };
+  document.getElementById('gesture-text').textContent = gLabels[gesture] || '—';
+
+  // Splash screen logic
+  if (!state.gameStarted) {
+    handleSplash(gesture, tipX, tipY);
+    drawBoard();
+    return;
+  }
+
+  // Winner screen: look for "NEW GAME" button hover
+  if (state.winner) {
+    pointer = { x: tipX, y: tipY, visible: gesture==='point' };
+    if (gesture==='point') {
+      const btn = getCanvasBtnAtPointer(tipX, tipY);
+      if (btn==='NEW GAME') {
+        if (gLastFired!=='newgame') {
+          if (!hoverPiece.startTime) hoverPiece={col:'btn',idx:-1,startTime:Date.now(),pct:0};
+          hoverPiece.pct = Math.min(1,(Date.now()-hoverPiece.startTime)/500);
+          document.getElementById('gesture-bar').style.width = Math.round(hoverPiece.pct*100)+'%';
+          if (hoverPiece.pct >= 1) { gLastFired='newgame'; newGame(); hoverPiece={col:null,idx:null,startTime:0,pct:0}; }
+        }
+      } else { hoverPiece={col:null,idx:null,startTime:0,pct:0}; document.getElementById('gesture-bar').style.width='0%'; }
+    }
+    drawBoard(); return;
+  }
+
+  // ── Main game gestures ──
+
+  // Fist = neutral, reset hold
+  if (gesture==='fist') {
+    lastGesture='fist'; gHoldFrames=0;
+    if (gLastFired==='roll') gLastFired=''; // ready for next palm
+    pointer.visible=false;
+    hoverPiece={col:null,idx:null,startTime:0,pct:0};
+    document.getElementById('gesture-bar').style.width='0%';
+    drawBoard(); return;
+  }
+
+  // Open palm → roll dice immediately
+  if (gesture==='open') {
+    pointer.visible=false;
+    hoverPiece={col:null,idx:null,startTime:0,pct:0};
+    document.getElementById('gesture-bar').style.width='0%';
+
+    if (lastGesture!=='open' && gLastFired!=='roll') {
+      gLastFired='roll';
+      lastGesture='open';
+      rollDice();
+    } else {
+      lastGesture='open';
+    }
+    drawBoard(); return;
+  }
+
+  // Pointing → piece selection
+  if (gesture==='point' && state.phase==='select' && state.rolled) {
+    pointer = { x: tipX, y: tipY, visible: true };
+    lastGesture='point'; gHoldFrames=0; gLastFired='';
+
+    const idx = getPieceAtPointer(tipX, tipY);
+    if (idx !== null) {
+      const col = COLS[state.turn];
+      if (hoverPiece.col===col && hoverPiece.idx===idx) {
+        // continue hovering
+        hoverPiece.pct = Math.min(1,(Date.now()-hoverPiece.startTime)/HOVER_MS);
+        document.getElementById('gesture-bar').style.width = Math.round(hoverPiece.pct*100)+'%';
+        if (hoverPiece.pct >= 1) {
+          // fire!
+          hoverPiece={col:null,idx:null,startTime:0,pct:0};
+          document.getElementById('gesture-bar').style.width='0%';
+          movePieceByIndex(idx);
+          return;
+        }
+      } else {
+        // new piece hover
+        hoverPiece={col, idx, startTime:Date.now(), pct:0};
+      }
+    } else {
+      hoverPiece={col:null,idx:null,startTime:0,pct:0};
+      document.getElementById('gesture-bar').style.width='0%';
+    }
+    drawBoard(); return;
+  }
+
+  // Pointing but in roll phase — show cursor only
+  if (gesture==='point') {
+    pointer = { x: tipX, y: tipY, visible: true };
+    hoverPiece={col:null,idx:null,startTime:0,pct:0};
+    document.getElementById('gesture-bar').style.width='0%';
+  } else {
+    pointer.visible=false;
+    hoverPiece={col:null,idx:null,startTime:0,pct:0};
+    gHoldFrames=0;
+    document.getElementById('gesture-bar').style.width='0%';
+  }
+  lastGesture=gesture;
+  drawBoard();
+}
+
+// ── Splash screen ──
+let splashPointStart = 0, splashPointPct = 0;
+
+function handleSplash(gesture, tipX, tipY) {
+  const splash = document.getElementById('splash');
+  const hint   = document.getElementById('splash-hint');
+  const sbar   = document.getElementById('splash-bar');
+  if (!splash) return;
+
+  if (gesture==='point') {
+    // Check if pointing at START area (center of splash)
+    // We treat whole splash as the target since it covers screen
+    if (splashPointStart===0) splashPointStart=Date.now();
+    splashPointPct = Math.min(1,(Date.now()-splashPointStart)/SPLASH_HOLD_MS);
+    sbar.style.width = Math.round(splashPointPct*100)+'%';
+    hint.textContent = `Hold ☝️ to start… ${Math.round(splashPointPct*100)}%`;
+    if (splashPointPct>=1) {
+      splash.style.display='none';
+      state.gameStarted=true;
+      newGame();
+    }
+  } else if (gesture==='open') {
+    splashPointStart=0; splashPointPct=0;
+    sbar.style.width='0%';
+    hint.textContent='Point ☝️ at the screen to start';
+  } else {
+    splashPointStart=0; splashPointPct=0;
+    sbar.style.width='0%';
+    hint.textContent=gesture==='fist'?'Release fist to start':'Point ☝️ at the screen to start';
+  }
+}
+
+// Auto-start camera
+async function startCamera() {
+  const hint = document.getElementById('splash-hint');
+  const status = document.getElementById('cam-status');
+  try {
+    mpHands = new Hands({ locateFile: f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    mpHands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.7, minTrackingConfidence:0.65 });
+    mpHands.onResults(onResults);
+
+    const video = document.getElementById('webcam');
+    mpCam = new Camera(video, {
+      onFrame: async () => { await mpHands.send({ image: video }); },
+      width: 320, height: 240
+    });
+    await mpCam.start();
+    status.textContent='✅ camera on';
+    hint.textContent='Point ☝️ at the screen to start';
+  } catch(e) {
+    status.textContent='❌ camera error';
+    hint.textContent='Camera error: '+e.message;
+  }
+}
+
+// Init
+resize();
+startCamera();
+
+// Update splash bar progress as loading
+let loadPct=0;
+const loadTimer=setInterval(()=>{
+  loadPct=Math.min(70,loadPct+5);
+  document.getElementById('splash-bar').style.width=loadPct+'%';
+},200);
+setTimeout(()=>clearInterval(loadTimer),3000);
+</script>
+</body>
+</html>

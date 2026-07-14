@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knife Hit — Hand Gesture</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+:root{--bg:#080c18;--panel:#0f1220;--border:#1e2340;--accent:#7c3aed;--cyan:#06b6d4;--green:#22c55e;--red:#ef4444;--yellow:#fbbf24;--text:#e2e8f0;--dim:#64748b;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;background:var(--bg);font-family:'Nunito',sans-serif;color:var(--text);overflow:hidden;user-select:none;}
+#root{width:100vw;height:100vh;display:grid;grid-template-columns:240px 1fr 200px;align-items:start;gap:0;padding:10px;}
+
+#camCol{display:flex;flex-direction:column;align-items:center;gap:9px;padding-top:2px;}
+#camWrap{position:relative;width:222px;height:167px;border-radius:14px;overflow:hidden;border:2px solid var(--border);background:#000;flex-shrink:0;}
+#video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;}
+#handCanvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);pointer-events:none;}
+#camPill{position:absolute;top:7px;left:7px;display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.75);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--dim);}
+#camDot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:all .3s;}
+#camDot.on{background:var(--green);box-shadow:0 0 8px var(--green);}
+#gestureBadge{background:var(--panel);border:2px solid var(--border);border-radius:12px;padding:8px 12px;font-family:'Fredoka One',cursive;font-size:14px;color:var(--accent);width:222px;text-align:center;min-height:42px;display:flex;align-items:center;justify-content:center;transition:color .2s,border-color .2s;}
+#gestureBadge.palm{color:var(--green);border-color:var(--green);}
+#gestureBadge.fist{color:var(--red);}
+#gestureBadge.point{color:var(--cyan);border-color:var(--cyan);}
+.legend{width:222px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
+.ltitle{font-family:'Fredoka One',cursive;font-size:10px;color:var(--cyan);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;}
+.leg{display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--dim);line-height:1.45;}
+.leg .ico{font-size:17px;width:22px;flex-shrink:0;}
+.leg strong{color:var(--text);display:block;}
+
+#gameCol{display:flex;flex-direction:column;align-items:center;gap:7px;}
+#gameTitle{font-family:'Fredoka One',cursive;font-size:24px;letter-spacing:4px;color:var(--accent);margin-top:4px;}
+#boardWrap{position:relative;}
+#gameCanvas{display:block;border-radius:14px;border:2px solid var(--border);}
+#comboPop{position:absolute;top:20%;left:50%;transform:translateX(-50%);font-family:'Fredoka One',cursive;font-size:22px;color:var(--yellow);pointer-events:none;opacity:0;z-index:30;white-space:nowrap;}
+
+#levelRow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:340px;}
+#levelLabel{font-family:'Fredoka One',cursive;font-size:12px;color:var(--dim);letter-spacing:1px;}
+.lvlBtn{width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);background:var(--panel);color:var(--dim);font-family:'Fredoka One',cursive;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;position:relative;overflow:hidden;}
+.lvlBtn:hover,.lvlBtn.hov{border-color:var(--accent);color:#c4b5fd;background:#1a0d30;}
+.lvlBtn.active{border-color:var(--green);color:var(--green);background:#0d1f14;}
+.lvlBtn .dwbar{position:absolute;bottom:0;left:0;height:3px;width:0%;background:var(--accent);border-radius:0 0 7px 7px;transition:width .05s linear;}
+
+#ctrlRow{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;}
+.ctrlBtn{padding:7px 14px;border-radius:9px;border:1.5px solid var(--border);background:var(--panel);color:var(--dim);font-family:'Fredoka One',cursive;font-size:13px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
+.ctrlBtn:hover{border-color:var(--accent);color:#c4b5fd;}
+.ctrlBtn .dwbar{position:absolute;bottom:0;left:0;height:3px;width:0%;background:var(--accent);border-radius:0 0 8px 8px;transition:width .05s linear;}
+
+#statsCol{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:2px;}
+.scard{width:168px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;text-align:center;}
+.scard .sl{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);display:block;margin-bottom:2px;}
+.scard .sv{font-family:'Fredoka One',cursive;font-size:26px;color:var(--accent);line-height:1;}
+.scard.g .sv{color:var(--green);}
+.scard.y .sv{color:var(--yellow);}
+.scard.r .sv{color:var(--red);}
+
+.screen{position:absolute;inset:0;border-radius:14px;background:rgba(8,12,24,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;z-index:20;padding:22px;}
+.screen h2{font-family:'Fredoka One',cursive;font-size:30px;text-align:center;letter-spacing:2px;}
+.screen .sub{color:var(--dim);font-size:12px;text-align:center;line-height:1.7;max-width:240px;}
+.screen .bigscore{font-family:'Fredoka One',cursive;font-size:50px;color:#fff;line-height:1;}
+.hidden{display:none!important;}
+.gbtn{position:relative;width:205px;height:50px;border-radius:12px;background:rgba(124,58,237,.1);border:2px solid rgba(124,58,237,.35);display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:16px;color:#a78bfa;overflow:hidden;cursor:pointer;transition:border-color .2s;}
+.gbtn:hover{border-color:var(--accent);}
+.gbtn .bar{position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(124,58,237,.4);transition:width .05s linear;border-radius:10px;}
+.gbtn .lbl{position:relative;z-index:1;}
+.gbtn.danger{border-color:rgba(239,68,68,.4);color:#fca5a5;}
+.gbtn.success{border-color:rgba(34,197,94,.4);color:#86efac;}
+.gbtn.success .bar{background:rgba(34,197,94,.35);}
+
+#pauseOverlay{position:absolute;inset:0;border-radius:14px;background:rgba(8,12,24,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:25;}
+#pauseOverlay h2{font-family:'Fredoka One',cursive;font-size:34px;color:var(--yellow);letter-spacing:3px;}
+
+#cursor{position:fixed;pointer-events:none;z-index:9999;display:none;transform:translate(-50%,-50%);}
+#cursorRing{width:34px;height:34px;border-radius:50%;border:2.5px solid var(--cyan);background:rgba(6,182,212,.1);}
+#cursorDot{width:7px;height:7px;border-radius:50%;background:var(--cyan);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+</style>
+</head>
+<body>
+<div id="root">
+
+  <div id="camCol">
+    <div id="camWrap">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="handCanvas"></canvas>
+      <div id="camPill"><div id="camDot"></div><span id="camTxt">Starting…</span></div>
+    </div>
+    <div id="gestureBadge">👋 Waiting for camera…</div>
+    <div class="legend">
+      <div class="ltitle">✋ Gesture guide</div>
+      <div class="leg"><span class="ico">✊</span><div><strong>Fist — hold back</strong>Nothing happens</div></div>
+      <div class="leg"><span class="ico">🖐</span><div><strong>Open palm — throw!</strong>Open hand to launch</div></div>
+      <div class="leg"><span class="ico">☝️</span><div><strong>One finger — select</strong>Point at buttons, hold 1s</div></div>
+    </div>
+  </div>
+
+  <div id="gameCol">
+    <div id="gameTitle">🔪 KNIFE HIT</div>
+    <div id="boardWrap">
+      <canvas id="gameCanvas"></canvas>
+      <div id="comboPop"></div>
+      <div class="screen" id="scStart">
+        <h2 style="color:#a78bfa">🔪 KNIFE HIT</h2>
+        <p class="sub">Throw all knives into the spinning log without hitting each other. Collect apples for bonus points!</p>
+        <div class="gbtn success" id="btn-start" data-action="start"><div class="bar" id="bar-btn-start"></div><span class="lbl">▶ Start Game</span></div>
+        <p class="sub" style="font-size:10px;margin-top:2px;">Point finger + hold 1s — or click</p>
+      </div>
+      <div class="screen hidden" id="scOver">
+        <h2 style="color:var(--red)">💥 Game Over</h2>
+        <div class="bigscore" id="finalScore">0</div>
+        <p class="sub">You hit a stuck knife!</p>
+        <div class="gbtn" id="btn-again" data-action="restart"><div class="bar" id="bar-btn-again"></div><span class="lbl">🔄 Play Again</span></div>
+        <div class="gbtn danger" id="btn-menu-over" data-action="menu"><div class="bar" id="bar-btn-menu-over"></div><span class="lbl">🏠 Main Menu</span></div>
+      </div>
+      <div class="screen hidden" id="scWin">
+        <h2 style="color:var(--green)">🎉 Level Clear!</h2>
+        <div class="bigscore" id="winScore">0</div>
+        <p class="sub" id="winSub">Great job!</p>
+        <div class="gbtn success" id="btn-next" data-action="next"><div class="bar" id="bar-btn-next"></div><span class="lbl">⏩ Next Level</span></div>
+        <div class="gbtn danger" id="btn-menu-win" data-action="menu"><div class="bar" id="bar-btn-menu-win"></div><span class="lbl">🏠 Main Menu</span></div>
+      </div>
+      <div id="pauseOverlay" class="hidden">
+        <h2>⏸ PAUSED</h2>
+        <div class="gbtn success" id="btn-resume" data-action="resume"><div class="bar" id="bar-btn-resume"></div><span class="lbl">▶ Resume</span></div>
+        <div class="gbtn" id="btn-restart-pause" data-action="restart"><div class="bar" id="bar-btn-restart-pause"></div><span class="lbl">🔄 Restart Level</span></div>
+        <div class="gbtn danger" id="btn-menu-pause" data-action="menu"><div class="bar" id="bar-btn-menu-pause"></div><span class="lbl">🏠 Main Menu</span></div>
+      </div>
+    </div>
+    <div id="levelRow">
+      <span id="levelLabel">LVL:</span>
+      <div class="lvlBtn active" data-lvl="1">1<div class="dwbar"></div></div>
+      <div class="lvlBtn" data-lvl="2">2<div class="dwbar"></div></div>
+      <div class="lvlBtn" data-lvl="3">3<div class="dwbar"></div></div>
+      <div class="lvlBtn" data-lvl="4">4<div class="dwbar"></div></div>
+      <div class="lvlBtn" data-lvl="5">5<div class="dwbar"></div></div>
+      <div class="lvlBtn" data-lvl="6">6<div class="dwbar"></div></div>
+      <div class="lvlBtn" data-lvl="7">7<div class="dwbar"></div></div>
+      <div class="lvlBtn" data-lvl="8">8<div class="dwbar"></div></div>
+    </div>
+    <div id="ctrlRow">
+      <button class="ctrlBtn" data-action="start">▶ Start<div class="dwbar"></div></button>
+      <button class="ctrlBtn" data-action="pause">⏸ Pause<div class="dwbar"></div></button>
+      <button class="ctrlBtn" data-action="resume">▶ Resume<div class="dwbar"></div></button>
+      <button class="ctrlBtn" data-action="restart">🔄 Restart<div class="dwbar"></div></button>
+      <button class="ctrlBtn" data-action="menu">🏠 Menu<div class="dwbar"></div></button>
+    </div>
+  </div>
+
+  <div id="statsCol">
+    <div class="scard"><span class="sl">Score</span><div class="sv" id="elScore">0</div></div>
+    <div class="scard g"><span class="sl">Best</span><div class="sv" id="elBest">0</div></div>
+    <div class="scard y"><span class="sl">Knives Left</span><div class="sv" id="elKnives">—</div></div>
+    <div class="scard"><span class="sl">Level</span><div class="sv" id="elLevel">1</div></div>
+    <div class="scard r"><span class="sl">Apples</span><div class="sv" id="elApples">0</div></div>
+    <div class="scard" style="margin-top:2px;"><span class="sl">Status</span><div class="sv" id="elStatus" style="font-size:14px;color:var(--dim);">Ready</div></div>
+  </div>
+</div>
+
+<div id="cursor"><div id="cursorRing"></div><div id="cursorDot"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script>
+const GC  = document.getElementById('gameCanvas');
+const ctx = GC.getContext('2d');
+const W=320, H=460; GC.width=W; GC.height=H;
+const CX=W/2, CY=185, LOG_R=84;
+
+const LEVELS=[
+  {speed:0.018,knives:7, apples:0,phase:false,zigzag:false,label:'Warm Up'},
+  {speed:0.026,knives:8, apples:1,phase:false,zigzag:false,label:'Spicy'},
+  {speed:0.034,knives:9, apples:1,phase:true, zigzag:false,label:'Phase Shift'},
+  {speed:0.044,knives:10,apples:2,phase:true, zigzag:false,label:'Pick Up'},
+  {speed:0.055,knives:11,apples:2,phase:true, zigzag:true, label:'Zigzag'},
+  {speed:0.067,knives:12,apples:2,phase:true, zigzag:true, label:'Fast & Furious'},
+  {speed:0.082,knives:13,apples:3,phase:true, zigzag:true, label:'Insane'},
+  {speed:0.100,knives:14,apples:3,phase:true, zigzag:true, label:'God Mode'},
+];
+
+let level=1,best=+(localStorage.getItem('kh_best')||0);
+let score=0,applesHit=0;
+let logAngle=0,logSpeed=0,logBaseSpeed=0,logDir=1;
+let phaseTimer=0,zigzagT=0;
+let stuckKnives=[],apples=[];
+let totalKnives=7,knivesLeft=7;
+let alive=false,paused=false,gameOver=false,won=false;
+let flying=false,flyY=0;
+const FLY_SPEED=28;
+let particles=[];
+let throwCD=0,frameT=0;
+
+document.getElementById('elBest').textContent=best;
+const cfg=()=>LEVELS[Math.min(level-1,LEVELS.length-1)];
+function angleDiff(a,b){let d=Math.abs((a-b+Math.PI*4)%(Math.PI*2));return d>Math.PI?Math.PI*2-d:d;}
+const $=id=>document.getElementById(id);
+const hide=id=>$(id).classList.add('hidden');
+const show=id=>$(id).classList.remove('hidden');
+function setStatus(t){$('elStatus').textContent=t;}
+function setLevel(l){
+  level=l;
+  document.querySelectorAll('.lvlBtn').forEach(b=>b.classList.toggle('active',+b.dataset.lvl===l));
+  $('elLevel').textContent=l;
+}
+function hideAllScreens(){['scStart','scOver','scWin','pauseOverlay'].forEach(hide);}
+function updateHUD(){
+  $('elScore').textContent=score;
+  $('elKnives').textContent=knivesLeft;
+  $('elApples').textContent=applesHit;
+  if(score>best){best=score;localStorage.setItem('kh_best',best);$('elBest').textContent=best;}
+}
+
+function startGame(){
+  const c=cfg();
+  logDir=Math.random()<.5?1:-1;
+  logBaseSpeed=c.speed; logSpeed=logBaseSpeed*logDir;
+  logAngle=0;phaseTimer=0;zigzagT=0;
+  totalKnives=c.knives;knivesLeft=c.knives;
+  stuckKnives=[];apples=[];particles=[];
+  flying=false;score=0;applesHit=0;
+  gameOver=false;won=false;paused=false;alive=true;throwCD=0;
+  spawnApples(c.apples);
+  hideAllScreens();updateHUD();
+  setStatus('Playing Lvl '+level+': '+c.label);
+  $('elLevel').textContent=level;
+}
+function pauseGame(){if(!alive||gameOver||won)return;paused=true;show('pauseOverlay');setStatus('Paused');}
+function resumeGame(){paused=false;hide('pauseOverlay');setStatus('Playing');}
+function goMenu(){alive=false;paused=false;gameOver=false;won=false;hideAllScreens();show('scStart');setStatus('Ready');}
+
+function doAction(a){
+  if(a==='start'||a==='restart') startGame();
+  else if(a==='next'){if(level<8)setLevel(level+1);else setLevel(1);startGame();}
+  else if(a==='pause') pauseGame();
+  else if(a==='resume') resumeGame();
+  else if(a==='menu') goMenu();
+}
+
+function spawnApples(n){
+  for(let i=0;i<n;i++){
+    let tries=0,angle;
+    do{angle=Math.random()*Math.PI*2;tries++;}
+    while(tries<50&&stuckKnives.some(k=>angleDiff(k.angle,-angle)<0.45));
+    apples.push({angle,bob:Math.random()*Math.PI*2});
+  }
+}
+
+function doThrow(){
+  if(!alive||flying||knivesLeft<=0||gameOver||won||paused)return;
+  flying=true;flyY=H-44;throwCD=20;
+}
+
+function landKnife(){
+  flying=false;
+  const landAngle=-logAngle;
+  for(const k of stuckKnives){
+    if(angleDiff(k.angle,landAngle)<0.18){triggerGameOver();return;}
+  }
+  let hit=-1;
+  for(let i=0;i<apples.length;i++){
+    if(angleDiff(apples[i].angle,landAngle)<0.26){hit=i;break;}
+  }
+  if(hit>=0){
+    apples.splice(hit,1);applesHit++;score+=50;showCombo('🍎 +50!');
+    spawnParticles(CX+Math.sin(-logAngle)*(LOG_R+20),CY-Math.cos(-logAngle)*(LOG_R+20),'#fc8181',18);
+  }
+  stuckKnives.push({angle:landAngle});
+  spawnParticles(CX+Math.sin(-logAngle)*(LOG_R+10),CY-Math.cos(-logAngle)*(LOG_R+10),'#a78bfa',10);
+  knivesLeft--;score+=10+level*4;updateHUD();
+  if(knivesLeft===0)setTimeout(()=>triggerWin(),350);
+}
+
+function triggerGameOver(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
+  alive=false;gameOver=true;
+  spawnParticles(CX,CY,'#ef4444',32);
+  setTimeout(()=>{hideAllScreens();$('finalScore').textContent=score;show('scOver');setStatus('Game Over');},500);
+}
+function triggerWin(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
+  alive=false;won=true;
+  $('winScore').textContent=score;
+  const isLast=level>=8;
+  $('winSub').textContent=isLast?'🏆 All 8 levels cleared! Legend!':'Ready for level '+(level+1)+'?';
+  $('btn-next').querySelector('.lbl').textContent=isLast?'🔁 Play Again':'⏩ Next Level';
+  hideAllScreens();show('scWin');setStatus('Level Clear!');
+}
+function showCombo(text){
+  const el=$('comboPop');el.textContent=text;
+  el.style.cssText='opacity:1;transition:none;transform:translateX(-50%) scale(1.25);';
+  setTimeout(()=>{el.style.cssText='opacity:0;transition:opacity .6s,transform .6s;transform:translateX(-50%) translateY(-30px) scale(1);';},380);
+}
+function spawnParticles(x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,sp=2+Math.random()*5;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-2,life:1,color,size:2+Math.random()*3});
+  }
+}
+function tickParticles(){
+  particles=particles.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.life-=0.03;
+    ctx.save();ctx.globalAlpha=p.life*p.life;
+    ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+    ctx.restore();return p.life>0;
+  });
+}
+
+// ─────────────────────────────────────────────────────
+//  DRAWING
+// ─────────────────────────────────────────────────────
+function drawLog(){
+  ctx.save();ctx.translate(CX,CY);ctx.rotate(logAngle);
+  ctx.beginPath();ctx.arc(3,5,LOG_R+4,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fill();
+  ctx.beginPath();ctx.arc(0,0,LOG_R,0,Math.PI*2);
+  ctx.fillStyle='#7a4520';ctx.fill();
+  for(const r of [56,70,LOG_R]){
+    ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.strokeStyle=r===LOG_R?'#3d1f08':'rgba(0,0,0,.2)';
+    ctx.lineWidth=r===LOG_R?2.5:1.5;ctx.stroke();
+  }
+  for(let a=0;a<Math.PI*2;a+=Math.PI/9){
+    ctx.beginPath();ctx.moveTo(Math.cos(a)*16,Math.sin(a)*16);
+    ctx.lineTo(Math.cos(a)*(LOG_R-5),Math.sin(a)*(LOG_R-5));
+    ctx.strokeStyle='rgba(0,0,0,.1)';ctx.lineWidth=0.8;ctx.stroke();
+  }
+  ctx.beginPath();ctx.arc(-22,-26,28,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,.05)';ctx.fill();
+  ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);
+  ctx.fillStyle='#5a2e10';ctx.fill();
+  ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);
+  ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────
+//  drawKnife — VERIFIED GEOMETRY
+//
+//  tipX,tipY : the point where the blade touches the log surface
+//  outAngle  : the angle of the outward radial direction at that point
+//              (same as worldAngle of the stuck knife)
+//
+//  We translate to tipX,tipY, then rotate so that local +Y points INWARD
+//  (toward log centre). The blade occupies +Y (inward), handle occupies -Y (outward).
+//  So:  rotate = outAngle + PI
+// ─────────────────────────────────────────────────────
+function drawKnife(tipX, tipY, outAngle, alpha){
+  alpha=alpha===undefined?1:alpha;
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.translate(tipX,tipY);
+  // outAngle points away from centre; +PI makes +Y point INWARD
+  ctx.rotate(outAngle+Math.PI);
+
+  const BL=40; // blade length going inward (+Y)
+  const GW=6;  // blade width at guard
+  const HL=28; // handle length going outward (-Y)
+
+  // Blade: tip at origin (0,0), widens toward guard at (0,BL)
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.lineTo(-GW/2,BL*0.65);
+  ctx.lineTo(-GW/2,BL);
+  ctx.lineTo( GW/2,BL);
+  ctx.lineTo( GW/2,BL*0.65);
+  ctx.closePath();
+  ctx.fillStyle='#d4d4e8';ctx.fill();
+  ctx.strokeStyle='#888';ctx.lineWidth=0.7;ctx.stroke();
+
+  // blade shine
+  ctx.beginPath();ctx.moveTo(-1,2);ctx.lineTo(-2.8,BL*0.6);
+  ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=1.2;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(2,4);ctx.lineTo(2,BL*0.55);
+  ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=0.8;ctx.stroke();
+
+  // guard (sits at BL, straddles blade/handle junction)
+  ctx.fillStyle='#777';
+  ctx.fillRect(-GW/2-2,BL-1,GW+4,5);
+  ctx.fillStyle='#555';
+  ctx.fillRect(-GW/2-2,BL-1,GW+4,1.5);
+
+  // handle goes in -Y direction (outward from log)
+  ctx.fillStyle='#5c3010';
+  ctx.fillRect(-GW/2+0.5,-(HL+4),GW-1,HL);
+
+  // handle grooves
+  for(let i=0;i<3;i++){
+    ctx.fillStyle='rgba(0,0,0,.3)';
+    ctx.fillRect(-GW/2+0.5,-(HL+4)+6+i*7,GW-1,2.5);
+  }
+
+  // pommel
+  ctx.fillStyle='#3d1f08';
+  ctx.fillRect(-GW/2,-(HL+8),GW,4);
+
+  ctx.restore();
+}
+
+// Stuck knives: blade goes into log, handle sticks out
+function drawStuckKnives(){
+  for(const k of stuckKnives){
+    const worldAngle=k.angle+logAngle;
+    // tip = point on log surface in direction worldAngle
+    const tipX=CX+Math.sin(worldAngle)*LOG_R;
+    const tipY=CY-Math.cos(worldAngle)*LOG_R;
+    drawKnife(tipX,tipY,worldAngle);
+  }
+}
+
+// Flying knife: comes from bottom, moving upward toward log
+// When it lands its tip will be at the top of the knife
+// So: tip at flyY (top), handle below
+// outAngle for a knife coming from bottom = Math.PI (pointing downward = away from top)
+// But we want blade pointing UP (inward toward log which is above)
+// outAngle=0 means outward = up (+Y up in world = -Y in canvas)
+// For a knife flying from bottom: the "outward" direction is DOWN = Math.PI
+// So rotate = Math.PI + Math.PI = 0 ... meaning +Y of knife points up = toward log. Correct!
+function drawFlyingKnife(){
+  if(!flying)return;
+  // tip at top (flyY), handle below
+  // outAngle=Math.PI (handle points down, which is outward from a log above)
+  drawKnife(CX,flyY,Math.PI);
+}
+
+function drawApple(ap){
+  const wa=ap.angle+logAngle;
+  const dist=LOG_R+20;
+  const ax=CX+Math.sin(wa)*dist, ay=CY-Math.cos(wa)*dist;
+  const bob=Math.sin(frameT*0.003+ap.bob)*1.5;
+  ctx.save();ctx.translate(ax,ay+bob);
+  ctx.beginPath();ctx.ellipse(0,12,8,3,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,.22)';ctx.fill();
+  ctx.beginPath();ctx.arc(0,0,11,0,Math.PI*2);
+  ctx.fillStyle='#dc2626';ctx.fill();
+  ctx.strokeStyle='#991b1b';ctx.lineWidth=1.2;ctx.stroke();
+  ctx.beginPath();ctx.arc(-3,-3,4,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,.28)';ctx.fill();
+  ctx.strokeStyle='#78350f';ctx.lineWidth=2;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(2,-17);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(4,-15,5,3,0.5,0,Math.PI*2);
+  ctx.fillStyle='#16a34a';ctx.fill();
+  ctx.restore();
+}
+
+function drawQueueKnives(){
+  if(knivesLeft<=0)return;
+  const spacing=Math.min(22,(W-40)/Math.max(knivesLeft,1));
+  const startX=CX-(knivesLeft-1)*spacing/2;
+  for(let i=0;i<knivesLeft;i++){
+    const x=startX+i*spacing;
+    ctx.save();ctx.translate(x,H-22);
+    ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(-4,5);ctx.lineTo(4,5);ctx.closePath();
+    ctx.fillStyle=i===0?'#a78bfa':'#2e2e50';ctx.fill();
+    ctx.restore();
+  }
+}
+
+function render(ts){
+  frameT=ts||0;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0d0d1f';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,.022)';
+  for(let gx=25;gx<W;gx+=32)for(let gy=25;gy<H;gy+=32){
+    ctx.beginPath();ctx.arc(gx,gy,1,0,Math.PI*2);ctx.fill();
+  }
+
+  if(alive||gameOver){
+    if(alive&&!paused){
+      logAngle+=logSpeed;
+      if(cfg().phase){phaseTimer++;if(phaseTimer>200){logSpeed=-logSpeed;phaseTimer=0;}}
+      if(cfg().zigzag){zigzagT+=0.04;logSpeed=Math.sign(logSpeed)*logBaseSpeed*(1+0.6*Math.abs(Math.sin(zigzagT)));}
+      if(flying){flyY-=FLY_SPEED;if(flyY<=CY-LOG_R-4)landKnife();}
+      if(throwCD>0)throwCD--;
+    }
+    drawLog();
+    for(const ap of apples)drawApple(ap);
+    drawStuckKnives();
+    if(!gameOver&&!won)drawQueueKnives();
+    if(flying)drawFlyingKnife();
+    tickParticles();
+    ctx.font='700 12px Nunito,sans-serif';ctx.textAlign='center';
+    ctx.fillStyle='rgba(167,139,250,.7)';
+    ctx.fillText('Level '+level+' — '+cfg().label+' — Score '+score,CX,20);
+  }
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+document.querySelectorAll('[data-action]').forEach(el=>{el.addEventListener('click',()=>doAction(el.dataset.action));});
+document.querySelectorAll('.lvlBtn').forEach(b=>{b.addEventListener('click',()=>setLevel(+b.dataset.lvl));});
+
+// ─────────────────────────────────────────────────────
+//  GESTURE ENGINE
+// ─────────────────────────────────────────────────────
+const video=document.getElementById('video');
+const hCanvas=document.getElementById('handCanvas');
+const hctx=hCanvas.getContext('2d');
+const badge=document.getElementById('gestureBadge');
+const cursor=document.getElementById('cursor');
+let smX=null,smY=null;
+const SM=0.3;
+function sm(c,p){return p===null?c:p*(1-SM)+c*SM;}
+function fingerUp(lm,tip,pip,mcp){return lm[tip].y<lm[pip].y&&lm[pip].y<lm[mcp].y;}
+function classify(lm){
+  const idx=fingerUp(lm,8,6,5),mid=fingerUp(lm,12,10,9);
+  const ring=fingerUp(lm,16,14,13),pink=fingerUp(lm,20,18,17);
+  const thumb=lm[4].y<lm[2].y-0.04;
+  const up=[idx,mid,ring,pink].filter(Boolean).length;
+  if(up>=3)return{g:'palm'};
+  if(up===0&&!thumb)return{g:'fist'};
+  if(up===1&&idx)return{g:'point',fx:(1-lm[8].x)*window.innerWidth,fy:lm[8].y*window.innerHeight};
+  return{g:'other'};
+}
+function drawSkeleton(lm){
+  const W=hCanvas.width,H=hCanvas.height,p=i=>({x:lm[i].x*W,y:lm[i].y*H});
+  const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  hctx.strokeStyle='rgba(124,58,237,.6)';hctx.lineWidth=2;
+  for(const[a,b] of CONN){const p1=p(a),p2=p(b);hctx.beginPath();hctx.moveTo(p1.x,p1.y);hctx.lineTo(p2.x,p2.y);hctx.stroke();}
+  for(let i=0;i<21;i++){
+    const pt=p(i),r=i===8?9:i===4?7:i===0?5:3.5;
+    const col=i===8?'#06b6d4':i===4?'#f97316':i===0?'#7c3aed':'rgba(175,125,255,.85)';
+    hctx.beginPath();hctx.arc(pt.x,pt.y,r,0,Math.PI*2);hctx.fillStyle=col;hctx.fill();
+  }
+}
+const DWELL=1000;
+let btnDwell={el:null,start:0,done:false};
+let lvlDwell={idx:-1,start:0,done:false};
+let ctrlDwell={el:null,start:0,done:false};
+function processBtnDwell(el){
+  if(el!==btnDwell.el){if(btnDwell.el){const b=document.getElementById('bar-'+btnDwell.el.id);if(b)b.style.width='0%';}btnDwell={el,start:Date.now(),done:false};}
+  if(!el||btnDwell.done)return;
+  const pct=Math.min((Date.now()-btnDwell.start)/DWELL*100,100);
+  const bar=document.getElementById('bar-'+el.id);if(bar)bar.style.width=pct+'%';
+  if(pct>=100){btnDwell.done=true;doAction(el.dataset.action);setTimeout(()=>{if(bar)bar.style.width='0%';},400);}
+}
+function processLvlDwell(idx){
+  const btns=document.querySelectorAll('.lvlBtn');
+  if(idx!==lvlDwell.idx){if(lvlDwell.idx>=0){const ob=btns[lvlDwell.idx];if(ob){ob.querySelector('.dwbar').style.width='0%';ob.classList.remove('hov');}}lvlDwell={idx,start:Date.now(),done:false};}
+  if(idx<0||lvlDwell.done)return;
+  const pct=Math.min((Date.now()-lvlDwell.start)/DWELL*100,100);
+  const btn=btns[idx];if(btn){btn.querySelector('.dwbar').style.width=pct+'%';btn.classList.add('hov');}
+  if(pct>=100&&!lvlDwell.done){lvlDwell.done=true;setLevel(idx+1);btns.forEach(b=>{b.querySelector('.dwbar').style.width='0%';b.classList.remove('hov');});}
+}
+function processCtrlDwell(el){
+  if(el!==ctrlDwell.el){if(ctrlDwell.el)ctrlDwell.el.querySelector('.dwbar').style.width='0%';ctrlDwell={el,start:Date.now(),done:false};}
+  if(!el||ctrlDwell.done)return;
+  const pct=Math.min((Date.now()-ctrlDwell.start)/DWELL*100,100);
+  el.querySelector('.dwbar').style.width=pct+'%';
+  if(pct>=100){ctrlDwell.done=true;doAction(el.dataset.action);setTimeout(()=>{el.querySelector('.dwbar').style.width='0%';},400);}
+}
+function getHit(x,y){
+  for(const b of document.querySelectorAll('.gbtn')){
+    const par=b.closest('.screen,#pauseOverlay');if(par&&par.classList.contains('hidden'))continue;
+    const r=b.getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return{type:'gbtn',el:b};
+  }
+  for(const b of document.querySelectorAll('.ctrlBtn')){
+    const r=b.getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return{type:'ctrl',el:b};
+  }
+  const lvlBtns=document.querySelectorAll('.lvlBtn');
+  for(let i=0;i<lvlBtns.length;i++){
+    const r=lvlBtns[i].getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return{type:'lvl',idx:i};
+  }
+  return null;
+}
+let lastPalm=false,lastFireT=0;
+const FIRE_GAP=420;
+function onHandResults(res){
+  hctx.clearRect(0,0,hCanvas.width,hCanvas.height);
+  if(!res.multiHandLandmarks||!res.multiHandLandmarks.length){
+    badge.textContent='👋 Show your hand…';badge.className='';
+    cursor.style.display='none';
+    processBtnDwell(null);processLvlDwell(-1);processCtrlDwell(null);
+    lastPalm=false;return;
+  }
+  const lm=res.multiHandLandmarks[0];
+  drawSkeleton(lm);
+  const g=classify(lm);
+  const LABELS={palm:'🖐 Open palm — THROW!',fist:'✊ Fist — holding',point:'☝️ Pointing — select',other:'✋ Hand visible'};
+  badge.textContent=LABELS[g.g]||'✋';badge.className=g.g;
+  if(g.g==='palm'){
+    cursor.style.display='none';
+    processBtnDwell(null);processLvlDwell(-1);processCtrlDwell(null);
+    if(!lastPalm&&Date.now()-lastFireT>FIRE_GAP){
+      lastFireT=Date.now();
+      if(!alive&&!gameOver&&!won)startGame();
+      else if(gameOver)startGame();
+      else if(won){if(level<8)setLevel(level+1);else setLevel(1);startGame();}
+      else if(paused)resumeGame();
+      else if(throwCD===0&&!flying)doThrow();
+    }
+    lastPalm=true;
+  } else if(g.g==='fist'){
+    cursor.style.display='none';
+    processBtnDwell(null);processLvlDwell(-1);processCtrlDwell(null);
+    lastPalm=false;
+  } else if(g.g==='point'){
+    lastPalm=false;
+    smX=sm(g.fx,smX);smY=sm(g.fy,smY);
+    cursor.style.display='block';
+    cursor.style.left=smX+'px';cursor.style.top=smY+'px';
+    const hit=getHit(smX,smY);
+    if(hit&&hit.type==='gbtn'){processBtnDwell(hit.el);processLvlDwell(-1);processCtrlDwell(null);}
+    else if(hit&&hit.type==='ctrl'){processCtrlDwell(hit.el);processBtnDwell(null);processLvlDwell(-1);}
+    else if(hit&&hit.type==='lvl'){processLvlDwell(hit.idx);processBtnDwell(null);processCtrlDwell(null);}
+    else{processBtnDwell(null);processLvlDwell(-1);processCtrlDwell(null);}
+  } else{
+    lastPalm=false;cursor.style.display='none';
+    processBtnDwell(null);processLvlDwell(-1);processCtrlDwell(null);
+  }
+}
+(async function(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
+    video.srcObject=stream;await video.play();
+    hCanvas.width=video.videoWidth||640;hCanvas.height=video.videoHeight||480;
+    $('camDot').classList.add('on');$('camTxt').textContent='Live';
+    badge.textContent='✋ Ready — show your hand!';
+    const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:0.75,minTrackingConfidence:0.65});
+    hands.onResults(onHandResults);
+    async function tick(){if(video.readyState>=2)await hands.send({image:video});requestAnimationFrame(tick);}
+    tick();
+  }catch(e){
+    $('camDot').style.background='#f97316';$('camTxt').textContent='Denied';
+    badge.textContent='⚠️ Camera denied — use buttons to play';
+  }
+})();
+</script>
+</body>
+</html>

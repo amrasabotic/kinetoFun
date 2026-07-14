@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connect 4 — Gesture Edition</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --p1:#ef4444;--p1g:rgba(239,68,68,.6);--p1l:#f87171;
+  --p2:#f59e0b;--p2g:rgba(245,158,11,.6);--p2l:#fde68a;
+  --bb:#1e3a8a;--bb2:#2563eb;
+  --ce:#060d1f;--bg:#04091a;
+  --sf:rgba(255,255,255,.04);--bd:rgba(255,255,255,.1);
+  --tx:#f1f5f9;--tm:#64748b;
+}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;height:100vh;width:100vw;overflow:hidden;display:flex;align-items:center;justify-content:center}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(37,99,235,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.05) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+
+/* camera */
+#cam-wrap{position:fixed;bottom:16px;right:16px;width:210px;height:158px;border-radius:14px;overflow:hidden;border:1.5px solid rgba(37,99,235,.4);background:#000;z-index:200;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+#video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+#hc{position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(-1);pointer-events:none}
+#cam-lbl{position:absolute;bottom:6px;left:8px;font-size:10px;color:rgba(255,255,255,.45);letter-spacing:.5px;text-transform:uppercase}
+
+/* track status */
+#track{position:fixed;top:14px;right:14px;display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.7);border:1px solid var(--bd);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--tm);z-index:300;backdrop-filter:blur(8px)}
+.dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0}
+.dot.on{background:#22c55e;animation:blink 1.5s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* game */
+#game-area{display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;z-index:10}
+#header{display:flex;align-items:baseline;gap:12px}
+#title{font-size:28px;font-weight:800;letter-spacing:2px;color:#fff}
+#title span{color:var(--bb2)}
+.badge{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#60a5fa;background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.3);border-radius:6px;padding:3px 9px}
+
+/* turn bar */
+#turn-bar{display:flex;align-items:center;gap:10px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:8px 18px}
+.pchip{display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:8px;font-size:14px;font-weight:600;transition:all .25s;opacity:.35;border:1px solid transparent}
+.pchip.active{opacity:1}
+#p1c{color:var(--p1)}.#p1c.active{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25)}
+#p2c{color:var(--p2)}
+#p1c.active{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25)}
+#p2c.active{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25)}
+.cdisc{width:16px;height:16px;border-radius:50%;flex-shrink:0}
+.d1{background:var(--p1)}.d2{background:var(--p2)}
+.vdiv{width:1px;height:28px;background:var(--bd);margin:0 4px}
+#col-lbl{font-size:13px;color:var(--tm)}
+#col-val{font-size:16px;font-weight:700;color:#fff;min-width:24px;text-align:center}
+
+/* board */
+#bwrap{position:relative}
+#cursor{position:absolute;width:62px;height:62px;border-radius:50%;top:-72px;opacity:0;transition:left .08s ease-out,opacity .2s;pointer-events:none}
+#cursor.vis{opacity:.9}
+#colbtns{position:absolute;top:-38px;left:0;display:flex;gap:6px;padding:0 12px}
+.ctap{width:64px;height:28px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;border-radius:5px;transition:all .15s;font-family:inherit}
+.ctap:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)}
+.ctap.sel{color:rgba(255,255,255,.7);background:rgba(255,255,255,.08)}
+#board{display:grid;grid-template-columns:repeat(7,64px);grid-template-rows:repeat(6,64px);gap:6px;background:var(--bb);padding:12px;border-radius:16px;border:2px solid var(--bb2);position:relative}
+.cell{width:64px;height:64px;border-radius:50%;transition:transform .2s,box-shadow .2s;cursor:pointer}
+.cell.empty{background:var(--ce);box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.cell.p1{background:radial-gradient(circle at 38% 32%,var(--p1l),var(--p1));box-shadow:0 0 14px var(--p1g),inset 0 -2px 4px rgba(0,0,0,.3)}
+.cell.p2{background:radial-gradient(circle at 38% 32%,var(--p2l),var(--p2));box-shadow:0 0 14px var(--p2g),inset 0 -2px 4px rgba(0,0,0,.3)}
+.cell.drop-in{animation:dropIn .3s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes dropIn{from{transform:scale(.4);opacity:.2}to{transform:scale(1);opacity:1}}
+.cell.wf{animation:wf .65s ease-in-out infinite alternate}
+@keyframes wf{from{transform:scale(1);filter:brightness(1)}to{transform:scale(1.09);filter:brightness(1.4)}}
+
+/* guide */
+#guide{display:flex;gap:10px}
+.gpill{display:flex;align-items:center;gap:7px;background:var(--sf);border:1px solid var(--bd);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--tm)}
+.gpill .e{font-size:16px}
+
+/* toast */
+#toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-10px);background:rgba(5,15,40,.92);border:1px solid rgba(255,255,255,.15);border-radius:22px;padding:10px 22px;font-size:15px;font-weight:600;color:#fff;opacity:0;transition:opacity .25s,transform .25s;z-index:400;pointer-events:none;backdrop-filter:blur(10px);white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── OVERLAY — pure gesture, no buttons ── */
+#overlay{position:fixed;inset:0;background:rgba(4,9,26,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;z-index:500;backdrop-filter:blur(12px)}
+#overlay.hidden{display:none}
+#ov-title{font-size:54px;font-weight:900;letter-spacing:3px;color:#fff;text-align:center}
+#ov-sub{font-size:17px;color:var(--tm)}
+
+/* SVG ring countdown */
+#ring-wrap{position:relative;width:140px;height:140px;display:flex;align-items:center;justify-content:center}
+#ring-svg{position:absolute;inset:0;transform:rotate(-90deg)}
+#ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:6}
+#ring-fill{fill:none;stroke:#2563eb;stroke-width:6;stroke-linecap:round;stroke-dasharray:345;stroke-dashoffset:345;transition:stroke-dashoffset .08s linear}
+#ring-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;z-index:1}
+#ring-emoji{font-size:42px;line-height:1}
+#ring-pct{font-size:13px;font-weight:700;color:#60a5fa;letter-spacing:1px}
+
+/* gesture instruction cards */
+.ov-cards{display:flex;gap:14px;margin-top:4px}
+.ov-card{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 20px;min-width:100px}
+.ov-card .ec{font-size:28px}
+.ov-card .lbl{font-size:12px;color:var(--tm);text-align:center;line-height:1.3}
+.ov-card.active-card{border-color:rgba(37,99,235,.5);background:rgba(37,99,235,.1)}
+
+#waiting-msg{font-size:14px;color:#475569;text-align:center;min-height:20px}
+</style>
+</head>
+<body>
+
+<div id="track"><div class="dot" id="dot"></div><span id="track-txt">Starting camera…</span></div>
+<div id="toast"></div>
+
+<div id="cam-wrap">
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="hc"></canvas>
+  <div id="cam-lbl">Hand Tracking</div>
+</div>
+
+<div id="game-area">
+  <div id="header"><div id="title">Connect <span>4</span></div><div class="badge">Gesture Only</div></div>
+  <div id="turn-bar">
+    <div class="pchip active" id="p1c"><div class="cdisc d1"></div>Player 1</div>
+    <div class="vdiv"></div>
+    <div class="pchip" id="p2c"><div class="cdisc d2"></div>Player 2</div>
+    <div class="vdiv"></div>
+    <span id="col-lbl">Col</span><span id="col-val">—</span>
+  </div>
+  <div id="bwrap">
+    <div id="cursor"></div>
+    <div id="colbtns"></div>
+    <div id="board"></div>
+  </div>
+  <div id="guide">
+    <div class="gpill"><span class="e">☝️</span>Point → column</div>
+    <div class="gpill"><span class="e">✊</span>Fist → drop</div>
+    <div class="gpill"><span class="e">✋</span>Open hand → restart</div>
+  </div>
+</div>
+
+<!-- GESTURE-ONLY OVERLAY — no buttons -->
+<div id="overlay">
+  <div id="ov-title">Connect 4</div>
+  <div id="ov-sub">Hand Gesture Edition</div>
+
+  <div id="ring-wrap">
+    <svg id="ring-svg" viewBox="0 0 120 120" width="140" height="140">
+      <circle id="ring-bg" cx="60" cy="60" r="54"/>
+      <circle id="ring-fill" cx="60" cy="60" r="54"/>
+    </svg>
+    <div id="ring-inner">
+      <div id="ring-emoji">✋</div>
+      <div id="ring-pct">HOLD</div>
+    </div>
+  </div>
+
+  <div id="waiting-msg">Show your open hand to the camera to start</div>
+
+  <div class="ov-cards">
+    <div class="ov-card active-card" id="card-open">
+      <div class="ec">✋</div>
+      <div class="lbl">Open hand<br>hold 2s → Start</div>
+    </div>
+    <div class="ov-card" id="card-point">
+      <div class="ec">☝️</div>
+      <div class="lbl">Point finger<br>→ pick column</div>
+    </div>
+    <div class="ov-card" id="card-fist">
+      <div class="ec">✊</div>
+      <div class="lbl">Make fist<br>→ drop piece</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script>
+const COLS=7,ROWS=6;
+let board=[],cur=1,gameOver=false,started=false,hovCol=3;
+let lastDrop=0;
+let openStart=0,openHolding=false;
+let fistStart=0,fistHolding=false;
+const RING_CIRC=2*Math.PI*54; // ≈339.3
+
+function initBoard(){
+  board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  cur=1;gameOver=false;hovCol=3;
+  renderBoard();updateTurnUI();
+}
+
+function renderBoard(){
+  const el=document.getElementById('board');el.innerHTML='';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const d=document.createElement('div');
+    const v=board[r][c];
+    d.className='cell '+(v===0?'empty':v===1?'p1':'p2');
+    d.dataset.col=c;el.appendChild(d);
+  }
+  renderColBtns();updateCursor();
+}
+
+function renderColBtns(){
+  const b=document.getElementById('colbtns');b.innerHTML='';
+  for(let c=0;c<COLS;c++){
+    const btn=document.createElement('button');
+    btn.className='ctap'+(c===hovCol?' sel':'');
+    btn.textContent=c+1;btn.dataset.col=c;
+    btn.addEventListener('click',()=>{hovCol=c;updateCursor();dropPiece(c);});
+    b.appendChild(btn);
+  }
+}
+
+function updateCursor(){
+  const el=document.getElementById('cursor');
+  if(!started||gameOver){el.classList.remove('vis');return;}
+  const CELL=70,PAD=12;
+  el.style.left=(PAD+hovCol*CELL+1)+'px';
+  el.style.background=cur===1
+    ?'radial-gradient(circle at 38% 32%,#f87171,#ef4444)'
+    :'radial-gradient(circle at 38% 32%,#fde68a,#f59e0b)';
+  el.style.boxShadow=cur===1?'0 0 18px rgba(239,68,68,.7)':'0 0 18px rgba(245,158,11,.7)';
+  el.classList.add('vis');
+  document.getElementById('col-val').textContent=hovCol+1;
+  document.querySelectorAll('.ctap').forEach((b,i)=>b.classList.toggle('sel',i===hovCol));
+}
+
+function dropPiece(col){
+  if(!started||gameOver||col<0||col>=COLS)return false;
+  for(let r=ROWS-1;r>=0;r--){
+    if(board[r][col]===0){
+      board[r][col]=cur;renderBoard();
+      const cells=document.querySelectorAll('.cell');
+      const idx=r*COLS+col;
+      if(cells[idx]){
+        cells[idx].classList.add('drop-in');
+        cells[idx].addEventListener('animationend',()=>cells[idx].classList.remove('drop-in'),{once:true});
+      }
+      const wc=checkWin(r,col,cur);
+      if(wc){
+        hlWin(wc);gameOver=true;
+        document.getElementById('cursor').classList.remove('vis');
+        setTimeout(()=>showWin(cur),600);
+      } else if(board[0].every(v=>v!==0)){
+        gameOver=true;setTimeout(showDraw,600);
+      } else {
+        cur=cur===1?2:1;updateTurnUI();
+      }
+      return true;
+    }
+  }
+  toast('Column full!','#f59e0b');return false;
+}
+
+function checkWin(row,col,player){
+  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  for(const[dr,dc]of dirs){
+    let f=[[row,col]];
+    for(let d=1;d<=3;d++){const nr=row+dr*d,nc=col+dc*d;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&board[nr][nc]===player)f.push([nr,nc]);else break;}
+    for(let d=1;d<=3;d++){const nr=row-dr*d,nc=col-dc*d;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&board[nr][nc]===player)f.push([nr,nc]);else break;}
+    if(f.length>=4)return f;
+  }
+  return null;
+}
+
+function hlWin(cells){
+  const all=document.querySelectorAll('.cell');
+  cells.forEach(([r,c])=>{const el=all[r*COLS+c];if(el)el.classList.add('wf');});
+}
+
+function updateTurnUI(){
+  document.getElementById('p1c').classList.toggle('active',cur===1);
+  document.getElementById('p2c').classList.toggle('active',cur===2);
+  updateCursor();
+}
+
+let toastT;
+function toast(msg,color){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.color=color||'#fff';
+  el.style.borderColor=(color||'#fff')+'30';
+  el.classList.add('show');clearTimeout(toastT);
+  toastT=setTimeout(()=>el.classList.remove('show'),2100);
+}
+
+function showWin(player){
+  const ov=document.getElementById('overlay');
+  const t=document.getElementById('ov-title');
+  t.textContent='Player '+player+' Wins!';
+  t.style.color=player===1?'#ef4444':'#f59e0b';
+  document.getElementById('ov-sub').textContent='Hold open hand ✋ to play again';
+  document.getElementById('waiting-msg').textContent='Show open hand to restart';
+  setRing(0);
+  document.getElementById('ring-emoji').textContent='✋';
+  document.getElementById('ring-pct').textContent='HOLD';
+  ov.classList.remove('hidden');
+}
+
+function showDraw(){
+  const ov=document.getElementById('overlay');
+  const t=document.getElementById('ov-title');
+  t.textContent="It's a Draw!";t.style.color='#60a5fa';
+  document.getElementById('ov-sub').textContent='Hold open hand ✋ to play again';
+  document.getElementById('waiting-msg').textContent='Show open hand to restart';
+  setRing(0);
+  ov.classList.remove('hidden');
+}
+
+function startGame(){
+  initBoard();started=true;
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('ov-title').style.color='#fff';
+  document.getElementById('ov-sub').textContent='Hand Gesture Edition';
+  document.getElementById('waiting-msg').textContent='Show your open hand to the camera to start';
+  openHolding=false;fistHolding=false;
+  setRing(0);
+  toast('Game on! ☝️ Point to pick a column','#22c55e');
+}
+
+function setRing(pct){
+  // pct 0–1
+  const offset=RING_CIRC*(1-pct);
+  document.getElementById('ring-fill').style.strokeDashoffset=offset;
+  document.getElementById('ring-pct').textContent=pct>0?Math.round(pct*100)+'%':'HOLD';
+  const hue=Math.round(pct*120); // 0=red,120=green
+  document.getElementById('ring-fill').style.stroke=`hsl(${hue},80%,55%)`;
+}
+
+/* mouse fallback */
+document.getElementById('board').addEventListener('click',e=>{
+  if(!started||gameOver)return;
+  const cell=e.target.closest('.cell');if(!cell)return;
+  const col=parseInt(cell.dataset.col);hovCol=col;dropPiece(col);
+});
+document.getElementById('board').addEventListener('mousemove',e=>{
+  if(!started||gameOver)return;
+  const cell=e.target.closest('.cell');if(!cell)return;
+  const col=parseInt(cell.dataset.col);
+  if(col!==hovCol){hovCol=col;updateCursor();}
+});
+
+/* MediaPipe */
+const video=document.getElementById('video');
+const hc=document.getElementById('hc');
+const hCtx=hc.getContext('2d');
+
+function fingerStates(lm){
+  const ext=[];
+  ext.push(lm[4].x<lm[3].x); // thumb
+  const tips=[8,12,16,20],pips=[6,10,14,18];
+  for(let i=0;i<4;i++)ext.push(lm[tips[i]].y<lm[pips[i]].y);
+  return ext; // [thumb,index,middle,ring,pinky]
+}
+
+function classify(lm){
+  if(!lm||lm.length<21)return'none';
+  const[,idx,mid,ring,pinky]=fingerStates(lm);
+  const cnt=[idx,mid,ring,pinky].filter(Boolean).length;
+  if(cnt>=3)return'open';
+  if(!idx&&!mid&&!ring&&!pinky)return'fist';
+  if(idx&&!mid&&!ring&&!pinky)return'point';
+  return'other';
+}
+
+function xToCol(x){return Math.max(0,Math.min(COLS-1,Math.floor((1-x)*COLS)));}
+
+function updateOverlayGestureHint(gesture){
+  // highlight the active card
+  document.getElementById('card-open').classList.toggle('active-card',gesture==='open'||!started);
+  document.getElementById('card-point').classList.toggle('active-card',gesture==='point'&&started);
+  document.getElementById('card-fist').classList.toggle('active-card',gesture==='fist'&&started);
+}
+
+function onResults(results){
+  hc.width=video.videoWidth||210;
+  hc.height=video.videoHeight||158;
+  hCtx.clearRect(0,0,hc.width,hc.height);
+
+  if(!results.multiHandLandmarks||!results.multiHandLandmarks.length){
+    setTrack(false,'Show your hand');
+    openHolding=false;fistHolding=false;
+    setRing(0);
+    document.getElementById('waiting-msg').textContent='Show your open hand to the camera to start';
+    return;
+  }
+
+  setTrack(true,'Hand detected');
+  const lm=results.multiHandLandmarks[0];
+
+  if(window.drawConnectors&&window.HAND_CONNECTIONS){
+    drawConnectors(hCtx,lm,HAND_CONNECTIONS,{color:'rgba(96,165,250,.55)',lineWidth:2});
+    drawLandmarks(hCtx,lm,{color:'#93c5fd',lineWidth:1,radius:3});
+  }
+
+  const gesture=classify(lm);
+  updateOverlayGestureHint(gesture);
+
+  /* OPEN HAND → start / restart */
+  if(gesture==='open'){
+    if(!openHolding){openHolding=true;openStart=Date.now();}
+    const pct=Math.min(1,(Date.now()-openStart)/2000);
+    setRing(pct);
+    document.getElementById('ring-emoji').textContent='✋';
+    const remaining=Math.ceil((2000-(Date.now()-openStart))/1000);
+    if(!started)document.getElementById('waiting-msg').textContent='Hold… starting in '+Math.max(1,remaining)+'s';
+    if(pct>=1){
+      openHolding=false;setRing(0);
+      startGame();
+    }
+  } else {
+    if(openHolding){openHolding=false;setRing(0);
+      if(!started)document.getElementById('waiting-msg').textContent='Show your open hand to the camera to start';
+    }
+  }
+
+  /* POINT → column */
+  if(gesture==='point'&&started&&!gameOver){
+    const col=xToCol(lm[8].x);
+    if(col!==hovCol){hovCol=col;updateCursor();}
+  }
+
+  /* FIST → drop */
+  if(gesture==='fist'&&started&&!gameOver){
+    if(!fistHolding){fistHolding=true;fistStart=Date.now();}
+    else if(Date.now()-fistStart>420&&Date.now()-lastDrop>1100){
+      lastDrop=Date.now();fistHolding=false;
+      if(dropPiece(hovCol))toast('Dropped in column '+(hovCol+1),'#60a5fa');
+    }
+  } else {fistHolding=false;}
+}
+
+function setTrack(on,msg){
+  document.getElementById('dot').className='dot'+(on?' on':'');
+  document.getElementById('track-txt').textContent=msg;
+}
+
+async function initMP(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'}});
+    video.srcObject=stream;
+    const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.72,minTrackingConfidence:.65});
+    hands.onResults(onResults);
+    const camera=new Camera(video,{onFrame:async()=>{await hands.send({image:video});},width:320,height:240});
+    camera.start();
+    setTrack(false,'Camera ready');
+  }catch(err){
+    setTrack(false,'Camera error');
+    document.getElementById('dot').style.background='#f59e0b';
+    document.getElementById('waiting-msg').textContent='Camera not available — check permissions';
+    console.error(err);
+  }
+}
+
+initBoard();
+initMP();
+</script>
+</body>
+</html>
