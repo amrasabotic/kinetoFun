@@ -71,17 +71,17 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "flex items-center gap-2 rounded-full px-2 py-1 pr-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1AACE0]/60",
-          "text-[#1A2E74] hover:bg-[#1AACE0]/12 dark:text-white dark:hover:bg-white/[0.08]",
-          open && "bg-[#1AACE0]/12 dark:bg-white/[0.08]",
+          "text-[#1A2E74] hover:bg-[#1AACE0]/12",
+          open && "bg-[#1AACE0]/12",
         )}
       >
         <Avatar user={user} size="sm" />
-        <span className="hidden text-sm font-semibold text-[#1A2E74] dark:text-white lg:block">
+        <span className="hidden text-sm font-semibold text-[#1A2E74] lg:block">
           {user.displayName}
         </span>
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 text-[#1A2E74]/40 transition-transform duration-300 dark:text-white/35",
+            "h-3.5 w-3.5 text-[#1A2E74]/40 transition-transform duration-300",
             open && "rotate-180",
           )}
         />
@@ -91,17 +91,17 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
       <div
         className={cn(
           "absolute right-0 top-[calc(100%+10px)] z-50 w-52 overflow-hidden",
-          "rounded-2xl border border-[#1AACE0]/20 dark:border-white/[0.08]",
-          "bg-white/80 backdrop-blur-2xl dark:bg-[#080f2e]/90",
+          "rounded-2xl border border-[#1AACE0]/20",
+          "bg-white/90 backdrop-blur-2xl",
           "shadow-[0_16px_48px_rgba(26,46,116,0.28),0_0_0_1px_rgba(26,172,224,0.08)]",
           "transition-all duration-200 ease-out",
           open ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1.5 scale-[0.97] opacity-0",
         )}
       >
         {/* User identity header */}
-        <div className="border-b border-[#1AACE0]/10 px-4 py-3.5 dark:border-white/[0.06]">
-          <p className="truncate text-[13px] font-bold text-[#1A2E74] dark:text-white">{user.displayName}</p>
-          <p className="truncate text-[11px] text-[#5B72A8] dark:text-white/40">{user.email ?? "Signed in"}</p>
+        <div className="border-b border-[#1AACE0]/10 px-4 py-3.5">
+          <p className="truncate text-[13px] font-bold text-[#1A2E74]">{user.displayName}</p>
+          <p className="truncate text-[11px] text-[#5B72A8]">{user.email ?? "Signed in"}</p>
         </div>
 
         {/* Nav items */}
@@ -111,16 +111,16 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
               key={href}
               type="button"
               onClick={() => { setOpen(false); router.push(href); }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#1A2E74]/75 transition-colors duration-150 hover:bg-[#1AACE0]/10 hover:text-[#1A2E74] dark:text-white/60 dark:hover:bg-white/[0.07] dark:hover:text-white focus:outline-none focus-visible:bg-[#1AACE0]/10"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#1A2E74]/75 transition-colors duration-150 hover:bg-[#1AACE0]/10 hover:text-[#1A2E74] focus:outline-none focus-visible:bg-[#1AACE0]/10"
             >
-              <Icon className="h-4 w-4 shrink-0 text-[#1AACE0]/70 dark:text-[#1AACE0]/60" />
+              <Icon className="h-4 w-4 shrink-0 text-[#1AACE0]/70" />
               {label}
             </button>
           ))}
         </div>
 
         {/* Divider + sign-out */}
-        <div className="border-t border-[#1AACE0]/10 px-1.5 pb-1.5 pt-1 dark:border-white/[0.06]">
+        <div className="border-t border-[#1AACE0]/10 px-1.5 pb-1.5 pt-1">
           <button
             type="button"
             onClick={handleLogout}
@@ -166,12 +166,12 @@ export function TopBar() {
           className={cn(
             "relative flex h-14 items-center gap-4 rounded-full border px-4 backdrop-blur-xl transition-all duration-300",
             scrolled
-              ? "border-[#1A2E74]/20 bg-white/92 shadow-[0_8px_40px_rgba(26,46,116,0.32)] dark:bg-[#1A2E74]/50 dark:border-white/15"
-              : "border-[#1A2E74]/12 bg-white/82 shadow-[0_4px_24px_rgba(26,46,116,0.22)] dark:bg-[#1A2E74]/35 dark:border-white/10",
+              ? "border-[#1A2E74]/20 bg-white/92 shadow-[0_8px_40px_rgba(26,46,116,0.32)]"
+              : "border-[#1A2E74]/12 bg-white/82 shadow-[0_4px_24px_rgba(26,46,116,0.22)]",
           )}
         >
           {/* Glass top highlight */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/20" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
 
           {/* Logo */}
           <Link
@@ -199,14 +199,14 @@ export function TopBar() {
                 className={cn(
                   "relative rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 focus:outline-none",
                   isActive(pathname, item.href)
-                    ? "text-[#1A2E74] dark:text-white"
-                    : "text-[#1A2E74]/85 hover:text-[#1A2E74] dark:text-white/70 dark:hover:text-white hover:[text-shadow:0_0_12px_rgba(26,172,224,0.6)]",
+                    ? "text-[#1A2E74]"
+                    : "text-[#1A2E74]/85 hover:text-[#1A2E74] hover:[text-shadow:0_0_12px_rgba(26,172,224,0.6)]",
                 )}
               >
                 {isActive(pathname, item.href) && (
                   <motion.span
                     layoutId="nav-active-pill"
-                    className="absolute inset-0 rounded-full bg-[#1AACE0]/20 dark:bg-white/15"
+                    className="absolute inset-0 rounded-full bg-[#1AACE0]/20"
                     transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
                   />
                 )}
@@ -224,13 +224,14 @@ export function TopBar() {
                 <Link
                   href="/login"
                   data-focusable
-                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-[#1A2E74]/85 transition-all duration-200 hover:text-[#1A2E74] dark:text-white/75 dark:hover:text-white focus:outline-none md:block"
+                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-[#1A2E74]/85 transition-all duration-200 hover:text-[#1A2E74] focus:outline-none md:block"
                 >
                   Log in
                 </Link>
                 <Link
                   href="/signup"
                   data-focusable
+
                   className="hidden h-10 items-center rounded-full px-5 text-sm font-black text-white transition hover:brightness-110 hover:scale-[1.02] active:scale-100 select-none focus:outline-none md:inline-flex"
                   style={{
                     background: "linear-gradient(135deg, #1AACE0 0%, #1A2E74 100%)",
@@ -248,7 +249,7 @@ export function TopBar() {
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
               onClick={() => setMobileOpen((v) => !v)}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#1A2E74]/20 bg-[#1A2E74]/08 text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/15 hover:text-[#1A2E74] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-white/70 dark:hover:bg-white/[0.08] dark:hover:text-white focus:outline-none md:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#1A2E74]/20 bg-[#1A2E74]/08 text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/15 hover:text-[#1A2E74] focus:outline-none md:hidden"
             >
               {/* Animated bars → X */}
               <span className="relative flex h-4 w-4 flex-col items-center justify-between">
@@ -292,8 +293,8 @@ export function TopBar() {
       {/* Slide-in panel */}
       <div
         className={cn(
-          "fixed inset-x-4 top-20 z-40 overflow-hidden rounded-3xl border border-white/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.6)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:hidden",
-          "bg-[rgba(10,26,80,0.98)] backdrop-blur-[24px]",
+          "fixed inset-x-4 top-20 z-40 overflow-hidden rounded-3xl border border-[#1A2E74]/10 shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:hidden",
+          "bg-white/98 backdrop-blur-[24px]",
           mobileOpen
             ? "translate-y-0 opacity-100"
             : "-translate-y-4 opacity-0 pointer-events-none",
@@ -309,7 +310,7 @@ export function TopBar() {
                 "flex items-center rounded-2xl px-5 py-3.5 text-base font-medium transition-all duration-200 focus:outline-none",
                 isActive(pathname, item.href)
                   ? "bg-[#1AACE0]/20 text-[#1AACE0]"
-                  : "text-white/70 hover:bg-white/[0.08] hover:text-white",
+                  : "text-[#1A2E74]/70 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74]",
               )}
             >
               {item.label}
@@ -317,22 +318,22 @@ export function TopBar() {
           ))}
         </nav>
 
-        <div className="border-t border-white/[0.06] px-4 py-4">
+        <div className="border-t border-[#1A2E74]/10 px-4 py-4">
           {isAuthenticated && user ? (
             <div className="flex flex-col gap-1">
               {/* Identity row */}
               <div className="flex items-center gap-3 px-5 py-3">
                 <Avatar user={user} size="sm" />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-white">{user.displayName}</p>
-                  <p className="truncate text-[11px] text-white/40">{user.email ?? "Signed in"}</p>
+                  <p className="truncate text-sm font-bold text-[#1A2E74]">{user.displayName}</p>
+                  <p className="truncate text-[11px] text-[#5B72A8]">{user.email ?? "Signed in"}</p>
                 </div>
               </div>
               {/* Profile link */}
               <Link
                 href="/profile"
                 data-focusable
-                className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none"
+                className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74] focus:outline-none"
               >
                 <User className="h-4 w-4 text-[#1AACE0]/70" />
                 Profile
@@ -341,7 +342,7 @@ export function TopBar() {
               <Link
                 href="/settings"
                 data-focusable
-                className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none"
+                className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74] focus:outline-none"
               >
                 <Settings className="h-4 w-4 text-[#1AACE0]/70" />
                 Settings
@@ -351,7 +352,7 @@ export function TopBar() {
                 <Link
                   href="/superadmin/dashboard"
                   data-focusable
-                  className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/[0.08] hover:text-white focus:outline-none"
+                  className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74] focus:outline-none"
                 >
                   <Shield className="h-4 w-4 text-[#1AACE0]/70" />
                   Admin Console
@@ -372,7 +373,7 @@ export function TopBar() {
               <Link
                 href="/login"
                 data-focusable
-                className="flex items-center justify-center rounded-2xl border border-white/[0.08] px-5 py-3 text-sm font-semibold text-white/80 transition-all duration-200 hover:bg-white/[0.05] hover:text-white focus:outline-none"
+                className="flex items-center justify-center rounded-2xl border border-[#1A2E74]/10 px-5 py-3 text-sm font-semibold text-[#1A2E74]/80 transition-all duration-200 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74] focus:outline-none"
               >
                 Log in
               </Link>
