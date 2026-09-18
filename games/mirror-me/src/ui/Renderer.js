@@ -184,13 +184,17 @@ export class Renderer {
     } else {
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold ${fs}px "Inter", sans-serif`;
-      ctx.fillText('Step into the camera', W / 2, H * 0.46);
+      ctx.fillText('Step into the camera', W / 2, H * 0.40);
+      ctx.fillStyle = '#ccc';
+      ctx.font = `${clamp(W * 0.024, 14, 30)}px "Inter", sans-serif`;
+      ctx.fillText('A pose appears on screen — copy it with your body before time runs out!', W / 2, H * 0.47);
+      ctx.fillText('12 poses per round · match closely for a bigger score', W / 2, H * 0.52);
       ctx.fillStyle = COLORS.PRIMARY;
       ctx.font = `${clamp(W * 0.028, 16, 36)}px "Inter", sans-serif`;
-      ctx.fillText('Raise both hands above your head to START', W / 2, H * 0.54);
+      ctx.fillText('Raise both hands above your head to START', W / 2, H * 0.60);
       ctx.fillStyle = '#888';
       ctx.font = `${clamp(W * 0.02, 14, 26)}px "Inter", sans-serif`;
-      ctx.fillText('— or stand still for 3 seconds —', W / 2, H * 0.60);
+      ctx.fillText('— or stand still for 3 seconds —', W / 2, H * 0.66);
     }
 
     this._drawRecords();

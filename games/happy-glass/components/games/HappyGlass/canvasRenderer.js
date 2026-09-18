@@ -195,6 +195,11 @@ function drawLevelSelect(ctx, W, H, state, gesture) {
   ctx.font      = '14px sans-serif';
   ctx.fillStyle = '#90caf9';
   ctx.fillText('Hover over a level card  •  👍 Thumbs Up to play', W / 2, 64);
+
+  // Reminder of the core mechanic, for anyone returning after the first level
+  ctx.font      = '13px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('In a level: PINCH to draw walls  •  👍 Thumbs Up again to release the water', W / 2, H - 16);
   ctx.restore();
 
   for (let i = 0; i < LEVELS.length; i++) {

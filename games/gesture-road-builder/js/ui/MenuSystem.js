@@ -50,6 +50,10 @@ GRB.MenuSystem = class {
     this.scrollY    = 0;   // for level select
     this._dragStart = null;
     this._selProgress = 0;
+
+    // Briefly show the main menu on first load, then open How To Play
+    // automatically — unless the player already navigated away on their own.
+    setTimeout(() => { if (this.screen === 'main') this.setScreen('howtoplay'); }, 2200);
   }
 
   setScreen(s) {

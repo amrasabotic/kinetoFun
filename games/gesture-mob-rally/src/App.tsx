@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import type { RefObject } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMediaPipe } from './gestures/useMediaPipe';
@@ -19,6 +19,7 @@ const T = { duration: 0.25, ease: 'easeInOut' as const };
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const introShownRef = useRef(false);
 
   const settings = useGameStore((s) => s.save.settings);
   const handRef = useMediaPipe(videoRef as RefObject<HTMLVideoElement>, settings.cameraDeviceId);
@@ -32,6 +33,20 @@ export default function App() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
     else document.exitFullscreen?.().catch(() => {});
   }, []);
+
+  // The first time the main menu is reached (right after calibration),
+  // briefly show it then auto-open How To Play — unless the player already
+  // picked a menu option themselves. The How To Play menu button still
+  // works the same way afterward for reopening it any time.
+  useEffect(() => {
+    if (screen !== 'menu' || introShownRef.current) return;
+    introShownRef.current = true;
+    const t = setTimeout(() => {
+      if (useGameStore.getState().screen === 'menu') setScreen('howtoplay');
+    }, 2200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   const showCanvas = screen === 'playing';
   const showCursor = screen !== 'playing' && screen !== 'calibrating';

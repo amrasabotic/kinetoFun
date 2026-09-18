@@ -176,6 +176,7 @@ function AppContent() {
         onStartMode={startMode}
         onSettings={() => setScreen('settings')}
         onAchievements={() => setScreen('achievements')}
+        onHowToPlay={() => setScreen('tutorial')}
         totalStars={progress.totalStars}
         currentLevel={progress.currentLevel}
       />

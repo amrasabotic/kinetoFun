@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import LandingScreen from './LandingScreen';
 import HowToPlayScreen from './HowToPlayScreen';
 import OrderScreen from './OrderScreen';
@@ -20,6 +20,15 @@ function getRandomOrder(): PizzaOrder {
 export default function App() {
   const [screen, setScreen] = useState<GameScreen | 'howtoplay'>('landing');
   const [currentOrder, setCurrentOrder] = useState<PizzaOrder>(() => getRandomOrder());
+
+  // Briefly show the landing screen on first load, then open instructions
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setScreen(s => (s === 'landing' ? 'howtoplay' : s));
+    }, 2200);
+    return () => clearTimeout(t);
+  }, []);
   const [finalScore, setFinalScore] = useState<number>(0);
 
   const handlePlay = useCallback(() => {

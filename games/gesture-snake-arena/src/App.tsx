@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMediaPipe } from './gestures/useMediaPipe';
 import { useGameStore } from './stores/useGameStore';
@@ -50,6 +50,16 @@ export default function App() {
     unlockTrail(id);
     return true;
   }
+
+  // Briefly show the main menu on first load, then open How To Play
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (useGameStore.getState().screen === 'menu') setScreen('howtoplay');
+    }, 2200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showCanvas = screen === 'playing';
 

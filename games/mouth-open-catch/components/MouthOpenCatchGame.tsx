@@ -427,6 +427,9 @@ function lighten(hex: string, amount: number): string {
   return `rgb(${Math.min(255, r + amount * 255)},${Math.min(255, g + amount * 255)},${Math.min(255, b + amount * 255)})`;
 }
 
+// How long the menu shows before auto-opening instructions on first load.
+const INTRO_DELAY_MS = 2200;
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function MouthOpenCatchGame() {
@@ -475,6 +478,16 @@ export default function MouthOpenCatchGame() {
     setUnlockedChars(storage.getUnlockedCharacters());
     setUnlockedThemes(storage.getUnlockedThemes());
     audioRef.current = new AudioManager(s.soundEnabled, s.musicEnabled);
+  }, []);
+
+  // Briefly show the menu on first load, then open How To Play automatically
+  // — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setScreen(s => (s === 'MENU' ? 'HOW_TO_PLAY' : s));
+    }, INTRO_DELAY_MS);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Init renderer ─────────────────────────────────────────────────────────

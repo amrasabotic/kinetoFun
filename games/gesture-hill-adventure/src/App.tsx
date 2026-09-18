@@ -4,7 +4,7 @@
  * screens using the Zustand store.  GameCanvas is always mounted so the
  * canvas persists across the game-over overlay.
  */
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMediaPipe } from './hooks/useMediaPipe';
 import { useGameStore } from './stores/useGameStore';
@@ -57,6 +57,16 @@ export default function App() {
     unlockSkin(skin.id);
     return true;
   }
+
+  // Briefly show the main menu on first load, then open How To Play
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (useGameStore.getState().screen === 'menu') setScreen('howtoplay');
+    }, 2200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Check if game canvas should be visible ─────────────────────────────────
   const showCanvas = screen === 'playing' || screen === 'game-over';

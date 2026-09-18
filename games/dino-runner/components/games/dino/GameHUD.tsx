@@ -110,31 +110,38 @@ function StartScreen({
       <p className="text-xs text-gray-500 mb-6 tracking-widest">GESTURE EDITION</p>
 
       {/* Gesture guide */}
-      <div className="flex gap-6 mb-8">
+      <div className="flex gap-6 mb-4">
         <GestureCard emoji="✋" label="Open Palm" action="JUMP" color="bg-green-100 border-green-300" />
         <GestureCard emoji="✊" label="Closed Fist" action="DUCK" color="bg-yellow-100 border-yellow-300" />
       </div>
 
+      <p className="text-xs text-gray-500 mb-6 max-w-xs text-center leading-relaxed">
+        Jump over cacti, duck under birds. The dino runs on its own and speeds up over time — survive as long as you can!
+      </p>
+
       {/* Start trigger */}
       {error ? (
         <p className="text-sm text-red-500 max-w-xs text-center">{error}</p>
-      ) : isReady ? (
+      ) : (
         <div className="flex flex-col items-center gap-2">
-          <p className="text-sm font-bold tracking-widest text-gray-700 animate-pulse" style={{ fontFamily: '"Courier New", monospace' }}>
-            ✋ OPEN PALM TO START
-          </p>
+          {isReady && (
+            <p className="text-sm font-bold tracking-widest text-gray-700 animate-pulse" style={{ fontFamily: '"Courier New", monospace' }}>
+              ✋ OPEN PALM OR CLICK TO START
+            </p>
+          )}
           <button
-            disabled
-            style={{ pointerEvents: 'none', fontFamily: '"Courier New", monospace' }}
-            className="px-8 py-3 bg-gray-300 text-gray-500 font-bold tracking-widest text-sm rounded-none border-2 border-gray-300 cursor-default"
+            onClick={onStart}
+            style={{ fontFamily: '"Courier New", monospace' }}
+            className="px-8 py-3 bg-gray-800 hover:bg-gray-700 active:scale-95 text-white font-bold tracking-widest text-sm rounded-none border-2 border-gray-800 transition-all"
           >
             START
           </button>
+          {!isReady && (
+            <p className="text-sm text-gray-400 animate-pulse" style={{ fontFamily: '"Courier New", monospace' }}>
+              Initializing camera…
+            </p>
+          )}
         </div>
-      ) : (
-        <p className="text-sm text-gray-400 animate-pulse" style={{ fontFamily: '"Courier New", monospace' }}>
-          Initializing camera…
-        </p>
       )}
     </div>
   );
@@ -189,12 +196,12 @@ function GameOverScreen({
 
       <div className="flex flex-col items-center gap-2">
         <p className="text-sm font-bold tracking-widest text-gray-700 animate-pulse" style={{ fontFamily: '"Courier New", monospace' }}>
-          ✋ OPEN PALM TO RESTART
+          ✋ OPEN PALM OR CLICK TO RESTART
         </p>
         <button
-          disabled
-          style={{ pointerEvents: 'none', fontFamily: '"Courier New", monospace' }}
-          className="px-8 py-3 bg-gray-300 text-gray-500 font-bold tracking-widest text-sm rounded-none border-2 border-gray-300 cursor-default"
+          onClick={onRestart}
+          style={{ fontFamily: '"Courier New", monospace' }}
+          className="px-8 py-3 bg-gray-800 hover:bg-gray-700 active:scale-95 text-white font-bold tracking-widest text-sm rounded-none border-2 border-gray-800 transition-all"
         >
           RESTART
         </button>

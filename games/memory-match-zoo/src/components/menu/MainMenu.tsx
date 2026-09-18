@@ -51,7 +51,10 @@ export default function MainMenu({ onSelect }: { onSelect: (a: MainMenuAction) =
         ))}
       </div>
 
-      <p className="mt-10 text-xs text-white/30">Hover over a card with your fingertip to select it</p>
+      <p className="mt-8 text-sm text-white/50 max-w-md text-center">
+        Hover a face-down card for about a second to flip it, then flip a second one — find matching animal pairs to clear the board.
+      </p>
+      <p className="mt-3 text-xs text-white/30">Hover over a card with your fingertip to select it</p>
     </div>
   );
 }

@@ -54,7 +54,10 @@ export default function MainMenu({ onSelect }: { onSelect: (a: MainMenuAction) =
         ))}
       </div>
 
-      <p className="mt-10 text-xs text-white/30">Hover over a tile with your fingertip to select it</p>
+      <p className="mt-8 text-sm text-white/50 max-w-md text-center">
+        A word or picture appears — hover your fingertip over its opposite for about a second to select it.
+      </p>
+      <p className="mt-3 text-xs text-white/30">Hover over a tile with your fingertip to select it</p>
     </div>
   );
 }

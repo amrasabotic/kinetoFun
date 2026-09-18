@@ -11,9 +11,21 @@ import { playDrum, initAudio } from './audio';
 
 type Screen = 'landing' | 'howtoplay' | 'modeselect' | 'game';
 
+// How long the landing screen shows before auto-opening instructions.
+const INTRO_DELAY_MS = 2200;
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('landing');
   const [mode, setMode] = useState<GameMode>('freeplay');
+
+  // Briefly show the landing screen on first load, then open instructions
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setScreen(s => (s === 'landing' ? 'howtoplay' : s));
+    }, INTRO_DELAY_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   if (screen === 'landing')    return <LandingScreen onPlay={() => setScreen('modeselect')} onHow={() => setScreen('howtoplay')} />;
   if (screen === 'howtoplay')  return <HowToPlayScreen onBack={() => setScreen('landing')} />;

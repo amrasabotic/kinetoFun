@@ -4,6 +4,7 @@ import GestureCursorDot from './components/common/GestureCursorDot';
 import HandLostOverlay from './components/common/HandLostOverlay';
 import CalibrationScreen from './components/menu/CalibrationScreen';
 import MainMenu, { type MainMenuAction } from './components/menu/MainMenu';
+import HowToPlayScreen from './components/menu/HowToPlayScreen';
 import WorldTourMap from './components/menu/WorldTourMap';
 import CountrySelect from './components/menu/CountrySelect';
 import PracticeSelect from './components/menu/PracticeSelect';
@@ -19,7 +20,7 @@ import { setVolumes, startMusic, stopMusic, unlockAudio } from './audio/sound';
 
 type Screen =
   | 'calibration' | 'main-menu' | 'world-tour-map' | 'country-select'
-  | 'practice-select' | 'gallery' | 'settings' | 'gameplay' | 'end-screen';
+  | 'practice-select' | 'gallery' | 'howto' | 'settings' | 'gameplay' | 'end-screen';
 
 const CALIBRATED_KEY = 'flag-quest-calibrated-v1';
 
@@ -62,7 +63,7 @@ export default function App() {
   useEffect(() => { setVolumes(musicVolume, sfxVolume); }, [musicVolume, sfxVolume]);
 
   useEffect(() => {
-    if (screen === 'main-menu' || screen === 'world-tour-map' || screen === 'country-select' || screen === 'practice-select' || screen === 'gallery' || screen === 'settings') {
+    if (screen === 'main-menu' || screen === 'world-tour-map' || screen === 'country-select' || screen === 'practice-select' || screen === 'gallery' || screen === 'howto' || screen === 'settings') {
       startMusic();
     } else {
       stopMusic();
@@ -78,12 +79,16 @@ export default function App() {
   function handleCalibrationDone() {
     unlockAudio();
     localStorage.setItem(CALIBRATED_KEY, '1');
-    setScreen('main-menu');
+    // First time ever — calibration only runs once — show how the paint
+    // mechanic works before dropping the player into the menu. The "How to
+    // Play" tile stays available afterward for reopening it any time.
+    setScreen('howto');
   }
 
   function handleMainMenuSelect(action: MainMenuAction) {
     unlockAudio();
     if (action === 'exit') { exitToPlatform(); return; }
+    if (action === 'howto') { setScreen('howto'); return; }
     if (action === 'play') {
       const nextId = unlockedCountryIds.find((id) => (starsByFlag[id] ?? 0) < 3) ?? unlockedCountryIds[0] ?? ALL_FLAGS[0].id;
       setMode('world-tour');
@@ -170,6 +175,7 @@ export default function App() {
       {screen === 'calibration' && <CalibrationScreen onDone={handleCalibrationDone} />}
 
       {screen === 'main-menu' && <MainMenu onSelect={handleMainMenuSelect} />}
+      {screen === 'howto' && <HowToPlayScreen onBack={() => setScreen('main-menu')} />}
 
       {screen === 'world-tour-map' && (
         <WorldTourMap

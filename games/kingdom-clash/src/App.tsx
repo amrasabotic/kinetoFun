@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HandProvider, useHand } from "@/contexts/HandContext";
 import GestureCursor from "@/components/GestureCursor";
 import MainMenu from "@/pages/MainMenu";
@@ -12,6 +12,15 @@ function AppContent() {
   const [screen, setScreen]             = useState<Screen>("menu");
   const [currentLevel, setCurrentLevel] = useState(1);
   const { cursor, isPinching }          = useHand();
+
+  // Briefly show the main menu on first load, then open How To Play
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setScreen(s => (s === "menu" ? "howToPlay" : s));
+    }, 2200);
+    return () => clearTimeout(t);
+  }, []);
 
   function startLevel(level: number) {
     setCurrentLevel(level);

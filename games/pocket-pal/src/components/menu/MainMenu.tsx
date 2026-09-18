@@ -48,7 +48,10 @@ export default function MainMenu({ onSelect }: { onSelect: (a: MainMenuAction) =
         ))}
       </div>
 
-      <p className="mt-10 text-xs text-white/30">Hover over a tile with your fingertip to select it</p>
+      <p className="mt-8 text-sm text-white/50 max-w-md text-center">
+        Pinch food or toys and drop them on your pal to feed or play, or hover over your pal to pet it. No fail state — just keep them happy!
+      </p>
+      <p className="mt-3 text-xs text-white/30">Hover over a tile with your fingertip to select it</p>
     </div>
   );
 }

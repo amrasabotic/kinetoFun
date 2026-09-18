@@ -14,6 +14,10 @@ import {
 } from '@/utils/dino/sound';
 import type { GamePhase, GameState, GestureState } from '@/game/dino/types';
 
+// Minimum time (ms) the start/gameover screen must be visible before a
+// gesture (not a click) is allowed to dismiss it — see readySinceRef above.
+const MIN_READY_MS = 1500;
+
 export default function DinoGame() {
   // ── React-visible state (minimal — only drives UI re-renders) ────────────
   const [phase, setPhase] = useState<GamePhase>('idle');
@@ -29,6 +33,14 @@ export default function DinoGame() {
   const prevMilestoneRef = useRef(0);
   // Tracks the previous gesture specifically for UI edge detection (start/restart)
   const prevGestureForUIRef = useRef<GestureState>('none');
+  // Timestamp of when the camera/gesture tracking first became ready while on
+  // the start/gameover screen. A gesture-triggered start is only honored
+  // MIN_READY_MS after that — otherwise a hand already open when tracking
+  // kicks in looks identical to "just raised it" and skips the instructions
+  // before they can be read. The (now real, clickable) START/RESTART button
+  // is the fully deterministic way in; this is just a safety net for the
+  // gesture path.
+  const readySinceRef = useRef<number | null>(null);
 
   // ── Gesture hook ─────────────────────────────────────────────────────────
   const { gestureState, rawGestureName, confidence, videoRef, isReady, error } =
@@ -74,14 +86,26 @@ export default function DinoGame() {
 
   // ── Gesture-driven UI triggers (start / restart on open-palm rising edge) ─
   useEffect(() => {
+    if (phase !== 'idle' && phase !== 'gameover') {
+      readySinceRef.current = null;
+      return;
+    }
+    if (!isReady) {
+      readySinceRef.current = null;
+      return;
+    }
+    if (readySinceRef.current === null) readySinceRef.current = performance.now();
+
     const prev = prevGestureForUIRef.current;
     prevGestureForUIRef.current = gestureState;
 
-    // Only fire on the rising edge (gesture just became 'jump')
+    // Only fire on the rising edge (gesture just became 'jump'), and only
+    // once the start/gameover screen has actually been visible for a bit.
     if (gestureState !== 'jump' || prev === 'jump') return;
+    if (performance.now() - readySinceRef.current < MIN_READY_MS) return;
 
-    if (phase === 'idle' && isReady) handleStart();
-    else if (phase === 'gameover') handleRestart();
+    if (phase === 'idle') handleStart();
+    else handleRestart();
   }, [gestureState, phase, isReady, handleStart, handleRestart]);
 
   // ── Game loop (runs at ~60 fps while phase === 'running') ─────────────────

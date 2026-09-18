@@ -1,4 +1,4 @@
-import { Play, Settings, Trophy, Zap, Clock, Sparkles, Calendar, Hand } from 'lucide-react';
+import { Play, Settings, Trophy, Zap, Clock, Sparkles, Calendar, Hand, HelpCircle } from 'lucide-react';
 import { Theme, GameMode } from '../../data/types';
 import { GestureButton } from '../GestureUI';
 
@@ -8,6 +8,7 @@ interface MainMenuProps {
   onStartMode: (mode: GameMode) => void;
   onSettings: () => void;
   onAchievements: () => void;
+  onHowToPlay: () => void;
   totalStars: number;
   currentLevel: number;
 }
@@ -18,6 +19,7 @@ export default function MainMenu({
   onStartMode,
   onSettings,
   onAchievements,
+  onHowToPlay,
   totalStars,
   currentLevel,
 }: MainMenuProps) {
@@ -122,6 +124,14 @@ export default function MainMenu({
 
       {/* Bottom actions */}
       <div className="relative z-10 flex items-center gap-4 mt-10">
+        <GestureButton
+          onActivate={onHowToPlay}
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm backdrop-blur-md"
+          style={{ background: 'rgba(255,255,255,0.08)', color: theme.textColor }}
+        >
+          <HelpCircle className="w-4 h-4" />
+          How to Play
+        </GestureButton>
         <GestureButton
           onActivate={onAchievements}
           className="flex items-center gap-2 px-4 py-2 rounded-full text-sm backdrop-blur-md"

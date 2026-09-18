@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import HoverButton from '../common/HoverButton';
 import { useProgressStore } from '../../stores/progressStore';
 
-export type MainMenuAction = 'play' | 'practice' | 'world-tour' | 'endless' | 'gallery' | 'settings' | 'exit';
+export type MainMenuAction = 'play' | 'practice' | 'world-tour' | 'endless' | 'gallery' | 'howto' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; icon: string; color: string }[] = [
   { action: 'play', label: 'Play', icon: '▶', color: '#8C5CFF' },
@@ -10,6 +10,7 @@ const ITEMS: { action: MainMenuAction; label: string; icon: string; color: strin
   { action: 'world-tour', label: 'World Tour', icon: '🌍', color: '#2A5CD6' },
   { action: 'endless', label: 'Endless', icon: '∞', color: '#F07A26' },
   { action: 'gallery', label: 'Gallery', icon: '🖼', color: '#F4C430' },
+  { action: 'howto', label: 'How to Play', icon: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', icon: '⚙', color: '#8A5A34' },
   { action: 'exit', label: 'Exit', icon: '✕', color: '#E4362E' },
 ];

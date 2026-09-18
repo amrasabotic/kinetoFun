@@ -13,9 +13,21 @@ import type { MenuHandData } from './useMenuHand';
 
 type Screen = 'landing' | 'howtoplay' | 'modeselect' | 'game';
 
+// How long the opening/landing screen shows before auto-opening instructions.
+const INTRO_DELAY_MS = 2200;
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('landing');
   const [mode,   setMode]   = useState<GameMode>('freeplay');
+
+  // Briefly show the landing screen on first load, then open instructions
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setScreen(s => (s === 'landing' ? 'howtoplay' : s));
+    }, INTRO_DELAY_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   if (screen === 'landing')    return <LandingScreen  onPlay={() => setScreen('modeselect')} onHow={() => setScreen('howtoplay')} />;
   if (screen === 'howtoplay')  return <HowToPlayScreen onBack={() => setScreen('landing')} />;
@@ -236,10 +248,10 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
                 </div>
               ))}
             </div>
-            <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
+            <GestureBtn dwellId="continue" activeId={activeId} dwellProgress={dwellProgress}
               onClick={onBack}
-              className="w-full py-3 bg-white/8 hover:bg-white/12 active:scale-95 text-white font-semibold rounded-xl transition-all border border-white/10">
-              Back
+              className="w-full py-3 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold rounded-xl tracking-wide transition-all shadow-lg shadow-purple-900/50">
+              Continue
             </GestureBtn>
           </div>
         </div>
@@ -308,6 +320,22 @@ function getActiveKeys(fingertips: { x: number; y: number }[]): Set<number> {
   return active;
 }
 
+const MODE_INTRO: Record<GameMode, { title: string; desc: string }> = {
+  freeplay: { title: 'Free Play',
+    desc: 'Lower a fingertip into any colored lane to play that note. No falling bars, no scoring — just explore.' },
+  easy:     { title: 'Easy — Twinkle Twinkle',
+    desc: 'Colored bars fall down each lane. Lower your fingertip into the lane exactly when the bar reaches the white hit line.' },
+  medium:   { title: 'Medium — Ode to Joy',
+    desc: 'Same idea as Easy, but the bars fall faster. Keep your fingertip ready over the lane and time each press to the hit line.' },
+  hard:     { title: 'Hard — Für Elise',
+    desc: 'Fast runs and chords — multiple bars can hit at once, so be ready to press several lanes together.' },
+};
+
+// Minimum time (ms) the ready/instructions overlay must stay up before a
+// fingertip press is allowed to start the song — otherwise a hand already
+// resting in the press zone when the camera warms up skips it instantly.
+const MIN_READY_MS = 1800;
+
 function GameScreen({ mode, onQuit }: { mode: GameMode; onQuit: () => void }) {
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const videoRef   = useRef<HTMLVideoElement>(null);
@@ -319,6 +347,7 @@ function GameScreen({ mode, onQuit }: { mode: GameMode; onQuit: () => void }) {
   const lastTimeRef    = useRef<number>(0);
   const prevKeysRef    = useRef<Set<number>>(new Set());
   const pressedKeysRef = useRef<Set<number>>(new Set());
+  const readySinceRef  = useRef<number | null>(null);
 
   const handsData    = useHandTracking(videoRef as React.RefObject<HTMLVideoElement>);
   const handsRef     = useRef(handsData);
@@ -333,7 +362,7 @@ function GameScreen({ mode, onQuit }: { mode: GameMode; onQuit: () => void }) {
     const hands   = handsRef.current;
     let   gs      = gameStateRef.current;
 
-    if (gs.phase === 'playing') {
+    if (gs.phase !== 'finished') {
       const currentKeys  = getActiveKeys(hands.fingertips);
       const newlyPressed = new Set<number>();
       for (const k of currentKeys) {
@@ -342,12 +371,28 @@ function GameScreen({ mode, onQuit }: { mode: GameMode; onQuit: () => void }) {
       prevKeysRef.current  = currentKeys;
       pressedKeysRef.current = currentKeys;
 
-      // Play audio for newly pressed keys
+      // Play audio for newly pressed keys (also gives feedback on the ready screen)
       for (const k of newlyPressed) {
         playNote(k);
       }
 
-      gs = stepGame(gs, delta, ts, newlyPressed);
+      // Don't let a press start the song until the ready overlay has actually
+      // been on screen (hand detected) for at least MIN_READY_MS, so the
+      // instructions are readable instead of flashing by in one frame.
+      let startPress = newlyPressed;
+      if (gs.phase === 'ready') {
+        const handDetected = hands.leftDetected || hands.rightDetected;
+        if (!handDetected) {
+          readySinceRef.current = null;
+        } else if (readySinceRef.current === null) {
+          readySinceRef.current = ts;
+        }
+        if (readySinceRef.current === null || ts - readySinceRef.current < MIN_READY_MS) {
+          startPress = new Set<number>();
+        }
+      }
+
+      gs = stepGame(gs, delta, ts, startPress);
 
       gameStateRef.current = gs;
       setDisplayState({ ...gs });
@@ -383,6 +428,15 @@ function GameScreen({ mode, onQuit }: { mode: GameMode; onQuit: () => void }) {
     gameStateRef.current   = initialGameState(mode);
     prevKeysRef.current    = new Set();
     pressedKeysRef.current = new Set();
+    readySinceRef.current  = null;
+    setDisplayState(gameStateRef.current);
+  };
+
+  // Explicit, deterministic way to leave the ready/instructions screen —
+  // does not depend on hand-tracking or timing at all.
+  const handleStart = () => {
+    if (gameStateRef.current.phase !== 'ready') return;
+    gameStateRef.current = { ...gameStateRef.current, phase: 'playing' };
     setDisplayState(gameStateRef.current);
   };
 
@@ -449,6 +503,30 @@ function GameScreen({ mode, onQuit }: { mode: GameMode; onQuit: () => void }) {
               <span className="text-5xl mb-3">🙌</span>
               <p className="text-white font-bold text-lg">Show your hands!</p>
               <p className="text-white/50 text-sm mt-1">Hold both hands in front of the camera</p>
+            </div>
+          )}
+
+          {gs.phase === 'ready' && (
+            <div className="absolute inset-0 rounded-xl flex flex-col items-center justify-center px-8 text-center"
+              style={{ background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(6px)' }}>
+              <span className="text-4xl mb-3">🎹</span>
+              <p className="text-purple-400 font-black text-2xl mb-2">{MODE_INTRO[mode].title}</p>
+              <p className="text-white/70 text-sm leading-relaxed max-w-sm">{MODE_INTRO[mode].desc}</p>
+
+              {anyHand ? (
+                <div className="flex flex-col items-center gap-1.5 mt-6">
+                  <span className="text-4xl animate-bounce">👇</span>
+                  <p className="text-white/60 text-xs">or lower a fingertip into a lane to start</p>
+                </div>
+              ) : (
+                <p className="text-white/40 text-xs mt-6">Show your hands to play, or start below</p>
+              )}
+
+              <button
+                onClick={handleStart}
+                className="mt-4 px-8 py-3 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-black text-lg rounded-xl tracking-wide transition-all shadow-lg shadow-purple-900/50">
+                Start Playing
+              </button>
             </div>
           )}
 

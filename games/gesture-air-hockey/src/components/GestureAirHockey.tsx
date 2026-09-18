@@ -33,6 +33,15 @@ export default function GestureAirHockey() {
   const [screen, setScreen] = useState<Screen>("menu");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
 
+  // Briefly show the main menu on first load, then open How To Play
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setScreen(s => (s === "menu" ? "howto" : s));
+    }, 2200);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div className="min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#1a2a6c_0%,_#0b1230_55%,_#04061a_100%)] text-white relative">
       <AnimatedBackdrop />

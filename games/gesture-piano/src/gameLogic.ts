@@ -65,7 +65,7 @@ export interface GameState {
   songTime:     number;   // ms elapsed since song start
   songDuration: number;   // ms
   notes:        PianoNote[];
-  phase:        'playing' | 'finished';
+  phase:        'ready' | 'playing' | 'finished';
   hitFeedback:  HitFeedback | null;
 }
 
@@ -186,7 +186,7 @@ export function initialGameState(mode: GameMode): GameState {
     songTime:     0,
     songDuration: songDuration(mode),
     notes,
-    phase:        'playing',
+    phase:        'ready',
     hitFeedback:  null,
   };
 }
@@ -200,6 +200,12 @@ export function stepGame(
   newlyPressed:    Set<number>,
 ): GameState {
   if (state.phase === 'finished') return state;
+
+  if (state.phase === 'ready') {
+    // Stay on the ready screen (song clock frozen) until the player presses a key.
+    if (newlyPressed.size > 0) return { ...state, phase: 'playing' };
+    return state;
+  }
 
   const newSongTime = state.songTime + deltaMs;
   let combo    = state.combo;

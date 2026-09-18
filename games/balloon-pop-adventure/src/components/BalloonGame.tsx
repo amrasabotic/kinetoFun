@@ -41,6 +41,18 @@ export function BalloonGame() {
   const [showSettings,   setShowSettings]   = useState(false);
   const [showHowToPlay,  setShowHowToPlay]  = useState(false);
   const [isNewRecord,    setIsNewRecord]    = useState(false);
+  // Set by any menu navigation, so the auto-open timer below backs off if
+  // the player already did something on their own.
+  const navigatedRef = useRef(false);
+
+  // Briefly show the main menu on first load, then open How To Play
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!navigatedRef.current) setShowHowToPlay(true);
+    }, 2200);
+    return () => clearTimeout(t);
+  }, []);
 
   // ── Current game config ───────────────────────────────────────────────
   const [currentConfig, setCurrentConfig] = useState<GameConfig | null>(null);
@@ -243,9 +255,9 @@ export function BalloonGame() {
         <Menu
           highScores={highScores}
           settings={settings}
-          onPlay={() => setShowModeSelect(true)}
-          onSettings={() => setShowSettings(true)}
-          onHowToPlay={() => setShowHowToPlay(true)}
+          onPlay={() => { navigatedRef.current = true; setShowModeSelect(true); }}
+          onSettings={() => { navigatedRef.current = true; setShowSettings(true); }}
+          onHowToPlay={() => { navigatedRef.current = true; setShowHowToPlay(true); }}
         />
       )}
 

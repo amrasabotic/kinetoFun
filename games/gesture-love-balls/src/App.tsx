@@ -1217,10 +1217,22 @@ function GameScreen({ levelId, onComplete, onQuit, onNext }: {
 
 // ── Root App ──────────────────────────────────────────────────────────────────
 
+// How long the landing screen shows before auto-opening instructions.
+const INTRO_DELAY_MS = 2200;
+
 export default function App() {
   const [screen,   setScreen]   = useState<Screen>('landing');
   const [levelId,  setLevelId]  = useState(1);
   const [save,     setSave]     = useState<SaveData>(loadSave);
+
+  // Briefly show the landing screen on first load, then open instructions
+  // automatically — unless the player already navigated away on their own.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setScreen(s => (s === 'landing' ? 'howtoplay' : s));
+    }, INTRO_DELAY_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   function handleComplete(stars: number, score: number) {
     setSave(prev => {

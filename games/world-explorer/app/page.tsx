@@ -154,8 +154,11 @@ export default function WorldExplorer() {
         )}
       </div>
 
-      {/* Gesture tutorial hint (shown first 30s) */}
-      {screen === 'MAIN_MENU' && !gestureState.handPresent && (
+      {/* Gesture tutorial hint — always visible on the main menu, not just
+          before a hand is detected (previously it vanished the instant a
+          hand appeared, which is exactly when the player needs it to know
+          how to wave/select). */}
+      {screen === 'MAIN_MENU' && (
         <div className="fixed bottom-40 right-4 bg-black/60 rounded-2xl p-4 border border-white/20 max-w-[200px] text-right">
           <p className="text-white/80 text-sm font-bold mb-2">Controls</p>
           <p className="text-white/60 text-xs">☝️ Point = aim</p>
