@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestureWords</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --surface2: #1e2230;
+    --accent: #7c6af7;
+    --accent2: #4fd1c5;
+    --warn: #f6ad55;
+    --danger: #fc8181;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --glow: rgba(124,106,247,0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ─── SCREENS ─── */
+  .screen { display: none; width: 100%; height: 100vh; position: absolute; top: 0; left: 0; }
+  .screen.active { display: flex; }
+
+  /* ─── LOADING SCREEN ─── */
+  #screen-loading {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+  .logo {
+    font-size: 3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+  }
+  .load-bar-wrap {
+    width: 260px;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .load-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+  .load-text { font-size: 0.8rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* ─── START SCREEN ─── */
+  #screen-start {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 40px;
+  }
+  .start-title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    letter-spacing: -2px;
+  }
+  .start-sub { color: var(--muted); font-size: 1rem; text-align: center; max-width: 380px; line-height: 1.6; }
+  .gesture-hint-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 420px;
+    width: 100%;
+  }
+  .gesture-card {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .gesture-icon { font-size: 1.8rem; flex-shrink: 0; }
+  .gesture-label { font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
+  .gesture-label strong { display: block; color: var(--text); font-size: 0.88rem; margin-bottom: 2px; }
+
+  .start-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .cta-ring {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+    animation: pulse-ring 2s ease-in-out infinite;
+    position: relative;
+    cursor: default;
+  }
+  .cta-ring::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    opacity: 0.4;
+    animation: pulse-ring 2s ease-in-out infinite 0.4s;
+  }
+  @keyframes pulse-ring {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.06); opacity: 0.7; }
+  }
+  .cta-text { font-size: 0.85rem; color: var(--muted); text-align: center; }
+
+  /* ─── GAME SCREEN ─── */
+  #screen-game {
+    flex-direction: row;
+    align-items: stretch;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  /* Left: camera panel */
+  .cam-panel {
+    flex: 0 0 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .cam-wrap {
+    position: relative;
+    width: 320px;
+    height: 240px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+    border: 2px solid var(--surface2);
+    flex-shrink: 0;
+  }
+  #webcam {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    display: block;
+  }
+  #canvas-overlay {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    transform: scaleX(-1);
+  }
+  .gesture-status {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--surface2);
+  }
+  .gesture-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .gesture-dot.active { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .gesture-name { font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--text); }
+  .gesture-action { font-size: 0.75rem; color: var(--muted); }
+
+  .hint-panel {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--surface2);
+    flex: 1;
+    overflow-y: auto;
+  }
+  .hint-title { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .hint-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--surface2);
+    font-size: 0.78rem;
+  }
+  .hint-row:last-child { border-bottom: none; }
+  .hint-emoji { font-size: 1.1rem; width: 24px; text-align: center; }
+  .hint-desc { color: var(--muted); }
+  .hint-desc strong { color: var(--text); }
+
+  /* Right: game area */
+  .game-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  /* Top bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .level-badge {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+  .score-badge {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    margin-left: auto;
+  }
+  .timer-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  #timer-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    transition: width 0.5s linear, background 0.5s;
+    width: 100%;
+  }
+
+  /* Word grid */
+  .word-section {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--surface2);
+    text-align: center;
+  }
+  .word-hint-text {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .word-category {
+    display: inline-block;
+    background: rgba(124,106,247,0.15);
+    border: 1px solid rgba(124,106,247,0.3);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.75rem;
+    margin-bottom: 16px;
+  }
+  .word-display {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .letter-box {
+    width: 48px; height: 56px;
+    border-radius: 10px;
+    border: 2px solid var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+    background: var(--bg);
+    transition: all 0.2s;
+    position: relative;
+  }
+  .letter-box.filled {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.1);
+    transform: scale(1.05);
+  }
+  .letter-box.correct {
+    border-color: var(--accent2);
+    background: rgba(79,209,197,0.15);
+    color: var(--accent2);
+    animation: pop 0.3s ease;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.9); }
+    60% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+  .letter-box.wrong {
+    border-color: var(--danger);
+    background: rgba(252,129,129,0.1);
+    animation: shake 0.3s ease;
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  /* Letter picker */
+  .letter-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--surface2);
+    flex: 1;
+  }
+  .picker-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--surface2);
+  }
+  .picker-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .cursor-letter {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-align: center;
+    background: rgba(124,106,247,0.1);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    width: 52px; height: 52px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto;
+    transition: all 0.1s;
+    box-shadow: 0 0 20px var(--glow);
+  }
+  .alphabet-strip {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 4px;
+  }
+  .alpha-btn {
+    border-radius: 6px;
+    height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--surface2);
+    transition: all 0.15s;
+    cursor: default;
+    position: relative;
+  }
+  .alpha-btn.selected {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(124,106,247,0.5);
+    color: #fff;
+  }
+  .alpha-btn.selected::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* Actions bar */
+  .actions-bar {
+    display: flex;
+    gap: 10px;
+  }
+  .action-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--surface2);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    cursor: default;
+    transition: all 0.2s;
+  }
+  .action-btn.primary {
+    background: rgba(124,106,247,0.2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .action-btn.danger {
+    background: rgba(252,129,129,0.1);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .action-btn.success {
+    background: rgba(79,209,197,0.15);
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+  .action-btn.active {
+    transform: scale(0.96);
+    filter: brightness(1.3);
+  }
+
+  /* ─── RESULT / LEVEL COMPLETE ─── */
+  #screen-result {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    text-align: center;
+    padding: 40px;
+  }
+  .result-emoji { font-size: 5rem; animation: bounce 0.6s ease; }
+  @keyframes bounce {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+  .result-title { font-size: 2.5rem; font-weight: 700; }
+  .result-word {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.8rem;
+    color: var(--accent2);
+    background: rgba(79,209,197,0.1);
+    border: 1px solid var(--accent2);
+    padding: 8px 24px;
+    border-radius: 12px;
+  }
+  .result-stats {
+    display: flex; gap: 24px;
+  }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 12px;
+    padding: 16px 24px;
+  }
+  .stat-val {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+  }
+  .stat-lbl { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  .result-actions {
+    display: flex; gap: 12px;
+    flex-direction: column;
+    align-items: center;
+  }
+  .result-cta {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 12px;
+    padding: 14px 24px;
+    font-size: 0.9rem;
+    color: var(--muted);
+    width: 280px;
+  }
+  .result-cta .icon { font-size: 1.5rem; }
+  .result-cta strong { display: block; color: var(--text); font-size: 1rem; }
+  .result-cta.glowing { border-color: var(--accent); background: rgba(124,106,247,0.1); animation: glow-pulse 1.5s ease-in-out infinite; }
+  @keyframes glow-pulse {
+    0%,100% { box-shadow: 0 0 0 rgba(124,106,247,0); }
+    50% { box-shadow: 0 0 20px rgba(124,106,247,0.4); }
+  }
+  .countdown-ring {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ─── FEEDBACK TOAST ─── */
+  #toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--surface2);
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-size: 0.9rem;
+    color: var(--text);
+    transition: transform 0.3s ease;
+    z-index: 100;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* No camera warning */
+  .no-cam {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.8);
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px;
+    text-align: center;
+    padding: 16px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    display: none;
+  }
+  .no-cam.visible { display: flex; }
+  .no-cam .icon { font-size: 2rem; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="screen active" id="screen-loading">
+  <div class="logo">✋ GestureWords</div>
+  <div class="load-bar-wrap"><div class="load-bar" id="load-bar"></div></div>
+  <div class="load-text" id="load-text">Loading MediaPipe…</div>
+</div>
+
+<!-- START -->
+<div class="screen" id="screen-start">
+  <div class="start-title">✋ GestureWords</div>
+  <div class="start-sub">Control everything with your hand. No keyboard, no mouse — just gestures.</div>
+  <div class="gesture-hint-grid">
+    <div class="gesture-card"><div class="gesture-icon">☝️</div><div class="gesture-label"><strong>Point → Move</strong>Point finger to scroll through letters</div></div>
+    <div class="gesture-card"><div class="gesture-icon">✌️</div><div class="gesture-label"><strong>Two Fingers → Select</strong>Pinch 2 fingers to pick a letter</div></div>
+    <div class="gesture-card"><div class="gesture-icon">👍</div><div class="gesture-label"><strong>Thumbs Up → Submit</strong>Confirm your word answer</div></div>
+    <div class="gesture-card"><div class="gesture-icon">✊</div><div class="gesture-label"><strong>Fist → Delete</strong>Remove last letter typed</div></div>
+    <div class="gesture-card"><div class="gesture-icon">🖐️</div><div class="gesture-label"><strong>Open Hand → Skip</strong>Skip current word</div></div>
+    <div class="gesture-card"><div class="gesture-icon">🤙</div><div class="gesture-label"><strong>Call Me → Hint</strong>Reveal a letter hint</div></div>
+  </div>
+  <div class="start-cta">
+    <div class="cta-ring">👊</div>
+    <div class="cta-text">Make a <strong>Fist</strong> then <strong>open your palm</strong> to start</div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="screen-game">
+  <!-- Camera side -->
+  <div class="cam-panel">
+    <div class="cam-wrap">
+      <video id="webcam" autoplay playsinline muted></video>
+      <canvas id="canvas-overlay"></canvas>
+      <div class="no-cam" id="no-cam-msg">
+        <div class="icon">📷</div>
+        <div>Camera access needed<br>for gesture control</div>
+      </div>
+    </div>
+    <div class="gesture-status">
+      <div class="gesture-dot" id="gesture-dot"></div>
+      <div>
+        <div class="gesture-name" id="gesture-name">No hand detected</div>
+        <div class="gesture-action" id="gesture-action">Show your hand to the camera</div>
+      </div>
+    </div>
+    <div class="hint-panel">
+      <div class="hint-title">Gesture Guide</div>
+      <div class="hint-row"><div class="hint-emoji">☝️</div><div class="hint-desc"><strong>Point</strong> — navigate letters</div></div>
+      <div class="hint-row"><div class="hint-emoji">✌️</div><div class="hint-desc"><strong>Two Fingers</strong> — select letter</div></div>
+      <div class="hint-row"><div class="hint-emoji">👍</div><div class="hint-desc"><strong>Thumbs Up</strong> — submit word</div></div>
+      <div class="hint-row"><div class="hint-emoji">✊</div><div class="hint-desc"><strong>Fist</strong> — delete last letter</div></div>
+      <div class="hint-row"><div class="hint-emoji">🖐️</div><div class="hint-desc"><strong>Open Palm</strong> — skip word</div></div>
+      <div class="hint-row"><div class="hint-emoji">🤙</div><div class="hint-desc"><strong>Hang Loose</strong> — get hint</div></div>
+    </div>
+  </div>
+
+  <!-- Game side -->
+  <div class="game-area">
+    <div class="top-bar">
+      <div class="level-badge" id="level-badge">Level 1</div>
+      <div class="timer-bar-wrap"><div id="timer-bar"></div></div>
+      <div class="score-badge">⭐ <span id="score-val">0</span></div>
+    </div>
+
+    <div class="word-section">
+      <div class="word-hint-text">Guess the word</div>
+      <div class="word-category" id="word-category">Category</div>
+      <div class="word-display" id="word-display"></div>
+      <div style="font-size:0.8rem;color:var(--muted)" id="word-clue">—</div>
+    </div>
+
+    <div class="letter-picker">
+      <div class="picker-info">
+        <div class="picker-label">Letter Selector</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Current: <span id="typed-display" style="color:var(--accent);font-family:'DM Mono',monospace"></span></div>
+      </div>
+      <div class="cursor-letter" id="cursor-letter">A</div>
+      <div class="alphabet-strip" id="alphabet-strip"></div>
+    </div>
+
+    <div class="actions-bar">
+      <div class="action-btn danger" id="btn-delete">✊ Delete</div>
+      <div class="action-btn primary" id="btn-select">✌️ Select</div>
+      <div class="action-btn success" id="btn-submit">👍 Submit</div>
+      <div class="action-btn" id="btn-hint">🤙 Hint</div>
+      <div class="action-btn" id="btn-skip">🖐️ Skip</div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="screen-result">
+  <div class="result-emoji" id="result-emoji">🎉</div>
+  <div class="result-title" id="result-title">Correct!</div>
+  <div class="result-word" id="result-word">WORD</div>
+  <div class="result-stats">
+    <div class="stat-box"><div class="stat-val" id="res-score">0</div><div class="stat-lbl">Score</div></div>
+    <div class="stat-box"><div class="stat-val" id="res-level">1</div><div class="stat-lbl">Level</div></div>
+    <div class="stat-box"><div class="stat-val" id="res-words">0</div><div class="stat-lbl">Words</div></div>
+  </div>
+  <div class="result-actions">
+    <div class="result-cta glowing" id="res-next">
+      <div class="icon">👍</div>
+      <div><strong>Thumbs Up — Next Level</strong>Hold up to continue</div>
+    </div>
+    <div class="result-cta" id="res-restart">
+      <div class="icon">✊</div>
+      <div><strong>Fist — Restart Game</strong>Go back to beginning</div>
+    </div>
+  </div>
+  <div class="countdown-ring" id="auto-advance"></div>
+</div>
+
+<div id="toast"></div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+<script>
+// ════════════════════════════════════════════
+// WORD DATABASE
+// ════════════════════════════════════════════
+const WORD_DB = [
+  // Level 1 (3-4 letter words)
+  { word: 'CAT',   category: 'Animals',   clue: 'Meows and purrs' },
+  { word: 'DOG',   category: 'Animals',   clue: 'Man\'s best friend' },
+  { word: 'SUN',   category: 'Nature',    clue: 'Star at center of solar system' },
+  { word: 'MOON',  category: 'Nature',    clue: 'Earth\'s natural satellite' },
+  { word: 'FISH',  category: 'Animals',   clue: 'Lives underwater, has gills' },
+  { word: 'BIRD',  category: 'Animals',   clue: 'Has wings and feathers' },
+  { word: 'TREE',  category: 'Nature',    clue: 'Has roots, trunk and leaves' },
+  { word: 'FIRE',  category: 'Nature',    clue: 'Hot, bright, burns things' },
+  // Level 2 (5 letter words)
+  { word: 'CLOUD', category: 'Nature',    clue: 'Floats in the sky, brings rain' },
+  { word: 'OCEAN', category: 'Nature',    clue: 'Vast body of salt water' },
+  { word: 'PIANO', category: 'Music',     clue: 'Musical instrument with keys' },
+  { word: 'TIGER', category: 'Animals',   clue: 'Striped big cat' },
+  { word: 'EAGLE', category: 'Animals',   clue: 'Large bird of prey' },
+  { word: 'MAGIC', category: 'Fantasy',   clue: 'Supernatural power' },
+  { word: 'STORM', category: 'Weather',   clue: 'Strong wind and rain' },
+  { word: 'GRAPE', category: 'Food',      clue: 'Small fruit grows in clusters' },
+  // Level 3 (6 letter words)
+  { word: 'JUNGLE', category: 'Nature',   clue: 'Dense tropical forest' },
+  { word: 'ROCKET', category: 'Space',    clue: 'Vehicle for space travel' },
+  { word: 'CASTLE', category: 'History',  clue: 'Medieval fortress for royalty' },
+  { word: 'MIRROR', category: 'Objects',  clue: 'Reflects your image' },
+  { word: 'PLANET', category: 'Space',    clue: 'Orbits a star' },
+  { word: 'BRIDGE', category: 'Objects',  clue: 'Structure spanning a gap' },
+  { word: 'CANDLE', category: 'Objects',  clue: 'Wax stick that gives light' },
+  { word: 'SPIDER', category: 'Animals',  clue: 'Eight-legged web-spinner' },
+  // Level 4 (7 letter words)
+  { word: 'DOLPHIN', category: 'Animals', clue: 'Intelligent ocean mammal' },
+  { word: 'DIAMOND', category: 'Gems',    clue: 'Hardest natural substance' },
+  { word: 'VOLCANO', category: 'Nature',  clue: 'Mountain that erupts lava' },
+  { word: 'COMPASS', category: 'Tools',   clue: 'Shows magnetic North' },
+  { word: 'LANTERN', category: 'Objects', clue: 'Portable light source' },
+  { word: 'PENGUIN', category: 'Animals', clue: 'Tuxedo bird that can\'t fly' },
+  { word: 'PYRAMID', category: 'History', clue: 'Ancient Egyptian monument' },
+  { word: 'CAPTAIN', category: 'People',  clue: 'Leader of a ship or team' },
+];
+
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+// ════════════════════════════════════════════
+// GAME STATE
+// ════════════════════════════════════════════
+let state = {
+  screen: 'loading',
+  currentLetterIdx: 0,
+  typedWord: [],
+  targetWord: '',
+  targetData: null,
+  wordQueue: [],
+  score: 0,
+  level: 1,
+  wordsCompleted: 0,
+  hintsUsed: 0,
+  revealedHints: [],
+  timerMax: 60,
+  timerLeft: 60,
+  timerInterval: null,
+  lastGesture: null,
+  gestureHoldStart: null,
+  gestureHoldThreshold: 700,
+  gestureCooldown: false,
+  gestureCooldownMs: 800,
+  autoAdvanceTimer: null,
+  autoAdvanceSecs: 4,
+  startGestureSequence: [], // for fist→open palm to start
+};
+
+// ════════════════════════════════════════════
+// DOM REFS
+// ════════════════════════════════════════════
+const screens = {
+  loading: document.getElementById('screen-loading'),
+  start:   document.getElementById('screen-start'),
+  game:    document.getElementById('screen-game'),
+  result:  document.getElementById('screen-result'),
+};
+const loadBar    = document.getElementById('load-bar');
+const loadText   = document.getElementById('load-text');
+const webcam     = document.getElementById('webcam');
+const canvasOvl  = document.getElementById('canvas-overlay');
+const ctx        = canvasOvl.getContext('2d');
+const gestDot    = document.getElementById('gesture-dot');
+const gestName   = document.getElementById('gesture-name');
+const gestAction = document.getElementById('gesture-action');
+const alphabetStrip = document.getElementById('alphabet-strip');
+const cursorLetter  = document.getElementById('cursor-letter');
+const wordDisplay   = document.getElementById('word-display');
+const wordCategory  = document.getElementById('word-category');
+const wordClue      = document.getElementById('word-clue');
+const timerBar      = document.getElementById('timer-bar');
+const scoreVal      = document.getElementById('score-val');
+const levelBadge    = document.getElementById('level-badge');
+const typedDisplay  = document.getElementById('typed-display');
+const toast         = document.getElementById('toast');
+const noCamMsg      = document.getElementById('no-cam-msg');
+const resultEmoji   = document.getElementById('result-emoji');
+const resultTitle   = document.getElementById('result-title');
+const resultWord    = document.getElementById('result-word');
+const resScore      = document.getElementById('res-score');
+const resLevel      = document.getElementById('res-level');
+const resWords      = document.getElementById('res-words');
+const autoAdvanceEl = document.getElementById('auto-advance');
+
+// Build alphabet strip
+ALPHABET.forEach((l, i) => {
+  const btn = document.createElement('div');
+  btn.className = 'alpha-btn';
+  btn.textContent = l;
+  btn.id = 'alpha-' + l;
+  alphabetStrip.appendChild(btn);
+});
+
+// ════════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ════════════════════════════════════════════
+function showScreen(name) {
+  Object.entries(screens).forEach(([k, el]) => {
+    el.classList.toggle('active', k === name);
+  });
+  state.screen = name;
+}
+
+// ════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, duration = 2000) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+}
+
+// ════════════════════════════════════════════
+// WORD LOGIC
+// ════════════════════════════════════════════
+function getWordsForLevel(level) {
+  // Level determines word length band
+  const bands = [
+    [3, 4], // level 1
+    [5, 5], // level 2
+    [6, 6], // level 3
+    [7, 8], // level 4+
+  ];
+  const [min, max] = bands[Math.min(level - 1, bands.length - 1)];
+  return WORD_DB.filter(w => w.word.length >= min && w.word.length <= max);
+}
+
+function pickWord() {
+  const pool = getWordsForLevel(state.level);
+  const idx = Math.floor(Math.random() * pool.length);
+  state.targetData = pool[idx];
+  state.targetWord = state.targetData.word;
+  state.typedWord = [];
+  state.revealedHints = [];
+  state.hintsUsed = 0;
+  state.currentLetterIdx = 0;
+  renderWordDisplay();
+  renderLetterPicker();
+  wordCategory.textContent = state.targetData.category;
+  wordClue.textContent = '💡 ' + state.targetData.clue;
+  typedDisplay.textContent = '';
+  startTimer();
+}
+
+function renderWordDisplay() {
+  wordDisplay.innerHTML = '';
+  for (let i = 0; i < state.targetWord.length; i++) {
+    const box = document.createElement('div');
+    box.className = 'letter-box';
+    box.id = 'lbox-' + i;
+    if (state.typedWord[i]) {
+      box.textContent = state.typedWord[i];
+      box.classList.add('filled');
+    } else if (state.revealedHints.includes(i)) {
+      box.textContent = state.targetWord[i];
+      box.classList.add('correct');
+      box.style.opacity = '0.7';
+    } else {
+      box.textContent = '?';
+    }
+    wordDisplay.appendChild(box);
+  }
+}
+
+function renderLetterPicker() {
+  const cur = ALPHABET[state.currentLetterIdx];
+  cursorLetter.textContent = cur;
+  ALPHABET.forEach((l, i) => {
+    const btn = document.getElementById('alpha-' + l);
+    if (btn) btn.classList.toggle('selected', i === state.currentLetterIdx);
+  });
+  // Scroll into view approximately
+  const btn = document.getElementById('alpha-' + cur);
+  if (btn) btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+}
+
+function startTimer() {
+  clearInterval(state.timerInterval);
+  state.timerLeft = state.timerMax;
+  timerBar.style.width = '100%';
+  timerBar.style.background = 'linear-gradient(90deg, var(--accent), var(--accent2))';
+  state.timerInterval = setInterval(() => {
+    state.timerLeft--;
+    const pct = (state.timerLeft / state.timerMax) * 100;
+    timerBar.style.width = pct + '%';
+    if (pct < 30) timerBar.style.background = 'var(--danger)';
+    else if (pct < 60) timerBar.style.background = 'var(--warn)';
+    if (state.timerLeft <= 0) {
+      clearInterval(state.timerInterval);
+      timeUp();
+    }
+  }, 1000);
+}
+
+function timeUp() {
+  showResult(false);
+}
+
+// ════════════════════════════════════════════
+// GESTURES → ACTIONS
+// ════════════════════════════════════════════
+function onGestureAction(gesture) {
+  if (state.gestureCooldown) return;
+  if (state.screen === 'start') {
+    handleStartScreenGesture(gesture);
+    return;
+  }
+  if (state.screen === 'result') {
+    handleResultScreenGesture(gesture);
+    return;
+  }
+  if (state.screen !== 'game') return;
+
+  switch (gesture) {
+    case 'POINT':
+      // handled continuously in gesture loop for navigation
+      break;
+    case 'TWO_FINGERS':
+      selectLetter();
+      break;
+    case 'THUMBS_UP':
+      submitWord();
+      break;
+    case 'FIST':
+      deleteLetter();
+      break;
+    case 'OPEN_PALM':
+      skipWord();
+      break;
+    case 'HANG_LOOSE':
+      getHint();
+      break;
+  }
+  triggerCooldown();
+}
+
+function triggerCooldown() {
+  state.gestureCooldown = true;
+  setTimeout(() => { state.gestureCooldown = false; }, state.gestureCooldownMs);
+}
+
+function handleStartScreenGesture(gesture) {
+  // Track fist then open palm to start
+  if (gesture === 'FIST') {
+    state.startGestureSequence = ['FIST'];
+    showToast('👊 Now open your palm to start!');
+  } else if (gesture === 'OPEN_PALM' && state.startGestureSequence.includes('FIST')) {
+    state.startGestureSequence = [];
+    startGame();
+    triggerCooldown();
+  } else if (gesture === 'THUMBS_UP') {
+    startGame();
+    triggerCooldown();
+  }
+}
+
+function handleResultScreenGesture(gesture) {
+  if (gesture === 'THUMBS_UP') {
+    clearResultAutoAdvance();
+    nextLevel();
+    triggerCooldown();
+  } else if (gesture === 'FIST') {
+    clearResultAutoAdvance();
+    restartGame();
+    triggerCooldown();
+  }
+}
+
+function startGame() {
+  state.score = 0;
+  state.level = 1;
+  state.wordsCompleted = 0;
+  state.timerMax = 60;
+  scoreVal.textContent = '0';
+  levelBadge.textContent = 'Level 1';
+  showScreen('game');
+  pickWord();
+}
+
+function selectLetter() {
+  const letter = ALPHABET[state.currentLetterIdx];
+  if (state.typedWord.length < state.targetWord.length) {
+    // Find the next empty slot
+    const nextEmpty = state.typedWord.length;
+    state.typedWord.push(letter);
+    renderWordDisplay();
+    typedDisplay.textContent = state.typedWord.join('');
+    flashBtn('btn-select');
+    showToast(`✌️ Added "${letter}"`);
+  } else {
+    showToast('❗ Word is full — submit or delete');
+  }
+}
+
+function deleteLetter() {
+  if (state.typedWord.length > 0) {
+    state.typedWord.pop();
+    renderWordDisplay();
+    typedDisplay.textContent = state.typedWord.join('');
+    flashBtn('btn-delete');
+    showToast('✊ Deleted last letter');
+  } else {
+    showToast('Nothing to delete');
+  }
+}
+
+function submitWord() {
+  if (state.typedWord.length !== state.targetWord.length) {
+    showToast(`Need ${state.targetWord.length} letters — you have ${state.typedWord.length}`);
+    return;
+  }
+  const guess = state.typedWord.join('');
+  flashBtn('btn-submit');
+  if (guess === state.targetWord) {
+    clearInterval(state.timerInterval);
+    // Score: base + time bonus - hints
+    const timeBonus = Math.floor(state.timerLeft * 2);
+    const hintPenalty = state.hintsUsed * 10;
+    const earned = Math.max(10, 50 + timeBonus - hintPenalty);
+    state.score += earned;
+    state.wordsCompleted++;
+    scoreVal.textContent = state.score;
+    // Animate correct
+    for (let i = 0; i < state.targetWord.length; i++) {
+      setTimeout(() => {
+        const box = document.getElementById('lbox-' + i);
+        if (box) { box.classList.add('correct'); box.classList.remove('filled'); }
+      }, i * 80);
+    }
+    setTimeout(() => showResult(true), 800);
+  } else {
+    // Show which letters are wrong
+    for (let i = 0; i < state.typedWord.length; i++) {
+      const box = document.getElementById('lbox-' + i);
+      if (box) {
+        if (state.typedWord[i] !== state.targetWord[i]) {
+          box.classList.add('wrong');
+          setTimeout(() => box.classList.remove('wrong'), 400);
+        }
+      }
+    }
+    showToast('❌ Not quite! Try again');
+    state.typedWord = [];
+    typedDisplay.textContent = '';
+    setTimeout(renderWordDisplay, 450);
+  }
+}
+
+function skipWord() {
+  clearInterval(state.timerInterval);
+  flashBtn('btn-skip');
+  showToast('🖐️ Word skipped');
+  state.score = Math.max(0, state.score - 5);
+  scoreVal.textContent = state.score;
+  setTimeout(() => pickWord(), 500);
+}
+
+function getHint() {
+  const unrevealed = [];
+  for (let i = 0; i < state.targetWord.length; i++) {
+    if (!state.revealedHints.includes(i) && !state.typedWord[i]) {
+      unrevealed.push(i);
+    }
+  }
+  if (unrevealed.length === 0) {
+    showToast('No more hints available');
+    return;
+  }
+  flashBtn('btn-hint');
+  const pick = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+  state.revealedHints.push(pick);
+  state.hintsUsed++;
+  renderWordDisplay();
+  showToast(`🤙 Hint: position ${pick + 1} is "${state.targetWord[pick]}"`);
+}
+
+function showResult(won) {
+  clearInterval(state.timerInterval);
+  resultEmoji.textContent = won ? '🎉' : '😅';
+  resultTitle.textContent = won ? 'Correct!' : 'Time\'s Up!';
+  resultWord.textContent = state.targetWord;
+  resScore.textContent = state.score;
+  resLevel.textContent = state.level;
+  resWords.textContent = state.wordsCompleted;
+  showScreen('result');
+  startResultAutoAdvance(won);
+}
+
+function startResultAutoAdvance(won) {
+  let countdown = state.autoAdvanceSecs;
+  autoAdvanceEl.textContent = `Auto-advancing in ${countdown}s…`;
+  state.autoAdvanceTimer = setInterval(() => {
+    countdown--;
+    autoAdvanceEl.textContent = countdown > 0 ? `Auto-advancing in ${countdown}s…` : '';
+    if (countdown <= 0) {
+      clearInterval(state.autoAdvanceTimer);
+      nextLevel();
+    }
+  }, 1000);
+}
+
+function clearResultAutoAdvance() {
+  clearInterval(state.autoAdvanceTimer);
+  autoAdvanceEl.textContent = '';
+}
+
+function nextLevel() {
+  state.level++;
+  // Increase difficulty
+  state.timerMax = Math.max(30, 60 - (state.level - 1) * 5);
+  levelBadge.textContent = 'Level ' + state.level;
+  showScreen('game');
+  pickWord();
+}
+
+function restartGame() {
+  startGame();
+}
+
+function flashBtn(id) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.classList.add('active');
+  setTimeout(() => btn.classList.remove('active'), 300);
+}
+
+// ════════════════════════════════════════════
+// NAVIGATION (pointing gesture)
+// ════════════════════════════════════════════
+let navAccum = 0;
+let navDir = 0;
+let lastNavTime = 0;
+const NAV_STEP_MS = 150;
+
+function navigateLetter(direction) {
+  const now = Date.now();
+  if (now - lastNavTime < NAV_STEP_MS) return;
+  lastNavTime = now;
+  state.currentLetterIdx = (state.currentLetterIdx + direction + ALPHABET.length) % ALPHABET.length;
+  renderLetterPicker();
+}
+
+// ════════════════════════════════════════════
+// MEDIAPIPE HAND GESTURE CLASSIFIER
+// ════════════════════════════════════════════
+function classifyGesture(landmarks) {
+  // landmarks: array of {x,y,z} normalized
+  if (!landmarks || landmarks.length < 21) return null;
+
+  const lm = landmarks;
+
+  // Helper: is finger extended?
+  // Finger tip indices: thumb=4, index=8, middle=12, ring=16, pinky=20
+  // MCP (knuckle): thumb=2, index=5, middle=9, ring=13, pinky=17
+  // PIP: thumb=3, index=6, middle=10, ring=14, pinky=18
+
+  const wrist = lm[0];
+  const tipOf = [4, 8, 12, 16, 20];
+  const pipOf = [3, 6, 10, 14, 18];
+  const mcpOf = [2, 5, 9, 13, 17];
+
+  // Check if fingertip is above PIP (y is inverted in image space)
+  function isExtended(tipIdx, pipIdx) {
+    return lm[tipIdx].y < lm[pipIdx].y;
+  }
+
+  // Thumb: compare x relative to wrist
+  function thumbExtended() {
+    // In mirrored view, thumb extends right (larger x)
+    return Math.abs(lm[4].x - lm[2].x) > 0.04 && lm[4].y < lm[3].y;
+  }
+
+  const thumb  = thumbExtended();
+  const index  = isExtended(8, 6);
+  const middle = isExtended(12, 10);
+  const ring   = isExtended(16, 14);
+  const pinky  = isExtended(20, 18);
+
+  const extended = [thumb, index, middle, ring, pinky];
+  const numExtended = extended.filter(Boolean).length;
+
+  // ── FIST: all fingers curled ──
+  if (!index && !middle && !ring && !pinky && !thumb) return 'FIST';
+
+  // ── OPEN PALM: all extended ──
+  if (index && middle && ring && pinky) return 'OPEN_PALM';
+
+  // ── POINT: only index ──
+  if (index && !middle && !ring && !pinky) return 'POINT';
+
+  // ── TWO FINGERS (peace): index + middle ──
+  if (index && middle && !ring && !pinky) return 'TWO_FINGERS';
+
+  // ── THUMBS UP: only thumb, others curled ──
+  if (thumb && !index && !middle && !ring && !pinky) return 'THUMBS_UP';
+
+  // ── HANG LOOSE (🤙): thumb + pinky ──
+  if (thumb && !index && !middle && !ring && pinky) return 'HANG_LOOSE';
+
+  return null;
+}
+
+// Detect pointing direction from index finger
+function getPointingDirection(landmarks) {
+  if (!landmarks || landmarks.length < 9) return 0;
+  const tip = landmarks[8];
+  const base = landmarks[5];
+  const dx = tip.x - base.x; // positive = pointing right
+  const absDx = Math.abs(dx);
+  const dy = Math.abs(tip.y - base.y);
+  if (absDx < 0.04) return 0;
+  // Mirrored: pointing left in real life = pointing right in image (negative x → move left in alphabet)
+  // We want: real right → next letter, real left → prev letter
+  // Since video is mirrored: image right = real left
+  return dx > 0 ? -1 : 1; // image right = real left = prev; image left = real right = next
+}
+
+// ════════════════════════════════════════════
+// MEDIAPIPE SETUP
+// ════════════════════════════════════════════
+let gestureBuffer = [];
+const BUFFER_SIZE = 6;
+let currentGesture = null;
+let holdStart = null;
+const HOLD_MS = 500;
+let lastActionGesture = null;
+let lastActionTime = 0;
+const ACTION_COOLDOWN = 900;
+
+function stableGesture(detected) {
+  gestureBuffer.push(detected);
+  if (gestureBuffer.length > BUFFER_SIZE) gestureBuffer.shift();
+  // Majority vote
+  const counts = {};
+  gestureBuffer.forEach(g => { counts[g] = (counts[g] || 0) + 1; });
+  let best = null, bestCount = 0;
+  Object.entries(counts).forEach(([g, c]) => { if (c > bestCount) { best = g; bestCount = c; } });
+  return bestCount >= Math.ceil(BUFFER_SIZE * 0.6) ? best : null;
+}
+
+function onResults(results) {
+  // Draw canvas
+  canvasOvl.width = canvasOvl.offsetWidth;
+  canvasOvl.height = canvasOvl.offsetHeight;
+  ctx.clearRect(0, 0, canvasOvl.width, canvasOvl.height);
+
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    updateGestureUI(null);
+    gestureBuffer = [];
+    currentGesture = null;
+    holdStart = null;
+    return;
+  }
+
+  const landmarks = results.multiHandLandmarks[0];
+
+  // Draw hand skeleton
+  if (window.drawConnectors && window.drawLandmarks) {
+    drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: 'rgba(124,106,247,0.6)', lineWidth: 2 });
+    drawLandmarks(ctx, landmarks, { color: 'rgba(79,209,197,0.9)', lineWidth: 1, radius: 3 });
+  }
+
+  const detected = classifyGesture(landmarks);
+  const stable = stableGesture(detected);
+
+  updateGestureUI(stable);
+
+  // Continuous navigation for POINT gesture
+  if (stable === 'POINT' && state.screen === 'game') {
+    const dir = getPointingDirection(landmarks);
+    if (dir !== 0) navigateLetter(dir);
+  }
+
+  // Detect gesture hold for triggering actions
+  const now = Date.now();
+  if (stable && stable !== 'POINT') {
+    if (stable !== currentGesture) {
+      currentGesture = stable;
+      holdStart = now;
+    } else if (holdStart && (now - holdStart) >= HOLD_MS) {
+      // Trigger action if cooldown passed
+      if (now - lastActionTime >= ACTION_COOLDOWN) {
+        lastActionTime = now;
+        holdStart = now; // reset hold so it doesn't fire rapidly
+        onGestureAction(stable);
+      }
+    }
+  } else {
+    currentGesture = stable;
+    holdStart = null;
+  }
+}
+
+const GESTURE_META = {
+  POINT:       { emoji: '☝️',  label: 'Pointing',         action: 'Navigate letters left/right' },
+  TWO_FINGERS: { emoji: '✌️',  label: 'Two Fingers',      action: 'Select current letter' },
+  THUMBS_UP:   { emoji: '👍',  label: 'Thumbs Up',        action: 'Submit word / Next level' },
+  FIST:        { emoji: '✊',  label: 'Fist',             action: 'Delete last letter / Restart' },
+  OPEN_PALM:   { emoji: '🖐️', label: 'Open Palm',        action: 'Skip word / Start game' },
+  HANG_LOOSE:  { emoji: '🤙',  label: 'Hang Loose',       action: 'Get a hint' },
+};
+
+function updateGestureUI(g) {
+  if (g && GESTURE_META[g]) {
+    const meta = GESTURE_META[g];
+    gestDot.classList.add('active');
+    gestName.textContent = meta.emoji + ' ' + meta.label;
+    gestAction.textContent = meta.action;
+  } else {
+    gestDot.classList.remove('active');
+    gestName.textContent = g ? g : 'No gesture detected';
+    gestAction.textContent = 'Show your hand to the camera';
+  }
+}
+
+async function initMediaPipe() {
+  try {
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.6,
+    });
+    hands.onResults(onResults);
+
+    setLoadProgress(50, 'Starting camera…');
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' }
+    });
+    webcam.srcObject = stream;
+    await new Promise(res => { webcam.onloadedmetadata = res; });
+
+    setLoadProgress(80, 'Warming up gesture model…');
+
+    const camera = new Camera(webcam, {
+      onFrame: async () => { await hands.send({ image: webcam }); },
+      width: 640, height: 480
+    });
+    await camera.start();
+
+    setLoadProgress(100, 'Ready!');
+    setTimeout(() => showScreen('start'), 600);
+
+  } catch (err) {
+    console.error('Camera/MediaPipe error:', err);
+    noCamMsg.classList.add('visible');
+    setLoadProgress(100, 'Camera unavailable — showing start');
+    setTimeout(() => showScreen('start'), 1200);
+    // Fall back to keyboard controls
+    enableKeyboardFallback();
+  }
+}
+
+function setLoadProgress(pct, text) {
+  loadBar.style.width = pct + '%';
+  if (text) loadText.textContent = text;
+}
+
+// ════════════════════════════════════════════
+// KEYBOARD FALLBACK
+// ════════════════════════════════════════════
+function enableKeyboardFallback() {
+  document.addEventListener('keydown', (e) => {
+    if (state.screen === 'start') {
+      if (e.key === 'Enter') startGame();
+      return;
+    }
+    if (state.screen === 'result') {
+      if (e.key === 'Enter') nextLevel();
+      if (e.key === 'r' || e.key === 'R') restartGame();
+      return;
+    }
+    if (state.screen !== 'game') return;
+    switch (e.key) {
+      case 'ArrowLeft':  navigateLetter(-1); break;
+      case 'ArrowRight': navigateLetter(1);  break;
+      case 'Enter':      selectLetter();     break;
+      case 'Backspace':  deleteLetter();     break;
+      case ' ':          submitWord();       break;
+      case 'h':          getHint();          break;
+      case 's':          skipWord();         break;
+    }
+  });
+  showToast('⌨️ Keyboard mode: ← → navigate, Enter select, Space submit, Backspace delete, H hint, S skip', 4000);
+}
+
+// ════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════
+setLoadProgress(10, 'Loading scripts…');
+window.addEventListener('load', async () => {
+  setLoadProgress(30, 'Scripts loaded, initializing…');
+  await new Promise(res => setTimeout(res, 300));
+  initMediaPipe();
+});
+</script>
+</body>
+</html>

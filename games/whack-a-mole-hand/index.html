@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hand Whack-a-Mole</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d0520;overflow:hidden;height:100vh;width:100vw;font-family:'Nunito',sans-serif}
+  #app{position:relative;width:100vw;height:100vh}
+  #video{position:absolute;top:-9999px;left:-9999px;width:1px;height:1px}
+  #camBox{
+    position:absolute;bottom:16px;right:16px;width:180px;height:120px;
+    border-radius:12px;overflow:hidden;border:2px solid rgba(255,255,255,.3);
+    box-shadow:0 4px 20px rgba(0,0,0,.7);z-index:60;display:none;background:#000
+  }
+  #prevCanvas{width:100%;height:100%;display:block;transform:scaleX(-1)}
+  #camLbl{
+    position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);
+    color:rgba(255,255,255,.8);font-size:.58rem;font-weight:800;
+    text-align:center;padding:3px;letter-spacing:.1em
+  }
+  #gdot{
+    position:absolute;top:6px;right:7px;width:9px;height:9px;
+    border-radius:50%;background:#666;box-shadow:0 0 5px #666;transition:.15s
+  }
+  #gc{position:absolute;top:0;left:0;width:100%;height:100%}
+  #hud{
+    position:absolute;top:14px;left:0;right:0;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:0 22px;pointer-events:none
+  }
+  .pill{
+    background:rgba(255,255,255,.11);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.2);border-radius:999px;
+    padding:7px 18px;color:#fff;font-family:'Fredoka One',cursive;
+    font-size:1rem;letter-spacing:.03em
+  }
+  .pill span{color:#ffd93d}
+  #gbar{
+    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.2);
+    border-radius:999px;padding:6px 20px;color:#fff;
+    font-size:.8rem;font-weight:700;letter-spacing:.05em;
+    display:flex;align-items:center;gap:8px;pointer-events:none
+  }
+  #gi{font-size:1.3rem}
+  #gn{color:#ffd93d}
+</style>
+</head>
+<body>
+<div id="app">
+  <video id="video" autoplay muted playsinline></video>
+  <div id="camBox">
+    <canvas id="prevCanvas"></canvas>
+    <div id="gdot"></div>
+    <div id="camLbl">YOU</div>
+  </div>
+  <canvas id="gc"></canvas>
+  <div id="hud">
+    <div class="pill">⭐ <span id="hScore">0</span></div>
+    <div class="pill">❤️ <span id="hLives">❤️❤️❤️</span></div>
+    <div class="pill">⏱ <span id="hTime">60</span>s</div>
+  </div>
+  <div id="gbar"><span id="gi">✋</span><span id="gn">STARTING…</span></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script>
+// ── constants ──────────────────────────────────────────
+const ST = {LOAD:'LOAD',MENU:'MENU',PLAY:'PLAY',OVER:'OVER'};
+const COLS=4, ROWS=3, GSEC=60, HF=75;
+
+// ── state ──────────────────────────────────────────────
+let st=ST.LOAD, score=0, lives=3, tLeft=GSEC;
+let moles=[], parts=[];
+let hPos={x:.5,y:.5}, gest='none', hVis=false;
+let ham={x:-300,y:-300,sw:false};
+let lastFist=false, swCD=0;
+let mBtns=[], selB=-1, hovC={};
+let gTmr=null;
+
+// ── canvas ─────────────────────────────────────────────
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+const video  = document.getElementById('video');
+const pCan   = document.getElementById('prevCanvas');
+const pCtx   = pCan.getContext('2d');
+let   prevOK = false;
+
+function resize(){
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  pCan.width=180; pCan.height=120;
+  buildGrid(); buildBtns();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── grid ───────────────────────────────────────────────
+function buildGrid(){
+  const W=canvas.width, H=canvas.height;
+  const px=W*.10, py=H*.16;
+  const cw=(W-px*2)/COLS, ch=(H-py*2)/ROWS;
+  moles=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+    moles.push({
+      cx: px+cw*c+cw/2,
+      cy: py+ch*r+ch/2,
+      rx: cw*.36,
+      ry: ch*.20,
+      // animation state — use a single number:
+      // >0 = rising/up (0..1), <0 = sinking after hit (-1..0), 0=idle
+      phase: 0,   // 0=idle, 1=up, 2=hit-sinking
+      anim:  0,   // 0..1 progress
+      timer: null
+    });
+}
+
+// ── buttons ────────────────────────────────────────────
+function buildBtns(){
+  const W=canvas.width, H=canvas.height;
+  if(st===ST.MENU)
+    mBtns=[
+      {label:'🎮  PLAY',    action:'play', x:W/2, y:H*.54, w:240, h:62},
+      {label:'❓  HOW TO',  action:'how',  x:W/2, y:H*.67, w:240, h:62},
+    ];
+  else if(st===ST.OVER)
+    mBtns=[{label:'🔄  PLAY AGAIN', action:'play', x:W/2, y:H/2+158, w:256, h:62}];
+  else mBtns=[];
+  selB=-1; hovC={};
+}
+
+// ── gesture ────────────────────────────────────────────
+function detectGest(lm){
+  const pip=[6,10,14,18], tip=[8,12,16,20];
+  const ext=tip.map((t,i)=>lm[t].y<lm[pip[i]].y);
+  const thumbOut=lm[4].x<lm[3].x;
+  const n=ext.filter(Boolean).length;
+  if(n===1&&ext[0])    return 'point';
+  if(n===0&&!thumbOut) return 'fist';
+  if(n>=3)             return 'open';
+  return 'none';
+}
+
+// ── game logic ─────────────────────────────────────────
+function startGame(){
+  st=ST.PLAY;
+  score=0; lives=3; tLeft=GSEC;
+  moles.forEach(m=>{m.phase=0;m.anim=0;clearTimeout(m.timer);m.timer=null;});
+  parts=[];
+  hudup();
+  clearInterval(gTmr);
+  gTmr=setInterval(()=>{tLeft--;if(tLeft<=0)endGame();hudup();},1000);
+  schedMoles();
+}
+function endGame(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
+  clearInterval(gTmr); gTmr=null;
+  moles.forEach(m=>{clearTimeout(m.timer);m.timer=null;});
+  st=ST.OVER; buildBtns();
+}
+function schedMoles(){
+  if(st!==ST.PLAY) return;
+  const idle=moles.filter(m=>m.phase===0);
+  const n=Math.min(1+Math.floor((GSEC-tLeft)/15), 4);
+  shuffle(idle).slice(0,n).forEach(popMole);
+  setTimeout(schedMoles, Math.max(600, 1800-(GSEC-tLeft)*12));
+}
+function popMole(m){
+  if(st!==ST.PLAY||m.phase!==0) return;
+  m.phase=1; m.anim=0;
+  const dur=Math.max(1200,2500-(GSEC-tLeft)*15);
+  m.timer=setTimeout(()=>{
+    if(m.phase===1){
+      m.phase=0; m.anim=0;
+      lives=Math.max(0,lives-1);
+      if(!lives) endGame();
+      hudup();
+    }
+  }, dur);
+}
+function tryHit(hx,hy){
+  if(st!==ST.PLAY) return;
+  moles.forEach(m=>{
+    if(m.phase!==1) return;
+    if(Math.abs(hx-m.cx)<m.rx*1.6 && Math.abs(hy-m.cy)<m.ry*3.5){
+      clearTimeout(m.timer); m.timer=null;
+      m.phase=2; m.anim=0;
+      score+=10; hudup(); burst(m.cx, m.cy);
+    }
+  });
+}
+function burst(x,y){
+  for(let i=0;i<16;i++){
+    const a=Math.random()*Math.PI*2, s=2+Math.random()*6;
+    parts.push({
+      x,y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
+      life:1, dec:.022+Math.random()*.02,
+      r:4+Math.random()*8,
+      col:['#ffd93d','#ff6b6b','#6bcb77','#4d96ff'][0|Math.random()*4]
+    });
+  }
+}
+function hudup(){
+  document.getElementById('hScore').textContent=score;
+  document.getElementById('hLives').textContent='❤️'.repeat(Math.max(0,lives));
+  document.getElementById('hTime').textContent=tLeft;
+}
+function shuffle(a){
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){
+    const j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]];
+  }
+  return b;
+}
+
+// ── update (runs every frame, no drawing) ──────────────
+const RISE_SPD=0.07, SINK_SPD=0.09;
+function updateMoles(){
+  moles.forEach(m=>{
+    if(m.phase===1){
+      // rising up
+      m.anim=Math.min(1, m.anim+RISE_SPD);
+    } else if(m.phase===2){
+      // hit — sink back down
+      m.anim=Math.min(1, m.anim+SINK_SPD);
+      if(m.anim>=1){ m.phase=0; m.anim=0; }
+    } else {
+      // idle — make sure clean
+      m.anim=0;
+    }
+  });
+}
+
+// ── draw helpers ───────────────────────────────────────
+function drawBG(){
+  const W=canvas.width, H=canvas.height;
+  ctx.fillStyle='#0d0520'; ctx.fillRect(0,0,W,H);
+  // stars
+  for(let i=0;i<70;i++){
+    ctx.fillStyle=`rgba(255,255,255,${.3+.4*(i%3)*.5})`;
+    ctx.beginPath();
+    ctx.arc((i*137.5)%W, (i*83.3)%(H*.60), .4+(i%3)*.4, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // ground
+  ctx.fillStyle='#2d6a1f'; ctx.fillRect(0,H*.72,W,H);
+  ctx.fillStyle='#3d8c2a'; ctx.fillRect(0,H*.72,W,6);
+}
+
+function drawHole(m){
+  ctx.save();
+  ctx.translate(m.cx, m.cy+m.ry*.4);
+  ctx.scale(1, .3);
+  // dirt ring
+  ctx.beginPath(); ctx.arc(0,0,m.rx*1.25,0,Math.PI*2);
+  ctx.fillStyle='#5a3a1a'; ctx.fill();
+  // black hole
+  ctx.beginPath(); ctx.arc(0,0,m.rx*1.05,0,Math.PI*2);
+  ctx.fillStyle='#0a0a0a'; ctx.fill();
+  ctx.restore();
+}
+
+function drawMole(m){
+  // yOff: how many pixels below the hole centre the mole starts
+  // phase=1: anim 0→1 means mole rises (yOff goes from big to 0)
+  // phase=2: anim 0→1 means mole sinks back (yOff goes from 0 to big)
+  let yOff;
+  if(m.phase===1){
+    yOff = m.ry*2.8*(1-m.anim);   // rising: start buried, emerge
+  } else if(m.phase===2){
+    yOff = m.ry*2.8*m.anim;       // sinking: start up, go down
+  } else {
+    return; // idle, draw nothing
+  }
+
+  const {cx,cy,rx,ry}=m;
+  const top = cy - ry*1.1 + yOff; // top of mole head
+
+  // clip to the hole opening so mole doesn't show above ground
+  ctx.save();
+  ctx.beginPath();
+  // clip rect from just above the hole down
+  ctx.rect(cx-rx*1.3, cy-ry*3.5, rx*2.6, ry*4.5);
+  // also clip to ellipse mask of hole opening
+  ctx.ellipse(cx, cy+ry*.4, rx*1.25, rx*.38, 0, Math.PI, Math.PI*2);
+  ctx.clip();
+
+  // ── body ──
+  ctx.fillStyle='#7a3a18';
+  ctx.beginPath();
+  ctx.ellipse(cx, top+ry*.6, rx*.72, ry*1.1, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // ── belly ──
+  ctx.fillStyle='#c4845a';
+  ctx.beginPath();
+  ctx.ellipse(cx, top+ry*.9, rx*.42, ry*.6, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // ── ears ──
+  ctx.fillStyle='#7a3a18';
+  ctx.beginPath(); ctx.ellipse(cx-rx*.55, top+ry*.05, rx*.17, ry*.25, -.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx+rx*.55, top+ry*.05, rx*.17, ry*.25,  .3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#c4845a';
+  ctx.beginPath(); ctx.ellipse(cx-rx*.55, top+ry*.05, rx*.09, ry*.14, -.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx+rx*.55, top+ry*.05, rx*.09, ry*.14,  .3, 0, Math.PI*2); ctx.fill();
+
+  // ── eyes ──
+  const eyeY=top+ry*.28;
+  [-rx*.24, rx*.24].forEach(ex=>{
+    ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(cx+ex, eyeY, rx*.11, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#111';
+    ctx.beginPath(); ctx.arc(cx+ex+rx*.03, eyeY, rx*.065, 0, Math.PI*2); ctx.fill();
+  });
+
+  // ── snout ──
+  ctx.fillStyle='#b06040';
+  ctx.beginPath(); ctx.ellipse(cx, top+ry*.58, rx*.26, ry*.16, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#6a2a10';
+  [-rx*.09, rx*.09].forEach(nx=>{
+    ctx.beginPath(); ctx.arc(cx+nx, top+ry*.56, rx*.05, 0, Math.PI*2); ctx.fill();
+  });
+
+  ctx.restore();
+}
+
+function drawHammer(){
+  if(!hVis) return;
+  const hx=ham.x, hy=ham.y, sw=ham.sw;
+  ctx.save();
+  ctx.translate(hx,hy);
+  ctx.rotate(sw ? -Math.PI/3 : -Math.PI/6);
+  // handle
+  ctx.strokeStyle='#7a4e28'; ctx.lineWidth=9; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,75); ctx.stroke();
+  // head
+  ctx.save(); ctx.translate(0,-8); ctx.rotate(Math.PI/2);
+  ctx.fillStyle=sw?'#e03030':'#888';
+  ctx.beginPath(); ctx.roundRect(-32,-12,64,24,5); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.restore();
+  // impact rings
+  if(sw){
+    for(let i=1;i<=3;i++){
+      ctx.beginPath(); ctx.arc(0,-8,i*15,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,210,0,${.5-i*.12})`; ctx.lineWidth=2.5; ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawParts(){
+  parts=parts.filter(p=>p.life>0);
+  parts.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=.18; p.life-=p.dec;
+    ctx.save(); ctx.globalAlpha=p.life; ctx.fillStyle=p.col;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawCursor(){
+  if(!hVis||gest!=='point') return;
+  const x=hPos.x*canvas.width, y=hPos.y*canvas.height;
+  ctx.save();
+  ctx.font='1.7rem sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor='#ffd93d'; ctx.shadowBlur=16;
+  ctx.fillText('☝️',x,y);
+  ctx.restore();
+}
+
+function drawBtns(){
+  mBtns.forEach((btn,i)=>{
+    const hov=selB===i;
+    const bx=btn.x-btn.w/2, by=btn.y-btn.h/2;
+    ctx.save();
+    if(hov){ctx.shadowColor='#ffd93d';ctx.shadowBlur=20;}
+    ctx.fillStyle=hov?'#ffd93d':'rgba(255,255,255,.14)';
+    ctx.beginPath(); ctx.roundRect(bx,by,btn.w,btn.h,btn.h/2); ctx.fill();
+    ctx.strokeStyle=hov?'#ffd93d':'rgba(255,255,255,.25)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.roundRect(bx,by,btn.w,btn.h,btn.h/2); ctx.stroke();
+    ctx.shadowBlur=0;
+    ctx.fillStyle=hov?'#1a0a2e':'#fff';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font=`800 ${Math.min(canvas.width*.026,21)}px 'Nunito',sans-serif`;
+    ctx.fillText(btn.label,btn.x,btn.y);
+    ctx.restore();
+    // hover arc
+    const p=(hovC[i]||0)/HF;
+    if(p>0){
+      ctx.save(); ctx.strokeStyle='#ffd93d'; ctx.lineWidth=4; ctx.lineCap='round';
+      ctx.beginPath(); ctx.arc(btn.x+btn.w/2-20,btn.y,18,-Math.PI/2,-Math.PI/2+Math.PI*2*p);
+      ctx.stroke(); ctx.restore();
+    }
+  });
+}
+
+// ── screens ────────────────────────────────────────────
+function drawLoad(){
+  const W=canvas.width,H=canvas.height;
+  drawBG();
+  ctx.save(); ctx.textAlign='center';
+  ctx.font=`bold ${Math.min(W*.09,74)}px 'Fredoka One',cursive`;
+  ctx.fillStyle='#ffd93d'; ctx.shadowColor='#ff6b6b'; ctx.shadowBlur=22;
+  ctx.fillText('WHACK-A-MOLE',W/2,H*.22); ctx.shadowBlur=0;
+  ctx.font=`${Math.min(W*.03,22)}px 'Nunito',sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,.75)';
+  ctx.fillText('🎥  Allow camera access when prompted',W/2,H*.34);
+  ctx.fillStyle='rgba(255,255,255,.45)';
+  ctx.font=`${Math.min(W*.024,18)}px 'Nunito',sans-serif`;
+  ctx.fillText('Then show your hand — everything runs on gestures',W/2,H*.41);
+  const ly=H*.68;
+  [['☝️','POINT','Hover to select'],['✋','OPEN PALM','Move hammer'],['✊','FIST','Smash moles!']].forEach(([ic,g,d],i)=>{
+    const lx=W/2+(i-1)*W*.27;
+    ctx.fillStyle='rgba(255,255,255,.07)';
+    ctx.beginPath(); ctx.roundRect(lx-68,ly-36,136,82,12); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.font='1.7rem sans-serif'; ctx.textBaseline='middle'; ctx.fillText(ic,lx,ly-8);
+    ctx.font=`700 ${Math.min(W*.017,13)}px 'Nunito',sans-serif`; ctx.fillStyle='#ffd93d'; ctx.fillText(g,lx,ly+20);
+    ctx.font=`${Math.min(W*.014,11)}px 'Nunito',sans-serif`; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillText(d,lx,ly+35);
+  });
+  ctx.restore();
+}
+
+function drawMenu(){
+  const W=canvas.width,H=canvas.height;
+  drawBG();
+  moles.forEach(m=>drawHole(m));
+  moles.forEach(m=>drawMole(m));
+  ctx.save(); ctx.textAlign='center';
+  ctx.font=`bold ${Math.min(W*.09,74)}px 'Fredoka One',cursive`;
+  ctx.fillStyle='#ffd93d'; ctx.shadowColor='#ff6b6b'; ctx.shadowBlur=24;
+  ctx.fillText('WHACK-A-MOLE',W/2,H*.18); ctx.shadowBlur=0;
+  ctx.font=`${Math.min(W*.024,18)}px 'Nunito',sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,.6)';
+  ctx.fillText('☝️  Point at a button and hold to select',W/2,H*.26);
+  ctx.restore();
+  drawBtns(); drawCursor();
+}
+
+function drawPlay(){
+  drawBG();
+  moles.forEach(m=>drawHole(m));
+  moles.forEach(m=>drawMole(m));
+  drawParts();
+  drawHammer();
+}
+
+function drawOver(){
+  const W=canvas.width,H=canvas.height;
+  drawBG();
+  moles.forEach(m=>drawHole(m));
+  ctx.fillStyle='rgba(8,4,18,.65)'; ctx.fillRect(0,0,W,H);
+  ctx.save(); ctx.textAlign='center';
+  ctx.fillStyle='rgba(255,255,255,.09)';
+  ctx.beginPath(); ctx.roundRect(W/2-210,H/2-170,420,350,24); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(W/2-210,H/2-170,420,350,24); ctx.stroke();
+  ctx.font=`bold ${Math.min(W*.085,64)}px 'Fredoka One',cursive`;
+  ctx.fillStyle='#ff6b6b'; ctx.shadowColor='#ff6b6b'; ctx.shadowBlur=18;
+  ctx.fillText('GAME OVER',W/2,H/2-88); ctx.shadowBlur=0;
+  ctx.font=`${Math.min(W*.034,26)}px 'Fredoka One',cursive`;
+  ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillText('Final Score',W/2,H/2-28);
+  ctx.font=`bold ${Math.min(W*.09,68)}px 'Fredoka One',cursive`;
+  ctx.fillStyle='#ffd93d'; ctx.fillText(score,W/2,H/2+52);
+  ctx.font=`${Math.min(W*.02,15)}px 'Nunito',sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,.45)';
+  ctx.fillText('☝️  Point at the button to play again',W/2,H/2+102);
+  ctx.restore();
+  drawBtns(); drawCursor();
+}
+
+// ── hover logic ────────────────────────────────────────
+function updateHover(){
+  if(gest!=='point'){selB=-1;hovC={};return;}
+  const W=canvas.width,H=canvas.height;
+  const px=hPos.x*W, py=hPos.y*H;
+  let found=-1;
+  mBtns.forEach((b,i)=>{
+    if(Math.abs(px-b.x)<b.w/2+8&&Math.abs(py-b.y)<b.h/2+8) found=i;
+  });
+  if(found!==selB){selB=found;hovC={};}
+  if(found>=0){
+    hovC[found]=(hovC[found]||0)+1;
+    if(hovC[found]>=HF){hovC={};if(mBtns[found].action==='play')startGame();}
+  }
+}
+
+// ── hammer update ──────────────────────────────────────
+function updateHammer(){
+  if(!hVis) return;
+  const tx=hPos.x*canvas.width, ty=hPos.y*canvas.height;
+  ham.x+=(tx-ham.x)*.22;
+  ham.y+=(ty-ham.y)*.22;
+  const isFist=gest==='fist';
+  if(isFist&&!lastFist&&swCD<=0){
+    ham.sw=true; swCD=22; tryHit(ham.x,ham.y);
+  }
+  if(!isFist) ham.sw=false;
+  lastFist=isFist;
+  if(swCD>0) swCD--;
+  if(swCD<12) ham.sw=false;
+}
+
+// ── preview ────────────────────────────────────────────
+function drawPreview(){
+  if(!prevOK) return;
+  try{ pCtx.drawImage(video,0,0,pCan.width,pCan.height); }catch(e){}
+}
+
+// ── main loop ──────────────────────────────────────────
+function loop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if     (st===ST.LOAD){ drawLoad(); }
+  else if(st===ST.MENU){ updateMoles(); drawMenu(); updateHover(); }
+  else if(st===ST.PLAY){ updateMoles(); updateHammer(); drawPlay(); }
+  else if(st===ST.OVER){ drawOver(); updateHover(); }
+
+  drawPreview();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// ── mediapipe ──────────────────────────────────────────
+const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.7,minTrackingConfidence:.5});
+hands.onResults(res=>{
+  if(res.multiHandLandmarks&&res.multiHandLandmarks.length){
+    const lm=res.multiHandLandmarks[0];
+    hPos.x=1-lm[8].x; hPos.y=lm[8].y;
+    gest=detectGest(lm); hVis=true;
+  } else { hVis=false; gest='none'; }
+  const icons={point:'☝️',open:'✋',fist:'✊',none:'🤚'};
+  const names={point:'POINTING',open:'OPEN PALM',fist:'FIST — SMASH!',none:'NO HAND'};
+  document.getElementById('gi').textContent=icons[gest]||'🤚';
+  document.getElementById('gn').textContent=names[gest]||'';
+  const dotC={point:'#ffd93d',open:'#4d96ff',fist:'#ff4444',none:'#555'};
+  const dot=document.getElementById('gdot'), c=dotC[gest]||'#555';
+  dot.style.background=c; dot.style.boxShadow=`0 0 6px ${c}`;
+});
+
+// ── camera (auto on load) ──────────────────────────────
+(async()=>{
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:1280,height:720,facingMode:'user'}});
+    video.srcObject=stream;
+    await video.play();
+    prevOK=true;
+    document.getElementById('camBox').style.display='block';
+    const cam=new Camera(video,{onFrame:async()=>{await hands.send({image:video});},width:1280,height:720});
+    cam.start();
+    st=ST.MENU; buildBtns();
+  } catch(e){
+    document.getElementById('gn').textContent='CAMERA DENIED – RELOAD';
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>

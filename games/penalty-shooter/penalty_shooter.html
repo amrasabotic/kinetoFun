@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ Penalty Shooter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;500&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0d1b2a;
+    font-family:'Inter',sans-serif;
+    overflow:hidden;
+    width:100vw; height:100vh;
+    user-select:none;
+  }
+  #app { position:relative; width:100vw; height:100vh; }
+
+  /* Camera PiP — bottom right corner */
+  #camWrap {
+    position:absolute;
+    bottom:70px; right:18px;
+    width:200px; height:150px;
+    border-radius:12px;
+    overflow:hidden;
+    border:2px solid rgba(247,201,72,0.35);
+    z-index:10;
+    box-shadow:0 4px 24px rgba(0,0,0,0.5);
+  }
+  #video {
+    width:100%; height:100%;
+    object-fit:cover;
+    transform:scaleX(-1);
+    display:block;
+  }
+  /* "YOU" label on camera */
+  #camWrap::after {
+    content:'YOU';
+    position:absolute;
+    bottom:6px; left:50%;
+    transform:translateX(-50%);
+    font-family:'Oswald',sans-serif;
+    font-size:10px; letter-spacing:2px;
+    color:rgba(255,255,255,0.5);
+    pointer-events:none;
+  }
+
+  #gameCanvas {
+    position:absolute; top:0; left:0;
+    width:100%; height:100%;
+  }
+
+  /* HUD */
+  #hud {
+    position:absolute; top:14px; left:50%;
+    transform:translateX(-50%);
+    display:none; gap:24px; z-index:20;
+    pointer-events:none;
+  }
+  #hud.visible { display:flex; }
+  .hbox {
+    background:rgba(0,0,0,0.6);
+    border:1px solid rgba(247,201,72,0.35);
+    border-radius:8px;
+    padding:6px 18px; text-align:center;
+  }
+  .hlabel { font-family:'Oswald',sans-serif; font-size:9px; letter-spacing:2px; color:rgba(255,255,255,0.45); text-transform:uppercase; }
+  .hval   { font-family:'Oswald',sans-serif; font-size:26px; font-weight:700; color:#f7c948; line-height:1; }
+
+  /* Gesture bar */
+  #gbar {
+    position:absolute; bottom:16px; left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.65);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:40px;
+    padding:9px 26px;
+    font-family:'Oswald',sans-serif; font-size:14px; letter-spacing:1px;
+    color:#fff; z-index:20; pointer-events:none;
+    transition:border-color .15s, color .15s;
+    white-space:nowrap;
+  }
+  #gbar.active { border-color:#f7c948; color:#f7c948; }
+
+  /* Camera status badge */
+  #camStatus {
+    position:absolute; bottom:222px; right:18px;
+    font-size:11px;
+    z-index:20; pointer-events:none;
+    font-family:'Oswald',sans-serif; letter-spacing:1px;
+    background:rgba(0,0,0,0.55);
+    border-radius:6px;
+    padding:3px 8px;
+    color:rgba(255,255,255,0.4);
+  }
+  #camStatus.ok  { color:#4caf50; }
+  #camStatus.err { color:#e63946; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="camWrap"><video id="video" autoplay muted playsinline></video></div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud">
+    <div class="hbox"><div class="hlabel">Score</div><div class="hval" id="hScore">0</div></div>
+    <div class="hbox"><div class="hlabel">Shots</div><div class="hval" id="hShots">5</div></div>
+    <div class="hbox"><div class="hlabel">Goals</div><div class="hval" id="hGoals">0</div></div>
+  </div>
+  <div id="gbar">📷 Waiting for camera…</div>
+  <div id="camStatus">CAM OFF</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script>
+// ══════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════
+const TOTAL_SHOTS  = 5;
+const DWELL_FRAMES = 15;   // ~0.5 sec at 30fps
+
+// ══════════════════════════════════════════════
+//  CANVAS
+// ══════════════════════════════════════════════
+const gc  = document.getElementById('gameCanvas');
+const ctx = gc.getContext('2d');
+const vid = document.getElementById('video');
+
+function resize(){
+  gc.width  = window.innerWidth;
+  gc.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+const S = {
+  phase:'start',        // start | aiming | shooting | result | gameover
+  score:0, goals:0, shots:TOTAL_SHOTS,
+  aimNX:0.5, aimNY:0.5,  // normalized 0-1 screen coords of fingertip
+  // ball animation
+  bx:0, by:0, bvx:0, bvy:0, bscale:1, bframe:0,
+  targetX:0, targetY:0,
+  // keeper — starts right side, moves left, speeds up each shot
+  kx:0.85, kdir:-1, keeperSpeed:0.004,
+  diveX:0.5, diveY:0.5,
+  // gesture
+  gesture:'none',   // none | point | palm | other
+  ftX:0.5, ftY:0.5, // fingertip screen pos (mirrored)
+  palmFired:false,  // prevent re-fire until palm released
+  // dwell
+  dwellTarget:null,
+  dwellFrames:0,
+  // result
+  resultTimer:0,
+  // particles
+  parts:[],
+  // flash
+  flashText:'', flashColor:'#fff', flashFrames:0,
+};
+
+// ══════════════════════════════════════════════
+//  GOAL GEOMETRY
+// ══════════════════════════════════════════════
+function goalRect(){
+  const W=gc.width, H=gc.height;
+  const gw=W*0.44, gh=H*0.22;
+  return { x:(W-gw)/2, y:H*0.10, w:gw, h:gh };
+}
+
+// ══════════════════════════════════════════════
+//  HUD
+// ══════════════════════════════════════════════
+function updateHUD(){
+  document.getElementById('hScore').textContent = S.score;
+  document.getElementById('hShots').textContent = S.shots;
+  document.getElementById('hGoals').textContent = S.goals;
+}
+
+// ══════════════════════════════════════════════
+//  MEDIAPIPE
+// ══════════════════════════════════════════════
+function fingerUp(lm, tip, pip){ return lm[tip].y < lm[pip].y; }
+
+function classifyHand(lm){
+  const idx  = fingerUp(lm,8,6);
+  const mid  = fingerUp(lm,12,10);
+  const ring = fingerUp(lm,16,14);
+  const pink = fingerUp(lm,20,18);
+  const count = [idx,mid,ring,pink].filter(Boolean).length;
+  if(count >= 3) return 'palm';
+  if(idx && !mid && !ring && !pink) return 'point';
+  return 'other';
+}
+
+function onResults(results){
+  if(!results.multiHandLandmarks || !results.multiHandLandmarks.length){
+    S.gesture = 'none';
+    S.palmFired = false; // reset so next palm works
+    setGbar('🙌 Show your hand','');
+    return;
+  }
+
+  const lm = results.multiHandLandmarks[0];
+  const prev = S.gesture;
+  S.gesture = classifyHand(lm);
+
+  // Mirror: MediaPipe x=0 is camera-right, we flip to match mirrored video
+  S.ftX = 1 - lm[8].x;
+  S.ftY = lm[8].y;
+
+  // Reset fire lock when hand goes non-palm
+  if(S.gesture !== 'palm') S.palmFired = false;
+
+  processGestures();
+  updateGbar();
+}
+
+function processGestures(){
+  const {phase, gesture, ftX, ftY} = S;
+
+  // ── Menu: dwell finger over button ──
+  if(phase === 'start' || phase === 'gameover'){
+    if(gesture === 'point'){
+      const W=gc.width, H=gc.height;
+      const px=ftX*W, py=ftY*H;
+      const id = phase==='start' ? 'start' : 'restart';
+      const btn = getButtonRect(id);
+      const inside = px>=btn.x && px<=btn.x+btn.w && py>=btn.y && py<=btn.y+btn.h;
+      if(inside){
+        S.dwellTarget = id;
+        S.dwellFrames++;
+        if(S.dwellFrames >= DWELL_FRAMES){
+          S.dwellFrames = 0; S.dwellTarget = null;
+          phase==='start' ? startGame() : restartGame();
+        }
+      } else {
+        S.dwellFrames = 0; S.dwellTarget = null;
+      }
+    } else {
+      S.dwellFrames = 0; S.dwellTarget = null;
+    }
+    return;
+  }
+
+  // ── Aiming phase ──
+  if(phase === 'aiming'){
+    if(gesture === 'point'){
+      S.aimNX = ftX;
+      S.aimNY = ftY;
+    } else if(gesture === 'palm'){
+      // Instant shoot on first palm detection — no hold required
+      if(!S.palmFired){
+        S.palmFired = true;
+        shoot();
+      }
+    }
+  }
+}
+
+function updateGbar(){
+  const g = S.gesture;
+  const el = document.getElementById('gbar');
+  if(g === 'point'){
+    el.textContent = '☝️  Pointing — aim at the goal';
+    el.className = 'active';
+  } else if(g === 'palm'){
+    el.textContent = S.phase==='aiming' ? '🖐  SHOOT!' : '🖐  Palm detected';
+    el.className = 'active';
+  } else if(g === 'other'){
+    el.textContent = '✊  Hand detected';
+    el.className = '';
+  }
+}
+
+function setGbar(txt, cls){
+  const el = document.getElementById('gbar');
+  el.textContent = txt;
+  el.className = cls||'';
+}
+
+// ══════════════════════════════════════════════
+//  BUTTON RECTS (canvas coords)
+// ══════════════════════════════════════════════
+function getButtonRect(id){
+  const W=gc.width, H=gc.height;
+  const bw=Math.min(360, W*0.48), bh=64;
+  if(id==='start'||id==='restart') return {x:W/2-bw/2, y:H*0.60, w:bw, h:bh};
+  return {x:0,y:0,w:0,h:0};
+}
+
+// ══════════════════════════════════════════════
+//  GAME LOGIC
+// ══════════════════════════════════════════════
+function startGame(){
+  Object.assign(S,{
+    phase:'aiming',
+    score:0, goals:0, shots:TOTAL_SHOTS,
+    aimNX:0.5, aimNY:0.4,
+    palmFired:false, dwellFrames:0, dwellTarget:null,
+    parts:[], flashFrames:0,
+    kx:0.85, kdir:-1, keeperSpeed:0.004,
+  });
+  document.getElementById('hud').classList.add('visible');
+  updateHUD();
+}
+
+function restartGame(){ startGame(); }
+
+function shoot(){
+  if(S.phase !== 'aiming') return;
+  S.phase = 'shooting';
+  S.bframe = 0;
+
+  const W=gc.width, H=gc.height;
+  const g=goalRect();
+
+  S.bx=W/2; S.by=H*0.82; S.bscale=1;
+
+  // Map 0-1 fingertip position → goal interior
+  const margin = 28;
+  S.targetX = g.x + margin + S.aimNX*(g.w - margin*2);
+  S.targetY = g.y + margin + S.aimNY*(g.h - margin*2);
+  S.targetX = Math.max(g.x+10, Math.min(g.x+g.w-10, S.targetX));
+  S.targetY = Math.max(g.y+10, Math.min(g.y+g.h-10, S.targetY));
+
+  const frames = 34;
+  S.bvx = (S.targetX - S.bx) / frames;
+  S.bvy = (S.targetY - S.by) / frames;
+
+  // Keeper dives horizontally — 25% chance guesses correctly
+  S.diveX = Math.random() < 0.25 ? S.aimNX : Math.random();
+
+  // Speed up keeper for next shot — gets harder
+  S.keeperSpeed = Math.min(0.020, S.keeperSpeed + 0.003);
+
+  S.shots--;
+  updateHUD();
+}
+
+function evalShot(){
+  const g = goalRect();
+  // Keeper is always at vertical center — compare only horizontal distance
+  const kx = g.x + S.diveX * g.w;
+  const dx = S.targetX - kx;
+  // Reach is horizontal span of keeper's arms
+  const reach = g.w * 0.12;
+
+  if(Math.abs(dx) < reach){
+    S.flashText = 'SAVED! 🧤'; S.flashColor = '#e63946';
+  } else {
+    S.goals++;
+    S.score += 100 + Math.round((1-Math.abs(S.aimNX-0.5))*80);
+    S.flashText = 'GOAL! ⚽'; S.flashColor = '#f7c948';
+    spawnParticles(S.targetX, S.targetY);
+    updateHUD();
+  }
+  S.flashFrames = 90;
+  S.resultTimer = 70;
+  S.phase = 'result';
+}
+
+function spawnParticles(x,y){
+  for(let i=0;i<45;i++){
+    const a=Math.random()*Math.PI*2;
+    const sp=2+Math.random()*9;
+    S.parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,
+      color:`hsl(${Math.random()*60+20},100%,60%)`,r:3+Math.random()*7});
+  }
+}
+
+// ══════════════════════════════════════════════
+//  DRAW
+// ══════════════════════════════════════════════
+function drawScene(){
+  const W=gc.width, H=gc.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Sky gradient
+  const sk=ctx.createLinearGradient(0,0,0,H);
+  sk.addColorStop(0,'#0a1220'); sk.addColorStop(1,'#142a1a');
+  ctx.fillStyle=sk; ctx.fillRect(0,0,W,H);
+
+  // Stars
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  for(let i=0;i<80;i++) ctx.fillRect((i*137.5%W),((i*89.3)%(H*0.45)),1.5,1.5);
+
+  // Floodlights glow
+  ctx.save();
+  const lg=ctx.createRadialGradient(W*0.15,0,0,W*0.15,0,H*0.55);
+  lg.addColorStop(0,'rgba(255,255,200,0.06)'); lg.addColorStop(1,'transparent');
+  ctx.fillStyle=lg; ctx.fillRect(0,0,W,H);
+  const lg2=ctx.createRadialGradient(W*0.85,0,0,W*0.85,0,H*0.55);
+  lg2.addColorStop(0,'rgba(255,255,200,0.06)'); lg2.addColorStop(1,'transparent');
+  ctx.fillStyle=lg2; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  // Grass
+  const gr=ctx.createLinearGradient(0,H*0.58,0,H);
+  gr.addColorStop(0,'#2d7a3a'); gr.addColorStop(1,'#1a4a22');
+  ctx.fillStyle=gr; ctx.fillRect(0,H*0.58,W,H);
+
+  // Pitch stripes
+  for(let i=0;i<8;i++){
+    if(i%2===0){ ctx.fillStyle='rgba(255,255,255,0.025)'; ctx.fillRect(i*W/8,H*0.58,W/8,H); }
+  }
+
+  // Penalty arc
+  ctx.beginPath();
+  ctx.ellipse(W/2,H*0.64,W*0.17,H*0.055,0,Math.PI,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=2; ctx.stroke();
+
+  // Penalty spot
+  ctx.beginPath(); ctx.arc(W/2,H*0.795,5,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.fill();
+
+  drawGoal(W,H);
+  drawParticles();
+  drawKeeper(W,H);
+
+  const ph = S.phase;
+  if(ph === 'aiming'){
+    drawBall(W/2, H*0.82, 1);
+    drawAim(W,H);
+  } else if(ph === 'shooting' || ph === 'result'){
+    drawBall(S.bx, S.by, S.bscale);
+    // Ground shadow
+    ctx.save(); ctx.globalAlpha=0.15*S.bscale;
+    ctx.fillStyle='#000'; ctx.beginPath();
+    ctx.ellipse(S.bx,H*0.82,18*S.bscale,7*S.bscale,0,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  if(ph === 'start')    drawStartScreen(W,H);
+  if(ph === 'gameover') drawGameOver(W,H);
+
+  drawFlash(W,H);
+
+  // Finger cursor dot on menu screens
+  if((ph==='start'||ph==='gameover') && S.gesture==='point'){
+    drawFingerCursor(W,H);
+  }
+}
+
+function drawGoal(W,H){
+  const g=goalRect();
+  const pw=8;
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(g.x,g.y,g.w,g.h);
+  ctx.strokeStyle='rgba(220,220,220,0.16)'; ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){
+    ctx.beginPath(); ctx.moveTo(g.x+i*g.w/10,g.y); ctx.lineTo(g.x+i*g.w/10,g.y+g.h); ctx.stroke();
+  }
+  for(let j=0;j<=5;j++){
+    ctx.beginPath(); ctx.moveTo(g.x,g.y+j*g.h/5); ctx.lineTo(g.x+g.w,g.y+j*g.h/5); ctx.stroke();
+  }
+  ctx.fillStyle='#fff';
+  ctx.fillRect(g.x-pw, g.y-pw, pw, g.h+pw);
+  ctx.fillRect(g.x+g.w, g.y-pw, pw, g.h+pw);
+  ctx.fillRect(g.x-pw, g.y-pw, g.w+pw*2, pw);
+  ctx.fillStyle='rgba(0,0,0,0.2)';
+  ctx.fillRect(g.x+g.w+pw, g.y, 5, g.h);
+}
+
+function drawKeeper(W,H){
+  const g=goalRect();
+  let kx, ky;
+  const ph=S.phase;
+
+  // Keeper Y is always fixed at vertical center of goal — never leaves
+  const baseKY = g.y + g.h * 0.55;
+
+  if(ph==='shooting' || ph==='result'){
+    // Dive: lerp horizontally only within goal; no vertical escape
+    const t = Math.min(1, S.bframe / 18);
+    const e = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+    kx = g.x + (S.kx + (S.diveX - S.kx)*e) * g.w;
+    ky = baseKY;
+  } else {
+    if(ph==='aiming'){
+      S.kx += S.keeperSpeed * S.kdir;
+      if(S.kx >= 0.88){ S.kx=0.88; S.kdir=-1; }
+      if(S.kx <= 0.12){ S.kx=0.12; S.kdir= 1; }
+    }
+    kx = g.x + S.kx * g.w;
+    ky = baseKY;
+  }
+
+  const ks = g.h * 0.88;
+  ctx.save(); ctx.translate(kx, ky);
+  // body
+  ctx.fillStyle='#e63946';
+  ctx.beginPath(); ctx.roundRect(-ks*.17,-ks*.52,ks*.34,ks*.52,4); ctx.fill();
+  // head
+  ctx.fillStyle='#f4a261';
+  ctx.beginPath(); ctx.arc(0,-ks*.63,ks*.15,0,Math.PI*2); ctx.fill();
+  // arms spread wide
+  ctx.strokeStyle='#e63946'; ctx.lineWidth=ks*.09; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(-ks*.17,-ks*.38); ctx.lineTo(-ks*.55,-ks*.20);
+  ctx.moveTo( ks*.17,-ks*.38); ctx.lineTo( ks*.55,-ks*.20);
+  ctx.stroke();
+  // legs
+  ctx.strokeStyle='#1d3557';
+  ctx.beginPath();
+  ctx.moveTo(-ks*.09,0); ctx.lineTo(-ks*.11,ks*.33);
+  ctx.moveTo( ks*.09,0); ctx.lineTo( ks*.11,ks*.33);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBall(x,y,sc){
+  ctx.save(); ctx.translate(x,y); ctx.scale(sc,sc);
+  const r=17;
+  const bg=ctx.createRadialGradient(-r*.3,-r*.3,0,0,0,r);
+  bg.addColorStop(0,'#fff'); bg.addColorStop(.5,'#ddd'); bg.addColorStop(1,'#888');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#222';
+  ctx.beginPath(); ctx.arc(0,0,r*.32,0,Math.PI*2); ctx.fill();
+  for(let i=0;i<5;i++){
+    const a=(i*72-90)*Math.PI/180;
+    ctx.beginPath(); ctx.arc(Math.cos(a)*r*.6,Math.sin(a)*r*.6,r*.16,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawAim(W,H){
+  const g=goalRect();
+  const margin=28;
+  const ax=g.x+margin+S.aimNX*(g.w-margin*2);
+  const ay=g.y+margin+S.aimNY*(g.h-margin*2);
+  const cx=Math.max(g.x+8, Math.min(g.x+g.w-8, ax));
+  const cy=Math.max(g.y+8, Math.min(g.y+g.h-8, ay));
+
+  ctx.save();
+  // Dashed trajectory line
+  ctx.strokeStyle='rgba(247,201,72,0.5)';
+  ctx.lineWidth=1.5; ctx.setLineDash([5,6]);
+  ctx.beginPath(); ctx.moveTo(W/2,H*0.82); ctx.lineTo(cx,cy); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Glow
+  ctx.beginPath(); ctx.arc(cx,cy,22,0,Math.PI*2);
+  ctx.strokeStyle='rgba(247,201,72,0.25)'; ctx.lineWidth=8; ctx.stroke();
+  // Ring
+  ctx.beginPath(); ctx.arc(cx,cy,15,0,Math.PI*2);
+  ctx.strokeStyle='rgba(247,201,72,0.9)'; ctx.lineWidth=2; ctx.stroke();
+  // Cross lines
+  ctx.strokeStyle='rgba(247,201,72,0.7)'; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(cx-24,cy); ctx.lineTo(cx-9,cy);
+  ctx.moveTo(cx+9,cy);  ctx.lineTo(cx+24,cy);
+  ctx.moveTo(cx,cy-24); ctx.lineTo(cx,cy-9);
+  ctx.moveTo(cx,cy+9);  ctx.lineTo(cx,cy+24);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawParticles(){
+  S.parts = S.parts.filter(p=>p.life>0);
+  S.parts.forEach(p=>{
+    ctx.save(); ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color; ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.22; p.life-=0.022;
+  });
+}
+
+function drawFlash(W,H){
+  if(S.flashFrames<=0) return;
+  S.flashFrames--;
+  ctx.save();
+  ctx.globalAlpha=Math.min(1, S.flashFrames/20);
+  ctx.font=`bold ${Math.round(W*0.07)}px 'Oswald',sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle=S.flashColor;
+  ctx.shadowColor=S.flashColor; ctx.shadowBlur=40;
+  ctx.fillText(S.flashText, W/2, H*0.47);
+  ctx.restore();
+}
+
+function drawFingerCursor(W,H){
+  const px=S.ftX*W, py=S.ftY*H;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(px,py,18,0,Math.PI*2);
+  ctx.fillStyle='rgba(247,201,72,0.18)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2);
+  ctx.fillStyle='#f7c948'; ctx.fill();
+  if(S.dwellTarget && S.dwellFrames>0){
+    const pct=S.dwellFrames/DWELL_FRAMES;
+    ctx.beginPath();
+    ctx.arc(px,py,24,-Math.PI/2,-Math.PI/2+Math.PI*2*pct);
+    ctx.strokeStyle='#f7c948'; ctx.lineWidth=4; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── START SCREEN ──
+function drawStartScreen(W,H){
+  ctx.save();
+  ctx.fillStyle='rgba(8,14,26,0.90)'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+
+  // Big ball
+  const bscale = Math.min(2.8, W*0.003);
+  drawBall(W/2 - Math.min(W*0.18, 160), H*0.16, bscale);
+
+  // Title — clamp so it never overflows
+  const titleSize = Math.min(Math.floor(W*0.052), 58);
+  ctx.font=`700 ${titleSize}px 'Oswald',sans-serif`;
+  ctx.fillStyle='#f7c948';
+  ctx.shadowColor='rgba(247,201,72,0.4)'; ctx.shadowBlur=24;
+  ctx.fillText('PENALTY SHOOTER', W/2, H*0.17);
+  ctx.shadowBlur=0;
+
+  ctx.font=`${Math.round(W*0.018)}px 'Inter',sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.fillText('Use hand gestures to aim and shoot', W/2, H*0.25);
+
+  // Guide boxes — side by side, sized to screen
+  const bw=Math.min(170, W*0.19), bh=84, gap=12;
+  const total=bw*2+gap, sx=(W-total)/2;
+  const by2=H*0.30;
+  [
+    {icon:'☝️', title:'POINT',      desc:'Aim the crosshair\nwith one finger'},
+    {icon:'🖐',  title:'OPEN PALM', desc:'Instantly shoots\nthe ball'},
+  ].forEach((b,i)=>{
+    const bx=sx+i*(bw+gap);
+    ctx.fillStyle='rgba(255,255,255,0.07)';
+    ctx.strokeStyle='rgba(255,255,255,0.14)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.roundRect(bx,by2,bw,bh,10); ctx.fill(); ctx.stroke();
+    ctx.font='24px sans-serif'; ctx.fillStyle='#fff';
+    ctx.fillText(b.icon, bx+bw/2, by2+26);
+    ctx.font=`700 12px 'Oswald',sans-serif`; ctx.fillStyle='#f7c948';
+    ctx.fillText(b.title, bx+bw/2, by2+46);
+    ctx.font=`11px 'Inter',sans-serif`; ctx.fillStyle='rgba(255,255,255,0.55)';
+    b.desc.split('\n').forEach((line,li)=>{ ctx.fillText(line,bx+bw/2,by2+60+li*13); });
+  });
+
+  drawDwellButton(W,H,'start','☝️   POINT HERE TO START');
+
+  ctx.font=`11px 'Inter',sans-serif`; ctx.fillStyle='rgba(255,255,255,0.2)';
+  ctx.fillText('No camera? Arrow keys to aim · Space to shoot · Enter to start',W/2,H*0.93);
+  ctx.restore();
+}
+
+// ── GAME OVER SCREEN ──
+function drawGameOver(W,H){
+  ctx.save();
+  ctx.fillStyle='rgba(8,14,26,0.86)'; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+
+  const title = S.goals>=4?'🏆 WORLD CLASS!'
+               :S.goals>=3?'⭐ GREAT GAME!'
+               :S.goals>=2?'👍 NOT BAD!'
+               :'😬 ROUGH DAY...';
+
+  ctx.font=`700 ${Math.round(W*0.062)}px 'Oswald',sans-serif`;
+  ctx.fillStyle='#f7c948';
+  ctx.shadowColor='rgba(247,201,72,0.4)'; ctx.shadowBlur=24;
+  ctx.fillText(title,W/2,H*0.23);
+  ctx.shadowBlur=0;
+
+  ctx.font=`${Math.round(W*0.024)}px 'Inter',sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.fillText(`${S.goals} goals from ${TOTAL_SHOTS} shots  ·  Score: ${S.score}`,W/2,H*0.34);
+
+  for(let i=0;i<5;i++){
+    ctx.font='30px sans-serif';
+    ctx.globalAlpha=i<S.goals?1:0.18;
+    ctx.fillText('⭐',W/2+(i-2)*50,H*0.47);
+  }
+  ctx.globalAlpha=1;
+
+  drawDwellButton(W,H,'restart','☝️   POINT HERE TO PLAY AGAIN');
+  ctx.restore();
+}
+
+function drawDwellButton(W,H,id,label){
+  const btn=getButtonRect(id);
+  const active=(S.dwellTarget===id);
+  const pct=active?S.dwellFrames/DWELL_FRAMES:0;
+
+  ctx.save();
+  ctx.shadowColor='rgba(247,201,72,0.3)'; ctx.shadowBlur=active?22:6;
+  ctx.fillStyle=active?`rgba(247,201,72,${0.18+pct*0.22})`:'rgba(247,201,72,0.09)';
+  ctx.strokeStyle=active?`rgba(247,201,72,${0.85+pct*0.15})`:'rgba(247,201,72,0.55)';
+  ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.roundRect(btn.x,btn.y,btn.w,btn.h,14); ctx.fill(); ctx.stroke();
+  ctx.shadowBlur=0;
+  if(active && pct>0){
+    ctx.fillStyle=`rgba(247,201,72,${pct*0.18})`;
+    ctx.beginPath(); ctx.roundRect(btn.x,btn.y,btn.w*pct,btn.h,14); ctx.fill();
+  }
+  const fs = Math.min(Math.round(W*0.024), 26);
+  ctx.font=`700 ${fs}px 'Oswald',sans-serif`;
+  ctx.fillStyle=active?'#fff':'#f7c948';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor=active?'rgba(247,201,72,0.6)':'transparent';
+  ctx.shadowBlur=active?14:0;
+  ctx.fillText(label, btn.x+btn.w/2, btn.y+btn.h/2);
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════════
+//  GAME LOOP
+// ══════════════════════════════════════════════
+function loop(){
+  requestAnimationFrame(loop);
+
+  if(S.phase === 'shooting'){
+    S.bframe++;
+    S.bx += S.bvx; S.by += S.bvy;
+    S.bscale = Math.max(0.32, 1 - S.bframe*0.02);
+    if(S.bframe >= 34) evalShot();
+  }
+
+  if(S.phase === 'result'){
+    S.bframe++;
+    S.resultTimer--;
+    if(S.resultTimer <= 0){
+      S.phase = S.shots <= 0 ? 'gameover' : 'aiming';
+      if(S.phase === 'aiming') S.palmFired = false;
+    }
+  }
+
+  drawScene();
+}
+
+// ══════════════════════════════════════════════
+//  KEYBOARD FALLBACK
+// ══════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft')  S.aimNX=Math.max(0,S.aimNX-0.05);
+  if(e.key==='ArrowRight') S.aimNX=Math.min(1,S.aimNX+0.05);
+  if(e.key==='ArrowUp')    S.aimNY=Math.max(0,S.aimNY-0.05);
+  if(e.key==='ArrowDown')  S.aimNY=Math.min(1,S.aimNY+0.05);
+  if(e.key===' ' && S.phase==='aiming'){ e.preventDefault(); shoot(); }
+  if(e.key==='Enter' && S.phase==='start')    startGame();
+  if(e.key==='Enter' && S.phase==='gameover') restartGame();
+});
+
+// ══════════════════════════════════════════════
+//  CAMERA + MEDIAPIPE INIT
+// ══════════════════════════════════════════════
+const camStatus = document.getElementById('camStatus');
+
+const mpHands = new Hands({
+  locateFile: f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+});
+mpHands.setOptions({
+  maxNumHands:1,
+  modelComplexity:1,
+  minDetectionConfidence:0.72,
+  minTrackingConfidence:0.65,
+});
+mpHands.onResults(onResults);
+
+async function initCamera(){
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:'user', width:640, height:480 }
+    });
+    vid.srcObject = stream;
+    await new Promise(r=>{ vid.onloadedmetadata=r; });
+    vid.play();
+
+    const cam = new Camera(vid,{
+      onFrame: async()=>{ await mpHands.send({image:vid}); },
+      width:640, height:480,
+    });
+    cam.start();
+
+    camStatus.textContent='📷 CAM ON';
+    camStatus.className='ok';
+    setGbar('🙌 Show your hand to begin','');
+  } catch(err){
+    camStatus.textContent='❌ CAM OFF';
+    camStatus.className='err';
+    setGbar('⌨️ No camera — use arrow keys + Space','');
+    console.warn('Camera error:',err);
+  }
+}
+
+initCamera();
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gesture Brick Breaker</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#0a0a1a;
+  color:#fff;
+  font-family:'Segoe UI',system-ui,sans-serif;
+  overflow:hidden;
+  width:100vw; height:100vh;
+  display:flex; align-items:center; justify-content:center;
+}
+#app { position:relative; width:900px; height:600px; }
+#gameCanvas {
+  position:absolute; top:0; left:0;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.08);
+}
+#camCanvas {
+  position:absolute; bottom:10px; right:10px;
+  width:180px; height:135px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.2);
+  opacity:0.85;
+  z-index:5;
+}
+#cursorCanvas {
+  position:absolute; top:0; left:0;
+  pointer-events:none; z-index:15;
+  border-radius:12px;
+}
+#overlay {
+  position:absolute; top:0; left:0;
+  width:900px; height:600px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  background:rgba(10,10,26,0.93);
+  border-radius:12px; z-index:10;
+}
+#overlay h1 {
+  font-size:48px; font-weight:700; letter-spacing:-1px;
+  background:linear-gradient(135deg,#a78bfa,#60a5fa);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; margin-bottom:8px;
+}
+#overlay .subtitle {
+  font-size:14px; color:rgba(255,255,255,0.45);
+  margin-bottom:40px; letter-spacing:2px; text-transform:uppercase;
+}
+.menu-item {
+  width:280px; padding:14px 24px; margin:8px 0;
+  border-radius:10px; border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.04);
+  font-size:15px; font-weight:500; color:rgba(255,255,255,0.7);
+  text-align:center; position:relative; overflow:hidden;
+}
+.menu-item .fill-bar {
+  position:absolute; top:0; left:0; height:100%;
+  background:rgba(167,139,250,0.2); width:0%;
+  pointer-events:none;
+}
+.menu-item.hovered { border-color:rgba(167,139,250,0.6); color:#fff; background:rgba(167,139,250,0.12); }
+.menu-item.selected { background:rgba(167,139,250,0.35); border-color:#a78bfa; color:#fff; }
+#gestureHint {
+  position:absolute; top:12px; left:50%; transform:translateX(-50%);
+  display:flex; gap:16px; z-index:20; pointer-events:none;
+}
+.hint-pill {
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px; padding:5px 12px; font-size:12px;
+  color:rgba(255,255,255,0.5); white-space:nowrap;
+}
+.hint-pill span { color:rgba(167,139,250,0.9); font-weight:600; }
+#statusBar {
+  position:absolute; bottom:10px; left:10px;
+  font-size:11px; color:rgba(255,255,255,0.3); z-index:20;
+}
+#loadingScreen {
+  position:absolute; top:0; left:0;
+  width:900px; height:600px;
+  background:#0a0a1a; border-radius:12px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:30;
+}
+#loadingScreen h2 { color:#a78bfa; font-size:22px; margin-bottom:12px; }
+#loadMsg { font-size:13px; color:rgba(255,255,255,0.4); margin-top:12px; text-align:center; max-width:320px; }
+.spinner {
+  width:40px; height:40px;
+  border:3px solid rgba(167,139,250,0.2);
+  border-top-color:#a78bfa;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gameCanvas" width="900" height="600"></canvas>
+  <canvas id="camCanvas" width="320" height="240"></canvas>
+  <canvas id="cursorCanvas" width="900" height="600"></canvas>
+
+  <div id="loadingScreen">
+    <h2>Loading Hand Tracker</h2>
+    <div class="spinner"></div>
+    <p id="loadMsg">Loading MediaPipe…</p>
+  </div>
+
+  <div id="overlay" style="display:none;"></div>
+
+  <div id="gestureHint">
+    <div class="hint-pill">☝️ <span>1 finger</span> — aim / select</div>
+    <div class="hint-pill">✌️ <span>2 fingers</span> — move paddle</div>
+  </div>
+  <div id="statusBar">starting…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+const W = 900, H = 600;
+const gc = document.getElementById('gameCanvas');
+const ctx = gc.getContext('2d');
+const cc = document.getElementById('camCanvas');
+const cctx = cc.getContext('2d');
+const cursorCanvas = document.getElementById('cursorCanvas');
+const curs = cursorCanvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const statusBar = document.getElementById('statusBar');
+const loadingScreen = document.getElementById('loadingScreen');
+const loadMsg = document.getElementById('loadMsg');
+
+let gestureState = { fingers: 0, indexTip: null, middleTip: null, rawLandmarks: null };
+
+const LEVELS = [
+  { name:'Neon Valley',   brickRows:4, brickCols:10, ballSpeed:4.5, colors:['#f472b6','#a78bfa','#60a5fa','#34d399'], bg:'#0a0a1a' },
+  { name:'Plasma Storm',  brickRows:5, brickCols:12, ballSpeed:5.5, colors:['#fb923c','#facc15','#f87171','#a78bfa'], bg:'#0d0814' },
+  { name:'Cyber Abyss',   brickRows:6, brickCols:14, ballSpeed:6.5, colors:['#22d3ee','#a3e635','#f472b6','#818cf8'], bg:'#001a14' },
+];
+
+let gameState = 'menu';
+let currentLevel = 0;
+let score = 0, lives = 3;
+let bricks = [];
+let ball = { x:450, y:380, vx:0, vy:0, r:9, active:false };
+let paddle = { x:395, y:555, w:110, h:14, target:450 };
+let aimAngle = null;
+let menuItems = [];
+let hoveredItem = -1;
+let hoverTimer = 0;
+const HOVER_SELECT_MS = 1000;
+let aimHoldTimer = 0;
+const AIM_HOLD_MS = 900;
+let aimFireTriggered = false;
+let lastTime = 0;
+
+// ── Menu helpers ─────────────────────────────────────────────
+function buildMenu(items) {
+  menuItems = items.map((it, i) => ({ label:it.label, action:it.action, id:i }));
+  hoveredItem = -1; hoverTimer = 0;
+}
+
+function renderMenuItems() {
+  overlay.querySelectorAll('.menu-item').forEach(e => e.remove());
+  menuItems.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'menu-item';
+    el.id = `mi-${item.id}`;
+    el.innerHTML = `<div class="fill-bar" id="fb-${item.id}"></div>${item.label}`;
+    overlay.appendChild(el);
+  });
+}
+
+function showMenu() {
+  gameState = 'menu';
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `<h1>GESTURE BREAKER</h1><p class="subtitle">Hand-Powered Arcade</p>`;
+  buildMenu([
+    { label:'▶  Play', action:() => showLevelSelect() },
+    { label:'❓  How to Play', action:() => showHelp() },
+  ]);
+  renderMenuItems();
+}
+
+function showLevelSelect() {
+  gameState = 'levelSelect';
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `<h1>Select Level</h1><p class="subtitle">Point &amp; hold to choose</p>`;
+  buildMenu([
+    ...LEVELS.map((l, i) => ({ label:`${i+1}.  ${l.name}`, action:() => startLevel(i) })),
+    { label:'← Back', action:() => showMenu() },
+  ]);
+  renderMenuItems();
+}
+
+function showHelp() {
+  gameState = 'menu';
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <h1>How to Play</h1>
+    <p class="subtitle" style="margin-bottom:24px">Gesture Controls</p>
+    <div style="text-align:left;max-width:340px;line-height:2;color:rgba(255,255,255,0.7);font-size:14px">
+      <p>☝️ <strong style="color:#a78bfa">One finger</strong> — Navigate menus &amp; aim ball</p>
+      <p>✌️ <strong style="color:#60a5fa">Two fingers</strong> — Move the paddle</p>
+      <p>🎯 <strong style="color:#34d399">Hold aim 0.9s</strong> — Fires the ball</p>
+    </div>`;
+  buildMenu([{ label:'← Back', action:() => showMenu() }]);
+  renderMenuItems();
+}
+
+function showWin() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
+  gameState = 'win';
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `<h1>Level Clear!</h1><p class="subtitle">Score: ${score}</p>`;
+  const hasNext = currentLevel + 1 < LEVELS.length;
+  buildMenu([
+    ...(hasNext ? [{ label:'▶  Next Level', action:() => startLevel(currentLevel+1) }] : []),
+    { label:'🏠  Menu', action:() => showMenu() },
+  ]);
+  renderMenuItems();
+}
+
+function showLose() {
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
+  gameState = 'lose';
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `<h1>Game Over</h1><p class="subtitle">Score: ${score}</p>`;
+  buildMenu([
+    { label:'↺  Retry', action:() => startLevel(currentLevel) },
+    { label:'🏠  Menu', action:() => showMenu() },
+  ]);
+  renderMenuItems();
+}
+
+// ── Game init ────────────────────────────────────────────────
+function initBricks(level) {
+  const cfg = LEVELS[level];
+  const bw=56, bh=18, gx=8, gy=8;
+  const totalW = cfg.brickCols*(bw+gx)-gx;
+  const startX = (W-totalW)/2;
+  bricks = [];
+  for (let r=0;r<cfg.brickRows;r++) {
+    for (let c=0;c<cfg.brickCols;c++) {
+      bricks.push({
+        x: startX+c*(bw+gx), y: 60+r*(bh+gy),
+        w:bw, h:bh,
+        hp: r<2?1:r<4?2:3,
+        color: cfg.colors[(r+c)%cfg.colors.length],
+        alive:true,
+      });
+    }
+  }
+}
+
+function resetBall() {
+  ball.x = paddle.x+paddle.w/2;
+  ball.y = paddle.y-ball.r-2;
+  ball.vx=0; ball.vy=0; ball.active=false;
+  aimAngle=null; aimHoldTimer=0; aimFireTriggered=false;
+}
+
+function startLevel(idx) {
+  currentLevel=idx; score=0; lives=3;
+  paddle.x=395; paddle.target=450;
+  initBricks(idx); resetBall();
+  gameState='playing';
+  overlay.style.display='none';
+}
+
+// ── Menu hover logic ─────────────────────────────────────────
+function updateMenuHover(normX, normY) {
+  const screenX = (1-normX)*W;
+  const screenY = normY*H;
+  let newHover = -1;
+  menuItems.forEach((item,i) => {
+    const el = document.getElementById(`mi-${i}`);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const appRect = document.getElementById('app').getBoundingClientRect();
+    const elY = rect.top - appRect.top + rect.height/2;
+    if (screenY >= elY - rect.height/2 - 4 && screenY <= elY + rect.height/2 + 4) newHover = i;
+  });
+
+  const now = performance.now();
+  if (newHover !== hoveredItem) {
+    hoveredItem = newHover; hoverTimer = now;
+    menuItems.forEach((_,i) => {
+      const el = document.getElementById(`mi-${i}`);
+      if (el) { el.classList.remove('hovered','selected'); }
+      const fb = document.getElementById(`fb-${i}`);
+      if (fb) fb.style.width='0%';
+    });
+  }
+  if (hoveredItem >= 0) {
+    const el = document.getElementById(`mi-${hoveredItem}`);
+    const fb = document.getElementById(`fb-${hoveredItem}`);
+    if (el) el.classList.add('hovered');
+    const pct = Math.min(100, ((now-hoverTimer)/HOVER_SELECT_MS)*100);
+    if (fb) fb.style.width = pct+'%';
+    if (pct >= 100) {
+      if (el) el.classList.add('selected');
+      const action = menuItems[hoveredItem].action;
+      hoveredItem=-1; hoverTimer=0;
+      setTimeout(() => action(), 80);
+    }
+  }
+}
+
+// ── Game loop ─────────────────────────────────────────────────
+function gameLoop(ts) {
+  const dt = Math.min((ts-lastTime)/16.67, 3);
+  lastTime = ts;
+  if (gameState === 'playing') updateGame(dt);
+  drawGame();
+  drawCursor();
+  requestAnimationFrame(gameLoop);
+}
+
+function updateGame(dt) {
+  const cfg = LEVELS[currentLevel];
+
+  if (gestureState.fingers === 2 && gestureState.indexTip && gestureState.middleTip) {
+    const midX = (gestureState.indexTip.x + gestureState.middleTip.x)/2;
+    paddle.target = (1-midX)*W;
+  }
+  paddle.x += (paddle.target - paddle.w/2 - paddle.x) * 0.18 * dt;
+  paddle.x = Math.max(0, Math.min(W-paddle.w, paddle.x));
+
+  if (!ball.active) {
+    ball.x = paddle.x+paddle.w/2;
+    ball.y = paddle.y-ball.r-2;
+    if (gestureState.fingers===1 && gestureState.indexTip) {
+      const tx = (1-gestureState.indexTip.x)*W;
+      const ty = gestureState.indexTip.y*H;
+      const dx=tx-ball.x, dy=ty-ball.y;
+      if (Math.sqrt(dx*dx+dy*dy) > 20) {
+        aimAngle = Math.atan2(dy, dx);
+        aimHoldTimer += 16.67*dt;
+        if (aimHoldTimer >= AIM_HOLD_MS && !aimFireTriggered) {
+          aimFireTriggered=true;
+          const spd=cfg.ballSpeed;
+          ball.vx=Math.cos(aimAngle)*spd;
+          ball.vy=Math.sin(aimAngle)*spd;
+          ball.active=true;
+          aimHoldTimer=0; aimFireTriggered=false;
+        }
+      } else { aimHoldTimer=0; }
+    } else { aimHoldTimer=0; }
+    return;
+  }
+
+  ball.x += ball.vx*dt;
+  ball.y += ball.vy*dt;
+  if (ball.x-ball.r<0) { ball.x=ball.r; ball.vx=Math.abs(ball.vx); }
+  if (ball.x+ball.r>W) { ball.x=W-ball.r; ball.vx=-Math.abs(ball.vx); }
+  if (ball.y-ball.r<0) { ball.y=ball.r; ball.vy=Math.abs(ball.vy); }
+
+  if (ball.y+ball.r>paddle.y && ball.y+ball.r<paddle.y+paddle.h+8 &&
+      ball.x>paddle.x-4 && ball.x<paddle.x+paddle.w+4) {
+    const rel=(ball.x-paddle.x)/paddle.w-0.5;
+    const spd=cfg.ballSpeed;
+    ball.vx=rel*spd*2.4;
+    ball.vy=-Math.sqrt(Math.max(1, spd*spd-ball.vx*ball.vx));
+    ball.y=paddle.y-ball.r-1;
+  }
+
+  if (ball.y-ball.r>H) {
+    lives--;
+    if (lives<=0) { showLose(); return; }
+    resetBall(); return;
+  }
+
+  for (let b of bricks) {
+    if (!b.alive) continue;
+    if (ball.x+ball.r>b.x && ball.x-ball.r<b.x+b.w &&
+        ball.y+ball.r>b.y && ball.y-ball.r<b.y+b.h) {
+      b.hp--;
+      if (b.hp<=0) { b.alive=false; score+=10*(currentLevel+1); }
+      const oL=(ball.x+ball.r)-b.x, oR=(b.x+b.w)-(ball.x-ball.r);
+      const oT=(ball.y+ball.r)-b.y, oB=(b.y+b.h)-(ball.y-ball.r);
+      if (Math.min(oL,oR)<Math.min(oT,oB)) ball.vx*=-1; else ball.vy*=-1;
+      break;
+    }
+  }
+  if (bricks.every(b=>!b.alive)) showWin();
+}
+
+// ── Draw game ────────────────────────────────────────────────
+function drawGame() {
+  const cfg = LEVELS[currentLevel]||LEVELS[0];
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=cfg.bg; ctx.fillRect(0,0,W,H);
+
+  for (const b of bricks) {
+    if (!b.alive) continue;
+    ctx.save();
+    ctx.globalAlpha = 0.3+(b.hp/3)*0.7;
+    ctx.fillStyle=b.color;
+    ctx.beginPath(); ctx.roundRect(b.x,b.y,b.w,b.h,5); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=0.5; ctx.stroke();
+    if (b.hp>1) {
+      ctx.fillStyle='rgba(255,255,255,0.7)';
+      ctx.font='bold 9px system-ui'; ctx.textAlign='center';
+      ctx.fillText(b.hp, b.x+b.w/2, b.y+b.h/2+3);
+    }
+    ctx.restore();
+  }
+
+  const pg=ctx.createLinearGradient(paddle.x,paddle.y,paddle.x+paddle.w,paddle.y+paddle.h);
+  pg.addColorStop(0,'#818cf8'); pg.addColorStop(1,'#60a5fa');
+  ctx.fillStyle=pg;
+  ctx.beginPath(); ctx.roundRect(paddle.x,paddle.y,paddle.w,paddle.h,7); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=0.5; ctx.stroke();
+
+  if (!ball.active && aimAngle!==null) {
+    const holdPct=Math.min(1,aimHoldTimer/AIM_HOLD_MS);
+    ctx.save();
+    ctx.strokeStyle=`rgba(167,139,250,${0.3+holdPct*0.5})`;
+    ctx.lineWidth=1.5; ctx.setLineDash([6,6]);
+    ctx.beginPath();
+    ctx.moveTo(ball.x,ball.y);
+    ctx.lineTo(ball.x+Math.cos(aimAngle)*(80+holdPct*60), ball.y+Math.sin(aimAngle)*(80+holdPct*60));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle='#a78bfa'; ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.arc(ball.x,ball.y-ball.r-10,9,-Math.PI/2,-Math.PI/2+Math.PI*2*holdPct);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  const ballGrad=ctx.createRadialGradient(ball.x,ball.y,0,ball.x,ball.y,ball.r);
+  ballGrad.addColorStop(0,'#fff'); ballGrad.addColorStop(0.4,'#c4b5fd'); ballGrad.addColorStop(1,'#7c3aed');
+  ctx.fillStyle=ballGrad;
+  ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
+
+  ctx.font='13px system-ui'; ctx.textAlign='left';
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.fillText(`Score: ${score}`, 14, 24);
+  ctx.textAlign='right';
+  ctx.fillText(`Lives: ${'●'.repeat(lives)}`, W-14, 24);
+  ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='12px system-ui';
+  ctx.fillText(cfg.name, W/2, 24);
+
+  if (!ball.active && gameState==='playing') {
+    ctx.fillStyle='rgba(167,139,250,0.7)'; ctx.font='13px system-ui'; ctx.textAlign='center';
+    ctx.fillText('☝  Point to aim — hold to fire', W/2, paddle.y-30);
+  }
+}
+
+// ── Cursor overlay (menus + in-game finger dot) ───────────────
+function drawCursor() {
+  curs.clearRect(0,0,W,H);
+  const tip = gestureState.indexTip;
+  if (!tip) return;
+
+  const x=(1-tip.x)*W, y=tip.y*H;
+  const isMenu = ['menu','levelSelect','win','lose'].includes(gameState);
+
+  if (isMenu) {
+    const holdPct = hoveredItem>=0 ? Math.min(1,(performance.now()-hoverTimer)/HOVER_SELECT_MS) : 0;
+    const r=20;
+    curs.save();
+    curs.strokeStyle='rgba(167,139,250,0.18)';
+    curs.lineWidth=1;
+    curs.beginPath(); curs.arc(x,y,r+10,0,Math.PI*2); curs.stroke();
+    curs.strokeStyle='rgba(167,139,250,0.5)';
+    curs.lineWidth=1.5;
+    curs.beginPath(); curs.arc(x,y,r,0,Math.PI*2); curs.stroke();
+    if (holdPct>0) {
+      curs.strokeStyle='#a78bfa'; curs.lineWidth=3; curs.lineCap='round';
+      curs.beginPath();
+      curs.arc(x,y,r,-Math.PI/2,-Math.PI/2+Math.PI*2*holdPct);
+      curs.stroke();
+    }
+    curs.fillStyle=`rgba(167,139,250,${0.08+holdPct*0.2})`;
+    curs.beginPath(); curs.arc(x,y,r,0,Math.PI*2); curs.fill();
+    curs.strokeStyle=`rgba(255,255,255,${0.5+holdPct*0.4})`;
+    curs.lineWidth=1.5+holdPct;
+    curs.beginPath();
+    curs.moveTo(x-8,y); curs.lineTo(x+8,y);
+    curs.moveTo(x,y-8); curs.lineTo(x,y+8);
+    curs.stroke();
+    curs.restore();
+    updateMenuHover(tip.x, tip.y);
+  } else if (gameState==='playing') {
+    if (gestureState.fingers===1) {
+      curs.save();
+      curs.strokeStyle='rgba(167,139,250,0.55)';
+      curs.lineWidth=1.5; curs.setLineDash([4,4]);
+      curs.beginPath(); curs.arc(x,y,14,0,Math.PI*2); curs.stroke();
+      curs.setLineDash([]);
+      curs.strokeStyle='rgba(255,255,255,0.5)'; curs.lineWidth=1.5;
+      curs.beginPath();
+      curs.moveTo(x-18,y); curs.lineTo(x+18,y);
+      curs.moveTo(x,y-18); curs.lineTo(x,y+18);
+      curs.stroke();
+      curs.restore();
+    }
+  }
+}
+
+// ── Hand landmark drawing on camera canvas ───────────────────
+function drawHandOnCam(lms) {
+  const sx=cc.width, sy=cc.height;
+  const conns=[
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],[0,17]
+  ];
+  cctx.strokeStyle='rgba(167,139,250,0.7)'; cctx.lineWidth=1.5;
+  for (const [a,b] of conns) {
+    cctx.beginPath();
+    cctx.moveTo(lms[a].x*sx, lms[a].y*sy);
+    cctx.lineTo(lms[b].x*sx, lms[b].y*sy);
+    cctx.stroke();
+  }
+  cctx.fillStyle='#a78bfa';
+  for (const lm of lms) {
+    cctx.beginPath(); cctx.arc(lm.x*sx, lm.y*sy, 2.5,0,Math.PI*2); cctx.fill();
+  }
+}
+
+// ── MediaPipe Hands setup ─────────────────────────────────────
+function initHandTracking() {
+  loadMsg.textContent = 'Setting up hand tracking…';
+
+  const hands = new Hands({ locateFile: file =>
+    `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  });
+
+  hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.6,
+  });
+
+  hands.onResults(results => {
+    cctx.clearRect(0,0,cc.width,cc.height);
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length>0) {
+      const lms = results.multiHandLandmarks[0];
+
+      // Mirror X for camera display (selfie view)
+      const mirroredLms = lms.map(lm => ({...lm, x:1-lm.x}));
+      drawHandOnCam(mirroredLms);
+
+      const tips=[8,12,16,20], mids=[6,10,14,18];
+      let ext=0;
+      for (let i=0;i<4;i++) if (lms[tips[i]].y < lms[mids[i]].y) ext++;
+
+      gestureState.fingers = ext;
+      gestureState.indexTip = lms[8];
+      gestureState.middleTip = lms[12];
+      gestureState.rawLandmarks = lms;
+      statusBar.textContent = `gesture: ${ext} finger${ext!==1?'s':''} extended`;
+    } else {
+      gestureState = { fingers:0, indexTip:null, middleTip:null, rawLandmarks:null };
+      statusBar.textContent = 'gesture: no hand detected';
+    }
+  });
+
+  loadMsg.textContent = 'Requesting camera…';
+
+  const videoEl = document.createElement('video');
+  videoEl.setAttribute('playsinline','');
+
+  const camera = new Camera(videoEl, {
+    onFrame: async () => {
+      // Draw mirrored camera feed
+      cctx.save();
+      cctx.scale(-1,1);
+      cctx.drawImage(videoEl, -cc.width, 0, cc.width, cc.height);
+      cctx.restore();
+      await hands.send({ image: videoEl });
+    },
+    width: 320, height: 240,
+  });
+
+  camera.start()
+    .then(() => {
+      loadingScreen.style.display = 'none';
+      showMenu();
+      requestAnimationFrame(gameLoop);
+    })
+    .catch(err => {
+      loadingScreen.innerHTML = `
+        <h2 style="color:#f87171">Camera Error</h2>
+        <p id="loadMsg" style="color:rgba(255,255,255,0.5);margin-top:12px;max-width:320px;text-align:center">${err.message}</p>
+        <p style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:8px">Make sure you're on HTTPS or localhost</p>`;
+    });
+}
+
+// Wait for MediaPipe scripts to load then init
+function waitForMediaPipe() {
+  if (typeof Hands !== 'undefined' && typeof Camera !== 'undefined') {
+    initHandTracking();
+  } else {
+    loadMsg.textContent = 'Loading scripts…';
+    setTimeout(waitForMediaPipe, 200);
+  }
+}
+
+waitForMediaPipe();
+</script>
+</body>
+</html>

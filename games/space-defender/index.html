@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Defender — Hand Gesture Game</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    font-family: 'Courier New', monospace;
+    color: #fff;
+    overflow: hidden;
+    height: 100vh; width: 100vw;
+    user-select: none;
+    cursor: none;
+  }
+
+  /* ── LOADING ── */
+  #loading-screen {
+    position: fixed; inset: 0; background: #000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px; z-index: 100;
+  }
+  #loading-screen h1 { font-size: 2.4rem; letter-spacing: .15em; color: #00e5ff; text-shadow: 0 0 20px #00e5ff80; }
+  .loading-bar-wrap { width: 260px; height: 6px; background: #1a1a2e; border-radius: 3px; overflow: hidden; }
+  .loading-bar { height: 100%; width: 0; background: linear-gradient(90deg,#00e5ff,#7c4dff); border-radius: 3px; animation: load 3s ease forwards; }
+  @keyframes load { to { width: 100%; } }
+
+  /* ── START ── */
+  #start-screen {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center,#0a0a1f 0%,#000 70%);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 22px; z-index: 90;
+  }
+  #start-screen.visible { display: flex; }
+  #start-screen h1 {
+    font-size: 3.5rem; letter-spacing: .2em; color: #00e5ff;
+    text-shadow: 0 0 40px #00e5ffaa, 0 0 80px #00e5ff44;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { text-shadow: 0 0 40px #00e5ffaa, 0 0 80px #00e5ff44; }
+    50%      { text-shadow: 0 0 60px #00e5ffcc, 0 0 120px #00e5ff66; }
+  }
+  .subtitle { font-size: 1rem; color: #7c4dff; letter-spacing: .12em; text-transform: uppercase; }
+  .instructions {
+    background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.2);
+    border-radius: 12px; padding: 22px 36px;
+    max-width: 480px; text-align: center; line-height: 2; color: #ccc; font-size: .88rem;
+  }
+  .instructions span { color: #00e5ff; font-weight: bold; }
+
+  /* ── DWELL BUTTON (shared) ── */
+  .dwell-btn {
+    position: relative; overflow: hidden;
+    padding: 14px 52px;
+    background: transparent; border-radius: 30px;
+    font-family: 'Courier New', monospace; font-size: 1rem;
+    letter-spacing: .15em; cursor: none;
+    transition: border-color .2s, color .2s, box-shadow .2s;
+  }
+  .dwell-btn .fill-bar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+    transition: width .05s linear; border-radius: 30px;
+  }
+  .dwell-btn .btn-label { position: relative; z-index: 1; }
+
+  #start-btn        { border: 2px solid #00e5ff; color: #00e5ff; }
+  #start-btn        .fill-bar { background: rgba(0,229,255,.18); }
+  #start-btn.active { box-shadow: 0 0 30px #00e5ff66; }
+
+  #restart-btn        { border: 2px solid #7c4dff; color: #7c4dff; }
+  #restart-btn        .fill-bar { background: rgba(124,77,255,.22); }
+  #restart-btn.active { border-color: #00e5ff; color: #00e5ff; box-shadow: 0 0 30px #00e5ff44; }
+
+  .gesture-hint { font-size: .72rem; color: #444; letter-spacing: .12em; margin-top: -10px; }
+
+  /* ── GAME ── */
+  #game-container { position: relative; width: 100vw; height: 100vh; display: none; }
+  #game-container.visible { display: block; }
+  #gameCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  #webcamCanvas {
+    position: absolute; bottom: 16px; right: 16px;
+    width: 200px; height: 150px;
+    border: 1px solid rgba(0,229,255,.3); border-radius: 10px;
+    transform: scaleX(-1); opacity: .85;
+  }
+
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 16px 24px; pointer-events: none;
+  }
+  .hud-block { display: flex; flex-direction: column; gap: 4px; }
+  .hud-label { font-size: .65rem; color: rgba(0,229,255,.5); letter-spacing: .2em; text-transform: uppercase; }
+  .hud-value { font-size: 1.5rem; color: #00e5ff; text-shadow: 0 0 10px #00e5ff88; letter-spacing: .08em; }
+  #lives-display { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+  .life-icon { font-size: 1.1rem; filter: drop-shadow(0 0 4px #ff4e50); }
+
+  #gesture-indicator {
+    position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+    font-size: .75rem; letter-spacing: .2em; color: #7c4dff;
+    text-transform: uppercase; opacity: 0; transition: opacity .2s;
+  }
+  #gesture-indicator.visible { opacity: 1; }
+
+  /* ── GAME OVER ── */
+  #game-over-screen {
+    position: fixed; inset: 0; background: rgba(0,0,0,.88);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px; z-index: 95;
+  }
+  #game-over-screen.visible { display: flex; }
+  #game-over-screen h2 { font-size: 3rem; color: #ff4e50; letter-spacing: .2em; text-shadow: 0 0 40px #ff4e5088; }
+  #final-score { font-size: 1.3rem; color: #00e5ff; }
+
+  /* ── ERROR ── */
+  #cam-error {
+    position: fixed; inset: 0; background: #000;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px; z-index: 200; text-align: center; padding: 40px;
+  }
+  #cam-error h2 { color: #ff4e50; font-size: 1.8rem; }
+  #cam-error p  { color: #888; max-width: 400px; line-height: 1.7; }
+
+  /* ── HAND CURSOR overlay on menu screens ── */
+  #hand-cursor {
+    position: fixed; pointer-events: none; z-index: 999;
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid #00e5ff;
+    transform: translate(-50%,-50%);
+    transition: border-color .15s;
+    display: none;
+  }
+  #hand-cursor.visible { display: block; }
+  #hand-cursor.pointing { border-color: #00e5ff; box-shadow: 0 0 10px #00e5ff; }
+  #hand-cursor.fist     { border-color: #7c4dff; box-shadow: 0 0 10px #7c4dff; }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <h1>SPACE DEFENDER</h1>
+  <p style="color:#888;font-size:.85rem;letter-spacing:.1em">Initialising hand tracking…</p>
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+</div>
+
+<!-- Start -->
+<div id="start-screen">
+  <p class="subtitle">Hand Gesture Edition</p>
+  <h1>SPACE DEFENDER</h1>
+  <div class="instructions">
+    <span>✋ MOVE HAND</span> — Pilot your ship<br>
+    <span>☝️ POINT</span> — Auto-aim &amp; fire lasers<br>
+    <span>✊ FIST</span> — Shield burst (3 charges)<br><br>
+    Survive the asteroid field. Destroy to score.
+  </div>
+  <button class="dwell-btn" id="start-btn">
+    <div class="fill-bar"></div>
+    <span class="btn-label">LAUNCH MISSION</span>
+  </button>
+  <p class="gesture-hint">✋ Hold hand over button to launch</p>
+</div>
+
+<!-- Game -->
+<div id="game-container">
+  <canvas id="gameCanvas"></canvas>
+  <canvas id="webcamCanvas"></canvas>
+  <div id="hud">
+    <div class="hud-block">
+      <span class="hud-label">Score</span>
+      <span class="hud-value" id="score-display">0</span>
+    </div>
+    <div class="hud-block" style="align-items:center">
+      <span class="hud-label">Shield</span>
+      <span class="hud-value" id="shield-display">3</span>
+    </div>
+    <div class="hud-block" style="align-items:flex-end">
+      <span class="hud-label">Lives</span>
+      <div id="lives-display">
+        <span class="life-icon">💎</span>
+        <span class="life-icon">💎</span>
+        <span class="life-icon">💎</span>
+      </div>
+    </div>
+  </div>
+  <div id="gesture-indicator">✊ SHIELD ACTIVE</div>
+</div>
+
+<!-- Game Over -->
+<div id="game-over-screen">
+  <h2>GAME OVER</h2>
+  <div id="final-score">Score: 0</div>
+  <button class="dwell-btn" id="restart-btn">
+    <div class="fill-bar"></div>
+    <span class="btn-label">PLAY AGAIN</span>
+  </button>
+  <p class="gesture-hint">✋ Hold hand over button to restart</p>
+</div>
+
+<!-- Camera Error -->
+<div id="cam-error">
+  <h2>📷 Camera Required</h2>
+  <p>Space Defender needs your webcam for hand gesture controls. Please allow camera access and reload the page.</p>
+</div>
+
+<!-- Hand cursor for menu screens -->
+<div id="hand-cursor"></div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  CANVAS / RESIZE
+// ═══════════════════════════════════════════════════
+const gameCanvas   = document.getElementById('gameCanvas');
+const ctx          = gameCanvas.getContext('2d');
+const webcamCanvas = document.getElementById('webcamCanvas');
+const wctx         = webcamCanvas.getContext('2d');
+
+let W, H;
+function resize() { W = gameCanvas.width = window.innerWidth; H = gameCanvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+// ═══════════════════════════════════════════════════
+//  HAND STATE
+// ═══════════════════════════════════════════════════
+const hand = { x: 0.5, y: 0.5, pointing: false, fist: false, visible: false };
+
+// ═══════════════════════════════════════════════════
+//  DWELL BUTTON SYSTEM  (works for both start & restart)
+// ═══════════════════════════════════════════════════
+const DWELL_TIME = 2000; // ms
+const dwellState = {};   // keyed by button id
+
+function initDwellBtn(btn, onActivate) {
+  dwellState[btn.id] = { dwell: 0, active: false, cb: onActivate };
+}
+
+function tickDwellBtn(btn) {
+  const s = dwellState[btn.id];
+  if (!s) return;
+
+  // Only process if the screen containing this button is visible
+  const screen = btn.closest('[id$="-screen"], #game-over-screen');
+  const screenVisible = screen && (
+    screen.classList.contains('visible') ||
+    screen.style.display === 'flex' ||
+    getComputedStyle(screen).display !== 'none'
+  );
+  if (!screenVisible) { s.dwell = 0; return; }
+
+  if (!hand.visible) {
+    s.dwell = Math.max(0, s.dwell - 30);
+    btn.classList.remove('active');
+    btn.querySelector('.fill-bar').style.width = (s.dwell / DWELL_TIME * 100) + '%';
+    return;
+  }
+
+  const hx = (1 - hand.x) * window.innerWidth;
+  const hy = hand.y * window.innerHeight;
+  const rect = btn.getBoundingClientRect();
+  const PAD = 50;
+  const over = hx >= rect.left - PAD && hx <= rect.right + PAD &&
+               hy >= rect.top  - PAD && hy <= rect.bottom + PAD;
+
+  if (over) {
+    s.dwell = Math.min(DWELL_TIME, s.dwell + 16);
+    btn.classList.add('active');
+  } else {
+    s.dwell = Math.max(0, s.dwell - 24);
+    btn.classList.remove('active');
+  }
+
+  btn.querySelector('.fill-bar').style.width = (s.dwell / DWELL_TIME * 100) + '%';
+
+  if (s.dwell >= DWELL_TIME) {
+    s.dwell = 0;
+    btn.querySelector('.fill-bar').style.width = '0%';
+    btn.classList.remove('active');
+    s.cb();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════
+const state = {
+  running: false, score: 0, lives: 3, shields: 3,
+  shieldActive: false, shieldCooldown: 0, wave: 1,
+  pointing: false, _lastFist: false,
+};
+let ship, bullets, asteroids, particles, stars, explosions;
+
+function initGame() {
+  state.score = 0; state.lives = 3; state.shields = 3;
+  state.shieldActive = false; state.shieldCooldown = 0; state.wave = 1;
+  state.pointing = false; state._lastFist = false;
+  ship = { x: W/2, y: H/2, trail: [], invincible: 0 };
+  bullets = []; asteroids = []; particles = []; explosions = [];
+  stars = Array.from({length:200}, () => ({
+    x: Math.random()*W, y: Math.random()*H,
+    r: Math.random()*1.5+0.3, s: Math.random()*0.4+0.1, a: Math.random()
+  }));
+  spawnWave();
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════════════
+//  ASTEROIDS
+// ═══════════════════════════════════════════════════
+function spawnWave() {
+  for (let i = 0; i < 4 + state.wave*2; i++) spawnAsteroid();
+}
+
+function spawnAsteroid(x, y, size) {
+  size = size || (Math.random()*28+22);
+  if (x === undefined) {
+    const e = Math.floor(Math.random()*4);
+    if      (e===0) { x=Math.random()*W; y=-size; }
+    else if (e===1) { x=W+size; y=Math.random()*H; }
+    else if (e===2) { x=Math.random()*W; y=H+size; }
+    else            { x=-size; y=Math.random()*H; }
+  }
+  const spd   = (0.6+Math.random()*1.0)*(1+state.wave*0.07);
+  const angle = Math.atan2(H/2-y, W/2-x)+(Math.random()-0.5)*1.2;
+  const verts = Math.floor(Math.random()*5+7);
+  const shape = Array.from({length:verts},(_,i)=>{
+    const a=(i/verts)*Math.PI*2, r=size*(0.7+Math.random()*0.6);
+    return {x:Math.cos(a)*r, y:Math.sin(a)*r};
+  });
+  asteroids.push({
+    x, y, size, vx:Math.cos(angle)*spd, vy:Math.sin(angle)*spd,
+    rot:0, rotSpeed:(Math.random()-0.5)*0.04,
+    hp: size>36?3:size>24?2:1, shape,
+    glow: Math.random()>0.8?'#7c4dff':'#666',
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  SHOOTING
+// ═══════════════════════════════════════════════════
+let lastShot = 0;
+function tryShoot() {
+  const now = performance.now();
+  if (now - lastShot < 220) return;
+  lastShot = now;
+  let tx=ship.x, ty=ship.y-200, minD=Infinity;
+  for (const a of asteroids) {
+    const d=Math.hypot(a.x-ship.x,a.y-ship.y);
+    if (d<minD){minD=d;tx=a.x;ty=a.y;}
+  }
+  const ang=Math.atan2(ty-ship.y,tx-ship.x), spd=14;
+  bullets.push({x:ship.x,y:ship.y-10,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:60});
+  for(let i=0;i<5;i++) particles.push({
+    x:ship.x,y:ship.y-14,vx:(Math.random()-.5)*3,vy:-Math.random()*4-1,
+    life:10+Math.random()*10,maxLife:20,color:'#00e5ff',r:Math.random()*3+1
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  SHIELD
+// ═══════════════════════════════════════════════════
+function activateShield() {
+  if (state.shields<=0||state.shieldActive) return;
+  state.shields--;
+  state.shieldActive=true;
+  state.shieldCooldown=120;
+  for (let i=asteroids.length-1;i>=0;i--) {
+    const a=asteroids[i];
+    if (Math.hypot(a.x-ship.x,a.y-ship.y)<160) {
+      explode(a); asteroids.splice(i,1); state.score+=50;
+    }
+  }
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════════════
+//  PARTICLES / EXPLOSIONS
+// ═══════════════════════════════════════════════════
+function explode(a) {
+  const cols=['#ff4e50','#fc913a','#f9d62e','#fff'];
+  for(let i=0;i<30;i++){
+    const ang=Math.random()*Math.PI*2,spd=Math.random()*4+1;
+    particles.push({x:a.x,y:a.y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,
+      life:30+Math.random()*30,maxLife:60,color:cols[Math.floor(Math.random()*4)],r:Math.random()*4+2});
+  }
+  explosions.push({x:a.x,y:a.y,r:0,maxR:a.size*2.5,life:20});
+}
+
+// ═══════════════════════════════════════════════════
+//  COLLISIONS
+// ═══════════════════════════════════════════════════
+function checkCollisions() {
+  for (let bi=bullets.length-1;bi>=0;bi--) {
+    const b=bullets[bi];
+    for (let ai=asteroids.length-1;ai>=0;ai--) {
+      const a=asteroids[ai];
+      if (Math.hypot(b.x-a.x,b.y-a.y)<a.size*0.8) {
+        bullets.splice(bi,1); a.hp--;
+        if (a.hp<=0) {
+          explode(a);
+          state.score+=Math.round(100/(a.size/20));
+          if(a.size>28){
+            for(let s=0;s<2;s++) spawnAsteroid(a.x+(Math.random()-.5)*30,a.y+(Math.random()-.5)*30,a.size*0.55);
+          }
+          asteroids.splice(ai,1); updateHUD();
+        } else {
+          for(let p=0;p<6;p++){const ang=Math.random()*Math.PI*2;particles.push({x:b.x,y:b.y,vx:Math.cos(ang)*2,vy:Math.sin(ang)*2,life:12,maxLife:12,color:'#fff',r:2});}
+        }
+        break;
+      }
+    }
+  }
+  if (ship.invincible>0) return;
+  for (let ai=asteroids.length-1;ai>=0;ai--) {
+    const a=asteroids[ai];
+    if (Math.hypot(ship.x-a.x,ship.y-a.y)<a.size*0.75+14) {
+      if(state.shieldActive){
+        explode(a);asteroids.splice(ai,1);state.score+=50;updateHUD();
+      } else {
+        explode({x:ship.x,y:ship.y,size:20});
+        asteroids.splice(ai,1); state.lives--; ship.invincible=120; updateHUD();
+        if(state.lives<=0){endGame();return;}
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  HUD
+// ═══════════════════════════════════════════════════
+function updateHUD(){
+  document.getElementById('score-display').textContent=state.score;
+  document.getElementById('shield-display').textContent=state.shields;
+  document.getElementById('lives-display').innerHTML=
+    Array(Math.max(0,state.lives)).fill('<span class="life-icon">💎</span>').join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  DRAW
+// ═══════════════════════════════════════════════════
+function drawStars(dt){
+  for(const s of stars){
+    s.a+=.005; const alpha=.3+Math.abs(Math.sin(s.a))*.7;
+    s.x-=s.s*dt*.05; if(s.x<0){s.x=W;s.y=Math.random()*H;}
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${alpha})`;ctx.fill();
+  }
+}
+
+function drawShip(){
+  const{x,y}=ship;
+  ship.trail.push({x,y});
+  if(ship.trail.length>18) ship.trail.shift();
+  for(let i=0;i<ship.trail.length;i++){
+    const t=ship.trail[i],p=i/ship.trail.length;
+    ctx.beginPath();ctx.arc(t.x,t.y+22,3*p,0,Math.PI*2);
+    ctx.fillStyle=`rgba(0,229,255,${p*.4})`;ctx.fill();
+  }
+  if(ship.invincible>0&&Math.floor(ship.invincible/6)%2===0) return;
+  ctx.save();ctx.translate(x,y);
+  const g=ctx.createRadialGradient(0,22,0,0,22,22);
+  g.addColorStop(0,'rgba(0,229,255,.6)');g.addColorStop(1,'rgba(0,229,255,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,22,12,18,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.moveTo(0,-22);ctx.lineTo(-16,16);ctx.lineTo(-7,10);
+  ctx.lineTo(0,14);ctx.lineTo(7,10);ctx.lineTo(16,16);ctx.closePath();
+  ctx.fillStyle='#1a1a3e';ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.ellipse(0,-4,5,9,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,229,255,.35)';ctx.fill();
+  ctx.strokeStyle='rgba(0,229,255,.7)';ctx.lineWidth=1;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-16,16);ctx.lineTo(-9,2);ctx.moveTo(16,16);ctx.lineTo(9,2);
+  ctx.strokeStyle='#7c4dff';ctx.lineWidth=1.2;ctx.stroke();
+  if(state.shieldActive){
+    const r=50+Math.sin(Date.now()*.01)*5;
+    ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(0,229,255,${.5+Math.sin(Date.now()*.02)*.3})`;ctx.lineWidth=3;ctx.stroke();
+    const sg=ctx.createRadialGradient(0,0,0,0,0,r);
+    sg.addColorStop(0,'rgba(0,229,255,0)');sg.addColorStop(.7,'rgba(0,229,255,0)');sg.addColorStop(1,'rgba(0,229,255,.15)');
+    ctx.fillStyle=sg;ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBullets(){
+  for(const b of bullets){
+    ctx.save();ctx.translate(b.x,b.y);
+    const ang=Math.atan2(b.vy,b.vx)+Math.PI/2;ctx.rotate(ang);
+    const g=ctx.createLinearGradient(0,-12,0,6);
+    g.addColorStop(0,'#00e5ff');g.addColorStop(1,'rgba(0,229,255,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,-6,3,10,0,0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+}
+
+function drawAsteroids(){
+  for(const a of asteroids){
+    ctx.save();ctx.translate(a.x,a.y);ctx.rotate(a.rot);
+    ctx.beginPath();ctx.moveTo(a.shape[0].x,a.shape[0].y);
+    for(let i=1;i<a.shape.length;i++) ctx.lineTo(a.shape[i].x,a.shape[i].y);
+    ctx.closePath();ctx.fillStyle='#1a1222';ctx.strokeStyle=a.glow;ctx.lineWidth=1.8;ctx.fill();ctx.stroke();
+    const mid=a.shape.length>>1;
+    ctx.beginPath();ctx.moveTo(a.shape[0].x*.5,a.shape[0].y*.5);ctx.lineTo(a.shape[mid].x*.5,a.shape[mid].y*.5);
+    ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha=p.life/p.maxLife;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*(p.life/p.maxLife),0,Math.PI*2);
+    ctx.fillStyle=p.color;ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawExplosions(){
+  for(const e of explosions){
+    ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(255,200,80,${e.life/20*.8})`;ctx.lineWidth=3;ctx.stroke();
+  }
+}
+
+function drawHandCursor(){
+  if(!hand.visible) return;
+  const cx=(1-hand.x)*W, cy=hand.y*H;
+  ctx.save();ctx.translate(cx,cy);
+  ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);
+  ctx.strokeStyle=hand.pointing?'#00e5ff':hand.fist?'#7c4dff':'#ffffff88';
+  ctx.lineWidth=2;ctx.stroke();
+  if(hand.pointing){
+    ctx.beginPath();
+    ctx.moveTo(-18,0);ctx.lineTo(-12,0);ctx.moveTo(12,0);ctx.lineTo(18,0);
+    ctx.moveTo(0,-18);ctx.lineTo(0,-12);ctx.moveTo(0,12);ctx.lineTo(0,18);
+    ctx.strokeStyle='#00e5ff88';ctx.lineWidth=1.5;ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════
+//  GAME LOOP
+// ═══════════════════════════════════════════════════
+let lastTime = 0;
+function gameLoop(ts) {
+  if (!state.running) return;
+  const dt = Math.min(ts-lastTime, 50);
+  lastTime = ts;
+
+  ctx.fillStyle='#000009';ctx.fillRect(0,0,W,H);
+  const nb=ctx.createRadialGradient(W*.3,H*.4,0,W*.3,H*.4,H*.6);
+  nb.addColorStop(0,'rgba(30,10,60,.15)');nb.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=nb;ctx.fillRect(0,0,W,H);
+
+  drawStars(dt);
+
+  // Move ship
+  const tx=(1-hand.x)*W, ty=hand.y*H;
+  ship.x+=(tx-ship.x)*.12; ship.y+=(ty-ship.y)*.12;
+  ship.x=Math.max(30,Math.min(W-30,ship.x));
+  ship.y=Math.max(30,Math.min(H-30,ship.y));
+
+  state.pointing=hand.pointing;
+  if(hand.pointing) tryShoot();
+  if(hand.fist&&!state._lastFist) activateShield();
+  state._lastFist=hand.fist;
+
+  if(state.shieldActive){state.shieldCooldown--;if(state.shieldCooldown<=0)state.shieldActive=false;}
+
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];b.x+=b.vx;b.y+=b.vy;b.life--;
+    if(b.life<=0||b.x<0||b.x>W||b.y<0||b.y>H)bullets.splice(i,1);
+  }
+  for(const a of asteroids){a.x+=a.vx;a.y+=a.vy;a.rot+=a.rotSpeed;}
+  for(let i=asteroids.length-1;i>=0;i--){
+    const a=asteroids[i];
+    if(a.x<-200||a.x>W+200||a.y<-200||a.y>H+200)asteroids.splice(i,1);
+  }
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life--;p.vx*=.95;p.vy*=.95;
+    if(p.life<=0)particles.splice(i,1);
+  }
+  for(let i=explosions.length-1;i>=0;i--){
+    const e=explosions[i];e.r+=(e.maxR-e.r)*.2;e.life--;
+    if(e.life<=0)explosions.splice(i,1);
+  }
+
+  if(asteroids.length===0){state.wave++;spawnWave();updateHUD();}
+  checkCollisions();
+  if(ship.invincible>0)ship.invincible--;
+
+  drawExplosions();drawAsteroids();drawBullets();drawShip();drawParticles();drawHandCursor();
+
+  const gi=document.getElementById('gesture-indicator');
+  if(state.shieldActive){gi.textContent='✊ SHIELD ACTIVE';gi.classList.add('visible');}
+  else if(hand.pointing){gi.textContent='☝️ FIRING';gi.classList.add('visible');}
+  else{gi.classList.remove('visible');}
+
+  document.getElementById('score-display').textContent=state.score;
+  requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════════════
+//  GAME END
+// ═══════════════════════════════════════════════════
+function endGame(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: state.score }, '*');
+  state.running=false;
+  document.getElementById('game-over-screen').classList.add('visible');
+  document.getElementById('final-score').textContent=`Score: ${state.score}`;
+}
+
+// ═══════════════════════════════════════════════════
+//  GESTURE DETECTION
+// ═══════════════════════════════════════════════════
+function detectGesture(lm){
+  const indexTip=lm[8],indexMCP=lm[5];
+  const midTip=lm[12],midMCP=lm[9];
+  const ringTip=lm[16],ringMCP=lm[13];
+  const pinkyTip=lm[20],pinkyMCP=lm[17];
+  const indexUp  = indexTip.y < indexMCP.y  - .04;
+  const middleUp = midTip.y   < midMCP.y    - .04;
+  const ringUp   = ringTip.y  < ringMCP.y   - .04;
+  const pinkyUp  = pinkyTip.y < pinkyMCP.y  - .04;
+  hand.pointing = indexUp && !middleUp && !ringUp && !pinkyUp;
+  hand.fist     = !indexUp && !middleUp && !ringUp && !pinkyUp;
+}
+
+// ═══════════════════════════════════════════════════
+//  MEDIAPIPE
+// ═══════════════════════════════════════════════════
+const videoEl = document.createElement('video');
+videoEl.style.display='none';
+document.body.appendChild(videoEl);
+
+const handCursorEl = document.getElementById('hand-cursor');
+
+function setupMediaPipe(){
+  const hands = new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+  hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.6,minTrackingConfidence:.5});
+
+  hands.onResults(results=>{
+    wctx.clearRect(0,0,200,150);
+    wctx.save();wctx.scale(-1,1);
+    wctx.drawImage(results.image,-200,0,200,150);
+    wctx.restore();
+
+    if(results.multiHandLandmarks&&results.multiHandLandmarks.length>0){
+      const lm=results.multiHandLandmarks[0];
+      hand.visible=true;
+      hand.x=lm[0].x; hand.y=lm[0].y;
+      detectGesture(lm);
+
+      if(window.drawConnectors&&window.HAND_CONNECTIONS){
+        wctx.save();wctx.scale(-1,1);wctx.translate(-200,0);
+        drawConnectors(wctx,lm,HAND_CONNECTIONS,{color:'rgba(0,229,255,.4)',lineWidth:1});
+        drawLandmarks(wctx,lm,{color:'#00e5ff',lineWidth:.5,radius:2});
+        wctx.restore();
+      }
+
+      // Update overlay cursor for menu screens
+      const sx=(1-hand.x)*window.innerWidth;
+      const sy=hand.y*window.innerHeight;
+      handCursorEl.style.left=sx+'px';
+      handCursorEl.style.top=sy+'px';
+      handCursorEl.className='visible'+(hand.pointing?' pointing':hand.fist?' fist':'');
+    } else {
+      hand.visible=false; hand.pointing=false; hand.fist=false;
+      handCursorEl.className='';
+    }
+  });
+
+  navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}})
+    .then(stream=>{
+      videoEl.srcObject=stream; videoEl.play();
+      const camera=new Camera(videoEl,{onFrame:async()=>{await hands.send({image:videoEl});},width:640,height:480});
+      camera.start();
+      setTimeout(()=>{
+        document.getElementById('loading-screen').style.display='none';
+        document.getElementById('start-screen').classList.add('visible');
+      },3200);
+    })
+    .catch(err=>{
+      console.error(err);
+      document.getElementById('loading-screen').style.display='none';
+      document.getElementById('cam-error').style.display='flex';
+    });
+}
+
+// ═══════════════════════════════════════════════════
+//  DWELL BUTTON WIRING
+// ═══════════════════════════════════════════════════
+const startBtn   = document.getElementById('start-btn');
+const restartBtn = document.getElementById('restart-btn');
+
+initDwellBtn(startBtn, ()=>{
+  document.getElementById('start-screen').classList.remove('visible');
+  document.getElementById('game-container').classList.add('visible');
+  initGame(); state.running=true; lastTime=performance.now();
+  requestAnimationFrame(gameLoop);
+});
+
+initDwellBtn(restartBtn, ()=>{
+  document.getElementById('game-over-screen').classList.remove('visible');
+  document.getElementById('game-container').classList.add('visible');
+  initGame(); state.running=true; lastTime=performance.now();
+  requestAnimationFrame(gameLoop);
+});
+
+// ═══════════════════════════════════════════════════
+//  MENU LOOP (runs always for dwell + hand cursor)
+// ═══════════════════════════════════════════════════
+function menuLoop(){
+  tickDwellBtn(startBtn);
+  tickDwellBtn(restartBtn);
+  requestAnimationFrame(menuLoop);
+}
+requestAnimationFrame(menuLoop);
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  webcamCanvas.width=200; webcamCanvas.height=150;
+  setupMediaPipe();
+});
+</script>
+</body>
+</html>

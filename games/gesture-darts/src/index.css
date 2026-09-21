@@ -1,0 +1,442 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 20%, #241814 0%, #170f0c 55%, #0a0605 100%);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #f3e9dc;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+* { box-sizing: border-box; }
+
+.gdt-app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ---------- Cursor ---------- */
+.gdt-cursor-dot {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(234,88,12,0.9) 0%, rgba(234,88,12,0.2) 70%);
+  border: 2px solid #fb923c;
+  box-shadow: 0 0 16px rgba(251,146,60,0.8);
+  pointer-events: none;
+  z-index: 500;
+}
+
+/* ---------- Menu ---------- */
+.gdt-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+  overflow-y: auto;
+}
+
+.gdt-menu__title {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  background: linear-gradient(90deg, #fb923c, #facc15);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}
+
+.gdt-menu__subtitle {
+  color: #e7d3b8;
+  margin: 0 0 12px;
+  max-width: 520px;
+}
+
+.gdt-menu__section h3 {
+  margin: 0 0 8px;
+  color: #fb923c;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.gdt-menu__row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.gdt-menu-btn {
+  position: relative;
+  overflow: hidden;
+  min-width: 120px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(251,146,60,0.4);
+  text-transform: capitalize;
+  font-weight: 600;
+  color: #f3e9dc;
+}
+
+.gdt-menu-btn--active {
+  border-color: #fb923c;
+  box-shadow: 0 0 14px rgba(251,146,60,0.5);
+}
+
+.gdt-menu-btn__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(251,146,60,0.3);
+  transition: width 0.05s linear;
+  z-index: 0;
+}
+
+.gdt-menu-btn span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Game layout ---------- */
+.gdt-game-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.gdt-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 12px 24px;
+  min-height: 0;
+}
+
+.gdt-board-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 0;
+  flex: 1;
+}
+
+/* ---------- Dartboard ---------- */
+.gdt-board-wrap {
+  position: relative;
+  width: min(64vh, 70vmin, 520px);
+  aspect-ratio: 1;
+  filter: drop-shadow(0 0 30px rgba(0,0,0,0.6));
+}
+
+.gdt-board-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.gdt-board-label {
+  font-size: 8px;
+  font-weight: 700;
+  fill: #f3e9dc;
+}
+
+.gdt-reticle circle {
+  fill: none;
+  stroke: #38bdf8;
+  stroke-width: 1.6;
+}
+
+.gdt-reticle line {
+  stroke: #38bdf8;
+  stroke-width: 1.6;
+}
+
+.gdt-dart-flight {
+  fill: #fef3c7;
+  filter: drop-shadow(0 0 4px rgba(254,243,199,0.9));
+}
+
+.gdt-impact-mark {
+  fill: #1e293b;
+  stroke: #fefce8;
+  stroke-width: 1;
+}
+
+.gdt-stuck-dart {
+  fill: #292524;
+  stroke: #fefce8;
+  stroke-width: 0.6;
+}
+
+.gdt-result-flash {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(22px, 4vw, 38px);
+  font-weight: 800;
+  color: #facc15;
+  text-shadow: 0 0 16px rgba(250,204,21,0.8);
+  z-index: 20;
+  animation: gdt-flash-pop 1s ease-out forwards;
+  pointer-events: none;
+}
+
+.gdt-result-flash--bust {
+  color: #f87171;
+  text-shadow: 0 0 16px rgba(248,113,113,0.8);
+}
+
+@keyframes gdt-flash-pop {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -55%) scale(1); }
+}
+
+/* ---------- Power meter ---------- */
+.gdt-power-meter {
+  width: min(420px, 90%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.gdt-power-meter__track {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(251,146,60,0.35);
+  overflow: hidden;
+}
+
+.gdt-power-meter__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #facc15, #f87171);
+  transition: width 0.05s linear;
+}
+
+.gdt-power-meter__fill--active {
+  box-shadow: 0 0 10px rgba(250,204,21,0.6) inset;
+}
+
+.gdt-power-meter__needed {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  background: #fff;
+  z-index: 2;
+}
+
+.gdt-power-meter__label {
+  font-size: 13px;
+  color: #e7d3b8;
+}
+
+/* ---------- Scorecard ---------- */
+.gdt-scorecard {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(251,146,60,0.3);
+  border-radius: 14px;
+  padding: 14px 16px;
+  min-width: 180px;
+}
+
+.gdt-scorecard--x01 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gdt-scorecard__player {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.gdt-scorecard__player--active {
+  background: rgba(251,146,60,0.18);
+  box-shadow: 0 0 10px rgba(251,146,60,0.3) inset;
+}
+
+.gdt-scorecard__label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #e7d3b8;
+}
+
+.gdt-scorecard__value {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #facc15;
+}
+
+.gdt-scorecard--cricket {
+  font-size: 12px;
+}
+
+.gdt-scorecard__row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.gdt-scorecard__row--head {
+  color: #fb923c;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+}
+
+.gdt-scorecard__row--total {
+  border-top: 1px solid rgba(251,146,60,0.3);
+  margin-top: 6px;
+  padding-top: 8px;
+  font-weight: 800;
+  font-size: 16px;
+  color: #facc15;
+}
+
+.gdt-scorecard__num {
+  text-align: center;
+  font-weight: 700;
+}
+
+.gdt-pips {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+}
+
+.gdt-pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.4px solid rgba(251,146,60,0.5);
+  background: transparent;
+}
+
+.gdt-pip--filled {
+  background: #facc15;
+  border-color: #facc15;
+}
+
+/* ---------- HUD / buttons ---------- */
+.gdt-ui-overlay {
+  position: relative;
+  z-index: 10;
+  padding: 14px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gdt-hud {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  color: #e7d3b8;
+  flex-wrap: wrap;
+}
+
+.gdt-hud__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(251,146,60,0.2);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.gdt-hud__stat {
+  font-weight: 600;
+}
+
+.gdt-button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gdt-dwell-btn {
+  position: relative;
+  overflow: hidden;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(251,146,60,0.35);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gdt-dwell-btn--warn {
+  border-color: rgba(248,113,113,0.5);
+}
+
+.gdt-dwell-btn__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(251,146,60,0.3);
+  z-index: 0;
+  transition: width 0.05s linear;
+}
+
+.gdt-dwell-btn span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Overlays ---------- */
+.gdt-camera-gate, .gdt-pause-overlay, .gdt-victory-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+  background: rgba(10,6,5,0.85);
+  z-index: 50;
+}
+
+.gdt-victory-overlay h2, .gdt-pause-overlay h2 {
+  font-size: 32px;
+  background: linear-gradient(90deg, #fb923c, #facc15);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}

@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Block Blast — Hand Gesture Edition</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+
+:root {
+  --bg:#080812; --panel:#10101f; --border:#1e1e3a;
+  --accent:#7c3aed; --cyan:#06b6d4; --green:#22c55e;
+  --red:#ef4444; --text:#e2e8f0; --dim:#64748b;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+html,body{
+  width:100%;height:100%;
+  background:var(--bg);color:var(--text);
+  font-family:'Nunito',sans-serif;
+  overflow:hidden;user-select:none;
+}
+
+/* grid: left cam | center game | right stats */
+#root{
+  width:100vw;height:100vh;
+  display:grid;
+  grid-template-columns:1fr 344px 220px;
+  align-items:center;justify-items:center;
+}
+
+/* ── LEFT CAM COLUMN ── */
+#camCol{
+  width:100%;display:flex;flex-direction:column;
+  align-items:center;gap:12px;padding:16px;
+}
+
+#camWrap{
+  position:relative;width:280px;height:210px;
+  border-radius:18px;overflow:hidden;
+  border:2px solid var(--border);
+  box-shadow:0 0 30px rgba(124,58,237,.25);
+  background:#000;flex-shrink:0;
+}
+
+#video{
+  width:100%;height:100%;object-fit:cover;
+  transform:scaleX(-1);display:block;
+}
+
+#handCanvas{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  transform:scaleX(-1);pointer-events:none;
+}
+
+#camPill{
+  position:absolute;top:8px;right:8px;
+  display:flex;align-items:center;gap:5px;
+  background:rgba(0,0,0,.65);border-radius:20px;
+  padding:3px 10px;font-size:11px;font-weight:700;
+  letter-spacing:.5px;color:var(--dim);backdrop-filter:blur(4px);
+}
+
+#camDot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--red);box-shadow:0 0 6px var(--red);
+  transition:all .3s;
+}
+#camDot.on{background:var(--green);box-shadow:0 0 8px var(--green);}
+
+#gestureBadge{
+  background:var(--panel);border:1.5px solid var(--border);
+  border-radius:14px;padding:10px 16px;
+  font-family:'Fredoka One',cursive;font-size:17px;
+  color:var(--accent);width:280px;text-align:center;
+  min-height:46px;display:flex;align-items:center;
+  justify-content:center;gap:8px;transition:all .15s;
+}
+#gestureBadge.lit{border-color:var(--accent);box-shadow:0 0 14px rgba(124,58,237,.45);}
+
+.legend{
+  width:280px;background:var(--panel);
+  border:1px solid var(--border);border-radius:14px;
+  padding:12px 14px;display:flex;flex-direction:column;gap:7px;
+}
+.ltitle{
+  font-family:'Fredoka One',cursive;font-size:11px;
+  color:var(--cyan);letter-spacing:1.5px;
+  text-transform:uppercase;margin-bottom:3px;
+}
+.leg{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--dim);}
+.leg .ico{font-size:17px;width:22px;text-align:center;flex-shrink:0;}
+.leg strong{color:var(--text);}
+
+/* ── CENTER GAME COLUMN ── */
+#gameCol{
+  display:flex;flex-direction:column;
+  align-items:center;gap:8px;position:relative;
+}
+
+#gameTitle{
+  font-family:'Fredoka One',cursive;font-size:26px;
+  background:linear-gradient(135deg,var(--accent),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:2px;
+}
+
+#boardWrap{position:relative;}
+
+#gameCanvas{
+  display:block;border-radius:12px;
+  border:2px solid var(--border);
+  box-shadow:0 0 40px rgba(124,58,237,.12);
+}
+
+/* ── RIGHT STATS COLUMN ── */
+#statsCol{
+  display:flex;flex-direction:column;
+  align-items:center;gap:10px;
+  padding:16px;width:100%;
+}
+
+.scard{
+  width:160px;background:var(--panel);
+  border:1px solid var(--border);border-radius:14px;
+  padding:12px;text-align:center;
+}
+.scard .sl{
+  font-size:10px;text-transform:uppercase;
+  letter-spacing:1.5px;color:var(--dim);display:block;margin-bottom:4px;
+}
+.scard .sv{
+  font-family:'Fredoka One',cursive;font-size:28px;
+  color:var(--accent);line-height:1;
+}
+.scard.cyan .sv{color:var(--cyan);}
+.scard.lvl{
+  background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(6,182,212,.1));
+  border-color:rgba(124,58,237,.35);
+}
+.scard.lvl .sv{color:#fff;}
+.scard.lvl .sl{color:#a78bfa;}
+
+.nxtcard{
+  width:160px;background:var(--panel);
+  border:1px solid var(--border);border-radius:14px;
+  padding:12px;text-align:center;
+}
+.nxtcard .sl{
+  font-size:10px;text-transform:uppercase;
+  letter-spacing:1.5px;color:var(--dim);
+  display:block;margin-bottom:8px;
+}
+
+#nextCanvas{
+  border-radius:8px;background:rgba(0,0,0,.3);
+  display:block;margin:0 auto;
+}
+
+/* ── OVERLAY SCREENS ── */
+.screen{
+  position:absolute;inset:0;border-radius:12px;
+  background:rgba(8,8,18,.94);backdrop-filter:blur(14px);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:16px;z-index:20;padding:28px;
+}
+
+.screen h2{
+  font-family:'Fredoka One',cursive;font-size:36px;
+  background:linear-gradient(135deg,var(--accent),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-align:center;
+}
+.screen .sub{
+  color:var(--dim);font-size:12px;text-align:center;
+  line-height:1.7;max-width:230px;
+}
+.screen .bigscore{
+  font-family:'Fredoka One',cursive;font-size:54px;color:#fff;
+}
+
+/* Dwell button */
+.gbtn{
+  position:relative;width:210px;height:54px;
+  border-radius:16px;
+  background:rgba(124,58,237,.1);
+  border:2px solid rgba(124,58,237,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fredoka One',cursive;font-size:19px;
+  color:#a78bfa;overflow:hidden;transition:all .15s;
+}
+.gbtn .bar{
+  position:absolute;left:0;top:0;bottom:0;width:0%;
+  background:linear-gradient(90deg,rgba(124,58,237,.55),rgba(6,182,212,.4));
+  transition:width .05s linear;border-radius:14px;
+}
+.gbtn .lbl{position:relative;z-index:1;pointer-events:none;}
+.gbtn.hover{border-color:var(--accent);box-shadow:0 0 18px rgba(124,58,237,.5);color:#fff;}
+.gbtn.fired{background:rgba(124,58,237,.5);box-shadow:0 0 28px rgba(124,58,237,.8);}
+
+/* global cursor dot */
+#cursor{
+  position:fixed;width:26px;height:26px;
+  border-radius:50%;border:2.5px solid var(--cyan);
+  background:rgba(6,182,212,.18);
+  pointer-events:none;transform:translate(-50%,-50%);
+  z-index:9999;display:none;transition:width .1s,height .1s,background .1s,border-color .1s;
+}
+#cursor.active{
+  width:16px;height:16px;
+  background:rgba(124,58,237,.6);border-color:var(--accent);
+}
+
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<div id="root">
+
+  <!-- ── LEFT: CAMERA ── -->
+  <div id="camCol">
+    <div id="camWrap">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="handCanvas"></canvas>
+      <div id="camPill">
+        <div id="camDot"></div>
+        <span id="camTxt">Starting…</span>
+      </div>
+    </div>
+
+    <div id="gestureBadge">👋 Waiting for camera…</div>
+
+    <div class="legend">
+      <div class="ltitle">✋ Gesture Guide</div>
+      <div class="leg"><span class="ico">👍</span><div><strong>Thumb up, move left/right</strong> — block follows your thumb position</div></div>
+      <div class="leg"><span class="ico">🖐</span><div><strong>Open palm</strong> (3+ fingers up) — hard drop</div></div>
+      <div class="leg"><span class="ico">✊</span><div><strong>Fist</strong> (all fingers + thumb curled) — rotate</div></div>
+      <div class="leg"><span class="ico">☝️</span><div><strong>Point index finger</strong> — cursor, hold 1.5s on buttons</div></div>
+    </div>
+  </div>
+
+  <!-- ── CENTER: GAME ── -->
+  <div id="gameCol">
+    <div id="gameTitle">BLOCK BLAST</div>
+    <div id="boardWrap">
+      <canvas id="gameCanvas"></canvas>
+
+      <!-- START -->
+      <div class="screen" id="scStart">
+        <h2>BLOCK BLAST</h2>
+        <p class="sub">Fully gesture-controlled.<br>Point your finger at a button and hold it for 1.5 seconds to activate.</p>
+        <div class="gbtn" id="btn-start" data-action="start">
+          <div class="bar" id="bar-btn-start"></div>
+          <span class="lbl">▶ &nbsp;START GAME</span>
+        </div>
+        <p class="sub" style="font-size:11px;margin-top:4px;">Camera starts automatically · allow access when prompted</p>
+      </div>
+
+      <!-- PAUSE -->
+      <div class="screen hidden" id="scPause">
+        <h2>PAUSED</h2>
+        <div class="gbtn" id="btn-resume" data-action="resume">
+          <div class="bar" id="bar-btn-resume"></div>
+          <span class="lbl">▶ &nbsp;RESUME</span>
+        </div>
+        <div class="gbtn" id="btn-restart2" data-action="restart" style="margin-top:4px">
+          <div class="bar" id="bar-btn-restart2"></div>
+          <span class="lbl">🔄 &nbsp;RESTART</span>
+        </div>
+      </div>
+
+      <!-- GAME OVER -->
+      <div class="screen hidden" id="scOver">
+        <h2>GAME OVER</h2>
+        <div class="bigscore" id="finalScore">0</div>
+        <p class="sub">Final Score</p>
+        <div class="gbtn" id="btn-again" data-action="restart">
+          <div class="bar" id="bar-btn-again"></div>
+          <span class="lbl">🔄 &nbsp;PLAY AGAIN</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: STATS ── -->
+  <div id="statsCol">
+    <div class="scard">
+      <span class="sl">Score</span>
+      <div class="sv" id="elScore">0</div>
+    </div>
+    <div class="scard cyan">
+      <span class="sl">Best</span>
+      <div class="sv" id="elBest">0</div>
+    </div>
+    <div class="scard">
+      <span class="sl">Lines</span>
+      <div class="sv" id="elLines">0</div>
+    </div>
+    <div class="scard lvl">
+      <span class="sl">Level</span>
+      <div class="sv" id="elLevel">1</div>
+    </div>
+    <div class="nxtcard">
+      <span class="sl">Next</span>
+      <canvas id="nextCanvas" width="128" height="96"></canvas>
+    </div>
+    <div class="gbtn" id="btn-pause" data-action="pause" style="width:160px;height:44px;font-size:16px;margin-top:2px">
+      <div class="bar" id="bar-btn-pause"></div>
+      <span class="lbl">⏸ &nbsp;PAUSE</span>
+    </div>
+  </div>
+</div>
+
+<!-- global hand cursor -->
+<div id="cursor"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+//   TETRIS ENGINE
+// ═══════════════════════════════════════════════════════
+const COLS=10, ROWS=20, CS=34; // cell size px
+
+const gc   = document.getElementById('gameCanvas');
+const gctx = gc.getContext('2d');
+gc.width   = COLS*CS;
+gc.height  = ROWS*CS;
+
+const nc   = document.getElementById('nextCanvas');
+const nctx = nc.getContext('2d');
+
+const COLORS=[null,'#ef4444','#3b82f6','#f97316','#eab308','#22c55e','#a855f7','#06b6d4'];
+const GLOWS =[null,'rgba(239,68,68,.55)','rgba(59,130,246,.55)','rgba(249,115,22,.55)',
+                   'rgba(234,179,8,.55)','rgba(34,197,94,.55)','rgba(168,85,247,.55)','rgba(6,182,212,.55)'];
+
+// Each piece: array of [col,row] offsets
+const SHAPES=[
+  null,
+  [[0,0],[1,0],[2,0],[3,0]],       // I
+  [[0,0],[0,1],[1,1],[2,1]],       // J
+  [[2,0],[0,1],[1,1],[2,1]],       // L
+  [[0,0],[1,0],[0,1],[1,1]],       // O
+  [[1,0],[2,0],[0,1],[1,1]],       // S
+  [[1,0],[0,1],[1,1],[2,1]],       // T
+  [[0,0],[1,0],[1,1],[2,1]],       // Z
+];
+
+const SCORE_MAP=[0,100,300,500,800];
+const SPEED_MS =[850,720,600,500,410,330,270,215,170,135,105];
+
+let board, activePiece, ax, ay, aType, nextType;
+let score=0, best=0, lines=0, level=1, dropMs=850;
+let alive=false, paused=false;
+let dropTimer=null;
+const parts=[];
+
+/* ── helpers ── */
+const randT=()=>Math.floor(Math.random()*7)+1;
+function newBoard(){return Array.from({length:ROWS},()=>new Array(COLS).fill(0));}
+
+function rotateCW(p){
+  const mx=Math.max(...p.map(c=>c[0]));
+  const my=Math.max(...p.map(c=>c[1]));
+  return p.map(([x,y])=>[my-y,x]);
+}
+
+function overlaps(cells,ox,oy){
+  for(const[x,y] of cells){
+    const nx=ox+x, ny=oy+y;
+    if(nx<0||nx>=COLS||ny>=ROWS) return true;
+    if(ny>=0 && board[ny][nx]) return true;
+  }
+  return false;
+}
+
+/* ── spawn / lock ── */
+function spawnPiece(){
+  aType=nextType||randT();
+  nextType=randT();
+  activePiece=SHAPES[aType].map(c=>[...c]);
+  ax=Math.floor(COLS/2)-2; ay=-2;
+  drawNext();
+  if(overlaps(activePiece,ax,ay+2)){
+    doGameOver(); return;
+  }
+}
+
+function lockPiece(){
+  for(const[x,y] of activePiece)
+    if(ay+y>=0) board[ay+y][ax+x]=aType;
+  sweepLines();
+  spawnPiece();
+}
+
+function sweepLines(){
+  let n=0;
+  for(let r=ROWS-1;r>=0;r--){
+    if(board[r].every(v=>v)){
+      board.splice(r,1);
+      board.unshift(new Array(COLS).fill(0));
+      n++; r++;
+    }
+  }
+  if(!n) return;
+  lines+=n; score+=SCORE_MAP[n]*level;
+  level=Math.floor(lines/10)+1;
+  dropMs=SPEED_MS[Math.min(level-1,SPEED_MS.length-1)];
+  if(score>best) best=score;
+  updateHUD();
+  spawnParticles(n);
+  resetDropTimer();
+}
+
+function ghostRow(){
+  let g=ay;
+  while(!overlaps(activePiece,ax,g+1)) g++;
+  return g;
+}
+
+/* ── game state ── */
+function startGame(){
+  board=newBoard(); score=0; lines=0; level=1; dropMs=850;
+  nextType=null; parts.length=0;
+  updateHUD();
+  spawnPiece();
+  alive=true; paused=false;
+  hideAll();
+  resetDropTimer();
+  requestAnimationFrame(gameLoop);
+}
+
+function doGameOver(){
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
+  alive=false;
+  clearTimeout(dropTimer);
+  document.getElementById('finalScore').textContent=score;
+  show('scOver');
+}
+
+function togglePause(){
+  if(!alive) return;
+  paused=!paused;
+  if(paused){clearTimeout(dropTimer); show('scPause');}
+  else{hide('scPause'); resetDropTimer();}
+}
+
+function doResume(){if(paused) togglePause();}
+
+function resetDropTimer(){
+  clearTimeout(dropTimer);
+  if(alive&&!paused) dropTimer=setTimeout(autoDrop,dropMs);
+}
+
+function autoDrop(){
+  if(!alive||paused) return;
+  if(!overlaps(activePiece,ax,ay+1)) ay++;
+  else lockPiece();
+  resetDropTimer();
+}
+
+function updateHUD(){
+  document.getElementById('elScore').textContent=score;
+  document.getElementById('elBest').textContent=best;
+  document.getElementById('elLines').textContent=lines;
+  document.getElementById('elLevel').textContent=level;
+}
+
+/* ── draw ── */
+function gameLoop(){
+  if(alive) requestAnimationFrame(gameLoop);
+  renderBoard();
+}
+
+function renderBoard(){
+  // background
+  gctx.fillStyle='#080812';
+  gctx.fillRect(0,0,gc.width,gc.height);
+
+  // subtle grid
+  gctx.strokeStyle='rgba(255,255,255,.03)'; gctx.lineWidth=1;
+  for(let r=0;r<=ROWS;r++){gctx.beginPath();gctx.moveTo(0,r*CS);gctx.lineTo(COLS*CS,r*CS);gctx.stroke();}
+  for(let c=0;c<=COLS;c++){gctx.beginPath();gctx.moveTo(c*CS,0);gctx.lineTo(c*CS,ROWS*CS);gctx.stroke();}
+
+  // locked blocks
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      if(board[r][c]) drawCell(gctx,c,r,board[r][c]);
+
+  if(activePiece&&alive){
+    // ghost
+    const gy=ghostRow();
+    for(const[x,y] of activePiece){
+      const by=gy+y;
+      if(by>=0) drawGhost(gctx,ax+x,by,aType);
+    }
+    // active piece
+    for(const[x,y] of activePiece){
+      const by=ay+y;
+      if(by>=0) drawCell(gctx,ax+x,by,aType);
+    }
+  }
+
+  tickParticles();
+}
+
+function drawCell(c,x,y,t){
+  const px=x*CS, py=y*CS;
+  c.save();
+  c.shadowColor=GLOWS[t]; c.shadowBlur=14;
+  c.fillStyle=COLORS[t];
+  c.fillRect(px+1,py+1,CS-2,CS-2);
+  c.shadowBlur=0;
+  // highlight
+  c.fillStyle='rgba(255,255,255,.22)';
+  c.fillRect(px+2,py+2,CS-4,7);
+  // inner border
+  c.strokeStyle='rgba(0,0,0,.3)'; c.lineWidth=1;
+  c.strokeRect(px+1,py+1,CS-2,CS-2);
+  c.restore();
+}
+
+function drawGhost(c,x,y,t){
+  c.save(); c.globalAlpha=.28;
+  c.strokeStyle=COLORS[t]; c.lineWidth=1.5;
+  c.strokeRect(x*CS+2,y*CS+2,CS-4,CS-4);
+  c.restore();
+}
+
+function drawNext(){
+  nctx.fillStyle='rgba(0,0,0,.3)';
+  nctx.fillRect(0,0,128,96);
+  if(!nextType) return;
+  const sh=SHAPES[nextType];
+  const minX=Math.min(...sh.map(c=>c[0]));
+  const maxX=Math.max(...sh.map(c=>c[0]));
+  const minY=Math.min(...sh.map(c=>c[1]));
+  const maxY=Math.max(...sh.map(c=>c[1]));
+  const cs=24;
+  const ox=Math.floor((4-(maxX-minX+1))/2)-minX;
+  const oy=Math.floor((3-(maxY-minY+1))/2)-minY;
+  for(const[x,y] of sh){
+    const rx=(ox+x)*cs+8, ry=(oy+y)*cs+8;
+    nctx.save();
+    nctx.shadowColor=GLOWS[nextType]; nctx.shadowBlur=10;
+    nctx.fillStyle=COLORS[nextType];
+    nctx.fillRect(rx+1,ry+1,cs-2,cs-2);
+    nctx.shadowBlur=0;
+    nctx.fillStyle='rgba(255,255,255,.2)';
+    nctx.fillRect(rx+2,ry+2,cs-4,5);
+    nctx.restore();
+  }
+}
+
+/* ── particles ── */
+function spawnParticles(n){
+  for(let i=0;i<n*18;i++){
+    parts.push({
+      x:Math.random()*gc.width, y:Math.random()*gc.height,
+      vx:(Math.random()-.5)*10, vy:(Math.random()-1.9)*8,
+      life:1, color:COLORS[Math.floor(Math.random()*7)+1],
+      size:3+Math.random()*7
+    });
+  }
+}
+function tickParticles(){
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.38; p.life-=0.024;
+    if(p.life<=0){parts.splice(i,1);continue;}
+    gctx.save();
+    gctx.globalAlpha=p.life;
+    gctx.fillStyle=p.color;
+    gctx.shadowColor=p.color; gctx.shadowBlur=7;
+    gctx.fillRect(p.x,p.y,p.size,p.size);
+    gctx.restore();
+  }
+}
+
+/* ── screen helpers ── */
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+function hideAll(){['scStart','scPause','scOver'].forEach(hide);}
+
+/* ── keyboard fallback ── */
+let kbThrottle=0;
+document.addEventListener('keydown',e=>{
+  if(!alive) return;
+  if(e.key==='p'||e.key==='P'){togglePause();return;}
+  if(paused) return;
+  const now=Date.now();
+  switch(e.key){
+    case'ArrowLeft':  if(!overlaps(activePiece,ax-1,ay)) ax--; break;
+    case'ArrowRight': if(!overlaps(activePiece,ax+1,ay)) ax++; break;
+    case'ArrowUp':    {const r=rotateCW(activePiece); if(!overlaps(r,ax,ay)) activePiece=r; break;}
+    case'ArrowDown':  if(!overlaps(activePiece,ax,ay+1)) ay++; else{lockPiece();clearTimeout(dropTimer);} break;
+    case' ':          while(!overlaps(activePiece,ax,ay+1)) ay++; lockPiece(); clearTimeout(dropTimer); break;
+  }
+  e.preventDefault();
+});
+
+// draw placeholder board on load
+board=newBoard(); renderBoard();
+
+
+// ═══════════════════════════════════════════════════════
+//   GESTURE ENGINE
+// ═══════════════════════════════════════════════════════
+const video    = document.getElementById('video');
+const hCanvas  = document.getElementById('handCanvas');
+const hctx     = hCanvas.getContext('2d');
+const badge    = document.getElementById('gestureBadge');
+const cursor   = document.getElementById('cursor');
+
+// ── gesture throttles ──
+const fired={}; // key → last fired timestamp
+function canFire(key,ms){const n=Date.now();if(!fired[key]||n-fired[key]>ms){fired[key]=n;return true;}return false;}
+
+// ── dwell (hover-to-click) ──
+const DWELL_MS=1500;
+const dwell={}; // btnId → startTime
+let hoveredBtn=null;
+
+function processDwell(btn){
+  const now=Date.now();
+  if(btn){
+    if(hoveredBtn!==btn){
+      // moved to new button — reset
+      resetDwell(hoveredBtn);
+      dwell[btn.id]={start:now,done:false};
+      hoveredBtn=btn;
+    }
+    if(dwell[btn.id]&&!dwell[btn.id].done){
+      const pct=Math.min((now-dwell[btn.id].start)/DWELL_MS*100,100);
+      const bar=document.getElementById('bar-'+btn.id);
+      if(bar) bar.style.width=pct+'%';
+      btn.classList.add('hover');
+      if(pct>=100){
+        dwell[btn.id].done=true;
+        btn.classList.add('fired');
+        doAction(btn.dataset.action);
+        setTimeout(()=>{btn.classList.remove('fired','hover');resetDwell(btn);},500);
+      }
+    }
+  } else {
+    resetDwell(hoveredBtn);
+    hoveredBtn=null;
+  }
+}
+
+function resetDwell(btn){
+  if(!btn) return;
+  const bar=document.getElementById('bar-'+btn.id);
+  if(bar) bar.style.width='0%';
+  btn.classList.remove('hover','fired');
+  delete dwell[btn.id];
+}
+
+function doAction(a){
+  switch(a){
+    case'start':   startGame(); break;
+    case'resume':  doResume();  break;
+    case'restart': startGame(); break;
+    case'pause':   if(alive&&!paused) togglePause(); break;
+  }
+}
+
+function btnAtPoint(vx,vy){
+  for(const b of document.querySelectorAll('.gbtn')){
+    if(b.closest('.hidden')) continue;
+    const r=b.getBoundingClientRect();
+    if(vx>=r.left&&vx<=r.right&&vy>=r.top&&vy<=r.bottom) return b;
+  }
+  return null;
+}
+
+// ── gesture classifier ──
+
+// ─────────────────────────────────────────
+//  GESTURE CLASSIFIER  (clean rewrite)
+// ─────────────────────────────────────────
+//
+//  MediaPipe landmark indices used:
+//   0  = wrist
+//   2  = thumb CMC (base)
+//   3  = thumb MCP
+//   4  = thumb tip
+//   5  = index MCP    6  = index PIP    8  = index tip
+//   9  = middle MCP  10  = middle PIP  12  = middle tip
+//  13  = ring MCP    14  = ring PIP    16  = ring tip
+//  17  = pinky MCP   18  = pinky PIP   20  = pinky tip
+//
+//  Finger "extended" = tip is ABOVE its PIP which is ABOVE its MCP (smaller y)
+//  Thumb  "up"       = tip is above its MCP in y AND further from wrist than MCP
+//
+//  GESTURES:
+//   open_palm  → 3+ fingers extended              → hard drop
+//   fist       → 0 fingers AND thumb curled       → rotate block
+//   point      → only index extended              → cursor / UI
+//   thumb_move → everything else                  → block follows thumb tip X
+
+function isFingerUp(lm, tip, pip, mcp){
+  return lm[tip].y < lm[pip].y && lm[pip].y < lm[mcp].y;
+}
+
+function isThumbUp(lm){
+  // thumb tip clearly above its MCP joint (y smaller = higher on screen)
+  return lm[4].y < lm[2].y - 0.04;
+}
+
+function classify(lm, vw, vh){
+  const idx  = isFingerUp(lm, 8,  6,  5);
+  const mid  = isFingerUp(lm, 12, 10, 9);
+  const ring = isFingerUp(lm, 16, 14, 13);
+  const pink = isFingerUp(lm, 20, 18, 17);
+  const extN = [idx, mid, ring, pink].filter(Boolean).length;
+  const thumbUp = isThumbUp(lm);
+
+  // Open palm: 3+ fingers up  → drop
+  if(extN >= 3) return { g: 'open_palm' };
+
+  // Point: only index up → cursor
+  if(extN === 1 && idx) {
+    return { g: 'point', fx: (1 - lm[8].x) * vw, fy: lm[8].y * vh };
+  }
+
+  // TRUE fist: ALL fingers curled AND thumb curled (tip NOT above MCP)
+  if(extN === 0 && !thumbUp) return { g: 'fist' };
+
+  // Everything else (including thumb-up) → thumb_move
+  // Block column is driven by thumb tip X position
+  return { g: 'thumb_move' };
+}
+
+// Thumb tip X → block column (direct mapping, mirrored)
+// We smooth with a small running average to reduce jitter
+let thumbXSmoothed = null;
+let lastMappedCol  = -1;
+const THUMB_SMOOTH = 0.35; // lower = more smoothing, higher = more responsive
+
+// ── draw hand skeleton ──
+function drawHand(lm){
+  const W=hCanvas.width, H=hCanvas.height;
+  // hCanvas has CSS scaleX(-1), so we draw in raw coords and the CSS mirror handles display
+  const pt=i=>({x:lm[i].x*W, y:lm[i].y*H});
+
+  const CONN=[
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],
+    [0,17]
+  ];
+
+  hctx.strokeStyle='rgba(124,58,237,.7)'; hctx.lineWidth=2;
+  for(const[a,b] of CONN){
+    const p1=pt(a),p2=pt(b);
+    hctx.beginPath();hctx.moveTo(p1.x,p1.y);hctx.lineTo(p2.x,p2.y);hctx.stroke();
+  }
+
+  for(let i=0;i<21;i++){
+    const p=pt(i);
+    hctx.beginPath();
+    // thumb tip=4 (orange, big), thumb base=2 (yellow), index tip=8 (cyan), wrist=0 (purple)
+    const r = i===4?10 : i===2?7 : i===0?6 : 4;
+    hctx.arc(p.x,p.y,r,0,Math.PI*2);
+    const col = i===4?'#f97316' : i===2?'#eab308' : i===8?'#06b6d4' : i===0?'#7c3aed':'rgba(180,140,255,.85)';
+    hctx.fillStyle=col;
+    hctx.shadowColor=col; hctx.shadowBlur=12;
+    hctx.fill(); hctx.shadowBlur=0;
+  }
+
+  // Arrow showing thumb direction (tip→base vector, mirrored for display)
+  const tip=pt(4), base=pt(2);
+  const arrowMidX=(tip.x+base.x)/2, arrowMidY=(tip.y+base.y)/2;
+  hctx.beginPath();
+  hctx.moveTo(base.x,base.y); hctx.lineTo(tip.x,tip.y);
+  hctx.strokeStyle='rgba(249,115,22,.9)'; hctx.lineWidth=3; hctx.stroke();
+
+  // ring around thumb tip
+  hctx.beginPath(); hctx.arc(tip.x,tip.y,14,0,Math.PI*2);
+  hctx.strokeStyle='rgba(249,115,22,.7)'; hctx.lineWidth=2; hctx.stroke();
+}
+
+// ── main hand results callback ──
+function onHandResults(res){
+  hctx.clearRect(0,0,hCanvas.width,hCanvas.height);
+
+  if(!res.multiHandLandmarks||res.multiHandLandmarks.length===0){
+    badge.innerHTML='👋 Show your hand…';
+    badge.classList.remove('lit');
+    cursor.style.display='none';
+    processDwell(null);
+    return;
+  }
+
+  const lm=res.multiHandLandmarks[0];
+  drawHand(lm);
+
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const g=classify(lm,vw,vh);
+
+  // Badge label
+  const LABELS={
+    open_palm:  '🖐&nbsp; Open Palm → Hard Drop!',
+    fist:       '✊&nbsp; Fist → Rotate block!',
+    point:      '☝️&nbsp; Pointing — aim at a button',
+    thumb_move: '👍&nbsp; Thumb seen — move it left/right!',
+  };
+  badge.innerHTML=LABELS[g.g]||'✋';
+  badge.classList.toggle('lit',g.g!=='idle');
+
+  // ── CURSOR & DWELL ──
+  if(g.g==='point'){
+    cursor.style.display='block';
+    cursor.classList.remove('active');
+    cursor.style.left=g.fx+'px';
+    cursor.style.top =g.fy+'px';
+    processDwell(btnAtPoint(g.fx,g.fy));
+  } else {
+    cursor.style.display='none';
+    processDwell(null);
+  }
+
+  // ── GAME GESTURES ──
+  if(!alive || paused){
+    thumbXSmoothed = null; lastMappedCol = -1; return;
+  }
+
+  if(g.g === 'open_palm' && canFire('drop', 900)){
+    while(!overlaps(activePiece, ax, ay+1)) ay++;
+    lockPiece(); clearTimeout(dropTimer);
+    thumbXSmoothed = null; lastMappedCol = -1; return;
+  }
+
+  if(g.g === 'fist' && canFire('rotate', 500)){
+    const r = rotateCW(activePiece);
+    if(!overlaps(r, ax, ay)) activePiece = r;
+    return;
+  }
+
+  // ── THUMB TIP X → BLOCK COLUMN (direct mapping) ──
+  // lm[4] = thumb tip.  Raw x: 0=cam-left, 1=cam-right.
+  // Display is mirrored, so flip: displayX = 1 - rawX
+  // Map displayX [0.05 .. 0.95] → board column [0 .. COLS-pieceWidth]
+  const rawThumbX = lm[4].x;
+  const flipped   = 1 - rawThumbX;  // mirror for display
+  const norm      = Math.max(0, Math.min(1, (flipped - 0.05) / 0.90));
+
+  // Smooth to remove jitter
+  if(thumbXSmoothed === null) thumbXSmoothed = norm;
+  else thumbXSmoothed = thumbXSmoothed * (1 - THUMB_SMOOTH) + norm * THUMB_SMOOTH;
+
+  const pieceW    = Math.max(...activePiece.map(c => c[0])) + 1;
+  const targetCol = Math.round(thumbXSmoothed * (COLS - pieceW));
+  const clampCol  = Math.max(0, Math.min(COLS - pieceW, targetCol));
+
+  if(clampCol !== lastMappedCol){
+    const dir   = clampCol > ax ? 1 : -1;
+    const steps = Math.min(Math.abs(clampCol - ax), 2); // max 2 steps/frame
+    for(let i = 0; i < steps; i++){
+      if(!overlaps(activePiece, ax + dir, ay)) ax += dir;
+      else break;
+    }
+    lastMappedCol = ax;
+  }
+}
+
+// ── init camera + mediapipe ──
+async function initCamera(){
+  try {
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{width:640,height:480,facingMode:'user'}
+    });
+    video.srcObject=stream;
+    await video.play();
+
+    hCanvas.width =video.videoWidth ||640;
+    hCanvas.height=video.videoHeight||480;
+
+    document.getElementById('camDot').classList.add('on');
+    document.getElementById('camTxt').textContent='Live';
+    badge.innerHTML='✋&nbsp; Ready — show your hand!';
+
+    const hands=new Hands({
+      locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+    });
+    hands.setOptions({
+      maxNumHands:1,
+      modelComplexity:1,
+      minDetectionConfidence:0.72,
+      minTrackingConfidence:0.68,
+    });
+    hands.onResults(onHandResults);
+
+    async function tick(){
+      if(video.readyState>=2) await hands.send({image:video});
+      requestAnimationFrame(tick);
+    }
+    tick();
+  } catch(e){
+    document.getElementById('camDot').style.background='#f97316';
+    document.getElementById('camTxt').textContent='Denied';
+    badge.innerHTML='⚠️&nbsp; Camera access denied';
+    console.warn('Camera:',e);
+  }
+}
+
+initCamera();
+</script>
+</body>
+</html>

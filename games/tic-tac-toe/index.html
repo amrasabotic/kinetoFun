@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✋ Gesture Tic Tac Toe</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0a0a0f;
+    --surface: #13131a;
+    --border:  #252535;
+    --x:       #ff4d6d;
+    --o:       #4dffb4;
+    --accent:  #7c6fff;
+    --text:    #e8e8f0;
+    --muted:   #6666aa;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* ── Header ── */
+  header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    z-index: 5;
+  }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .logo span { color: var(--accent); }
+
+  .hdr-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .status-bar {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--x);
+    transition: background 0.3s;
+  }
+  .status-dot.active { background: var(--o); box-shadow: 0 0 8px var(--o); }
+
+  #resetBtn {
+    padding: 6px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  #resetBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Centre stage ── */
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* Score + turn row */
+  .info-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .score-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 8px 18px;
+    font-family: 'Space Mono', monospace;
+  }
+  .score-pill.x-pill { color: var(--x); }
+  .score-pill.o-pill { color: var(--o); }
+  .score-pill.active-pill { border-color: currentColor; box-shadow: 0 0 0 1px currentColor; }
+
+  .pill-sym  { font-size: 1.1rem; font-weight: 700; }
+  .pill-num  { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+  .pill-label { font-size: 0.6rem; letter-spacing: 0.1em; opacity: 0.5; text-transform: uppercase; }
+
+  .turn-badge {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 20px;
+    text-align: center;
+    min-width: 110px;
+  }
+  .turn-badge-label { font-size: 0.6rem; font-family: 'Space Mono', monospace; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
+  .turn-badge-val   { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700; }
+
+  /* ── Board ── */
+  #board-wrap {
+    position: relative;
+  }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(3, 140px);
+    grid-template-rows: repeat(3, 140px);
+    gap: 10px;
+  }
+
+  .cell {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 3.2rem;
+    font-weight: 700;
+    cursor: default;
+    transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .cell.hover-x { border-color: rgba(255,77,109,0.6); background: rgba(255,77,109,0.07); box-shadow: 0 0 20px rgba(255,77,109,0.15); }
+  .cell.hover-o { border-color: rgba(77,255,180,0.6); background: rgba(77,255,180,0.07); box-shadow: 0 0 20px rgba(77,255,180,0.15); }
+  .cell.taken-x { color: var(--x); border-color: rgba(255,77,109,0.3); }
+  .cell.taken-o { color: var(--o); border-color: rgba(77,255,180,0.3); }
+  .cell.winning { animation: winPulse 0.5s ease-in-out 3; }
+  @keyframes winPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+
+  /* progress ring inside cell */
+  .cell-prog {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .cell-prog svg { width: 75%; height: 75%; transform: rotate(-90deg); }
+  .cell-prog circle {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: stroke-dashoffset 0.04s linear;
+    opacity: 0;
+  }
+
+  /* hint bar */
+  .hint {
+    font-size: 0.72rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Result overlay (on board) ── */
+  #result-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10,10,15,0.9);
+    backdrop-filter: blur(6px);
+    border-radius: 14px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    z-index: 20;
+  }
+  #result-overlay.show { display: flex; }
+  .result-text { font-family: 'Space Mono', monospace; font-size: 1.8rem; font-weight: 700; animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+  .result-sub  { font-size: 0.75rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+  @keyframes popIn { from{transform:scale(0.6);opacity:0} to{transform:scale(1);opacity:1} }
+
+  /* ── Camera PIP (bottom-right) ── */
+  #cam-pip {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 200px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1.5px solid var(--border);
+    background: #000;
+    aspect-ratio: 4/3;
+    z-index: 50;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  }
+  #video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    display: block;
+  }
+  #cam-overlay {
+    position: absolute;
+    inset: 0;
+    transform: scaleX(-1);
+    pointer-events: none;
+  }
+  #pip-label {
+    position: absolute;
+    top: 6px; left: 8px;
+    font-size: 0.55rem;
+    font-family: 'Space Mono', monospace;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  /* ── Screen cursor (follows finger on main screen) ── */
+  #screen-cursor {
+    position: fixed;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(255,255,255,0.55);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transition: width 0.1s, height 0.1s, border-color 0.1s, background 0.1s;
+    display: none;
+    z-index: 200;
+  }
+  #screen-cursor.pinch {
+    width: 24px; height: 24px;
+    border-color: var(--o);
+    background: rgba(77,255,180,0.2);
+    box-shadow: 0 0 14px var(--o);
+  }
+
+  /* ── Loading ── */
+  #loading {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    z-index: 999;
+    font-family: 'Space Mono', monospace;
+  }
+  .spin { width: 38px; height: 38px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.85s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .load-title { font-size: 1.1rem; font-weight: 700; }
+  .load-sub   { font-size: 0.72rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spin"></div>
+  <div class="load-title">✋ Gesture Tic Tac Toe</div>
+  <div class="load-sub" id="load-msg">Loading MediaPipe…</div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">GESTURE<span>//</span>TTT</div>
+  <div class="hdr-right">
+    <div class="status-bar">
+      <div class="status-dot" id="camDot"></div>
+      <span id="camStatus">Camera off</span>
+    </div>
+    <button id="resetBtn">↺ New Game</button>
+  </div>
+</header>
+
+<!-- Centre stage -->
+<div class="stage">
+  <!-- Scores + turn -->
+  <div class="info-row">
+    <div class="score-pill x-pill" id="scoreX">
+      <div>
+        <div class="pill-label">Player</div>
+        <div class="pill-sym">X</div>
+      </div>
+      <div class="pill-num" id="scoreXNum">0</div>
+    </div>
+
+    <div class="turn-badge">
+      <div class="turn-badge-label">Turn</div>
+      <div class="turn-badge-val" id="turnVal" style="color:var(--x)">X</div>
+    </div>
+
+    <div class="score-pill o-pill" id="scoreO">
+      <div class="pill-num" id="scoreONum">0</div>
+      <div>
+        <div class="pill-label">Player</div>
+        <div class="pill-sym">O</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div id="board-wrap">
+    <div id="board"></div>
+    <div id="result-overlay">
+      <div class="result-text" id="result-text"></div>
+      <div class="result-sub">Pinch to play again</div>
+    </div>
+  </div>
+
+  <div class="hint">☝️ Point to aim &nbsp;·&nbsp; 🤏 Pinch &amp; hold to place</div>
+</div>
+
+<!-- Camera PIP -->
+<div id="cam-pip">
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="cam-overlay"></canvas>
+  <div id="pip-label">📷 hand cam</div>
+</div>
+
+<!-- Screen cursor -->
+<div id="screen-cursor"></div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const PINCH_HOLD  = 900;   // ms hold to place
+const PINCH_THRESH = 0.07; // normalised distance
+
+// ── State ─────────────────────────────────────────────────────────────────
+let board       = Array(9).fill(null);
+let currentTurn = 'X';
+let gameOver    = false;
+let scores      = {X:0, O:0};
+let hoveredCell = -1;
+let pinchHeld   = false;
+let pinchStart  = 0;
+
+// ── DOM ───────────────────────────────────────────────────────────────────
+const video       = document.getElementById('video');
+const camOvEl     = document.getElementById('cam-overlay');
+const camCtx      = camOvEl.getContext('2d');
+const screenCur   = document.getElementById('screen-cursor');
+const resultOv    = document.getElementById('result-overlay');
+const resultText  = document.getElementById('result-text');
+const turnVal     = document.getElementById('turnVal');
+const scoreXNum   = document.getElementById('scoreXNum');
+const scoreONum   = document.getElementById('scoreONum');
+const scoreXCard  = document.getElementById('scoreX');
+const scoreOCard  = document.getElementById('scoreO');
+const boardEl     = document.getElementById('board');
+const camDot      = document.getElementById('camDot');
+const camStatus   = document.getElementById('camStatus');
+const loading     = document.getElementById('loading');
+const loadMsg     = document.getElementById('load-msg');
+const resetBtn    = document.getElementById('resetBtn');
+
+// ── Build board cells ─────────────────────────────────────────────────────
+let cellEls = [];
+for (let i = 0; i < 9; i++) {
+  const c = document.createElement('div');
+  c.className = 'cell';
+  c.innerHTML = `
+    <div class="cell-prog">
+      <svg viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="16" class="prog-circle" id="prog-${i}"/>
+      </svg>
+    </div>
+    <span class="cell-val"></span>`;
+  boardEl.appendChild(c);
+  cellEls.push(c);
+}
+
+// ── Game logic ────────────────────────────────────────────────────────────
+function checkWin(b, p) { return WINS.find(w => w.every(i => b[i]===p)) || null; }
+function isDraw(b)       { return b.every(v => v !== null); }
+
+function resetGame() {
+  board = Array(9).fill(null);
+  gameOver = false; hoveredCell = -1; pinchHeld = false;
+  currentTurn = 'X';
+  resultOv.classList.remove('show');
+  cellEls.forEach((el, i) => {
+    el.className = 'cell';
+    el.querySelector('.cell-val').textContent = '';
+    resetRing(i);
+  });
+  updateUI();
+}
+
+function updateUI() {
+  const col = currentTurn === 'X' ? 'var(--x)' : 'var(--o)';
+  turnVal.textContent = currentTurn;
+  turnVal.style.color = col;
+  scoreXCard.classList.toggle('active-pill', currentTurn==='X');
+  scoreOCard.classList.toggle('active-pill', currentTurn==='O');
+}
+
+function resetRing(i) {
+  const c = document.getElementById(`prog-${i}`);
+  if (!c) return;
+  c.style.strokeDashoffset = 100;
+  c.style.opacity = 0;
+}
+
+function placeMove(idx) {
+  if (board[idx] || gameOver) return;
+  board[idx] = currentTurn;
+  const cell = cellEls[idx];
+  cell.querySelector('.cell-val').textContent = currentTurn;
+  cell.className = `cell taken-${currentTurn.toLowerCase()}`;
+
+  const win = checkWin(board, currentTurn);
+  if (win) {
+    gameOver = true;
+    scores[currentTurn]++;
+    scoreXNum.textContent = scores.X;
+    scoreONum.textContent = scores.O;
+    win.forEach(i => cellEls[i].classList.add('winning'));
+    resultText.style.color = currentTurn==='X' ? 'var(--x)' : 'var(--o)';
+    resultText.textContent = `Player ${currentTurn} Wins! ${currentTurn==='X'?'❌':'⭕'}`;
+    resultOv.classList.add('show');
+  } else if (isDraw(board)) {
+    gameOver = true;
+    resultText.style.color = 'var(--muted)';
+    resultText.textContent = "It's a Draw 🤝";
+    resultOv.classList.add('show');
+  } else {
+    currentTurn = currentTurn==='X' ? 'O' : 'X';
+    updateUI();
+  }
+}
+
+function updateHover(idx) {
+  if (idx === hoveredCell) return;
+  cellEls.forEach(el => el.classList.remove('hover-x','hover-o'));
+  hoveredCell = idx;
+  if (idx >= 0 && !board[idx] && !gameOver)
+    cellEls[idx].classList.add(`hover-${currentTurn.toLowerCase()}`);
+}
+
+resetBtn.addEventListener('click', resetGame);
+
+// ── Helper: map normalised hand coords → board cell ───────────────────────
+// The hand tracker gives (lm.x, lm.y) in 0..1 of the VIDEO frame.
+// We mirror X (because video is mirrored), then map to screen space
+// using the board's bounding rect.
+
+function getCellUnderPoint(screenX, screenY) {
+  const r = boardEl.getBoundingClientRect();
+  if (screenX < r.left || screenX > r.right || screenY < r.top || screenY > r.bottom) return -1;
+  const col = Math.floor(((screenX - r.left) / r.width)  * 3);
+  const row = Math.floor(((screenY - r.top)  / r.height) * 3);
+  const idx = row * 3 + col;
+  return (idx >= 0 && idx <= 8) ? idx : -1;
+}
+
+// ── MediaPipe setup ───────────────────────────────────────────────────────
+const hands = new Hands({
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.75,
+  minTrackingConfidence: 0.65
+});
+
+hands.onResults(results => {
+  // Sync canvas size to video
+  camOvEl.width  = video.videoWidth  || 200;
+  camOvEl.height = video.videoHeight || 150;
+  camCtx.clearRect(0, 0, camOvEl.width, camOvEl.height);
+
+  if (!results.multiHandLandmarks || !results.multiHandLandmarks.length) {
+    screenCur.style.display = 'none';
+    updateHover(-1);
+    if (pinchHeld) { cellEls.forEach((_,i) => resetRing(i)); }
+    pinchHeld = false; pinchStart = 0;
+    return;
+  }
+
+  const lm = results.multiHandLandmarks[0];
+
+  // Draw skeleton in PIP (mirrored canvas handles it with CSS)
+  drawConnectors(camCtx, lm, HAND_CONNECTIONS, {color:'rgba(124,111,255,0.5)', lineWidth:1.5});
+  drawLandmarks(camCtx, lm, {color:'rgba(255,255,255,0.6)', lineWidth:1, radius:2});
+
+  // Index fingertip = landmark 8
+  // lm coords are 0..1 in original (unmirrored) video frame
+  // CSS mirrors the video with scaleX(-1), so mirrored X = 1 - lm[8].x
+  const normX = 1 - lm[8].x;  // mirrored
+  const normY = lm[8].y;
+
+  // Pinch = distance between thumb tip (4) and index tip (8)
+  const dx = lm[8].x - lm[4].x;
+  const dy = lm[8].y - lm[4].y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const isPinching = dist < PINCH_THRESH;
+
+  // Map normalised coords to full screen
+  const sx = normX * window.innerWidth;
+  const sy = normY * window.innerHeight;
+
+  // Move screen cursor
+  screenCur.style.display = 'block';
+  screenCur.style.left    = sx + 'px';
+  screenCur.style.top     = sy + 'px';
+  screenCur.classList.toggle('pinch', isPinching);
+
+  // Which cell is the finger over?
+  const cellIdx = getCellUnderPoint(sx, sy);
+  updateHover(cellIdx);
+
+  // Pinch logic
+  if (isPinching) {
+    if (!pinchHeld) {
+      pinchHeld = true;
+      pinchStart = Date.now();
+    }
+    const held = Date.now() - pinchStart;
+
+    if (gameOver) {
+      if (held > 700) resetGame();
+      return;
+    }
+
+    if (cellIdx >= 0 && !board[cellIdx]) {
+      const pct = Math.min(held / PINCH_HOLD, 1);
+      const circ = document.getElementById(`prog-${cellIdx}`);
+      if (circ) {
+        circ.style.stroke = currentTurn==='X' ? 'var(--x)' : 'var(--o)';
+        circ.style.strokeDashoffset = 100 - pct * 100;
+        circ.style.opacity = 1;
+      }
+      if (held >= PINCH_HOLD) {
+        placeMove(cellIdx);
+        pinchHeld = false; pinchStart = 0;
+        cellEls.forEach((_,i) => resetRing(i));
+      }
+    }
+  } else {
+    if (pinchHeld) cellEls.forEach((_,i) => resetRing(i));
+    pinchHeld = false; pinchStart = 0;
+  }
+});
+
+// ── Start camera ──────────────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' }
+    });
+    video.srcObject = stream;
+
+    const camera = new Camera(video, {
+      onFrame: async () => { await hands.send({ image: video }); },
+      width: 640, height: 480
+    });
+    camera.start();
+
+    camDot.classList.add('active');
+    camStatus.textContent = 'Camera live';
+    loading.style.display = 'none';
+  } catch (e) {
+    loadMsg.textContent = '⚠️ Camera access denied — please allow and reload.';
+    document.querySelector('.spin').style.display = 'none';
+  }
+}
+
+window.addEventListener('load', () => setTimeout(startCamera, 700));
+updateUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+let ctx: AudioContext | null = null;
+
+function getCtx(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (!ctx) {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    ctx = new AC();
+  }
+  return ctx;
+}
+
+function tone(freq: number, durationMs: number, type: OscillatorType = 'sine', gain = 0.15, delayMs = 0) {
+  const audioCtx = getCtx();
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  const start = audioCtx.currentTime + delayMs / 1000;
+  gainNode.gain.setValueAtTime(0, start);
+  gainNode.gain.linearRampToValueAtTime(gain, start + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, start + durationMs / 1000);
+  osc.connect(gainNode).connect(audioCtx.destination);
+  osc.start(start);
+  osc.stop(start + durationMs / 1000 + 0.02);
+}
+
+function noiseBurst(durationMs: number, gain = 0.12, delayMs = 0) {
+  const audioCtx = getCtx();
+  if (!audioCtx) return;
+  const bufferSize = Math.floor(audioCtx.sampleRate * (durationMs / 1000));
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  const gainNode = audioCtx.createGain();
+  const start = audioCtx.currentTime + delayMs / 1000;
+  gainNode.gain.setValueAtTime(gain, start);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, start + durationMs / 1000);
+  source.connect(gainNode).connect(audioCtx.destination);
+  source.start(start);
+}
+
+export const sfx = {
+  hover: () => tone(700, 40, 'sine', 0.05),
+  select: () => {
+    tone(880, 60, 'triangle', 0.15);
+    tone(1320, 90, 'sine', 0.1, 40);
+  },
+  correct: () => {
+    tone(523, 100, 'sine', 0.18);
+    tone(784, 160, 'sine', 0.18, 90);
+  },
+  wrong: () => {
+    tone(220, 200, 'sawtooth', 0.14);
+    noiseBurst(100, 0.08, 20);
+  },
+  timeout: () => tone(160, 260, 'sawtooth', 0.1),
+  tick: () => tone(1000, 30, 'square', 0.04),
+  victory: () => {
+    [523, 659, 784, 1046].forEach((f, i) => tone(f, 220, 'sine', 0.18, i * 110));
+  },
+  defeat: () => {
+    [392, 349, 294].forEach((f, i) => tone(f, 260, 'sawtooth', 0.12, i * 140));
+  },
+  tie: () => {
+    tone(440, 200, 'triangle', 0.15);
+    tone(440, 200, 'triangle', 0.15, 220);
+  },
+};

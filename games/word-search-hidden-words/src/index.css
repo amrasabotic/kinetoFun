@@ -1,0 +1,362 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 0%, #241b3f 0%, #120c22 60%, #0a0714 100%);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #f1eafe;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+* { box-sizing: border-box; }
+
+.wsh-app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ---------- Cursor ---------- */
+.wsh-cursor-dot {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(167,139,250,0.9) 0%, rgba(167,139,250,0.25) 70%);
+  border: 2px solid #c4b5fd;
+  box-shadow: 0 0 16px rgba(167,139,250,0.8);
+  pointer-events: none;
+  z-index: 500;
+  transition: transform 0.05s linear;
+}
+
+/* ---------- Menu ---------- */
+.wsh-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+}
+
+.wsh-menu__title {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  background: linear-gradient(90deg, #c4b5fd, #f0abfc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}
+
+.wsh-menu__subtitle {
+  color: #cbb8f5;
+  margin: 0 0 12px;
+  max-width: 520px;
+}
+
+.wsh-menu__section h3 {
+  margin: 0 0 8px;
+  color: #a78bfa;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.wsh-menu__row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.wsh-menu-btn {
+  position: relative;
+  overflow: hidden;
+  min-width: 120px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(167,139,250,0.4);
+  text-transform: capitalize;
+  font-weight: 600;
+  color: #efe6ff;
+}
+
+.wsh-menu-btn--active {
+  border-color: #c4b5fd;
+  box-shadow: 0 0 14px rgba(196,181,253,0.5);
+}
+
+.wsh-menu-btn__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(167,139,250,0.35);
+  transition: width 0.05s linear;
+  z-index: 0;
+}
+
+.wsh-menu-btn span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Game screen layout ---------- */
+.wsh-game-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.wsh-board {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 16px 24px;
+  min-height: 0;
+}
+
+/* ---------- Grid ---------- */
+.wsh-grid-wrapper {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  height: min(78vh, 78vw);
+}
+
+.wsh-grid {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  gap: 3px;
+  padding: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(167,139,250,0.3);
+  border-radius: 16px;
+}
+
+.wsh-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: clamp(12px, 2.2vw, 22px);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #e5dbff;
+  transition: background 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.wsh-cell--hover {
+  background: rgba(196,181,253,0.25);
+  box-shadow: 0 0 12px rgba(196,181,253,0.6);
+  transform: scale(1.06);
+}
+
+.wsh-cell--path {
+  background: rgba(167,139,250,0.4);
+  color: #fff;
+}
+
+.wsh-cell--found {
+  background: rgba(74,222,128,0.35);
+  color: #dcfce7;
+  box-shadow: 0 0 10px rgba(74,222,128,0.5);
+}
+
+.wsh-cell--fail {
+  animation: wsh-fail-flash 0.5s ease-out;
+}
+
+@keyframes wsh-fail-flash {
+  0% { background: rgba(255,92,122,0.6); }
+  100% { background: rgba(255,92,122,0); }
+}
+
+.wsh-path-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.wsh-path-line {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.wsh-path-line--animated {
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: wsh-draw-path 0.25s ease-out forwards;
+}
+
+@keyframes wsh-draw-path {
+  to { stroke-dashoffset: 0; }
+}
+
+.wsh-hint-marker {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+  border-radius: 50%;
+  border: 3px solid #facc15;
+  box-shadow: 0 0 18px rgba(250,204,21,0.8);
+  pointer-events: none;
+  animation: wsh-hint-pulse 0.8s ease-in-out infinite;
+  z-index: 5;
+}
+
+@keyframes wsh-hint-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.5; }
+}
+
+/* ---------- Word list ---------- */
+.wsh-word-list {
+  min-width: 180px;
+  padding: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(167,139,250,0.3);
+  border-radius: 16px;
+  max-height: 78vh;
+  overflow-y: auto;
+}
+
+.wsh-word-list__title {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #a78bfa;
+  margin: 0 0 10px;
+}
+
+.wsh-word-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wsh-word-list__item {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgba(255,255,255,0.03);
+}
+
+.wsh-word-list__item--found {
+  text-decoration: line-through;
+  color: #4ade80;
+  background: rgba(74,222,128,0.12);
+}
+
+/* ---------- HUD / buttons ---------- */
+.wsh-ui-overlay {
+  position: relative;
+  z-index: 10;
+  padding: 14px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wsh-hud {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  color: #cbb8f5;
+  flex-wrap: wrap;
+}
+
+.wsh-hud__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(167,139,250,0.2);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.wsh-hud__timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #f0abfc;
+}
+
+.wsh-button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wsh-dwell-btn, .wsh-hint-button {
+  position: relative;
+  overflow: hidden;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(167,139,250,0.35);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wsh-dwell-btn--warn {
+  border-color: rgba(255,92,122,0.5);
+}
+
+.wsh-dwell-btn__fill, .wsh-hint-button__fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(167,139,250,0.35);
+  z-index: 0;
+  transition: width 0.05s linear;
+}
+
+.wsh-dwell-btn span, .wsh-hint-button span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Overlays ---------- */
+.wsh-camera-gate, .wsh-pause-overlay, .wsh-victory-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 24px;
+  background: rgba(10,7,20,0.85);
+  z-index: 50;
+}
+
+.wsh-victory-overlay h2, .wsh-pause-overlay h2 {
+  font-size: 32px;
+  background: linear-gradient(90deg, #c4b5fd, #f0abfc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}
