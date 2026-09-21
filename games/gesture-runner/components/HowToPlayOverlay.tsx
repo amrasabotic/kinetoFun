@@ -1,6 +1,12 @@
 'use client';
 
+import { DwellButton } from './DwellButton';
+
+export const HOWTO_CONTINUE_ID = 'howto-continue';
+
 interface HowToPlayOverlayProps {
+  isHovered: boolean;
+  dwellProgress: number; // 0-1
   onContinue: () => void;
 }
 
@@ -18,10 +24,11 @@ const POWER_UPS = [
 ];
 
 /**
- * Forced "read this before you play" overlay. Dismissed only by a real click
- * button, never by a gesture — gesture dismissal fires on a hand already in pose.
+ * Forced "read this before you play" overlay. Built for TV play, so it is
+ * dismissed by hovering a hand over CONTINUE (dwell), not by mouse. The dwell
+ * hook lives in the calibration page, which owns the hand tracking.
  */
-export function HowToPlayOverlay({ onContinue }: HowToPlayOverlayProps) {
+export function HowToPlayOverlay({ isHovered, dwellProgress, onContinue }: HowToPlayOverlayProps) {
   return (
     <div
       className="fixed inset-0 z-[100] bg-[#000818]/95 flex items-center justify-center p-6 overflow-y-auto"
@@ -68,13 +75,19 @@ export function HowToPlayOverlay({ onContinue }: HowToPlayOverlayProps) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onContinue}
-          className="self-center px-14 py-4 rounded-xl bg-[#00ff88] text-black text-2xl font-bold hover:bg-[#00cc66] transition-colors"
-        >
-          CONTINUE
-        </button>
+        <div className="self-center flex flex-col items-center gap-2">
+          <div data-dwell-id={HOWTO_CONTINUE_ID}>
+            <DwellButton
+              label="CONTINUE"
+              isHovered={isHovered}
+              dwellProgress={isHovered ? dwellProgress : 0}
+              onActivate={onContinue}
+              variant="primary"
+              icon="▶"
+            />
+          </div>
+          <p className="text-gray-500 text-sm">Hold your hand over the button to continue</p>
+        </div>
       </div>
     </div>
   );

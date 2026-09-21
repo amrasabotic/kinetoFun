@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-09-18 (Instructions-first onboarding pattern rolled out to all 101 games — ADR-064)
+> Last updated: 2026-09-21 (Gesture Runner 404 fix + How-to-Play overlay — ADR-065)
 >
 > ⚠️ **Migrations 0011 (favorites) and 0012 (user display settings) are written but NOT yet applied** — same DB-role limitation described below. The favorites feature and server-side settings persistence will silently no-op (empty list / setting not saved server-side) until the user runs these against AWS RDS via their DB GUI.
 >

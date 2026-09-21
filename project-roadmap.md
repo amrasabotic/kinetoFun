@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-09-18 (Instructions-first onboarding rolled out to all 101 games — complete, see ADR-064)
+> Last updated: 2026-09-21 (Gesture Runner 404 fix + How-to-Play overlay — see ADR-065)
 
 ---
 

@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useMediaPipe } from '../../hooks/useMediaPipe';
 import { CalibrationView } from '../../components/CalibrationView';
 import { CameraError } from '../../components/CameraError';
-import { HowToPlayOverlay } from '../../components/HowToPlayOverlay';
+import { HowToPlayOverlay, HOWTO_CONTINUE_ID } from '../../components/HowToPlayOverlay';
+import { useDwellNav } from '../../hooks/useDwellNav';
+import type { HandPosition } from '../../types/gestures';
 import { GestureAnalyzer } from '../../mediapipe/gestureAnalyzer';
 import { GameStorage } from '../../storage/GameStorage';
 import type { CalibrationStatus } from '../../types/game';
@@ -26,10 +28,15 @@ export default function CalibrationPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const stableFramesRef = useRef(0);
   const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Instructions must be read (real click) before calibration can auto-start the run.
+  // Instructions must be read before calibration can auto-start the run.
   // 'unknown' until sessionStorage is read, so the overlay doesn't flash for returning players.
   const [howTo, setHowTo] = useState<'unknown' | 'show' | 'hidden'>('unknown');
   const howToOpenRef = useRef(true);
+  // Dismissal is by hand dwell (TV play, no mouse). Dwell is armed only after the
+  // overlay has been visible a moment so a hand already raised can't skip it unread.
+  const [handPositions, setHandPositions] = useState<HandPosition[]>([]);
+  const [continueRect, setContinueRect] = useState<{ id: string; x: number; y: number; w: number; h: number }[]>([]);
+  const [dwellArmed, setDwellArmed] = useState(false);
 
   useEffect(() => {
     let seen = false;
@@ -37,6 +44,23 @@ export default function CalibrationPage() {
     howToOpenRef.current = !seen;
     setHowTo(seen ? 'hidden' : 'show');
   }, []);
+
+  useEffect(() => {
+    if (howTo !== 'show') return;
+    const armTimer = setTimeout(() => setDwellArmed(true), 1500);
+    function measure() {
+      const el = document.querySelector(`[data-dwell-id="${HOWTO_CONTINUE_ID}"]`);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setContinueRect([{ id: HOWTO_CONTINUE_ID, x: r.left, y: r.top, w: r.width, h: r.height }]);
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => {
+      clearTimeout(armTimer);
+      window.removeEventListener('resize', measure);
+    };
+  }, [howTo]);
 
   const handleHowToContinue = useCallback(() => {
     try { sessionStorage.setItem(HOWTO_SEEN_KEY, '1'); } catch { /* storage blocked */ }
@@ -123,6 +147,7 @@ export default function CalibrationPage() {
   const handleHandResults = useCallback(
     (landmarks: HandLandmark[][], handedness: Array<{ label: string; score: number; index: number }>) => {
       const hasHands = landmarks.length > 0;
+      setHandPositions(analyzer.analyzeHands(landmarks, handedness));
       setStatus((prev) => ({ ...prev, handsReady: hasHands }));
 
       // Draw hands
@@ -159,6 +184,14 @@ export default function CalibrationPage() {
     };
   }, []);
 
+  const { hoveredId, dwellProgress } = useDwellNav({
+    buttons: continueRect,
+    handPositions,
+    onActivate: () => handleHowToContinue(),
+    enabled: howTo === 'show' && dwellArmed,
+  });
+  const primaryHand = handPositions.find((h) => h.visible);
+
   if (cameraError) return <CameraError error={cameraError} />;
 
   return (
@@ -170,7 +203,26 @@ export default function CalibrationPage() {
         calibrationStatus={status}
         onReady={handleReady}
       />
-      {howTo === 'show' && <HowToPlayOverlay onContinue={handleHowToContinue} />}
+      {howTo === 'show' && (
+        <>
+          <HowToPlayOverlay
+            isHovered={hoveredId === HOWTO_CONTINUE_ID}
+            dwellProgress={dwellProgress}
+            onContinue={handleHowToContinue}
+          />
+          {primaryHand && (
+            <div
+              className="fixed pointer-events-none z-[110] w-8 h-8 rounded-full border-4 border-[#00ffcc]"
+              style={{
+                left: primaryHand.x * window.innerWidth - 16,
+                top: primaryHand.y * window.innerHeight - 16,
+                backgroundColor: 'rgba(0,255,204,0.15)',
+                boxShadow: '0 0 16px #00ffcc',
+              }}
+            />
+          )}
+        </>
+      )}
     </>
   );
 }
