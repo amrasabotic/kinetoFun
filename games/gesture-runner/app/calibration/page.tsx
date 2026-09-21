@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMediaPipe } from '../../hooks/useMediaPipe';
 import { CalibrationView } from '../../components/CalibrationView';
 import { CameraError } from '../../components/CameraError';
+import { HowToPlayOverlay } from '../../components/HowToPlayOverlay';
 import { GestureAnalyzer } from '../../mediapipe/gestureAnalyzer';
 import { GameStorage } from '../../storage/GameStorage';
 import type { CalibrationStatus } from '../../types/game';
@@ -15,6 +16,7 @@ const L_SHOULDER = 11;
 const R_SHOULDER = 12;
 
 const analyzer = new GestureAnalyzer();
+const HOWTO_SEEN_KEY = 'gesture-runner:howto-seen';
 
 export default function CalibrationPage() {
   const router = useRouter();
@@ -24,6 +26,23 @@ export default function CalibrationPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const stableFramesRef = useRef(0);
   const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Instructions must be read (real click) before calibration can auto-start the run.
+  // 'unknown' until sessionStorage is read, so the overlay doesn't flash for returning players.
+  const [howTo, setHowTo] = useState<'unknown' | 'show' | 'hidden'>('unknown');
+  const howToOpenRef = useRef(true);
+
+  useEffect(() => {
+    let seen = false;
+    try { seen = sessionStorage.getItem(HOWTO_SEEN_KEY) === '1'; } catch { /* storage blocked */ }
+    howToOpenRef.current = !seen;
+    setHowTo(seen ? 'hidden' : 'show');
+  }, []);
+
+  const handleHowToContinue = useCallback(() => {
+    try { sessionStorage.setItem(HOWTO_SEEN_KEY, '1'); } catch { /* storage blocked */ }
+    howToOpenRef.current = false;
+    setHowTo('hidden');
+  }, []);
 
   const [status, setStatus] = useState<CalibrationStatus>({
     cameraReady: false,
@@ -94,7 +113,7 @@ export default function CalibrationPage() {
     }
 
     // Auto-advance after ready
-    if (isReady && !autoAdvanceRef.current) {
+    if (isReady && !autoAdvanceRef.current && !howToOpenRef.current) {
       autoAdvanceRef.current = setTimeout(() => {
         handleReady();
       }, 1500);
@@ -143,12 +162,15 @@ export default function CalibrationPage() {
   if (cameraError) return <CameraError error={cameraError} />;
 
   return (
-    <CalibrationView
-      videoRef={videoRef}
-      skeletonCanvasRef={skeletonCanvasRef}
-      handsCanvasRef={handsCanvasRef}
-      calibrationStatus={status}
-      onReady={handleReady}
-    />
+    <>
+      <CalibrationView
+        videoRef={videoRef}
+        skeletonCanvasRef={skeletonCanvasRef}
+        handsCanvasRef={handsCanvasRef}
+        calibrationStatus={status}
+        onReady={handleReady}
+      />
+      {howTo === 'show' && <HowToPlayOverlay onContinue={handleHowToContinue} />}
+    </>
   );
 }
