@@ -539,7 +539,7 @@ function Toggle({
           "relative h-7 w-12 shrink-0 rounded-full border transition-all duration-300 focus:outline-none",
           checked
             ? "border-primary/50 bg-primary shadow-[0_0_12px_rgba(140,92,255,0.4)]"
-            : "border-white/[0.10] bg-white/[0.06]",
+            : "border-muted-foreground/30 bg-muted-foreground/25",
         )}
       >
         <span

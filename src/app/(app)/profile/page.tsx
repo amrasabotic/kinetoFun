@@ -64,7 +64,7 @@ function ProfileContent() {
             </ButtonLink>
           </div>
           {/* Wave bleeds banner color into the card body */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 leading-[0]" aria-hidden>
+          <div className="pointer-events-none absolute inset-x-0 -bottom-px leading-[0]" aria-hidden>
             <svg className="block h-10 w-full sm:h-14" viewBox="0 0 1440 56" preserveAspectRatio="none">
               <path
                 fill="var(--card)"
@@ -77,8 +77,10 @@ function ProfileContent() {
         {/* Card body */}
         <div className="px-6 pb-7">
           {/* Avatar + level — avatar overlaps the wave */}
-          <div className="-mt-10 mb-4 flex items-end justify-between">
-            <div className="rounded-2xl ring-4 ring-card">
+          {/* relative z-10: the banner is positioned, so without its own stacking
+              level the avatar would be painted underneath it. */}
+          <div className="relative z-10 -mt-10 mb-4 flex items-end justify-between">
+            <div className="rounded-full ring-4 ring-card">
               <Avatar user={user} size="xl" />
             </div>
             <div className="mb-1 flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5">

@@ -1016,7 +1016,10 @@ export default function HomePage() {
   const { gameIds: recentIds } = useContinuePlaying(isAuthenticated);
   const { isFavorite } = useFavorites();
   const featured = selectFeatured(games);
-  const spotlight = featured[0];
+  // The hero is image-led, so prefer a featured game that has artwork and only
+  // fall back to a gradient-only one when no featured game has an image.
+  const spotlight = featured.find((g) => g.coverImage || g.thumbnail) ?? featured[0];
+  const spotlightImage = spotlight?.coverImage || spotlight?.thumbnail;
 
   const continuePlaying = useMemo<Game[]>(() => {
     return recentIds
@@ -1046,17 +1049,17 @@ export default function HomePage() {
     <div className="space-y-12">
       {/* Hero spotlight */}
       {spotlight ? (
-        <section
-          className="relative overflow-hidden rounded-3xl p-8 sm:p-12"
-          style={{
-            backgroundImage: (spotlight.coverImage || spotlight.thumbnail)
-              ? `url(${spotlight.coverImage || spotlight.thumbnail})`
-              : undefined,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          {!(spotlight.coverImage || spotlight.thumbnail) && (
+        <section className="relative overflow-hidden rounded-3xl p-8 sm:p-12">
+          {spotlightImage ? (
+            <Image
+              src={spotlightImage}
+              alt=""
+              fill
+              priority
+              className="object-cover"
+              sizes="(max-width: 1280px) 100vw, 1280px"
+            />
+          ) : (
             <div className={`absolute inset-0 bg-gradient-to-br ${spotlight.cover}`} />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/15" />

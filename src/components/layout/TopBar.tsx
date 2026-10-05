@@ -92,7 +92,10 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
         className={cn(
           "absolute right-0 top-[calc(100%+10px)] z-50 w-52 overflow-hidden",
           "rounded-2xl border border-[#1AACE0]/20",
-          "bg-white/90 backdrop-blur-2xl",
+          // Solid, not glass: the panel sits inside the navbar pill, which already
+          // has a backdrop-filter, so a nested blur never reaches the page and
+          // a translucent panel becomes unreadable over cover images.
+          "bg-white",
           "shadow-[0_16px_48px_rgba(26,46,116,0.28),0_0_0_1px_rgba(26,172,224,0.08)]",
           "transition-all duration-200 ease-out",
           open ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1.5 scale-[0.97] opacity-0",
