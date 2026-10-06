@@ -343,6 +343,32 @@ export async function syncGameAchievements(input: {
   });
 }
 
+/** Thrown when an adjustment would take a balance below zero. */
+export class InsufficientTicketsError extends Error {
+  constructor(readonly balance: number) {
+    super("Not enough tickets.");
+  }
+}
+
+/**
+ * Add or remove tickets by hand, for support cases such as a lost reward or
+ * clawing back tickets earned through a bug. The written reason goes to the
+ * audit log; the ledger records the change itself. Returns the new balance.
+ */
+export async function adjustTickets(userId: string, delta: number): Promise<number> {
+  return withTransaction(async (client) => {
+    const locked = await client.query<{ tickets: number }>(
+      `SELECT tickets FROM public.users WHERE id = $1 FOR UPDATE`,
+      [userId],
+    );
+    if (locked.rowCount === 0) throw new Error("[rewards] adjustTickets: user not found");
+    const balance = locked.rows[0].tickets;
+    if (balance + delta < 0) throw new InsufficientTicketsError(balance);
+    await credit(client, userId, "admin_adjust", delta);
+    return balance + delta;
+  });
+}
+
 /** Balance, streak, badge collection and recent ticket history for the profile. */
 export async function getRewardsOverview(userId: string): Promise<RewardsOverview> {
   const [user, streak, today, badges, recent, collected] = await Promise.all([

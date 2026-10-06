@@ -1542,3 +1542,8 @@ No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) a
 - **Best effort.** A failed award is logged and never fails the score submission.
 
 **Not yet built.** Spending (shop, avatars, secret worlds, surprises), in-game achievements as collectibles, win/level reporting from games, superadmin balance tools.
+
+**Follow-up [2026-10-06] — in-game achievements and superadmin tools.**
+- **Achievements are read from the game's own saved progress, not reported by each game.** Seventeen games already save unlocked achievement ids in localStorage, and games run in a same-origin iframe, so the play page reads those keys directly (`readUnlockedAchievements`). This needed no game changes or rebuilds and also picks up achievements unlocked before the feature existed. Trade-off: the platform now depends on each game's save key and format, recorded in `src/lib/rewards/game-achievements.ts`; if a game changes either, collection for that game silently stops until the file is updated. Games may also send `ACHIEVEMENT_UNLOCKED` directly; both paths go through the same allowlist.
+- **Browser storage is per device, not per account.** On a shared device a second account can collect achievements the first unlocked. Accepted because each achievement pays only once per account (2 tickets), the catalogue is finite (127 entries), and the account must have played the game at least once.
+- **Manual ticket adjustments** go through the ledger as `admin_adjust` (superadmin only, at most 1,000 per change, never below zero) and the written reason is stored in the audit log rather than a new ledger column.

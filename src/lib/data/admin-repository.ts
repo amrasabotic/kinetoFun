@@ -1,6 +1,6 @@
 // Server-only admin data access (Postgres via pg).
 
-import { execute, query, queryCount, queryOne } from "@/lib/db/server";
+import { execute, isUndefinedColumn, query, queryCount, queryOne } from "@/lib/db/server";
 
 export interface AdminUser {
   id: string;
@@ -11,6 +11,8 @@ export interface AdminUser {
   xp: number;
   createdAt: string;
   active: boolean;
+  /** Ticket balance; null until the rewards migration (0015) is applied. */
+  tickets: number | null;
 }
 
 interface AdminUserRow {
@@ -22,6 +24,7 @@ interface AdminUserRow {
   xp: number | null;
   created_at: string;
   active: boolean | null;
+  tickets?: number | null;
 }
 
 function toAdminUser(row: AdminUserRow): AdminUser {
@@ -34,16 +37,21 @@ function toAdminUser(row: AdminUserRow): AdminUser {
     xp: row.xp ?? 0,
     createdAt: row.created_at,
     active: row.active ?? true,
+    tickets: row.tickets ?? null,
   };
 }
 
 export async function listAllUsers(): Promise<AdminUser[]> {
-  const rows = await query<AdminUserRow>(
-    `SELECT id, email, name, role, level, xp, created_at, active
-     FROM public.users
-     ORDER BY created_at DESC`,
-  );
-  return rows.map(toAdminUser);
+  const select = (cols: string) =>
+    query<AdminUserRow>(`SELECT ${cols} FROM public.users ORDER BY created_at DESC`);
+  const base = "id, email, name, role, level, xp, created_at, active";
+  try {
+    return (await select(`${base}, tickets`)).map(toAdminUser);
+  } catch (err) {
+    // Keep the user list working on a database without the rewards migration.
+    if (!isUndefinedColumn(err)) throw err;
+    return (await select(base)).map(toAdminUser);
+  }
 }
 
 export async function setUserActive(

@@ -13,6 +13,7 @@ import {
   Pencil,
   UserX,
   UserCheck,
+  Ticket,
 } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
 import { formatDate } from "@/lib/format";
@@ -30,6 +31,7 @@ import {
 } from "@/components/superadmin/ui";
 import { ActionMenu } from "@/components/superadmin/ActionMenu";
 import { ConfirmDialog } from "@/components/superadmin/ConfirmDialog";
+import { UserRewardsDialog } from "@/components/superadmin/UserRewardsDialog";
 
 interface AdminUser {
   id: string;
@@ -40,6 +42,8 @@ interface AdminUser {
   xp: number;
   createdAt: string;
   active: boolean;
+  /** null until the rewards migration is applied. */
+  tickets: number | null;
 }
 
 type RoleFilter = "all" | "user" | "admin" | "superadmin";
@@ -60,6 +64,7 @@ export default function UsersPage() {
 
   const [manage, setManage] = useState<AdminUser | null>(null);
   const [toDelete, setToDelete] = useState<AdminUser | null>(null);
+  const [rewardsFor, setRewardsFor] = useState<AdminUser | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -241,7 +246,7 @@ export default function UsersPage() {
 
         {/* Table */}
         {loading ? (
-          <TableSkeleton cols={4} />
+          <TableSkeleton cols={5} />
         ) : error ? (
           <p className="p-8 text-center text-sm text-rose-600">{error}</p>
         ) : filtered.length === 0 ? (
@@ -262,6 +267,7 @@ export default function UsersPage() {
                   <th className="px-5 py-3 font-semibold">User</th>
                   <th className="px-5 py-3 font-semibold">Role</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Tickets</th>
                   <th className="px-5 py-3 font-semibold">Joined</th>
                   <th className="px-5 py-3" />
                 </tr>
@@ -308,6 +314,9 @@ export default function UsersPage() {
                           </Badge>
                         )}
                       </td>
+                      <td className="px-5 py-3 tabular-nums text-slate-500">
+                        {u.tickets === null ? "—" : u.tickets.toLocaleString()}
+                      </td>
                       <td className="px-5 py-3 text-slate-500">{formatDate(u.createdAt)}</td>
                       <td className="px-5 py-3 text-right">
                         {isSelf ? (
@@ -315,6 +324,11 @@ export default function UsersPage() {
                         ) : (
                           <ActionMenu
                             items={[
+                              {
+                                label: "Tickets & rewards",
+                                icon: <Ticket className="h-4 w-4" />,
+                                onClick: () => setRewardsFor(u),
+                              },
                               {
                                 label: "Edit role",
                                 icon: <Pencil className="h-4 w-4" />,
@@ -368,6 +382,19 @@ export default function UsersPage() {
           busy={busy}
           onCancel={() => setManage(null)}
           onSave={saveRole}
+        />
+      )}
+
+      {rewardsFor && (
+        <UserRewardsDialog
+          user={rewardsFor}
+          canAdjust={me?.role === "superadmin"}
+          onClose={() => setRewardsFor(null)}
+          onAdjusted={(balance) =>
+            setUsers((prev) =>
+              prev.map((usr) => (usr.id === rewardsFor.id ? { ...usr, tickets: balance } : usr)),
+            )
+          }
         />
       )}
 

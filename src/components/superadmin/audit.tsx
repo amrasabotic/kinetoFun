@@ -24,6 +24,7 @@ import {
   CreditCard,
   RotateCcw,
   Settings,
+  Ticket,
 } from "lucide-react";
 import type { AuditLog } from "@/types";
 
@@ -57,6 +58,7 @@ const MAP: Record<string, AuditMeta> = {
   "game.bulk_category": { icon: <Layers className={ICON} />, tint: "violet", label: "Bulk recategorized games" },
   "user.role_updated": { icon: <UserCog className={ICON} />, tint: "sky", label: "Updated user role" },
   "user.deleted": { icon: <UserX className={ICON} />, tint: "rose", label: "Deleted user" },
+  "user.tickets_adjusted": { icon: <Ticket className={ICON} />, tint: "amber", label: "Adjusted tickets" },
   "user.registered": { icon: <Gamepad2 className={ICON} />, tint: "sky", label: "Registered" },
   "leaderboard.score_deleted": { icon: <Trash2 className={ICON} />, tint: "rose", label: "Deleted score" },
   "leaderboard.reset": { icon: <RotateCcw className={ICON} />, tint: "rose", label: "Reset leaderboard" },
@@ -109,6 +111,10 @@ export function auditSentence(log: Pick<AuditLog, "action" | "details" | "entity
       return `Set ${name ?? "a user"} to ${(d.role as string) ?? "a new role"}`;
     case "user.deleted":
       return `Deleted a user account`;
+    case "user.tickets_adjusted": {
+      const delta = Number(d.delta ?? 0);
+      return `${delta >= 0 ? "Gave" : "Removed"} ${Math.abs(delta)} tickets ${delta >= 0 ? "to" : "from"} ${name ?? "a user"}`;
+    }
     case "user.registered":
       return `${name ?? "A new user"} registered an account`;
     case "leaderboard.score_deleted":
