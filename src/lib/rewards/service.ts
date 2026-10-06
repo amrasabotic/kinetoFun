@@ -32,6 +32,7 @@ import {
   findGameAchievement,
   type GameAchievementDef,
 } from "./game-achievements";
+import { findShopItem } from "./shop";
 
 /** Why a finished game earned nothing. */
 export type IneligibleReason =
@@ -47,7 +48,8 @@ export type AwardOutcome =
 // depend on the database server's time zone setting.
 const UTC_TODAY = `(now() at time zone 'utc')::date`;
 
-async function credit(
+/** Write one ledger entry and apply it to the cached balance. Returns false when the entry already exists. */
+export async function credit(
   client: PoolClient,
   userId: string,
   reason: RewardReason,
@@ -184,7 +186,7 @@ async function grantEarnedBadges(
   return newBadges;
 }
 
-async function readBalance(client: PoolClient, userId: string): Promise<number> {
+export async function readBalance(client: PoolClient, userId: string): Promise<number> {
   const { rows } = await client.query<{ tickets: number }>(
     `SELECT tickets FROM public.users WHERE id = $1`,
     [userId],
@@ -447,6 +449,10 @@ function ledgerLabel(
   if (reason === "game_achievement" && ref && gameId) {
     const title = findGameAchievement(gameId, ref.slice(gameId.length + 1))?.title;
     if (title) return `Collectible: ${title}`;
+  }
+  if ((reason === "shop_purchase" || reason === "mystery_box") && ref?.startsWith("item:")) {
+    const name = findShopItem(ref.slice("item:".length))?.name;
+    if (name) return reason === "mystery_box" ? `Mystery box: ${name}` : `Bought ${name}`;
   }
   return REASON_LABELS[reason] ?? reason;
 }

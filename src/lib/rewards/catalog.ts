@@ -32,6 +32,9 @@ export type RewardReason =
   | "daily_streak"
   | "badge"
   | "game_achievement"
+  | "shop_purchase"
+  | "mystery_box"
+  | "world_unlock"
   | "admin_adjust";
 
 export const REASON_LABELS: Record<RewardReason, string> = {
@@ -41,6 +44,9 @@ export const REASON_LABELS: Record<RewardReason, string> = {
   daily_streak: "Daily streak bonus",
   badge: "Badge earned",
   game_achievement: "Collectible earned",
+  shop_purchase: "Shop purchase",
+  mystery_box: "Mystery box",
+  world_unlock: "Unlocked a secret world",
   admin_adjust: "Adjustment",
 };
 

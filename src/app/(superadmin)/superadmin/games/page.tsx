@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
   BarChart2,
+  Lock,
 } from "lucide-react";
 import type {
   Game,
@@ -45,6 +46,7 @@ import {
   Segmented,
 } from "@/components/superadmin/ui";
 import { ActionMenu } from "@/components/superadmin/ActionMenu";
+import { SecretWorldDialog } from "@/components/superadmin/SecretWorldDialog";
 import { ConfirmDialog } from "@/components/superadmin/ConfirmDialog";
 import { CoverUpload } from "@/components/superadmin/CoverUpload";
 
@@ -102,6 +104,7 @@ export default function GamesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<{ game: Game; isNew: boolean } | null>(null);
   const [toDelete, setToDelete] = useState<Game | null>(null);
+  const [secretWorld, setSecretWorld] = useState<Game | null>(null);
   const [bulk, setBulk] = useState<null | { action: "publish" | "archive" | "delete" | "category" }>(null);
   const [busy, setBusy] = useState(false);
 
@@ -456,6 +459,15 @@ export default function GamesPage() {
                               {g.featured && (
                                 <Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                               )}
+                              {g.unlockCost && (
+                                <span
+                                  title={`Secret world · ${g.unlockCost} tickets`}
+                                  className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
+                                >
+                                  <Lock className="h-3 w-3" />
+                                  {g.unlockCost}
+                                </span>
+                              )}
                             </p>
                             <p className="truncate text-xs text-slate-400">
                               {g.shortDescription || g.tagline || g.id}
@@ -489,6 +501,11 @@ export default function GamesPage() {
                               onClick: () => setEditing({ game: { ...g }, isNew: false }),
                             },
                             {
+                              label: g.unlockCost ? "Secret world price" : "Make secret world",
+                              icon: <Lock className="h-4 w-4" />,
+                              onClick: () => setSecretWorld(g),
+                            },
+                            {
                               label: "Analytics",
                               icon: <BarChart2 className="h-4 w-4" />,
                               onClick: () => router.push(`/superadmin/games/${g.id}/analytics`),
@@ -514,6 +531,19 @@ export default function GamesPage() {
           <Pagination page={page} totalPages={totalPages} total={filtered.length} onPage={setPage} />
         )}
       </Card>
+
+      {secretWorld && (
+        <SecretWorldDialog
+          game={secretWorld}
+          onClose={() => setSecretWorld(null)}
+          onSaved={(updated) => {
+            setGames((prev) =>
+              prev.map((g) => (g.id === updated.id ? { ...g, unlockCost: updated.unlockCost } : g)),
+            );
+            setSecretWorld(null);
+          }}
+        />
+      )}
 
       {editing && (
         <GameFormModal

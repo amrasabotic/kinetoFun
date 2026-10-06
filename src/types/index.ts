@@ -55,6 +55,8 @@ export interface Game {
   playCount?: number;
   /** Row creation timestamp (admin views only). */
   createdAt?: string;
+  /** Ticket price to unlock this game as a secret world; absent for ordinary games. */
+  unlockCost?: number;
 }
 
 /** A managed category in the SuperAdmin taxonomy (`categories` table). */
@@ -99,6 +101,10 @@ export interface User {
   xp: number;
   /** Spendable reward balance (see src/lib/rewards). */
   tickets?: number;
+  /** Equipped shop items (ids from src/lib/rewards/shop.ts); absent = default look. */
+  equippedAvatar?: string;
+  equippedFrame?: string;
+  equippedBanner?: string;
   joinedAt: string; // ISO date
   bio?: string;
   /** Access role. Optional on the UI type (mock users omit it). */

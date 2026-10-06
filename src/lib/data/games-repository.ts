@@ -40,6 +40,7 @@ interface GameRow {
   featured: boolean;
   play_count: number | null;
   created_at?: string;
+  unlock_cost?: number | null;
 }
 
 function toGame(row: GameRow): Game {
@@ -68,6 +69,7 @@ function toGame(row: GameRow): Game {
     featured: row.featured,
     playCount: row.play_count ?? 0,
     createdAt: row.created_at ?? undefined,
+    unlockCost: row.unlock_cost ?? undefined,
   };
 }
 
@@ -252,4 +254,16 @@ export async function bulkSetCategory(
 export async function bulkDeleteGames(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
   await execute(`DELETE FROM public.games WHERE id = ANY($1::text[])`, [ids]);
+}
+
+/**
+ * Make a game a secret world with the given ticket price, or pass null to make
+ * it an ordinary free game again. Players who already unlocked it keep it.
+ */
+export async function setGameUnlockCost(id: string, unlockCost: number | null): Promise<Game | null> {
+  const row = await queryOne<GameRow>(
+    `UPDATE public.games SET unlock_cost = $1 WHERE id = $2 RETURNING *`,
+    [unlockCost, id],
+  );
+  return row ? toGame(row) : null;
 }

@@ -11,6 +11,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { ScoreList } from "@/components/profile/ScoreList";
 import { RewardsPanel } from "@/components/profile/RewardsPanel";
+import { findShopItem } from "@/lib/rewards/shop";
 import { formatDate, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,8 @@ function ProfileContent() {
 
   const xpIntoLevel = user.xp % 1000;
   const xpPct = Math.round((xpIntoLevel / 1000) * 100);
-  const avatarGradient = user.avatarColor || "from-primary/80 to-violet-700";
+  const avatarGradient =
+    findShopItem(user.equippedBanner)?.className || user.avatarColor || "from-primary/80 to-violet-700";
 
   return (
     <div className="space-y-5">

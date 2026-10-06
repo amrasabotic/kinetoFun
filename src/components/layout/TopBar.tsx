@@ -9,7 +9,7 @@ import { useSession } from "@/features/auth/session-context";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { motion } from "motion/react";
-import { User, Settings, ChevronDown, LogOut, Shield } from "lucide-react";
+import { User, Settings, ChevronDown, LogOut, Shield, Store } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -51,6 +51,7 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
   const isSuperAdmin = user.role === "superadmin";
   const NAV_ITEMS = [
     { href: "/profile",  label: "Profile",  Icon: User     },
+    { href: "/shop",     label: "Ticket Shop", Icon: Store  },
     { href: "/settings", label: "Settings", Icon: Settings },
     ...(isSuperAdmin ? [{ href: "/superadmin/dashboard", label: "Admin Console", Icon: Shield }] : []),
   ];
@@ -223,9 +224,9 @@ export function TopBar() {
             {isAuthenticated && user ? (
               <>
                 <Link
-                  href="/profile#rewards"
+                  href="/shop"
                   data-focusable
-                  title="Your tickets"
+                  title="Your tickets — open the shop"
                   className="flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-100/70 px-3 py-1.5 text-sm font-black tabular-nums text-amber-700 transition hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                 >
                   <span aria-hidden>🎟️</span>

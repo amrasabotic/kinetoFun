@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Settings,
   Ticket,
+  Lock,
 } from "lucide-react";
 import type { AuditLog } from "@/types";
 
@@ -56,6 +57,7 @@ const MAP: Record<string, AuditMeta> = {
   "game.bulk_draft": { icon: <Layers className={ICON} />, tint: "slate", label: "Bulk drafted games" },
   "game.bulk_delete": { icon: <Trash2 className={ICON} />, tint: "rose", label: "Bulk deleted games" },
   "game.bulk_category": { icon: <Layers className={ICON} />, tint: "violet", label: "Bulk recategorized games" },
+  "game.secret_world_updated": { icon: <Lock className={ICON} />, tint: "amber", label: "Updated secret world" },
   "user.role_updated": { icon: <UserCog className={ICON} />, tint: "sky", label: "Updated user role" },
   "user.deleted": { icon: <UserX className={ICON} />, tint: "rose", label: "Deleted user" },
   "user.tickets_adjusted": { icon: <Ticket className={ICON} />, tint: "amber", label: "Adjusted tickets" },
@@ -107,6 +109,10 @@ export function auditSentence(log: Pick<AuditLog, "action" | "details" | "entity
       return `Deleted ${count ?? "multiple"} games`;
     case "game.bulk_category":
       return `Recategorized ${count ?? "multiple"} games`;
+    case "game.secret_world_updated":
+      return d.unlockCost
+        ? `Made ${name ? `“${name}”` : "a game"} a secret world for ${d.unlockCost as number} tickets`
+        : `Made ${name ? `“${name}”` : "a game"} free to play again`;
     case "user.role_updated":
       return `Set ${name ?? "a user"} to ${(d.role as string) ?? "a new role"}`;
     case "user.deleted":

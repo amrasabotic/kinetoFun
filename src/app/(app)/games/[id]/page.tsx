@@ -13,6 +13,8 @@ import { GameRail } from "@/components/game/GameRail";
 import { RateThisGame } from "@/components/game/RateThisGame";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { playersLabel } from "@/lib/format";
+import { useShop } from "@/features/rewards/useShop";
+import { UnlockWorldButton } from "@/components/game/UnlockWorldButton";
 
 export default function GameDetailPage() {
   const params = useParams<{ id: string }>();
@@ -20,6 +22,12 @@ export default function GameDetailPage() {
   const { games, loading } = useGames();
   const game = findGame(games, params.id);
   const { entries: topScores } = useLeaderboard(game?.id ?? null);
+  // Only secret worlds need the player's unlock status. Admins can always
+  // play, matching the server-side check in POST /api/sessions.
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+  const { shop, refresh: refreshShop } = useShop(Boolean(user && game?.unlockCost && !isAdmin));
+  const world = shop?.worlds.find((w) => w.gameId === game?.id);
+  const locked = Boolean(world && !world.unlocked);
 
   if (loading) {
     return (
@@ -65,9 +73,14 @@ export default function GameDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/15" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
         <div className="relative max-w-2xl">
-          <Badge tone="accent" className="mb-4">
-            {game.category}
-          </Badge>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Badge tone="accent">{game.category}</Badge>
+            {game.unlockCost && (
+              <Badge tone="accent" className="bg-amber-400/90 !text-amber-950">
+                🔒 Secret world
+              </Badge>
+            )}
+          </div>
           <h1 className="text-4xl font-black tracking-tight text-white drop-shadow sm:text-6xl">
             {game.title}
           </h1>
@@ -91,9 +104,18 @@ export default function GameDetailPage() {
           </div>
 
           <div className="mt-7 flex flex-wrap gap-3">
-            <ButtonLink href={`/games/${game.id}/play`} size="lg">
-              ▶ Play now
-            </ButtonLink>
+            {locked && world ? (
+              <UnlockWorldButton
+                gameId={game.id}
+                title={game.title}
+                cost={world.unlockCost}
+                onUnlocked={refreshShop}
+              />
+            ) : (
+              <ButtonLink href={`/games/${game.id}/play`} size="lg">
+                ▶ Play now
+              </ButtonLink>
+            )}
             <ButtonLink href="/library" size="lg" variant="secondary" className="border-white/40 bg-white/15 text-white hover:bg-white/25">
               Back to Library
             </ButtonLink>

@@ -22,6 +22,9 @@ export interface AuthUser {
   xp?: number;
   level?: number;
   tickets?: number;
+  equippedAvatar?: string;
+  equippedFrame?: string;
+  equippedBanner?: string;
   largeText?: boolean;
   reduceMotion?: boolean;
 }
@@ -45,6 +48,9 @@ export interface UserRecord {
   xp?: number;
   level?: number;
   tickets?: number;
+  equipped_avatar?: string | null;
+  equipped_frame?: string | null;
+  equipped_banner?: string | null;
   large_text?: boolean;
   reduce_motion?: boolean;
 }

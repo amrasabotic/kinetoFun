@@ -61,10 +61,11 @@
   - [x] Phase 4a — daily play streaks with a capped daily bonus.
   - [x] Phase 3b — in-game achievements as collectibles: the play page reads each game's saved achievements from same-origin localStorage (17 games, 127 achievements, no game rebuilds) and also accepts `ACHIEVEMENT_UNLOCKED`; allowlisted `POST /api/achievements`; 2 tickets each; Collector badges; profile collection. Migration `0016_game_achievements.sql`, **not yet applied**.
   - [x] Superadmin — Tickets column and "Tickets & rewards" dialog on the users page; superadmins can add/remove tickets with a reason (audit action `user.tickets_adjusted`).
-  - [ ] Apply migrations 0015 + 0016 and verify end to end against a non-production database.
+  - [x] Phase 5 — ticket shop at `/shop`: 18 emoji avatars, 6 avatar frames, 6 profile banners, mystery box (30 tickets, cosmetics only, no duplicates, odds shown), secret worlds (superadmin sets `games.unlock_cost` per game; players who already played a game keep it; admins bypass). Two-tap confirm on every purchase. Migration `0017_shop.sql`, **not yet applied**.
+  - [ ] Apply migrations 0015 + 0016 + 0017 and verify end to end against a non-production database.
+  - [ ] Choose which existing games become secret worlds and their prices (superadmin → Games → "Make secret world").
   - [ ] Circuit Racer: has an `achievements` save field but no achievements defined yet; add to the catalogue once it has some.
   - [ ] Phase 4b — optional `result`/`levelsCleared` on `GAME_COMPLETE` for win streaks and level bonuses.
-  - [ ] Phase 5 — shop: avatars, secret worlds (`games.unlock_cost`), mystery-box surprises. Needs decisions on avatar art and which games become secret worlds.
 
 ---
 

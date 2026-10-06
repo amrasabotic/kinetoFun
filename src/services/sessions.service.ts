@@ -1,5 +1,12 @@
 // Client-side helpers for the game_sessions API.
 
+/** Thrown by startSession when the game is a secret world the player has not unlocked. */
+export class LockedWorldError extends Error {
+  constructor(readonly unlockCost: number) {
+    super("This secret world is locked.");
+  }
+}
+
 /** Start a new play session. Returns the session id, or null if not signed in. */
 export async function startSession(gameId: string): Promise<string | null> {
   const res = await fetch("/api/sessions", {
@@ -8,6 +15,10 @@ export async function startSession(gameId: string): Promise<string | null> {
     body: JSON.stringify({ gameId }),
   });
   if (res.status === 401) return null;
+  if (res.status === 403) {
+    const body = (await res.json().catch(() => ({}))) as { locked?: boolean; unlockCost?: number };
+    if (body.locked) throw new LockedWorldError(body.unlockCost ?? 0);
+  }
   if (!res.ok) throw new Error("Failed to start session.");
   const json = (await res.json()) as { sessionId: string };
   return json.sessionId;

@@ -8,7 +8,7 @@ import { useSession } from "@/features/auth/session-context";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { useGames } from "@/features/games/useGames";
 import { findGame } from "@/services/games.service";
-import { startSession, endSession } from "@/services/sessions.service";
+import { startSession, endSession, LockedWorldError } from "@/services/sessions.service";
 import { invalidateContinuePlaying } from "@/features/sessions/useContinuePlaying";
 import GameIframe from "@/components/games/GameIframe";
 import { getGameEntry } from "@/games/registry";
@@ -74,12 +74,17 @@ function GameLaunchContent() {
   const sessionIdRef = useRef<string | null>(null);
   const sessionStartedRef = useRef(false);
   const sessionEndedRef = useRef(false);
+  // Secret worlds wait for the server's answer before the game is shown.
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [lockedCost, setLockedCost] = useState<number | null>(null);
 
   useEffect(() => {
     if (!game) return;
+    if (game.unlockCost && !accessChecked) return;
+    if (lockedCost !== null) return;
     const boot = setTimeout(() => setPhase("playing"), 1800);
     return () => clearTimeout(boot);
-  }, [game]);
+  }, [game, accessChecked, lockedCost]);
 
   const endSessionOnce = useCallback(async () => {
     if (sessionEndedRef.current || !sessionIdRef.current) return;
@@ -115,7 +120,11 @@ function GameLaunchContent() {
           collectAchievements();
         }
       })
-      .catch(() => { /* non-fatal */ });
+      .catch((err: unknown) => {
+        if (err instanceof LockedWorldError) setLockedCost(err.unlockCost);
+        // Any other failure is non-fatal: the game still plays without a session.
+      })
+      .finally(() => setAccessChecked(true));
 
     return () => {
       endSessionOnce();
@@ -194,6 +203,34 @@ function GameLaunchContent() {
       <FullScreenOverlay>
         <p className="text-white/70 mb-4">Game not found.</p>
         <Link href="/library" className="text-primary underline">Back to Library</Link>
+      </FullScreenOverlay>
+    );
+  }
+
+  if (lockedCost !== null) {
+    return (
+      <FullScreenOverlay gradient={game.cover}>
+        <span className="text-6xl" aria-hidden>🔒</span>
+        <h1 className="mt-4 text-2xl font-bold text-white">{game.title} is a secret world</h1>
+        <p className="mt-2 max-w-sm text-center text-sm text-white/70">
+          Unlock it once with {lockedCost} tickets and it&apos;s yours to play forever.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <Link
+            href={`/games/${game.id}`}
+            data-focusable
+            className="rounded-full bg-amber-400 px-5 py-2.5 text-sm font-bold text-amber-950 hover:bg-amber-300"
+          >
+            🎟️ Unlock for {lockedCost}
+          </Link>
+          <Link
+            href="/library"
+            data-focusable
+            className="rounded-full border border-white/30 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/10"
+          >
+            Back to Library
+          </Link>
+        </div>
       </FullScreenOverlay>
     );
   }

@@ -87,6 +87,11 @@ export function GameCard({
 
         {/* Title on cover */}
         <div className="absolute inset-x-0 bottom-0 z-20 px-3 pb-3">
+          {game.unlockCost && (
+            <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-amber-400/95 px-2 py-0.5 text-[10px] font-bold text-amber-950">
+              🔒 Secret world
+            </span>
+          )}
           <h3 className="line-clamp-2 text-xs font-bold leading-snug text-white drop-shadow-md sm:text-sm">
             {game.title}
           </h3>
