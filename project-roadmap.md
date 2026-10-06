@@ -65,7 +65,7 @@
   - [ ] Apply migrations 0015 + 0016 + 0017 and verify end to end against a non-production database.
   - [ ] Choose which existing games become secret worlds and their prices (superadmin → Games → "Make secret world").
   - [ ] Circuit Racer: has an `achievements` save field but no achievements defined yet; add to the catalogue once it has some.
-  - [ ] Phase 4b — optional `result`/`levelsCleared` on `GAME_COMPLETE` for win streaks and level bonuses.
+  - [~] Phase 4b — win streaks: **deferred (decided 2026-10-06).** Daily play streaks cover regular play and the homepage no longer promises win streaks. About half the library is endless score-only games with no win state. If revisited, add an optional `result`/`levelsCleared` field to `GAME_COMPLETE` in the 5–10 most-played win/lose games only.
 
 ---
 
