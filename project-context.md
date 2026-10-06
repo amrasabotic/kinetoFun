@@ -229,7 +229,7 @@ All UI reads through services, never the mock directly (except a couple of deriv
 
 ## In-Progress Features
 
-_None._
+- **Tickets & Rewards (ADR-066), branch `dev1`.** Tickets are the single platform currency (never purchasable). `src/lib/rewards/catalog.ts` holds the earning rules and badge catalogue; `src/lib/rewards/service.ts` awards inside one transaction that locks the user row. `POST /api/scores` takes an optional `sessionId` and returns `rewards`; `GET /api/rewards` feeds the profile Rewards panel. `users.tickets` is a cached balance always written alongside a `reward_ledger` row. Spending (shop, avatars, secret worlds) is not built yet, so the homepage still over-promises on that one line. Migration `0015_rewards.sql` must be applied before any of it is visible; until then reward errors are logged and the score still saves.
 
 ---
 

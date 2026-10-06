@@ -10,6 +10,7 @@ import { useGames } from "@/features/games/useGames";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { ScoreList } from "@/components/profile/ScoreList";
+import { RewardsPanel } from "@/components/profile/RewardsPanel";
 import { formatDate, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -117,6 +118,9 @@ function ProfileContent() {
           </div>
         </div>
       </section>
+
+      {/* ── Tickets, streak and badges ───────────────────────────────────── */}
+      <RewardsPanel />
 
       {/* ── Stats + activity ─────────────────────────────────────────────── */}
       {loading ? (

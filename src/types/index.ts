@@ -97,6 +97,8 @@ export interface User {
   avatarColor: string;
   level: number;
   xp: number;
+  /** Spendable reward balance (see src/lib/rewards). */
+  tickets?: number;
   joinedAt: string; // ISO date
   bio?: string;
   /** Access role. Optional on the UI type (mock users omit it). */

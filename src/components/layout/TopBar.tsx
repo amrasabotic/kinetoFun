@@ -221,7 +221,19 @@ export function TopBar() {
           {/* Right cluster */}
           <div className="ml-auto flex items-center gap-2">
             {isAuthenticated && user ? (
-              <ProfileDropdown user={user} />
+              <>
+                <Link
+                  href="/profile#rewards"
+                  data-focusable
+                  title="Your tickets"
+                  className="flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-100/70 px-3 py-1.5 text-sm font-black tabular-nums text-amber-700 transition hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+                >
+                  <span aria-hidden>🎟️</span>
+                  {(user.tickets ?? 0).toLocaleString()}
+                  <span className="sr-only">tickets</span>
+                </Link>
+                <ProfileDropdown user={user} />
+              </>
             ) : (
               <>
                 <Link

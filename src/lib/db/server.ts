@@ -4,7 +4,7 @@
 // JWT system in `@/lib/auth` — this module is database-only. Never import from
 // a Client Component.
 
-import { Pool, types, type QueryResult, type QueryResultRow } from "pg";
+import { Pool, types, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 
 // Return timestamptz / timestamp as ISO strings (not Date objects).
 types.setTypeParser(types.builtins.TIMESTAMPTZ, (v) => v);
@@ -60,6 +60,27 @@ export async function execute(
   params: unknown[] = [],
 ): Promise<QueryResult> {
   return getPool().query(text, params);
+}
+
+/**
+ * Run `fn` inside a single transaction on one pooled connection. Commits when
+ * `fn` resolves and rolls back when it throws.
+ */
+export async function withTransaction<T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /** Run COUNT(*) style query expecting a single numeric aggregate. */

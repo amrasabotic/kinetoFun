@@ -12,21 +12,31 @@ import { startSession, endSession } from "@/services/sessions.service";
 import { invalidateContinuePlaying } from "@/features/sessions/useContinuePlaying";
 import GameIframe from "@/components/games/GameIframe";
 import { getGameEntry } from "@/games/registry";
+import type { GameRewardResult } from "@/lib/rewards/catalog";
 
 type Phase = "loading" | "playing" | "submitting" | "done";
 
-async function postScore(gameId: string, score: number): Promise<number> {
+interface ScoreResponse {
+  xpEarned: number;
+  rewards: GameRewardResult | null;
+}
+
+async function postScore(
+  gameId: string,
+  score: number,
+  sessionId: string | null,
+): Promise<ScoreResponse> {
   const res = await fetch("/api/scores", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ gameId, score }),
+    body: JSON.stringify({ gameId, score, ...(sessionId && { sessionId }) }),
   });
   if (!res.ok && res.status !== 401) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? "Failed to submit score.");
   }
-  const json = await res.json().catch(() => ({}));
-  return (json as { xpEarned?: number }).xpEarned ?? 0;
+  const json = (await res.json().catch(() => ({}))) as Partial<ScoreResponse>;
+  return { xpEarned: json.xpEarned ?? 0, rewards: json.rewards ?? null };
 }
 
 export default function GameLaunchPage() {
@@ -48,6 +58,7 @@ function GameLaunchContent() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [elapsed, setElapsed] = useState(0);
   const [xpEarned, setXpEarned] = useState(0);
+  const [rewards, setRewards] = useState<GameRewardResult | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const sessionStartedRef = useRef(false);
   const sessionEndedRef = useRef(false);
@@ -93,8 +104,11 @@ function GameLaunchContent() {
     if (!game) return;
     setPhase("submitting");
     try {
-      const earned = await postScore(game.id, score);
-      setXpEarned(earned);
+      // Submit before ending the session: the server checks the session when
+      // deciding whether this game earns tickets.
+      const result = await postScore(game.id, score, sessionIdRef.current);
+      setXpEarned(result.xpEarned);
+      setRewards(result.rewards);
       await endSessionOnce();
       invalidateContinuePlaying();
       await refresh();
@@ -108,11 +122,14 @@ function GameLaunchContent() {
 
   useEffect(() => {
     if (phase !== "done") return;
+    // Games are played on a TV without a mouse, so this screen must leave on
+    // its own; stay longer when there is a reward summary to read.
+    const delay = rewards && rewards.lines.length > 0 ? 7000 : 2000;
     const timeout = setTimeout(() => {
       if (game) router.push(`/games/${game.id}`);
-    }, 2000);
+    }, delay);
     return () => clearTimeout(timeout);
-  }, [phase, game, router]);
+  }, [phase, game, router, rewards]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -179,6 +196,7 @@ function GameLaunchContent() {
         {xpEarned > 0 && (
           <p className="mt-2 text-lg font-semibold text-primary">+{xpEarned} XP earned</p>
         )}
+        {rewards && <RewardSummary rewards={rewards} />}
         <p className="mt-2 text-sm text-white/50">Returning to game page…</p>
       </FullScreenOverlay>
     );
@@ -215,6 +233,50 @@ function GameLaunchContent() {
         onGameComplete={handleGameComplete}
         fullscreen
       />
+    </div>
+  );
+}
+
+function RewardSummary({ rewards }: { rewards: GameRewardResult }) {
+  return (
+    <div className="mt-5 w-80 max-w-[calc(100vw-2rem)] space-y-3">
+      {rewards.ticketsEarned > 0 && (
+        <div className="rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4">
+          <p className="text-center text-xl font-black text-amber-300">
+            🎟️ +{rewards.ticketsEarned} tickets
+          </p>
+          <ul className="mt-2 space-y-1 text-sm text-white/70">
+            {rewards.lines.map((line) => (
+              <li key={line.label} className="flex justify-between gap-3">
+                <span>{line.label}</span>
+                <span className="tabular-nums text-amber-200">+{line.amount}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {rewards.newBadges.map((badge) => (
+        <div
+          key={badge.id}
+          className="flex items-center gap-3 rounded-2xl border border-primary/40 bg-primary/15 p-3"
+        >
+          <span className="text-3xl" aria-hidden>{badge.emoji}</span>
+          <span className="text-left">
+            <span className="block text-sm font-bold text-white">New badge: {badge.title}</span>
+            <span className="block text-xs text-white/60">{badge.description}</span>
+          </span>
+        </div>
+      ))}
+      {rewards.streak.current > 1 && (
+        <p className="text-center text-sm font-semibold text-orange-300">
+          🔥 {rewards.streak.current}-day streak
+        </p>
+      )}
+      {rewards.dailyLimitReached && (
+        <p className="text-center text-xs text-white/50">
+          You have earned all of today&apos;s tickets. Come back tomorrow for more!
+        </p>
+      )}
     </div>
   );
 }

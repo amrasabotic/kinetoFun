@@ -792,13 +792,13 @@ function RewardsSection() {
             Tickets &amp; <span style={{ color: C.pink }}>Rewards</span>
           </h2>
           <p className="mx-auto mt-4 max-w-md text-base leading-relaxed lg:mx-0" style={{ color: C.inkSoft }}>
-            Every game you win earns coins, tickets and badges. Spend them to unlock avatars, secret levels and playful surprises. The more you play, the more you earn.
+            Every game you finish earns tickets, and every skill you master earns a badge. Spend tickets to unlock avatars, secret worlds and playful surprises. The more you play, the more you earn.
           </p>
           <ul className="mx-auto mt-6 max-w-md space-y-3 text-left">
             {[
-              { Icon: Ticket, text: "Earn tickets for beating levels & hitting win streaks", color: C.blue },
+              { Icon: Ticket, text: "Earn tickets for every game you finish & every day of your play streak", color: C.blue },
               { Icon: Star,   text: "Unlock badges and collectibles for every skill mastered", color: C.orange },
-              { Icon: Trophy, text: "Spend coins on avatars, secret worlds and surprises", color: C.green },
+              { Icon: Trophy, text: "Spend tickets on avatars, secret worlds and surprises", color: C.green },
             ].map(({ Icon, text, color }) => (
               <li key={text} className="flex items-center gap-3 rounded-2xl border-2 border-white bg-white/70 px-4 py-3 text-sm font-bold" style={{ color: C.ink }}>
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white" style={{ background: color }}>

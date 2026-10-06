@@ -54,7 +54,15 @@
 
 ## In Progress
 
-_None yet._
+- [ ] **[2026-10-06] Tickets & Rewards (ADR-066).** Make the homepage "Tickets & Rewards" promises real.
+  - [x] Phase 1 — ticket wallet + append-only `reward_ledger`, awards tied to a real play session (min 15s, once per session, 20 ticket games per UTC day). Migration `0015_rewards.sql` written, **not yet applied**.
+  - [x] Phase 2 — ticket chip in TopBar, reward summary on the play finish screen, Rewards section on `/profile`.
+  - [x] Phase 3a — 18 platform badges (milestones, explorer, personal bests, streaks, one "Master" per category).
+  - [x] Phase 4a — daily play streaks with a capped daily bonus.
+  - [ ] Apply migration 0015 and verify end to end against a non-production database.
+  - [ ] Phase 3b — in-game achievements as collectibles (`ACHIEVEMENT_UNLOCKED` → allowlisted `POST /api/achievements`; 18 games to wire + rebuild).
+  - [ ] Phase 4b — optional `result`/`levelsCleared` on `GAME_COMPLETE` for win streaks and level bonuses.
+  - [ ] Phase 5 — shop: avatars, secret worlds (`games.unlock_cost`), mystery-box surprises; superadmin balance adjustments. Needs decisions on avatar art and which games become secret worlds.
 
 ---
 

@@ -1521,3 +1521,24 @@ No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) a
 **Fix:** new `components/HowToPlayOverlay.tsx` (jump = both hands above shoulders, slide = duck, lean = change lane, coins/one-hit-ends-run/shield, power-ups) rendered over `/calibration`, dismissed only by a real **CONTINUE** click button (see games-dismissal-must-be-explicit-click). Auto-advance to `/game` is blocked (`howToOpenRef`) until dismissed. Shown once per browser session (`sessionStorage` key `gesture-runner:howto-seen`) so replays after game-over aren't nagged; state is `'unknown'` until storage is read to avoid a flash.
 
 **Follow-up [2026-09-21] — dismissal changed from click to hand dwell.** Games are played on TVs (no mouse), so the CONTINUE control is now a `DwellButton` (hold hand over it ~0.9s) driven by `useDwellNav` on the calibration page, with a hand cursor drawn above the overlay. It is a `div`, not clickable. To avoid the "hand already in place skips it unread" failure, dwell is only armed 1.5s after the overlay appears, and the hover must be continuous for the full dwell time. Supersedes the "real click button" line above; the dwell button is the *only* dismissal path.
+
+
+---
+
+## ADR-066 — Tickets & Rewards: ticket ledger, daily streaks, platform badges
+
+**Date:** 2026-10-06
+**Status:** Accepted — implemented on `dev1`; migration 0015 not yet applied.
+
+**Context.** The homepage "Tickets & Rewards" section promised coins, tickets, win streaks, badges and a way to spend them. Only XP existed. Games report nothing but a final score through `GAME_COMPLETE`, and `POST /api/scores` trusts any score the client sends.
+
+**Decisions.**
+- **One currency: tickets.** Several games already use "coins" inside the game; a second platform currency would confuse young players. The landing copy was changed from coins to tickets. Tickets can never be bought with real money.
+- **Ledger plus cached balance.** `reward_ledger` is append-only; `users.tickets` is updated only in the same transaction as a ledger insert, so the balance can be rebuilt. Unique indexes on `(session_id, reason)` and `(user_id, reason, ref)` make every award idempotent.
+- **Rewards depend on events, not score size.** Because scores are client-reported, tickets come from finishing a real session (owned by the user, same game, at least 15 s old), new personal bests, first plays of a game, the daily streak and badges. At most 20 games per UTC day pay tickets; later games still count for streaks and badges.
+- **Streaks are daily play streaks, not win streaks.** Games do not report wins. Win streaks need an optional `result` field on `GAME_COMPLETE`, planned as a later phase.
+- **Badge catalogue lives in code** (`src/lib/rewards/catalog.ts`); only earned badges are stored (`user_badges`). Adding a badge needs no migration, and existing players receive it on their next finished game.
+- **UTC calendar days** for streaks and the daily limit, so results do not depend on the database time zone. A player far from UTC may see their day roll over in the afternoon or evening; revisit if that confuses players.
+- **Best effort.** A failed award is logged and never fails the score submission.
+
+**Not yet built.** Spending (shop, avatars, secret worlds, surprises), in-game achievements as collectibles, win/level reporting from games, superadmin balance tools.

@@ -42,6 +42,7 @@ export function toAppUser(authUser: AuthUser): User {
     avatarColor: authUser.avatarColor ?? gradientFor(authUser.id),
     level: authUser.level ?? 1,
     xp: authUser.xp ?? 0,
+    tickets: authUser.tickets ?? 0,
     joinedAt: authUser.createdAt,
     bio: authUser.bio,
     role: authUser.role,
