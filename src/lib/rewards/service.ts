@@ -19,11 +19,19 @@ import {
   toBadgeSummary,
   type BadgeStats,
   type BadgeSummary,
+  type AchievementSyncResult,
   type GameRewardResult,
   type RewardLine,
   type RewardReason,
   type RewardsOverview,
 } from "./catalog";
+import {
+  DEFAULT_ACHIEVEMENT_EMOJI,
+  GAME_ACHIEVEMENTS,
+  TICKETS_PER_GAME_ACHIEVEMENT,
+  findGameAchievement,
+  type GameAchievementDef,
+} from "./game-achievements";
 
 /** Why a finished game earned nothing. */
 export type IneligibleReason =
@@ -104,11 +112,12 @@ async function updateStreak(
   return { current, best, extendedToday: true, today: row.today };
 }
 
-async function loadBadgeStats(
-  client: PoolClient,
-  userId: string,
-  bestStreak: number,
-): Promise<BadgeStats> {
+async function loadBadgeStats(client: PoolClient, userId: string): Promise<BadgeStats> {
+  const extra = await client.query<{ best_streak: number | null; collectibles: string }>(
+    `SELECT (SELECT best_streak FROM public.user_streaks WHERE user_id = $1) AS best_streak,
+            (SELECT count(*) FROM public.user_game_achievements WHERE user_id = $1) AS collectibles`,
+    [userId],
+  );
   const totals = await client.query<{ finished: string; distinct_games: string; bests: string }>(
     `SELECT count(*) FILTER (WHERE reason = 'game_complete')                   AS finished,
             count(DISTINCT game_id) FILTER (WHERE reason = 'game_complete')    AS distinct_games,
@@ -139,10 +148,48 @@ async function loadBadgeStats(
     gamesFinished: Number(t.finished),
     distinctGames: Number(t.distinct_games),
     personalBests: Number(t.bests),
-    bestStreak,
+    bestStreak: extra.rows[0]?.best_streak ?? 0,
+    collectibles: Number(extra.rows[0]?.collectibles ?? 0),
     categories,
     totalCategories: Number(cats.rows[0]?.n ?? 0),
   };
+}
+
+/** Grant every badge the player now qualifies for, appending ticket lines. */
+async function grantEarnedBadges(
+  client: PoolClient,
+  userId: string,
+  lines: RewardLine[],
+): Promise<BadgeSummary[]> {
+  const owned = await client.query<{ badge_id: string }>(
+    `SELECT badge_id FROM public.user_badges WHERE user_id = $1`,
+    [userId],
+  );
+  const ownedIds = new Set(owned.rows.map((r) => r.badge_id));
+  const stats = await loadBadgeStats(client, userId);
+  const newBadges: BadgeSummary[] = [];
+  for (const badge of BADGES) {
+    if (ownedIds.has(badge.id) || !badge.earned(stats)) continue;
+    const granted = await client.query(
+      `INSERT INTO public.user_badges (user_id, badge_id) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING RETURNING badge_id`,
+      [userId, badge.id],
+    );
+    if (granted.rowCount === 0) continue;
+    newBadges.push(toBadgeSummary(badge));
+    if (await credit(client, userId, "badge", badge.tickets, { ref: badge.id })) {
+      lines.push({ reason: "badge", label: `Badge: ${badge.title}`, amount: badge.tickets });
+    }
+  }
+  return newBadges;
+}
+
+async function readBalance(client: PoolClient, userId: string): Promise<number> {
+  const { rows } = await client.query<{ tickets: number }>(
+    `SELECT tickets FROM public.users WHERE id = $1`,
+    [userId],
+  );
+  return rows[0]?.tickets ?? 0;
 }
 
 /**
@@ -224,31 +271,8 @@ export async function awardForCompletedGame(input: {
       }
     }
 
-    const owned = await client.query<{ badge_id: string }>(
-      `SELECT badge_id FROM public.user_badges WHERE user_id = $1`,
-      [userId],
-    );
-    const ownedIds = new Set(owned.rows.map((r) => r.badge_id));
-    const stats = await loadBadgeStats(client, userId, streak.best);
-    const newBadges: BadgeSummary[] = [];
-    for (const badge of BADGES) {
-      if (ownedIds.has(badge.id) || !badge.earned(stats)) continue;
-      const granted = await client.query(
-        `INSERT INTO public.user_badges (user_id, badge_id) VALUES ($1, $2)
-         ON CONFLICT DO NOTHING RETURNING badge_id`,
-        [userId, badge.id],
-      );
-      if (granted.rowCount === 0) continue;
-      newBadges.push(toBadgeSummary(badge));
-      if (await credit(client, userId, "badge", badge.tickets, { ref: badge.id })) {
-        lines.push({ reason: "badge", label: `Badge: ${badge.title}`, amount: badge.tickets });
-      }
-    }
-
-    const balance = await client.query<{ tickets: number }>(
-      `SELECT tickets FROM public.users WHERE id = $1`,
-      [userId],
-    );
+    const newBadges = await grantEarnedBadges(client, userId, lines);
+    const balance = await readBalance(client, userId);
 
     return {
       eligible: true,
@@ -257,16 +281,71 @@ export async function awardForCompletedGame(input: {
         lines,
         newBadges,
         streak: { current: streak.current, best: streak.best },
-        balance: balance.rows[0]?.tickets ?? 0,
+        balance,
         dailyLimitReached,
       },
     };
   });
 }
 
+/**
+ * Record in-game achievements reported by the play page. Unknown ids are
+ * ignored, and the player must have played the game on this account at least
+ * once, so ids cannot be claimed for games the account never opened.
+ *
+ * The ids come from the game's browser storage, which belongs to the browser
+ * rather than the account: on a shared device a second account can collect
+ * achievements unlocked by the first. Each achievement pays out only once per
+ * account, which bounds what that can earn.
+ */
+export async function syncGameAchievements(input: {
+  userId: string;
+  gameId: string;
+  achievementIds: string[];
+}): Promise<AchievementSyncResult | null> {
+  const { userId, gameId } = input;
+  const valid = [...new Set(input.achievementIds)]
+    .map((id) => findGameAchievement(gameId, id))
+    .filter((a): a is GameAchievementDef => Boolean(a));
+
+  return withTransaction(async (client) => {
+    await client.query(`SELECT 1 FROM public.users WHERE id = $1 FOR UPDATE`, [userId]);
+
+    const played = await client.query(
+      `SELECT 1 FROM public.game_sessions WHERE user_id = $1 AND game_id = $2 LIMIT 1`,
+      [userId, gameId],
+    );
+    if (played.rowCount === 0) return null;
+
+    const lines: RewardLine[] = [];
+    const newAchievements: AchievementSyncResult["newAchievements"] = [];
+    for (const a of valid) {
+      const inserted = await client.query(
+        `INSERT INTO public.user_game_achievements (user_id, game_id, achievement_id)
+         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING achievement_id`,
+        [userId, gameId, a.id],
+      );
+      if (inserted.rowCount === 0) continue;
+      newAchievements.push({ ...a, emoji: a.emoji ?? DEFAULT_ACHIEVEMENT_EMOJI });
+      const ref = `${gameId}:${a.id}`;
+      if (await credit(client, userId, "game_achievement", TICKETS_PER_GAME_ACHIEVEMENT, { gameId, ref })) {
+        lines.push({ reason: "game_achievement", label: `Collectible: ${a.title}`, amount: TICKETS_PER_GAME_ACHIEVEMENT });
+      }
+    }
+
+    const newBadges = newAchievements.length > 0 ? await grantEarnedBadges(client, userId, lines) : [];
+    return {
+      newAchievements,
+      newBadges,
+      ticketsEarned: lines.reduce((sum, l) => sum + l.amount, 0),
+      balance: await readBalance(client, userId),
+    };
+  });
+}
+
 /** Balance, streak, badge collection and recent ticket history for the profile. */
 export async function getRewardsOverview(userId: string): Promise<RewardsOverview> {
-  const [user, streak, today, badges, recent] = await Promise.all([
+  const [user, streak, today, badges, recent, collected] = await Promise.all([
     queryOne<{ tickets: number }>(`SELECT tickets FROM public.users WHERE id = $1`, [userId]),
     queryOne<{ current_streak: number; best_streak: number; days_since: number | null }>(
       `SELECT current_streak, best_streak, (${UTC_TODAY} - last_play_date) AS days_since
@@ -289,7 +368,13 @@ export async function getRewardsOverview(userId: string): Promise<RewardsOvervie
        ORDER BY created_at DESC LIMIT 12`,
       [userId],
     ),
+    query<{ game_id: string; achievement_id: string; earned_at: string }>(
+      `SELECT game_id, achievement_id, earned_at FROM public.user_game_achievements WHERE user_id = $1`,
+      [userId],
+    ),
   ]);
+
+  const collectedAt = new Map(collected.map((c) => [`${c.game_id}:${c.achievement_id}`, c.earned_at]));
 
   const earnedAt = new Map(badges.map((b) => [b.badge_id, b.earned_at]));
   const titleById = new Map(BADGES.map((b) => [b.id, b.title]));
@@ -306,15 +391,36 @@ export async function getRewardsOverview(userId: string): Promise<RewardsOvervie
     rewardedGamesToday: Number(today?.n ?? 0),
     maxRewardedGamesPerDay: MAX_REWARDED_GAMES_PER_DAY,
     badges: BADGES.map((b) => ({ ...toBadgeSummary(b), earnedAt: earnedAt.get(b.id) ?? null })),
+    collections: Object.entries(GAME_ACHIEVEMENTS).map(([gameId, entry]) => ({
+      gameId,
+      items: entry.items.map((a) => ({
+        id: a.id,
+        title: a.title,
+        description: a.description,
+        emoji: a.emoji ?? DEFAULT_ACHIEVEMENT_EMOJI,
+        earnedAt: collectedAt.get(`${gameId}:${a.id}`) ?? null,
+      })),
+    })),
     recent: recent.map((r) => ({
       id: r.id,
       delta: r.delta,
-      label:
-        r.reason === "badge" && r.ref
-          ? `Badge: ${titleById.get(r.ref) ?? r.ref}`
-          : REASON_LABELS[r.reason] ?? r.reason,
+      label: ledgerLabel(r.reason, r.ref, r.game_id, titleById),
       gameId: r.game_id,
       createdAt: r.created_at,
     })),
   };
+}
+
+function ledgerLabel(
+  reason: RewardReason,
+  ref: string | null,
+  gameId: string | null,
+  badgeTitles: Map<string, string>,
+): string {
+  if (reason === "badge" && ref) return `Badge: ${badgeTitles.get(ref) ?? ref}`;
+  if (reason === "game_achievement" && ref && gameId) {
+    const title = findGameAchievement(gameId, ref.slice(gameId.length + 1))?.title;
+    if (title) return `Collectible: ${title}`;
+  }
+  return REASON_LABELS[reason] ?? reason;
 }

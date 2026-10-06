@@ -401,3 +401,12 @@ create table if not exists public.user_badges (
   earned_at timestamptz not null default now(),
   primary key (user_id, badge_id)
 );
+
+-- ── In-game achievements collected on the platform (migration 0016) ─────────
+create table if not exists public.user_game_achievements (
+  user_id        uuid        not null references public.users (id) on delete cascade,
+  game_id        text        not null references public.games (id) on delete cascade,
+  achievement_id text        not null,
+  earned_at      timestamptz not null default now(),
+  primary key (user_id, game_id, achievement_id)
+);

@@ -1,10 +1,12 @@
 "use client";
 
-import { Flame, Gift, Ticket } from "lucide-react";
+import Link from "next/link";
+import { Flame, Gift, Sparkles, Ticket } from "lucide-react";
 import { useRewards } from "@/features/rewards/useRewards";
 import { useGames } from "@/features/games/useGames";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { RewardsOverview } from "@/lib/rewards/catalog";
 
 export function RewardsPanel() {
   const { rewards, loading, error } = useRewards();
@@ -96,6 +98,8 @@ export function RewardsPanel() {
         </ul>
       </div>
 
+      <Collectibles collections={rewards.collections} gameTitle={gameTitle} />
+
       <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
         <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
           <Gift className="h-4 w-4 text-primary" /> Recent tickets
@@ -129,5 +133,87 @@ export function RewardsPanel() {
         )}
       </div>
     </section>
+  );
+}
+
+function Collectibles({
+  collections,
+  gameTitle,
+}: {
+  collections: RewardsOverview["collections"];
+  gameTitle: (id: string | null) => string | undefined;
+}) {
+  const withProgress = collections
+    .map((c) => ({ ...c, earned: c.items.filter((i) => i.earnedAt).length }))
+    .sort((a, b) => b.earned - a.earned);
+  const started = withProgress.filter((c) => c.earned > 0);
+  const notStarted = withProgress.filter((c) => c.earned === 0);
+  const total = withProgress.reduce((sum, c) => sum + c.items.length, 0);
+  const earnedTotal = withProgress.reduce((sum, c) => sum + c.earned, 0);
+
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Sparkles className="h-4 w-4 text-primary" /> Collectibles
+        </h2>
+        <span className="text-xs text-muted-foreground">
+          {earnedTotal} / {total} collected
+        </span>
+      </div>
+
+      {started.length === 0 ? (
+        <p className="mb-3 text-sm text-muted-foreground">
+          Unlock achievements inside these games to fill your collection.
+        </p>
+      ) : (
+        <ul className="mb-4 space-y-3">
+          {started.map((c) => (
+            <li key={c.gameId} className="rounded-xl border border-border/30 p-3">
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <Link href={`/games/${c.gameId}`} className="font-semibold text-foreground hover:underline">
+                  {gameTitle(c.gameId) ?? c.gameId}
+                </Link>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {c.earned} / {c.items.length}
+                </span>
+              </div>
+              <ul className="flex flex-wrap gap-1.5">
+                {c.items.map((item) => (
+                  <li
+                    key={item.id}
+                    title={`${item.title}: ${item.description}`}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs",
+                      item.earnedAt
+                        ? "bg-primary/10 font-medium text-foreground"
+                        : "bg-muted/40 text-muted-foreground opacity-60",
+                    )}
+                  >
+                    <span className={cn(!item.earnedAt && "grayscale")} aria-hidden>{item.emoji}</span>
+                    {item.title}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {notStarted.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {notStarted.map((c) => (
+            <Link
+              key={c.gameId}
+              href={`/games/${c.gameId}`}
+              data-focusable
+              className="rounded-full border border-border/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+            >
+              {gameTitle(c.gameId) ?? c.gameId} · 0/{c.items.length}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

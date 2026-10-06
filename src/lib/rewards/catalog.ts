@@ -31,6 +31,7 @@ export type RewardReason =
   | "new_game"
   | "daily_streak"
   | "badge"
+  | "game_achievement"
   | "admin_adjust";
 
 export const REASON_LABELS: Record<RewardReason, string> = {
@@ -39,6 +40,7 @@ export const REASON_LABELS: Record<RewardReason, string> = {
   new_game: "First time playing",
   daily_streak: "Daily streak bonus",
   badge: "Badge earned",
+  game_achievement: "Collectible earned",
   admin_adjust: "Adjustment",
 };
 
@@ -48,6 +50,8 @@ export interface BadgeStats {
   distinctGames: number;
   personalBests: number;
   bestStreak: number;
+  /** In-game achievements collected on the platform. */
+  collectibles: number;
   /** Finished games and distinct games, keyed by category name. */
   categories: Record<string, { finished: number; distinct: number }>;
   /** Number of categories that currently have at least one published game. */
@@ -92,6 +96,8 @@ export const BADGES: BadgeDef[] = [
   { id: "best-10", title: "Record Breaker", description: "Beat your own best score 10 times.", emoji: "🌟", tickets: 20, earned: (s) => s.personalBests >= 10 },
   { id: "streak-3", title: "On a Roll", description: "Play 3 days in a row.", emoji: "🔥", tickets: 10, earned: (s) => s.bestStreak >= 3 },
   { id: "streak-7", title: "Week Streak", description: "Play 7 days in a row.", emoji: "📅", tickets: 25, earned: (s) => s.bestStreak >= 7 },
+  { id: "collector-10", title: "Collector", description: "Collect 10 in-game achievements.", emoji: "🧸", tickets: 15, earned: (s) => s.collectibles >= 10 },
+  { id: "collector-50", title: "Treasure Keeper", description: "Collect 50 in-game achievements.", emoji: "👑", tickets: 40, earned: (s) => s.collectibles >= 50 },
   { id: "streak-30", title: "Unstoppable", description: "Play 30 days in a row.", emoji: "💎", tickets: 100, earned: (s) => s.bestStreak >= 30 },
   ...CATEGORY_BADGES.map(({ category, emoji }): BadgeDef => ({
     id: `master-${category.toLowerCase()}`,
@@ -133,6 +139,14 @@ export interface GameRewardResult {
   dailyLimitReached: boolean;
 }
 
+/** Result of POST /api/achievements. */
+export interface AchievementSyncResult {
+  newAchievements: { id: string; title: string; description: string; emoji: string }[];
+  newBadges: BadgeSummary[];
+  ticketsEarned: number;
+  balance: number;
+}
+
 /** Result of GET /api/rewards. */
 export interface RewardsOverview {
   balance: number;
@@ -140,6 +154,11 @@ export interface RewardsOverview {
   rewardedGamesToday: number;
   maxRewardedGamesPerDay: number;
   badges: (BadgeSummary & { earnedAt: string | null })[];
+  /** In-game achievements per game, for games that have any. */
+  collections: {
+    gameId: string;
+    items: { id: string; title: string; description: string; emoji: string; earnedAt: string | null }[];
+  }[];
   recent: {
     id: string;
     delta: number;
