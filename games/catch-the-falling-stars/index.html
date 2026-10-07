@@ -198,35 +198,84 @@
 
   #splashScreen h1 span { color: #c8a0ff; }
 
+  .how-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    letter-spacing: 4px;
+    color: #f0c040;
+    text-transform: uppercase;
+  }
+
   .instructions {
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 300px));
+    gap: 16px;
     justify-content: center;
-    max-width: 560px;
-    margin: 8px 0;
+    margin: 4px 0 8px;
   }
 
   .inst-card {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
     background: rgba(138, 92, 255, 0.1);
     border: 1px solid rgba(138, 92, 255, 0.3);
     border-radius: 14px;
-    padding: 16px 20px;
-    text-align: center;
-    min-width: 150px;
+    padding: 16px 18px;
+    text-align: left;
   }
 
-  .inst-icon { font-size: 28px; margin-bottom: 8px; }
-  .inst-title { font-size: 11px; letter-spacing: 2px; color: #c8a0ff; text-transform: uppercase; margin-bottom: 4px; }
-  .inst-desc { font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.4; }
+  .inst-icon { font-size: 34px; line-height: 1; flex-shrink: 0; }
+  .inst-title { font-size: 13px; letter-spacing: 2px; color: #c8a0ff; text-transform: uppercase; margin-bottom: 4px; font-weight: 700; }
+  .inst-desc { font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.45; }
+
+  /* Hover-and-hold button: games run on TVs with no mouse, so screens are
+     dismissed by holding the hand cursor over a button until it fills. */
+  .dwell-btn {
+    --p: 0;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: #fff;
+    text-transform: uppercase;
+    padding: 18px 48px;
+    border-radius: 16px;
+    border: 2px solid rgba(240, 192, 64, 0.8);
+    background: rgba(240, 192, 64, 0.12);
+    transition: transform 0.15s, opacity 0.3s;
+  }
+  .dwell-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: calc(var(--p) * 100%);
+    background: rgba(240, 192, 64, 0.45);
+  }
+  .dwell-btn span { position: relative; }
+  .dwell-btn.hover { transform: scale(1.06); box-shadow: 0 0 28px rgba(240, 192, 64, 0.6); }
+  .dwell-btn.disarmed { opacity: 0.4; }
 
   .start-hint {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 14px;
-    letter-spacing: 3px;
-    color: #f0c040;
-    text-transform: uppercase;
-    animation: blink 1.2s ease-in-out infinite;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: rgba(240, 192, 64, 0.8);
+  }
+
+  #handCursor {
+    position: absolute;
+    z-index: 20;
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;
+    border-radius: 50%;
+    border: 3px solid #f0c040;
+    background: rgba(240, 192, 64, 0.3);
+    box-shadow: 0 0 18px rgba(240, 192, 64, 0.7);
+    pointer-events: none;
+    display: none;
   }
 
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
@@ -277,16 +326,6 @@
     text-shadow: 0 0 20px rgba(240,192,64,0.7);
   }
 
-  .restart-hint {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 13px;
-    letter-spacing: 3px;
-    color: #f0c040;
-    text-transform: uppercase;
-    animation: blink 1.2s ease-in-out infinite;
-    margin-top: 8px;
-  }
-
   .hidden { display: none !important; }
 </style>
 </head>
@@ -326,24 +365,39 @@
   <!-- Splash -->
   <div id="splashScreen" class="hidden">
     <h1>✦ CATCH THE<br><span>FALLING STARS</span> ✦</h1>
+    <div class="how-title">How to Play</div>
     <div class="instructions">
       <div class="inst-card">
-        <div class="inst-icon">☝️</div>
-        <div class="inst-title">1 Finger</div>
-        <div class="inst-desc">Point to select / start / restart</div>
+        <div class="inst-icon">⭐</div>
+        <div>
+          <div class="inst-title">Catch the stars</div>
+          <div class="inst-desc">Stars fall from the sky. Move the net at the bottom of the screen under them to catch them.</div>
+        </div>
       </div>
       <div class="inst-card">
         <div class="inst-icon">✌️</div>
-        <div class="inst-title">2 Fingers</div>
-        <div class="inst-desc">Move the net to catch stars</div>
+        <div>
+          <div class="inst-title">Two fingers move the net</div>
+          <div class="inst-desc">Hold up your index and middle fingers, then slide your hand left and right. The net follows.</div>
+        </div>
+      </div>
+      <div class="inst-card">
+        <div class="inst-icon">✊</div>
+        <div>
+          <div class="inst-title">Any other hand shape</div>
+          <div class="inst-desc">A fist, one finger or an open hand stops the net where it is.</div>
+        </div>
       </div>
       <div class="inst-card">
         <div class="inst-icon">⏱️</div>
-        <div class="inst-title">60 Seconds</div>
-        <div class="inst-desc">Catch as many stars as you can!</div>
+        <div>
+          <div class="inst-title">60 seconds</div>
+          <div class="inst-desc">Catch as many stars as you can. More stars fall as time runs out!</div>
+        </div>
       </div>
     </div>
-    <div class="start-hint">☝ Point to Start</div>
+    <div class="dwell-btn disarmed" id="startBtn"><span>Start</span></div>
+    <div class="start-hint">Point at the button and hold your hand still to start</div>
     <div class="cam-note">Camera access required · Keep your hand visible</div>
   </div>
 
@@ -352,8 +406,11 @@
     <h2>TIME'S UP!</h2>
     <div class="final-score-label">Stars Caught</div>
     <div class="final-score-val" id="finalScore">0</div>
-    <div class="restart-hint">☝ Point to Restart</div>
+    <div class="dwell-btn disarmed" id="restartBtn"><span>Play Again</span></div>
+    <div class="start-hint">Point at the button and hold your hand still to play again</div>
   </div>
+
+  <div id="handCursor"></div>
 </div>
 
 <!-- MediaPipe -->
@@ -390,8 +447,16 @@ let stars = [];
 let particles = [];
 let netX = 0.5; // normalised 0-1
 let bgStars = [];
-let selectCooldown = 0;
 let netTargetX = 0.5;
+
+// Start / restart buttons respond only after a short delay and a continuous
+// hover, so a hand already raised when the screen appears cannot skip the
+// instructions or restart the game by accident.
+const DWELL_ARM_MS = 1500;
+const DWELL_HOLD_MS = 1000;
+let dwellArmedAt = Infinity;
+let dwellStart = null;
+let dwellArmTimer = null;
 
 // ─── Background starfield ─────────────────────────────────────────────────────
 function initBgStars() {
@@ -670,9 +735,6 @@ function gameLoop(ts) {
 
   // Cursor
   drawCursor(gctx);
-
-  // Cooldown tick
-  if (selectCooldown > 0) selectCooldown--;
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
@@ -680,7 +742,68 @@ function showScreen(id) {
   ['loadingScreen','splashScreen','gameOverScreen'].forEach(s => {
     document.getElementById(s).style.display = 'none';
   });
-  if (id) document.getElementById(id).style.display = 'flex';
+  if (id) {
+    // The splash starts with the .hidden class, whose !important would
+    // otherwise beat the inline display and keep the screen invisible.
+    const el = document.getElementById(id);
+    el.classList.remove('hidden');
+    el.style.display = 'flex';
+  }
+  resetDwell();
+}
+
+function activeDwellButton() {
+  if (state === 'splash') return document.getElementById('startBtn');
+  if (state === 'gameover') return document.getElementById('restartBtn');
+  return null;
+}
+
+function resetDwell() {
+  dwellArmedAt = performance.now() + DWELL_ARM_MS;
+  dwellStart = null;
+  ['startBtn', 'restartBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.classList.add('disarmed');
+    btn.classList.remove('hover');
+    btn.style.setProperty('--p', 0);
+  });
+  clearTimeout(dwellArmTimer);
+  dwellArmTimer = setTimeout(() => {
+    const btn = activeDwellButton();
+    if (btn) btn.classList.remove('disarmed');
+  }, DWELL_ARM_MS);
+}
+
+// Called once per hand-tracking frame; handDetected is false when no hand is visible.
+function updateDwell(handDetected) {
+  const cursorEl = document.getElementById('handCursor');
+  const btn = activeDwellButton();
+  if (!btn) { cursorEl.style.display = 'none'; dwellStart = null; return; }
+
+  cursorEl.style.display = handDetected ? 'block' : 'none';
+  cursorEl.style.left = cursorX + 'px';
+  cursorEl.style.top = cursorY + 'px';
+
+  const now = performance.now();
+  const armed = now >= dwellArmedAt;
+  btn.classList.toggle('disarmed', !armed);
+
+  const r = btn.getBoundingClientRect();
+  const over = handDetected && cursorX >= r.left && cursorX <= r.right && cursorY >= r.top && cursorY <= r.bottom;
+  btn.classList.toggle('hover', over && armed);
+
+  if (!over || !armed) {
+    dwellStart = null;
+    btn.style.setProperty('--p', 0);
+    return;
+  }
+  if (dwellStart === null) dwellStart = now;
+  const p = Math.min(1, (now - dwellStart) / DWELL_HOLD_MS);
+  btn.style.setProperty('--p', p);
+  if (p >= 1) {
+    cursorEl.style.display = 'none';
+    startGame();
+  }
 }
 
 function startGame() {
@@ -748,14 +871,12 @@ function onHandResults(results) {
 
     // Gesture indicator
     const gi = document.getElementById('gestureIndicator');
-    if (ext === 1) {
-      gi.textContent = '☝ Pointing — select / start';
+    if (state !== 'playing') {
+      gi.textContent = '☝ Point at the button and hold';
     } else if (ext === 2) {
       gi.textContent = '✌ Two fingers — moving net';
-    } else if (ext >= 4) {
-      gi.textContent = '🖐 Open hand detected';
     } else {
-      gi.textContent = '✊ Closed fist — hold still';
+      gi.textContent = 'Net stopped — show two fingers ✌ to move it';
     }
 
     // Move net with 2 fingers
@@ -763,20 +884,13 @@ function onHandResults(results) {
       netTargetX = 1 - tip.x; // mirrored
     }
 
-    // Select with 1 finger (pointing)
-    if (ext === 1 && selectCooldown === 0) {
-      if (state === 'splash' || state === 'gameover') {
-        selectCooldown = 60;
-        startGame();
-      }
-    }
-
-    // (hand tracking lines hidden)
+    updateDwell(true);
 
   } else {
     fingerCount = 0;
     document.getElementById('gestureIndicator').textContent =
-      state === 'playing' ? '✌ Show two fingers to move the net' : '☝ Show one finger to start';
+      state === 'playing' ? '✌ Show two fingers to move the net' : '☝ Raise your hand to the camera';
+    updateDwell(false);
   }
 }
 
@@ -807,9 +921,9 @@ async function initMediaPipe() {
     await camera.start();
     // Hide loading, show splash
     setTimeout(() => {
-      showScreen('splashScreen');
       state = 'splash';
-      document.getElementById('gestureIndicator').textContent = '☝ Show one finger to start';
+      showScreen('splashScreen');
+      document.getElementById('gestureIndicator').textContent = '☝ Raise your hand to the camera';
     }, 3000);
   } catch (e) {
     document.querySelector('#loadingScreen .loading-sub').textContent = 'Camera access denied — please allow and reload';
