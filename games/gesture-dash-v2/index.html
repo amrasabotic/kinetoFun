@@ -66,7 +66,8 @@ const MAPS=[
 
 // ── game state ───────────────────────────────────────────────────────
 const ST={MENU:0,SEL:1,HOW:2,PLAY:3,DEAD:4,WIN:5};
-let st=ST.MENU,mi=0,score=0,camX=0,fr=0;
+// How to Play is the first screen every time the game loads.
+let st=ST.HOW,mi=0,score=0,camX=0,fr=0;
 const best=[0,0];
 let obs=[],lvLen=0;
 
@@ -147,12 +148,17 @@ function startGame(mapI){
 
 // ── buttons ──────────────────────────────────────────────────────────
 let btns=[];
-const HOV_FRAMES=30; // 0.5s dwell to select
-let hovId=null,hovProg=0;
+const HOV_FRAMES=54; // ~0.9s dwell to select
+// Buttons ignore the hand for a moment after each screen change, so a hand
+// already resting where a button appears cannot skip How to Play or press
+// through several screens in a row.
+const ARM_MS=1500;
+let hovId=null,hovProg=0,btnScreen=null,btnArmedAt=0;
 function mkB(id,x,y,w,h,lbl,fn){return{id,x,y,w,h,lbl,fn,hov:false};}
 function hitsB(b){const bx=G.x*W,by=G.y*H;return bx>b.x&&bx<b.x+b.w&&by>b.y&&by<b.y+b.h;}
 function tickBtns(){
-  if(!G.det){hovId=null;hovProg=0;return;}
+  if(btnScreen!==st){btnScreen=st;btnArmedAt=performance.now()+ARM_MS;}
+  if(!G.det||performance.now()<btnArmedAt){hovId=null;hovProg=0;return;}
   let found=null;
   for(const b of btns){if(b.hov){found=b;break;}}
   if(!found){hovId=null;hovProg=0;return;}
@@ -440,7 +446,7 @@ function screenHow(){
   cx.textAlign='center';cx.fillStyle='#fff';cx.shadowColor='#33aaff';cx.shadowBlur=14;
   cx.font='bold 28px Segoe UI';cx.fillText('HOW TO PLAY',W/2,H*.13);cx.shadowBlur=0;
   const rows=[
-    ['POINT','Raise only your index finger','Move cursor — hover 0.5s over a button to click it'],
+    ['POINT','Raise only your index finger','Move cursor — hold still on a button until it fills to press it'],
     ['OPEN PALM','Spread all fingers wide','JUMP — open your hand to make the cube leap'],
     ['CLOSED FIST','Curl all fingers in','Nothing — cube keeps running without jumping'],
     ['THE CUBE','Auto-runs to the right','Jump over spikes and blocks to survive!'],
@@ -454,7 +460,7 @@ function screenHow(){
     cx.fillStyle='#55aaff';cx.font='bold 13px Segoe UI';cx.textAlign='left';cx.fillText(r[0],ix+12,iy+19);
     cx.fillStyle='rgba(180,210,255,0.6)';cx.font='12px Segoe UI';cx.fillText(r[1]+' — '+r[2],ix+12,iy+38);
   });
-  btns=[mkB('bk',W/2-96,H*.87,192,46,'Back to Menu',()=>{st=ST.MENU;})];
+  btns=[mkB('bk',W/2-96,H*.87,192,46,"Let's Play",()=>{st=ST.MENU;})];
   btns.forEach(b=>drawB(b,'#33aaff'));tickBtns();
 }
 
