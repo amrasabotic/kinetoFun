@@ -4,12 +4,13 @@ import ShapeIcon from '../common/ShapeIcon';
 import { useProgressStore } from '../../stores/progressStore';
 import type { SortMode } from '../../types';
 
-export type MainMenuAction = SortMode | 'settings' | 'exit';
+export type MainMenuAction = SortMode | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; color: string }[] = [
   { action: 'shape', label: 'Sort by Shape', color: '#2A5CD6' },
   { action: 'color', label: 'Sort by Color', color: '#2FA35A' },
   { action: 'mixed', label: 'Mixed Mode', color: '#F07A26' },
+  { action: 'how-to-play', label: 'How to Play', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', color: '#9B4FD6' },
   { action: 'exit', label: 'Exit', color: '#E4362E' },
 ];

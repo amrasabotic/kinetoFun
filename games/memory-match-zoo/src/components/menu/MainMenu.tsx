@@ -3,12 +3,13 @@ import HoverButton from '../common/HoverButton';
 import { useProgressStore } from '../../stores/progressStore';
 import type { BoardSize } from '../../types';
 
-export type MainMenuAction = BoardSize | 'settings' | 'exit';
+export type MainMenuAction = BoardSize | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; emoji: string; color: string }[] = [
   { action: 'small', label: 'Small Zoo', emoji: '🐣', color: '#2A5CD6' },
   { action: 'medium', label: 'Medium Zoo', emoji: '🦁', color: '#2FA35A' },
   { action: 'big', label: 'Big Zoo', emoji: '🐘', color: '#F07A26' },
+  { action: 'how-to-play', label: 'How to Play', emoji: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', emoji: '⚙️', color: '#9B4FD6' },
   { action: 'exit', label: 'Exit', emoji: '👋', color: '#E4362E' },
 ];

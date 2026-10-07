@@ -4,12 +4,13 @@ import ClockFace from '../common/ClockFace';
 import { useProgressStore } from '../../stores/progressStore';
 import type { ClockGameMode } from '../../types';
 
-export type MainMenuAction = ClockGameMode | 'settings' | 'exit';
+export type MainMenuAction = ClockGameMode | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; emoji: string; color: string }[] = [
   { action: 'read', label: 'Read the Clock', emoji: '🕐', color: '#2A5CD6' },
   { action: 'set', label: 'Set the Clock', emoji: '🔢', color: '#2FA35A' },
   { action: 'mixed', label: 'Mixed Mode', emoji: '🎲', color: '#F07A26' },
+  { action: 'how-to-play', label: 'How to Play', emoji: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', emoji: '⚙️', color: '#9B4FD6' },
   { action: 'exit', label: 'Exit', emoji: '👋', color: '#E4362E' },
 ];

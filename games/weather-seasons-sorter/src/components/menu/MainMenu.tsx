@@ -4,12 +4,13 @@ import WeatherIcon from '../common/WeatherIcon';
 import { useProgressStore } from '../../stores/progressStore';
 import type { WeatherGameMode } from '../../types';
 
-export type MainMenuAction = WeatherGameMode | 'settings' | 'exit';
+export type MainMenuAction = WeatherGameMode | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; emoji: string; color: string }[] = [
   { action: 'wear', label: 'What to Wear', emoji: '🧥', color: '#4A90D9' },
   { action: 'match', label: 'Match the Weather', emoji: '🌦️', color: '#2FA35A' },
   { action: 'mixed', label: 'Mixed Mode', emoji: '🎲', color: '#F07A26' },
+  { action: 'how-to-play', label: 'How to Play', emoji: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', emoji: '⚙️', color: '#9B4FD6' },
   { action: 'exit', label: 'Exit', emoji: '👋', color: '#E4362E' },
 ];

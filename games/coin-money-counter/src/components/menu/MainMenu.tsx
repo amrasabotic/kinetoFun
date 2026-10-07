@@ -4,12 +4,13 @@ import CoinGroup from '../common/CoinGroup';
 import { useProgressStore } from '../../stores/progressStore';
 import type { MoneyGameMode } from '../../types';
 
-export type MainMenuAction = MoneyGameMode | 'settings' | 'exit';
+export type MainMenuAction = MoneyGameMode | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; emoji: string; color: string }[] = [
   { action: 'count', label: 'Count the Coins', emoji: '🪙', color: '#FFD700' },
   { action: 'make', label: 'Make the Amount', emoji: '🏦', color: '#2FA35A' },
   { action: 'mixed', label: 'Mixed Mode', emoji: '🎲', color: '#F07A26' },
+  { action: 'how-to-play', label: 'How to Play', emoji: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', emoji: '⚙️', color: '#9B4FD6' },
   { action: 'exit', label: 'Exit', emoji: '👋', color: '#E4362E' },
 ];

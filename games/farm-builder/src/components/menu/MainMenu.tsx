@@ -3,10 +3,11 @@ import HoverButton from '../common/HoverButton';
 import { useFarmStore } from '../../stores/farmStore';
 import { MAX_PLOT_COUNT } from '../../data/crops';
 
-export type MainMenuAction = 'enter-farm' | 'settings' | 'exit';
+export type MainMenuAction = 'enter-farm' | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; emoji: string; color: string }[] = [
   { action: 'enter-farm', label: 'Enter Farm', emoji: '🚜', color: '#2FA35A' },
+  { action: 'how-to-play', label: 'How to Play', emoji: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', emoji: '⚙️', color: '#4A90D9' },
   { action: 'exit', label: 'Exit', emoji: '👋', color: '#9B4FD6' },
 ];
@@ -34,7 +35,7 @@ export default function MainMenu({ onSelect }: { onSelect: (a: MainMenuAction) =
         <span className="text-white/50">🔓 {unlockedPlotCount}/{MAX_PLOT_COUNT} plots</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-5 max-w-2xl">
+      <div className="grid grid-cols-4 gap-5 max-w-3xl">
         {ITEMS.map((item, i) => (
           <motion.div
             key={item.action}

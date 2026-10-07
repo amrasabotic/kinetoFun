@@ -5,19 +5,23 @@ import HandLostOverlay from './components/common/HandLostOverlay';
 import CalibrationScreen from './components/menu/CalibrationScreen';
 import MainMenu from './components/menu/MainMenu';
 import SettingsScreen from './components/menu/SettingsScreen';
+import HowToPlayScreen from './components/menu/HowToPlayScreen';
 import CourseSelect from './components/menu/CourseSelect';
 import RaceScreen from './components/game/RaceScreen';
 import { useRaceStore } from './stores/raceStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { setVolumes, startMusic, stopMusic, unlockAudio } from './audio/sound';
 
-type Screen = 'calibration' | 'main-menu' | 'settings' | 'course-select' | 'race';
+type Screen = 'calibration' | 'how-to-play' | 'main-menu' | 'settings' | 'course-select' | 'race';
 
 const CALIBRATED_KEY = 'circuit-racer-calibrated-v1';
 
 export default function App() {
+  // Instructions open on every load, not just the first: calibration is
+  // remembered per device, so a new player on a shared TV would otherwise
+  // land on the menu without ever seeing how to play.
   const [screen, setScreen] = useState<Screen>(() =>
-    localStorage.getItem(CALIBRATED_KEY) ? 'main-menu' : 'calibration'
+    localStorage.getItem(CALIBRATED_KEY) ? 'how-to-play' : 'calibration'
   );
   const [selectedCourse, setSelectedCourse] = useState<string>('c1');
 
@@ -41,13 +45,14 @@ export default function App() {
   function handleCalibrationDone() {
     unlockAudio();
     localStorage.setItem(CALIBRATED_KEY, '1');
-    setScreen('main-menu');
+    setScreen('how-to-play');
   }
 
   function handleMainMenuSelect(action: string) {
     unlockAudio();
     if (action === 'exit') { exitToPlatform(); return; }
     if (action === 'settings') { setScreen('settings'); return; }
+    if (action === 'how-to-play') { setScreen('how-to-play'); return; }
     if (action === 'race') { setScreen('course-select'); return; }
   }
 
@@ -67,6 +72,10 @@ export default function App() {
       {screen !== 'calibration' && <HandLostOverlay />}
 
       {screen === 'calibration' && <CalibrationScreen onDone={handleCalibrationDone} />}
+      {screen === 'how-to-play' && (
+        <HowToPlayScreen onDone={() => { unlockAudio(); setScreen('main-menu'); }} doneLabel="Let's Play!" />
+      )}
+
       {screen === 'main-menu' && <MainMenu onSelect={handleMainMenuSelect} />}
       {screen === 'settings' && <SettingsScreen onBack={() => setScreen('main-menu')} />}
       {screen === 'course-select' && <CourseSelect onSelect={handleCourseSelect} onBack={() => setScreen('main-menu')} />}

@@ -4,12 +4,13 @@ import OppositeIcon from '../common/OppositeIcon';
 import { useProgressStore } from '../../stores/progressStore';
 import type { OppositeGameMode } from '../../types';
 
-export type MainMenuAction = OppositeGameMode | 'settings' | 'exit';
+export type MainMenuAction = OppositeGameMode | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; emoji: string; color: string }[] = [
   { action: 'word', label: 'Words', emoji: '🔤', color: '#F07A26' },
   { action: 'picture', label: 'Pictures', emoji: '🖼️', color: '#2FA35A' },
   { action: 'mixed', label: 'Mixed Mode', emoji: '🎲', color: '#9B4FD6' },
+  { action: 'how-to-play', label: 'How to Play', emoji: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', emoji: '⚙️', color: '#4A90D9' },
   { action: 'exit', label: 'Exit', emoji: '👋', color: '#E4362E' },
 ];

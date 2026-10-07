@@ -2,10 +2,11 @@ import { motion } from 'framer-motion';
 import HoverButton from '../common/HoverButton';
 import { usePetStore } from '../../stores/petStore';
 
-export type MainMenuAction = 'enter-pet' | 'settings' | 'exit';
+export type MainMenuAction = 'enter-pet' | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; emoji: string; color: string }[] = [
   { action: 'enter-pet', label: 'Visit Pal', emoji: '😊', color: '#FF1493' },
+  { action: 'how-to-play', label: 'How to Play', emoji: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', emoji: '⚙️', color: '#4A90D9' },
   { action: 'exit', label: 'Exit', emoji: '👋', color: '#9B4FD6' },
 ];
@@ -28,7 +29,7 @@ export default function MainMenu({ onSelect }: { onSelect: (a: MainMenuAction) =
         <span className="text-white/50">🎯 {totalCareActions} actions</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-5 max-w-2xl">
+      <div className="grid grid-cols-4 gap-5 max-w-3xl">
         {ITEMS.map((item, i) => (
           <motion.div
             key={item.action}

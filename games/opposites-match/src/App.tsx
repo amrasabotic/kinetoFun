@@ -5,6 +5,7 @@ import HandLostOverlay from './components/common/HandLostOverlay';
 import CalibrationScreen from './components/menu/CalibrationScreen';
 import MainMenu, { type MainMenuAction } from './components/menu/MainMenu';
 import SettingsScreen from './components/menu/SettingsScreen';
+import HowToPlayScreen from './components/menu/HowToPlayScreen';
 import GameplayScreen from './components/game/GameplayScreen';
 import EndScreen from './components/game/EndScreen';
 import { useProgressStore } from './stores/progressStore';
@@ -12,12 +13,15 @@ import { useSettingsStore } from './stores/settingsStore';
 import type { OppositeGameMode, SessionResult } from './types';
 import { setVolumes, startMusic, stopMusic, unlockAudio } from './audio/sound';
 
-type Screen = 'calibration' | 'main-menu' | 'settings' | 'gameplay' | 'end-screen';
+type Screen = 'calibration' | 'how-to-play' | 'main-menu' | 'settings' | 'gameplay' | 'end-screen';
 
 const CALIBRATED_KEY = 'opposites-match-calibrated-v1';
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem(CALIBRATED_KEY) ? 'main-menu' : 'calibration'));
+  // Instructions open on every load, not just the first: calibration is
+  // remembered per device, so a new player on a shared TV would otherwise
+  // land on the menu without ever seeing how to play.
+  const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem(CALIBRATED_KEY) ? 'how-to-play' : 'calibration'));
   const [mode, setMode] = useState<OppositeGameMode>('word');
   const [lastResult, setLastResult] = useState<SessionResult | null>(null);
   const [newAchievements, setNewAchievements] = useState<string[]>([]);
@@ -31,7 +35,7 @@ export default function App() {
   useEffect(() => { setVolumes(musicVolume, sfxVolume); }, [musicVolume, sfxVolume]);
 
   useEffect(() => {
-    if (screen === 'main-menu' || screen === 'settings') startMusic();
+    if (screen === 'how-to-play' || screen === 'main-menu' || screen === 'settings') startMusic();
     else stopMusic();
     return () => stopMusic();
   }, [screen]);
@@ -44,13 +48,14 @@ export default function App() {
   function handleCalibrationDone() {
     unlockAudio();
     localStorage.setItem(CALIBRATED_KEY, '1');
-    setScreen('main-menu');
+    setScreen('how-to-play');
   }
 
   function handleMainMenuSelect(action: MainMenuAction) {
     unlockAudio();
     if (action === 'exit') { exitToPlatform(); return; }
     if (action === 'settings') { setScreen('settings'); return; }
+    if (action === 'how-to-play') { setScreen('how-to-play'); return; }
     setMode(action);
     setRunId((n) => n + 1);
     setScreen('gameplay');
@@ -75,6 +80,13 @@ export default function App() {
       {screen !== 'calibration' && <HandLostOverlay />}
 
       {screen === 'calibration' && <CalibrationScreen onDone={handleCalibrationDone} />}
+
+      {screen === 'how-to-play' && (
+
+        <HowToPlayScreen onDone={() => { unlockAudio(); setScreen('main-menu'); }} doneLabel="Let's Play!" />
+
+      )}
+
 
       {screen === 'main-menu' && <MainMenu onSelect={handleMainMenuSelect} />}
 

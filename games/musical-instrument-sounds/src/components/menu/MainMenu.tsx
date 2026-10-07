@@ -4,12 +4,13 @@ import InstrumentIcon from '../common/InstrumentIcon';
 import { useProgressStore } from '../../stores/progressStore';
 import type { InstrumentGameMode } from '../../types';
 
-export type MainMenuAction = InstrumentGameMode | 'settings' | 'exit';
+export type MainMenuAction = InstrumentGameMode | 'how-to-play' | 'settings' | 'exit';
 
 const ITEMS: { action: MainMenuAction; label: string; emoji: string; color: string }[] = [
   { action: 'percussion', label: 'Percussion', emoji: '🥁', color: '#E4362E' },
   { action: 'melodic', label: 'Melodic', emoji: '🎻', color: '#4A90D9' },
   { action: 'mixed', label: 'Mixed Mode', emoji: '🎲', color: '#9B4FD6' },
+  { action: 'how-to-play', label: 'How to Play', emoji: '❓', color: '#2FA3A3' },
   { action: 'settings', label: 'Settings', emoji: '⚙️', color: '#2FA35A' },
   { action: 'exit', label: 'Exit', emoji: '👋', color: '#F07A26' },
 ];
