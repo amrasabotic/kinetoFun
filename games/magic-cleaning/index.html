@@ -20,7 +20,12 @@ video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50}
 .screen.hidden{display:none}
 
-#menuScreen{background:linear-gradient(135deg,#667eea,#764ba2)}
+#menuScreen,#howScreen{background:linear-gradient(135deg,#667eea,#764ba2)}
+.howgrid{display:grid;grid-template-columns:repeat(2,minmax(0,360px));gap:14px;margin-bottom:1.2rem}
+.howcard{display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35);border-radius:20px;padding:14px 18px;color:#fff;text-align:left}
+.howcard .ic{font-size:32px;line-height:1}
+.howcard .t{font-family:'Fredoka One',cursive;font-size:1.25rem;margin-bottom:4px}
+.howcard .d{font-size:.95rem;line-height:1.45;opacity:.9}
 #levelScreen{background:linear-gradient(135deg,#f093fb,#f5576c)}
 #resultScreen{background:rgba(0,0,0,0.8);backdrop-filter:blur(8px)}
 
@@ -95,6 +100,19 @@ video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
   <div class="pill" id="hudM">🏠 Room</div>
 </div>
 
+<!-- HOW TO PLAY -->
+<div id="howScreen" class="screen hidden">
+  <h1 class="title" style="font-size:clamp(2rem,5vw,3.4rem)">How to Play</h1>
+  <div class="howgrid">
+    <div class="howcard"><div class="ic">🖐️</div><div><div class="t">Wipe</div><div class="d">Open your hand wide and move it over the dirt to wipe it away.</div></div></div>
+    <div class="howcard"><div class="ic">✨</div><div><div class="t">Clean it all</div><div class="d">Clean 95% of the dirt before the timer runs out to win.</div></div></div>
+    <div class="howcard"><div class="ic">⏱️</div><div><div class="t">Beat the clock</div><div class="d">The more time you have left at the end, the more stars you earn.</div></div></div>
+    <div class="howcard"><div class="ic">🗺️</div><div><div class="t">Four maps</div><div class="d">Room, Kitchen, Garden and Bathroom — each one gives you less time.</div></div></div>
+    <div class="howcard"><div class="ic">☝️</div><div><div class="t">Menus</div><div class="d">Point one finger at a button and hold it there until the bar fills.</div></div></div>
+  </div>
+  <button class="btn" data-act="menu"><div class="bar"></div><span>▶ Let's Play</span></button>
+</div>
+
 <!-- MENU -->
 <div id="menuScreen" class="screen hidden">
   <h1 class="title">✨ Magic Cleaning ✨</h1>
@@ -102,6 +120,7 @@ video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
   <div style="display:flex;flex-direction:column;align-items:center">
     <button class="btn" data-act="play"><div class="bar"></div><span>🎮 Play Game</span></button>
     <button class="btn" data-act="levels"><div class="bar"></div><span>🗺️ Choose Map</span></button>
+    <button class="btn" data-act="how"><div class="bar"></div><span>❓ How to Play</span></button>
   </div>
 </div>
 
@@ -284,6 +303,10 @@ let hx = -1, hy = -1, handSeen = false, wiping = false;
 // Gesture hover
 let hovEl = null, hovStart = 0, hovFill = 0;
 const HOLD_MS = 1300;
+// Buttons ignore the hand for a moment after each screen appears, so a hand
+// already resting on one cannot skip How to Play or press through screens.
+const ARM_MS = 1500;
+let hoverArmedAt = 0;
 const WIPE_R  = 50;
 
 // ─────────────────────────────────────────────
@@ -306,7 +329,8 @@ window.addEventListener('resize', ()=>{ setSize(); if(state==='playing') startGa
 // SCREENS
 // ─────────────────────────────────────────────
 function show(id){
-  ['menuScreen','levelScreen','resultScreen'].forEach(s=>document.getElementById(s).classList.add('hidden'));
+  hoverArmedAt = Date.now() + ARM_MS;
+  ['howScreen','menuScreen','levelScreen','resultScreen'].forEach(s=>document.getElementById(s).classList.add('hidden'));
   if(id) document.getElementById(id).classList.remove('hidden');
   const hud = document.getElementById('hud');
   hud.style.display = id ? 'none' : 'flex';
@@ -534,6 +558,7 @@ function doHover(px,py){
     if(px>=b.r.left&&px<=b.r.right&&py>=b.r.top&&py<=b.r.bottom){hit=b;break;}
   }
   const now=Date.now();
+  if(now<hoverArmedAt) hit=null;
 
   if(hovEl && (!hit||hit.el!==hovEl.el)){
     hovEl.el.classList.remove('lit');
@@ -568,6 +593,8 @@ function doAction(act,id){
       buildCards(); show('levelScreen'); break;
     case 'menu':
       show('menuScreen'); break;
+    case 'how':
+      show('howScreen'); break;
     case 'map':
       currentMap=MAPS.find(m=>m.id===id)||MAPS[0];
       show(null); startGame(); break;
@@ -659,6 +686,11 @@ function onResults(res){
 const vid=document.getElementById('vid');
 
 function boot(){
+  // How to Play is the first screen, shown while the camera and hand model start.
+  document.getElementById('loader').style.display='none';
+  buildCards();
+  show('howScreen');
+
   const hands=new Hands({
     locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`
   });
@@ -669,11 +701,8 @@ function boot(){
     onFrame:async()=>{ await hands.send({image:vid}); },
     width:640, height:480
   });
-  cam.start().then(()=>{
-    document.getElementById('loader').style.display='none';
-    buildCards();
-    show('menuScreen');
-  }).catch(e=>{
+  cam.start().catch(e=>{
+    document.getElementById('loader').style.display='flex';
     document.getElementById('loader').innerHTML='<div style="font-size:1rem;color:#f88;padding:2rem;text-align:center">Camera access denied.<br>Please allow camera and reload.</div>';
     console.error(e);
   });

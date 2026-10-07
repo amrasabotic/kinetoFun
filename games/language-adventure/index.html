@@ -214,6 +214,18 @@
     }
     #load-error { color: #FC8181; font-size: 18px; display: none; }
 
+    /* ── HOW TO PLAY SCREEN ───────────────────────── */
+    #screen-howto { gap: 26px; }
+    .howto-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 380px)); gap: 14px; }
+    .howto-card {
+      display: flex; gap: 14px; align-items: flex-start; text-align: left;
+      padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+    }
+    .howto-card .ic { font-size: 32px; line-height: 1; }
+    .howto-card .t  { font-size: 19px; font-weight: 800; margin-bottom: 4px; }
+    .howto-card .d  { font-size: 15px; line-height: 1.45; color: var(--text-dim); }
+    .howto-note { font-size: 15px; color: var(--text-dim); }
+
     /* ── MENU SCREEN ──────────────────────────────── */
     #screen-menu { gap: 36px; }
     .menu-globe { font-size: 90px; animation: float 3s ease-in-out infinite; }
@@ -473,6 +485,21 @@
   <div id="load-error">❌ Camera access denied — please allow camera and reload.</div>
 </div>
 
+<!-- ════ SCREEN: HOW TO PLAY ════ -->
+<div id="screen-howto" class="screen">
+  <div class="screen-title">How to Play</div>
+  <div class="howto-grid">
+    <div class="howto-card"><div class="ic">👆</div><div><div class="t">Point &amp; hold</div><div class="d">The cursor follows your index finger. Hold it still on a button for a moment to press it — or pinch to press straight away.</div></div></div>
+    <div class="howto-card"><div class="ic">🖼️</div><div><div class="t">Name the picture</div><div class="d">A picture appears with four words. Choose the word that matches it.</div></div></div>
+    <div class="howto-card"><div class="ic">🔟</div><div><div class="t">Ten questions</div><div class="d">Each round has 10 questions. Pick a category first — animals, food and more.</div></div></div>
+    <div class="howto-card"><div class="ic">🔥</div><div><div class="t">Build a streak</div><div class="d">Each right answer is worth 10. Three in a row doubles it, six in a row triples it.</div></div></div>
+    <div class="howto-card"><div class="ic">✌️</div><div><div class="t">Next question</div><div class="d">After an answer, show a victory sign to move on straight away.</div></div></div>
+    <div class="howto-card"><div class="ic">✊</div><div><div class="t">Go back</div><div class="d">Make a fist to go back from the category list or the results.</div></div></div>
+  </div>
+  <button class="btn btn-primary" data-action="howto-done">▶ Let's Play</button>
+  <div class="howto-note">Point at the button and hold still to start</div>
+</div>
+
 <!-- ════ SCREEN: MENU ════ -->
 <div id="screen-menu" class="screen">
   <div class="menu-globe">🌍</div>
@@ -493,6 +520,7 @@
     </div>
   </div>
   <button class="btn btn-primary" data-action="goto-category">▶ Start Game</button>
+  <button class="btn btn-secondary" data-action="goto-howto">❓ How to Play</button>
 </div>
 
 <!-- ════ SCREEN: CATEGORY ════ -->
@@ -722,7 +750,15 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 /* ══════════════════════════════════════════════════════════
    SCREEN MANAGER
 ══════════════════════════════════════════════════════════ */
+// Every screen ignores the hand for a moment after it appears, so a hand
+// already resting on a button (or holding a pinch / open palm) cannot skip
+// How to Play or press through several screens in a row.
+const UI_ARM_MS = 1500;
+let uiArmedAt = 0;
+function uiArmed() { return performance.now() >= uiArmedAt; }
+
 function showScreen(name) {
+  uiArmedAt = performance.now() + UI_ARM_MS;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById('screen-' + name);
   if (el) el.classList.add('active');
@@ -946,7 +982,8 @@ function dispatchAction(el) {
   const action = el.dataset.action;
   SFX.select();
 
-  if      (action === 'goto-menu')     renderMenu();
+  if      (action === 'goto-menu' || action === 'howto-done') renderMenu();
+  else if (action === 'goto-howto')    showScreen('howto');
   else if (action === 'goto-category') renderCategory();
   else if (action === 'select-cat')    startGame(el.dataset.cat);
   else if (action === 'play-again')    startGame(S.category.id);
@@ -981,7 +1018,7 @@ function resetDwell() {
 }
 
 function updateDwell(now) {
-  const target = findTarget(cx, cy);
+  const target = uiArmed() ? findTarget(cx, cy) : null;
 
   if (target !== lastHovered) {
     if (lastHovered) { lastHovered.classList.remove('hovered'); }
@@ -1125,7 +1162,7 @@ function onResults(results) {
   const now = Date.now();
 
   // Gesture-driven actions (with cooldown)
-  if (now - lastGestureAct > G_COOLDOWN) {
+  if (now - lastGestureAct > G_COOLDOWN && uiArmed()) {
 
     if (gesture === 'pinch') {
       lastGestureAct = now;
@@ -1185,6 +1222,9 @@ hands.setOptions({
 
 hands.onResults(onResults);
 
+// How to Play is the first screen, shown while the camera and hand model load.
+showScreen('howto');
+
 const camera = new Camera(videoEl, {
   onFrame: async () => { await hands.send({ image: videoEl }); },
   width: 640, height: 480,
@@ -1194,10 +1234,10 @@ camera.start()
   .then(() => {
     hCanvas.width  = 200;
     hCanvas.height = 150;
-    // Give MediaPipe WASM a moment to warm up then show menu
-    setTimeout(() => renderMenu(), 2000);
+    // How to Play is already showing; the menu follows when the player is ready.
   })
   .catch(() => {
+    showScreen('loading');
     const errEl = document.getElementById('load-error');
     errEl.style.display = 'block';
     document.querySelector('.spinner').style.display = 'none';
