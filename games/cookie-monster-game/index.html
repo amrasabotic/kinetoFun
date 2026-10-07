@@ -83,9 +83,16 @@ let handX = -999, handY = -999; // screen coords of index finger tip
 let handVisible = false;
 
 /* ─── Hover-to-select state ────────────────────────────── */
-const HOVER_DURATION = 500; // ms to hover to confirm
+const HOVER_DURATION = 900; // ms to hover to confirm
 let hoverTarget = null;   // which button is being hovered
 let hoverStart  = 0;      // timestamp when hover began
+
+// Buttons ignore the hand for a moment after they appear, so a hand already
+// resting where Start or Play Again is drawn cannot skip the instructions
+// or restart the game by accident.
+const BUTTON_ARM_MS = 1500;
+let buttonsArmedAt = 0;
+function armButtonsLater() { buttonsArmedAt = performance.now() + BUTTON_ARM_MS; }
 
 /* ─── Monster state ────────────────────────────────────── */
 const monster = {
@@ -105,7 +112,7 @@ for (let i = 0; i < 90; i++) {
 function buildButtons() {
   buttons = [];
   if (state === 'start') {
-    buttons.push({ id: 'start', label: '▶  Start Game', x: W / 2, y: H * 0.62, w: 220, h: 52, action: startGame });
+    buttons.push({ id: 'start', label: '▶  Start Game', x: W / 2, y: H * 0.82, w: 240, h: 58, action: startGame });
   } else if (state === 'gameover') {
     buttons.push({ id: 'restart', label: '↺  Play Again', x: W / 2, y: H * 0.67, w: 220, h: 52, action: () => { startGame(); } });
   }
@@ -161,6 +168,7 @@ function endGame() {
   clearInterval(gameTimer);
   state = 'gameover';
   buildButtons();
+  armButtonsLater();
 }
 
 /* ─── Drawing helpers ───────────────────────────────────── */
@@ -315,6 +323,7 @@ function drawButton(btn, now) {
   const pct = isHovering ? Math.min(1, (now - hoverStart) / HOVER_DURATION) : 0;
 
   ctx.save();
+  if (performance.now() < buttonsArmedAt) ctx.globalAlpha = 0.4;
   ctx.translate(btn.x, btn.y);
 
   // bg
@@ -388,35 +397,90 @@ function drawHUD() {
   ctx.restore();
 }
 
+const HOW_TO_PLAY = [
+  { icon: '🖐', title: 'Move your hand', desc: 'The blue monster follows your index fingertip around the screen.' },
+  { icon: '🍪', title: 'Eat the cookies', desc: 'Steer the monster onto a cookie to gobble it up. There are 20 cookies.' },
+  { icon: '⏱', title: '45 seconds', desc: 'Eat as many cookies as you can before the time bar at the top runs out.' },
+  { icon: '🎉', title: 'Clear the board', desc: 'Eat all 20 cookies to finish early and win!' },
+];
+
+function wrapLines(text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  words.forEach(w => {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w; }
+    else line = test;
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawHowToPlay() {
+  const top = H * 0.36;
+  ctx.save();
+  ctx.fillStyle = '#FAC775';
+  ctx.font = `700 ${Math.min(22, W * 0.03)}px system-ui`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('HOW TO PLAY', W / 2, top);
+
+  const gap = 16;
+  const cw = Math.min(340, (W - 48 - gap) / 2);
+  const ch = Math.min(110, H * 0.15);
+  const gridTop = top + 26;
+  HOW_TO_PLAY.forEach((card, i) => {
+    const cx = W / 2 + (i % 2 === 0 ? -cw - gap / 2 : gap / 2);
+    const cy = gridTop + Math.floor(i / 2) * (ch + gap);
+
+    ctx.fillStyle = 'rgba(83,74,183,0.22)';
+    ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 14); ctx.fill();
+    ctx.strokeStyle = 'rgba(175,169,236,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = '#fff';
+    ctx.font = '32px system-ui';
+    ctx.fillText(card.icon, cx + 14, cy + 14);
+
+    const textX = cx + 62;
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 17px system-ui';
+    ctx.fillText(card.title, textX, cy + 14);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = '400 14px system-ui';
+    wrapLines(card.desc, cw - 76).forEach((ln, j) => ctx.fillText(ln, textX, cy + 40 + j * 19));
+  });
+  ctx.restore();
+}
+
 function drawStartScreen(t) {
   // title
   ctx.save();
   const pulse = 1 + 0.015 * Math.sin(t * 0.002);
-  ctx.translate(W / 2, H * 0.22);
+  ctx.translate(W / 2, H * 0.11);
   ctx.scale(pulse, pulse);
 
+  const titleSize = Math.min(64, W * 0.09, H * 0.09);
   ctx.fillStyle = '#1565C0';
-  ctx.font = `900 ${Math.min(82, W * 0.11)}px 'Segoe UI', system-ui, sans-serif`;
+  ctx.font = `900 ${titleSize}px 'Segoe UI', system-ui, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(21,101,192,0.7)'; ctx.shadowBlur = 30;
   ctx.fillText('COOKIE', 0, 0);
 
   ctx.fillStyle = '#FAC775';
   ctx.shadowColor = 'rgba(250,199,117,0.5)'; ctx.shadowBlur = 20;
-  ctx.fillText('MONSTER', 0, Math.min(90, W * 0.12));
+  ctx.fillText('MONSTER', 0, titleSize * 1.1);
   ctx.shadowBlur = 0;
   ctx.restore();
 
-  // subtitle
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.font = '400 16px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('Move your hand → monster follows · Hover finger over button to select', W / 2, H * 0.5);
+  drawHowToPlay();
 
   // hint
-  ctx.fillStyle = 'rgba(175,169,236,0.7)';
-  ctx.font = '400 13px system-ui';
-  ctx.fillText('Point with your index finger and hold over the button', W / 2, H * 0.56);
+  ctx.fillStyle = 'rgba(175,169,236,0.8)';
+  ctx.font = '400 15px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('Point at the button and hold your hand still to start', W / 2, H * 0.82 + 48);
 
   buttons.forEach(b => drawButton(b, t));
   drawFingerCursor(handX, handY);
@@ -517,7 +581,7 @@ function drawLoadingScreen() {
 
 /* ─── Hover detection ──────────────────────────────────── */
 function checkHover(now) {
-  if (!handVisible) { hoverTarget = null; return; }
+  if (!handVisible || performance.now() < buttonsArmedAt) { hoverTarget = null; return; }
   let hit = null;
   for (const btn of buttons) {
     if (Math.abs(handX - btn.x) < btn.w / 2 && Math.abs(handY - btn.y) < btn.h / 2) {
@@ -596,10 +660,12 @@ async function initTracking() {
     monster.targetX = W / 2; monster.targetY = H / 2;
     state = 'start';
     buildButtons();
+    armButtonsLater();
 
   } catch (e) {
     state = 'start'; // fallback — still show game screen
     buildButtons();
+    armButtonsLater();
     debugEl.textContent = 'Camera error: ' + e.message;
   }
 }
