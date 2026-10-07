@@ -18,13 +18,14 @@ function postScore(score: number) {
 export default function App() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [progress, setProgress] = useState<Progress>(() => loadProgress());
-  const [screen, setScreen] = useState<Screen>('landing');
+  // The tutorial (How to Play) opens every time the game loads, then leads to the landing menu.
+  const [screen, setScreen] = useState<Screen>('tutorial');
   const [modeId, setModeId] = useState<ModeId>('endless');
   const [runKey, setRunKey] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
   const [newBest, setNewBest] = useState(false);
   const [unlocked, setUnlocked] = useState<string[]>([]);
-  const afterTutorial = useRef<Screen>('game');
+  const afterTutorial = useRef<Screen>('landing');
 
   useEffect(() => { saveSettings(settings); }, [settings]);
 

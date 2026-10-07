@@ -13,6 +13,11 @@ const PANEL_BG = 'linear-gradient(165deg,#161021 0%,#241a33 50%,#120d1c 100%)';
 const PRIMARY = 'linear-gradient(90deg,#d97706,#f59e0b)';
 
 // ── DwellLayer ────────────────────────────────────────────────────────────────
+// Buttons ignore the hand for a moment after a screen appears and after each
+// press, so a hand already resting on a button cannot skip a screen unread or
+// race through the tutorial steps.
+const ARM_MS = 1500;
+
 export function DwellLayer({ children }: {
   children: (p: { active: string | null; progress: number }) => React.ReactNode;
 }) {
@@ -24,10 +29,11 @@ export function DwellLayer({ children }: {
   const dwellStart = useRef<number | null>(null);
   const activeRef = useRef<string | null>(null);
   const rafRef = useRef(0);
+  const armedAt = useRef(performance.now() + ARM_MS);
 
   const loop = useCallback((ts: number) => {
     const h = handRef.current;
-    if (!h.detected) {
+    if (!h.detected || performance.now() < armedAt.current) {
       setActive(null); setProgress(0); dwellStart.current = null; activeRef.current = null;
       rafRef.current = requestAnimationFrame(loop); return;
     }
@@ -45,6 +51,7 @@ export function DwellLayer({ children }: {
       setProgress(p);
       if (p >= 1) {
         (document.querySelector(`[data-dwell-id="${hov}"]`) as HTMLElement | null)?.click();
+        armedAt.current = performance.now() + ARM_MS;
         dwellStart.current = null; setActive(null); setProgress(0); activeRef.current = null;
       }
     }
@@ -80,13 +87,21 @@ export function DBtn({ id, active, progress, onClick, className = '', style, chi
   className?: string; style?: React.CSSProperties; children: React.ReactNode;
 }) {
   const isAct = active === id;
+  // The wrapper is the flex/grid child, so sizing and margin classes belong on
+  // it; the button fills the wrapper and keeps the visual classes. Buttons
+  // without their own horizontal padding or fixed width get comfortable padding.
+  const tokens = className.split(/\s+/).filter(Boolean);
+  const isLayout = (t: string) => /^(flex-1|flex-\[.+\]|w-\S+|grow|shrink-0|self-\S+|m[tby]?-\S+)$/.test(t);
+  const outer = tokens.filter(isLayout).join(' ');
+  const inner = tokens.filter((t) => !isLayout(t)).join(' ');
+  const padded = tokens.some((t) => /^(p|px)-/.test(t) || /^w-\d/.test(t));
   return (
-    <div className="relative rounded-2xl overflow-hidden">
+    <div className={`relative rounded-2xl overflow-hidden ${outer}`}>
       <button data-dwell-id={id}
         onClick={(e) => { if (e.isTrusted) return; snd.initAudio(); onClick(); }}
         onMouseDown={(e) => e.preventDefault()}
         style={{ cursor: 'default', userSelect: 'none', ...style }}
-        className={`${className} ${isAct ? 'brightness-125 scale-[1.03]' : ''} transition-all duration-150 relative`}>
+        className={`w-full ${padded ? '' : 'px-6 min-h-[3rem] whitespace-nowrap'} ${inner} ${isAct ? 'brightness-125' : ''} transition-all duration-150 relative`}>
         {children}
       </button>
       <div className="absolute bottom-0 left-0 h-1.5 pointer-events-none"
@@ -112,7 +127,7 @@ export function Landing({ progress, onPlay, onShop, onHowTo, onSettings }: {
               🏆 Best {best.toLocaleString()} &nbsp;·&nbsp; 🌊 Wave {progress.bestWave} &nbsp;·&nbsp; 🪙 {progress.coins}
             </p>
           </div>
-          <div className="flex flex-col gap-3 w-80">
+          <div className="flex flex-col gap-3 w-96">
             <DBtn id="play" active={active} progress={p} onClick={onPlay}
               className="py-4 rounded-2xl text-xl font-bold text-white" style={{ background: PRIMARY }}>
               ⚔️ Play
