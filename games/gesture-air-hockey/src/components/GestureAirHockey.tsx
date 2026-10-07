@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DwellCursor, HandProvider, useHand } from "./handControl";
 
 type Screen = "menu" | "howto" | "difficulty" | "game";
 type Difficulty = "easy" | "medium" | "hard" | "endless";
@@ -30,35 +31,33 @@ const DIFFS: Record<Difficulty, DiffCfg> = {
 };
 
 export default function GestureAirHockey() {
-  const [screen, setScreen] = useState<Screen>("menu");
+  // How To Play is the first thing every player sees when the game loads.
+  const [screen, setScreen] = useState<Screen>("howto");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
-
-  // Briefly show the main menu on first load, then open How To Play
-  // automatically — unless the player already navigated away on their own.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setScreen(s => (s === "menu" ? "howto" : s));
-    }, 2200);
-    return () => clearTimeout(t);
-  }, []);
+  // During a rally the mallet is the pointer, so the cursor only shows over
+  // the match when it is paused or finished.
+  const [matchOverlay, setMatchOverlay] = useState(false);
 
   return (
-    <div className="min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#1a2a6c_0%,_#0b1230_55%,_#04061a_100%)] text-white relative">
-      <AnimatedBackdrop />
-      {screen === "menu" && (
-        <Menu onPlay={() => setScreen("difficulty")} onHow={() => setScreen("howto")} />
-      )}
-      {screen === "howto" && <HowTo onBack={() => setScreen("menu")} />}
-      {screen === "difficulty" && (
-        <DifficultyPick
-          onBack={() => setScreen("menu")}
-          onPick={(d) => { setDifficulty(d); setScreen("game"); }}
-        />
-      )}
-      {screen === "game" && (
-        <Game difficulty={difficulty} onExit={() => setScreen("menu")} />
-      )}
-    </div>
+    <HandProvider>
+      <div className="min-h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_top,_#1a2a6c_0%,_#0b1230_55%,_#04061a_100%)] text-white relative">
+        <DwellCursor visible={screen !== "game" || matchOverlay} />
+        <AnimatedBackdrop />
+        {screen === "menu" && (
+          <Menu onPlay={() => setScreen("difficulty")} onHow={() => setScreen("howto")} />
+        )}
+        {screen === "howto" && <HowTo onBack={() => setScreen("menu")} />}
+        {screen === "difficulty" && (
+          <DifficultyPick
+            onBack={() => setScreen("menu")}
+            onPick={(d) => { setDifficulty(d); setScreen("game"); }}
+          />
+        )}
+        {screen === "game" && (
+          <Game difficulty={difficulty} onExit={() => setScreen("menu")} onOverlayChange={setMatchOverlay} />
+        )}
+      </div>
+    </HandProvider>
   );
 }
 
@@ -121,13 +120,14 @@ function HowTo({ onBack }: { onBack: () => void }) {
         <h2 className="text-3xl font-bold mb-6">How To Play</h2>
         <ul className="space-y-4 text-white/80 text-lg">
           <li>🖐️ Allow webcam access when asked.</li>
+          <li>👉 Point at a button and hold your hand still until it fills to press it.</li>
           <li>✋ Move your hand to move your mallet — keep it in frame.</li>
           <li>🏒 Stay inside the dashed box on the webcam — that's your half.</li>
           <li>🥅 Knock the puck into the robot's goal to score!</li>
           <li>🤖 First to 7 wins (Endless mode plays forever).</li>
         </ul>
         <div className="mt-8">
-          <BigButton onClick={onBack} variant="primary">← Back</BigButton>
+          <BigButton onClick={onBack} variant="primary">Got it →</BigButton>
         </div>
       </div>
     </main>
@@ -152,6 +152,7 @@ function DifficultyPick({
           return (
             <button
               key={d}
+              data-dwell=""
               onClick={() => onPick(d)}
               className={`group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br ${o.tint} p-6 text-left transition-all hover:scale-[1.03] hover:border-white/30 shadow-xl hover:shadow-2xl`}
             >
@@ -191,20 +192,21 @@ function BigButton({
   const cls = variant === "primary"
     ? `${base} bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-500 text-white shadow-[0_8px_30px_rgba(120,80,255,0.55)] hover:brightness-110 hover:shadow-[0_12px_40px_rgba(120,80,255,0.7)]`
     : `${base} border border-white/20 bg-white/5 text-white hover:bg-white/10 backdrop-blur`;
-  return <button onClick={onClick} className={cls}>{children}</button>;
+  return <button data-dwell="" onClick={onClick} className={cls}>{children}</button>;
 }
 
 /* ----------------------------- GAME ----------------------------- */
-function Game({ difficulty, onExit }: { difficulty: Difficulty; onExit: () => void }) {
+function Game({ difficulty, onExit, onOverlayChange }: {
+  difficulty: Difficulty;
+  onExit: () => void;
+  onOverlayChange: (shown: boolean) => void;
+}) {
   const cfg = DIFFS[difficulty];
   const winScore = difficulty === "endless" ? Infinity : 7;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const handXRef = useRef<number | null>(null);
-  const handYRef = useRef<number | null>(null);
-  const [camReady, setCamReady] = useState(false);
-  const [camError, setCamError] = useState<string | null>(null);
+  const { hand, stream, ready: camReady, error: camError } = useHand();
   const [countdown, setCountdown] = useState<number | null>(3);
   const [playerScore, setPlayerScore] = useState(0);
   const [botScore, setBotScore] = useState(0);
@@ -217,6 +219,8 @@ function Game({ difficulty, onExit }: { difficulty: Difficulty; onExit: () => vo
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
   useEffect(() => { pausedRef.current = paused; }, [paused]);
+  useEffect(() => { onOverlayChange(paused || winner !== null); }, [paused, winner, onOverlayChange]);
+  useEffect(() => () => onOverlayChange(false), [onOverlayChange]);
 
   const stateRef = useRef({
     puck: { x: TABLE_W / 2, y: TABLE_H / 2, vx: 0, vy: 0 },
@@ -225,92 +229,13 @@ function Game({ difficulty, onExit }: { difficulty: Difficulty; onExit: () => vo
     playing: false,
   });
 
-  /* --- camera + MediaPipe --- */
+  /* --- webcam preview (tracking itself runs in HandProvider) --- */
   useEffect(() => {
-    let stopped = false;
-    let stream: MediaStream | null = null;
-    let landmarker: any = null;
-    let rafId = 0;
-
-    async function init() {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user", frameRate: { ideal: 60, max: 60 } },
-          audio: false,
-        });
-        if (stopped) return;
-        const video = videoRef.current!;
-        video.srcObject = stream;
-        await video.play();
-
-        const dynImport = new Function("u", "return import(u)") as (u: string) => Promise<any>;
-        const vision: any = await dynImport(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs",
-        );
-        const fileset = await vision.FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm",
-        );
-        landmarker = await vision.HandLandmarker.createFromOptions(fileset, {
-          baseOptions: {
-            modelAssetPath:
-              "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "GPU",
-          },
-          runningMode: "VIDEO",
-          numHands: 1,
-          minHandDetectionConfidence: 0.5,
-          minHandPresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        setCamReady(true);
-
-        let lastTs = -1;
-        // EMA smoothing of normalized coords
-        let sx: number | null = null;
-        let sy: number | null = null;
-        const ALPHA = 0.55; // higher = more responsive, lower = smoother
-
-        const loop = () => {
-          if (stopped) return;
-          const v = videoRef.current;
-          if (v && v.readyState >= 2 && landmarker) {
-            const ts = performance.now();
-            if (ts !== lastTs) {
-              lastTs = ts;
-              const res = landmarker.detectForVideo(v, ts);
-              if (res?.landmarks?.length) {
-                const lms = res.landmarks[0];
-                // Use average of palm landmarks for stability: wrist(0), index_mcp(5), middle_mcp(9), ring_mcp(13), pinky_mcp(17)
-                const ids = [0, 5, 9, 13, 17];
-                let ax = 0, ay = 0;
-                for (const i of ids) { ax += lms[i].x; ay += lms[i].y; }
-                ax /= ids.length; ay /= ids.length;
-                const mx = 1 - ax; // mirror
-                const my = ay;
-                sx = sx == null ? mx : sx + (mx - sx) * ALPHA;
-                sy = sy == null ? my : sy + (my - sy) * ALPHA;
-                handXRef.current = sx;
-                handYRef.current = sy;
-              }
-            }
-          }
-          rafId = requestAnimationFrame(loop);
-        };
-        loop();
-      } catch (e: any) {
-        console.error(e);
-        setCamError(e?.message || "Could not access webcam");
-      }
-    }
-    init();
-    return () => {
-      stopped = true;
-      cancelAnimationFrame(rafId);
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      if (landmarker?.close) landmarker.close();
-    };
-  }, []);
+    const v = videoRef.current;
+    if (!v || !stream) return;
+    v.srcObject = stream;
+    v.play().catch(() => {});
+  }, [stream]);
 
   /* --- countdown then play --- */
   useEffect(() => {
@@ -350,10 +275,10 @@ function Game({ difficulty, onExit }: { difficulty: Difficulty; onExit: () => vo
 
       if (!pausedRef.current) {
         // Player mallet follows hand (mapped to player half)
-        if (handXRef.current != null && handYRef.current != null) {
-          const tx = handXRef.current * TABLE_W;
+        if (hand.current.palmX != null && hand.current.palmY != null) {
+          const tx = hand.current.palmX * TABLE_W;
           // hand y 0..1 -> player half (TABLE_H/2 .. TABLE_H)
-          const ty = TABLE_H / 2 + handYRef.current * (TABLE_H / 2);
+          const ty = TABLE_H / 2 + hand.current.palmY * (TABLE_H / 2);
           s.player.px = s.player.x;
           s.player.py = s.player.y;
           // Higher follow factor for responsiveness (smoothing is on input side)
@@ -475,8 +400,8 @@ function Game({ difficulty, onExit }: { difficulty: Difficulty; onExit: () => vo
                 </div>
                 <div className="text-xl mb-6 text-white/70">{playerScore} – {botScore}</div>
                 <div className="flex gap-3">
-                  <button onClick={reset} className="rounded-xl bg-gradient-to-r from-cyan-400 to-fuchsia-500 px-6 py-3 font-bold">Play Again</button>
-                  <button onClick={onExit} className="rounded-xl border border-white/30 px-6 py-3">Menu</button>
+                  <button data-dwell="" onClick={reset} className="rounded-xl bg-gradient-to-r from-cyan-400 to-fuchsia-500 px-6 py-3 font-bold">Play Again</button>
+                  <button data-dwell="" onClick={onExit} className="rounded-xl border border-white/30 px-6 py-3">Menu</button>
                 </div>
               </div>
             )}
@@ -493,16 +418,20 @@ function Game({ difficulty, onExit }: { difficulty: Difficulty; onExit: () => vo
         </div>
       </div>
 
-      {/* Bottom-right: pause/quit buttons above webcam */}
+      {/* Bottom-right: pause/quit buttons above webcam. They need a longer
+          hand hold than menu buttons so steering the mallet past them
+          mid-rally does not press them. */}
       <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
         <div className="flex gap-2">
           <button
+            data-dwell="1500"
             onClick={() => setPaused((p) => !p)}
             className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur hover:bg-white/20"
           >
             {paused ? "▶ Resume" : "⏸ Pause"}
           </button>
           <button
+            data-dwell="1500"
             onClick={onExit}
             className="rounded-xl border border-rose-300/30 bg-rose-500/20 px-4 py-2 text-sm font-semibold backdrop-blur hover:bg-rose-500/30"
           >
