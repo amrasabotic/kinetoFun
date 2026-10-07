@@ -78,7 +78,10 @@ const SEG_D = 14;
 const P_R   = 10;
 const B_R   = 9;
 const F_R   = 7;
-const HOLD_NEED = 15;   // mediapipe frames ≈ 0.5 s
+const HOLD_NEED = 54;   // render frames ≈ 0.9 s at 60 fps
+// Menu items ignore the hand for a moment after each screen appears, so a
+// hand already resting on one cannot skip How to Play or press through screens.
+const HOVER_ARM_MS = 1500;
 const HOVER_D   = 85;   // px radius to hover a menu item
 
 const BOT_PALS = [
@@ -92,7 +95,8 @@ const PLR_PAL = ['#39d98a','#1d9e75','#0f5e47'];
 const F_COLS  = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#f06595','#74c0fc'];
 
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
-let STATE    = 'MENU';
+// How to Play is the first screen every time the game loads.
+let STATE    = 'HOW';
 let score    = 0, best = 0, frameN = 0;
 let cdVal    = 3, cdTimer = null, deathAt = 0;
 let foods    = [], player = null, bots = [], sparks = [];
@@ -111,6 +115,7 @@ let menuItems  = [];          // [{x,y,action,idx}]
 let hovIdx     = -1;
 let holdFrames = 0;
 let holdFired  = false;
+let hoverScreen = null, hoverArmedAt = 0;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function lerpRGB(a, b, t) {
@@ -483,7 +488,7 @@ function drawCursor() {
     ctx.stroke();
   }
   // hold progress arc
-  if ((STATE === 'MENU' || STATE === 'DEAD') && holdFrames > 0) {
+  if ((STATE === 'MENU' || STATE === 'DEAD' || STATE === 'HOW') && holdFrames > 0) {
     const prog = holdFrames / HOLD_NEED;
     ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 3.5;
     ctx.beginPath(); ctx.arc(fX, fY, 20, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2); ctx.stroke();
@@ -492,7 +497,7 @@ function drawCursor() {
 }
 
 // ─── MENU ────────────────────────────────────────────────────────────────────
-const MENU_DEFS = [{ lbl: '▶  PLAY', act: 'play' }, { lbl: '✕  QUIT', act: 'quit' }];
+const MENU_DEFS = [{ lbl: '▶  PLAY', act: 'play' }, { lbl: '❓  HOW TO PLAY', act: 'how' }, { lbl: '✕  QUIT', act: 'quit' }];
 
 function drawMenu() {
   const W = gc.width, H = gc.height, cx = W / 2, cy = H / 2;
@@ -506,17 +511,17 @@ function drawMenu() {
   ctx.shadowColor = '#39d98a'; ctx.shadowBlur = 40;
   ctx.fillStyle   = '#39d98a';
   ctx.font        = `bold ${Math.min(80, W / 9)}px 'Segoe UI', sans-serif`;
-  ctx.fillText('🐍 HAND SNAKE', cx, cy - 130);
+  ctx.fillText('🐍 HAND SNAKE', cx, cy - 150);
   ctx.shadowBlur  = 0;
 
   ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '15px system-ui';
-  ctx.fillText('Point your finger at a button and hold 0.5s to select', cx, cy - 85);
+  ctx.fillText('Point your finger at a button and hold still to select', cx, cy - 105);
 
   // Menu items
   menuItems = [];
   for (let i = 0; i < MENU_DEFS.length; i++) {
     const def = MENU_DEFS[i];
-    const iy  = cy + i * 72 - 10;
+    const iy  = cy + i * 72 - 30;
     menuItems.push({ x: cx, y: iy, act: def.act, idx: i });
 
     const isHov  = hovIdx === i;
@@ -544,7 +549,71 @@ function drawMenu() {
   }
 
   ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.font = '12px system-ui';
-  ctx.fillText('☝ One finger = steer snake   ✌ Two fingers = BOOST   Hold 0.5s to select', cx, cy + 175);
+  ctx.fillText('☝ One finger = steer snake   ✌ Two fingers = BOOST   Hold still to select', cx, cy + 205);
+
+  drawCursor();
+  ctx.restore();
+}
+
+// ─── HOW TO PLAY ─────────────────────────────────────────────────────────────
+const HOW_ROWS = [
+  ['☝', 'Steer', 'Point one finger where you want to go — the snake turns to follow it.'],
+  ['✌', 'Boost', 'Show two fingers to speed up. Use it to escape or to cut another snake off.'],
+  ['🍎', 'Eat & grow', 'Swallow the glowing dots to grow longer. Each one is worth 1 point.'],
+  ['💥', 'Avoid bodies', "If your head touches another snake's body, you lose."],
+  ['🐍', 'Head to head', 'When two heads meet, the longer snake wins. Beating a rival is worth 5 points.'],
+  ['👉', 'Menus', 'Point at a button and hold still until the ring closes to press it.'],
+];
+
+function drawHow() {
+  const W = gc.width, H = gc.height, cx = W / 2;
+  ctx.fillStyle = '#060d10';
+  ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#39d98a'; ctx.shadowBlur = 30;
+  ctx.fillStyle = '#39d98a';
+  ctx.font = 'bold ' + Math.min(56, W / 14) + "px 'Segoe UI', sans-serif";
+  ctx.fillText('HOW TO PLAY', cx, H * 0.14);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '17px system-ui';
+  ctx.fillText('Grow the longest snake in the arena against 5 computer snakes.', cx, H * 0.14 + 38);
+
+  const cols = W >= 820 ? 2 : 1;
+  const cw = Math.min(380, (W - 60) / cols), ch = 86, gap = 14;
+  const gridW = cols * cw + (cols - 1) * gap;
+  const top = H * 0.14 + 64;
+  HOW_ROWS.forEach(([ic, t, d], i) => {
+    const x = cx - gridW / 2 + (i % cols) * (cw + gap);
+    const y = top + Math.floor(i / cols) * (ch + gap);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.strokeStyle = 'rgba(57,217,138,0.35)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 12); ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.font = '28px system-ui'; ctx.fillStyle = '#fff'; ctx.fillText(ic, x + 16, y + 48);
+    ctx.font = 'bold 17px "Segoe UI", sans-serif'; ctx.fillStyle = '#39d98a'; ctx.fillText(t, x + 62, y + 30);
+    ctx.font = '14px system-ui'; ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    // wrap the description to the card width
+    const words = d.split(' '); let line = '', ly = y + 54;
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > cw - 78 && line) { ctx.fillText(line, x + 62, ly); line = w; ly += 19; }
+      else line = test;
+    }
+    if (line) ctx.fillText(line, x + 62, ly);
+  });
+
+  // Let's Play button — a hover/hold target like the menu items
+  const rows = Math.ceil(HOW_ROWS.length / cols);
+  const by = Math.min(H - 70, top + rows * (ch + gap) + 44);
+  menuItems = [{ x: cx, y: by, act: 'menu', idx: 0 }];
+  const isHov = hovIdx === 0;
+  const prog = isHov ? holdFrames / HOLD_NEED : 0;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = isHov ? 'rgba(57,217,138,' + (0.12 + prog * 0.25) + ')' : 'rgba(57,217,138,0.08)';
+  ctx.strokeStyle = '#39d98a'; ctx.lineWidth = isHov ? 2.5 : 1.5;
+  ctx.beginPath(); ctx.roundRect(cx - 150, by - 34, 300, 58, 29); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = isHov ? '#39d98a' : '#fff'; ctx.font = 'bold 22px "Segoe UI", sans-serif';
+  ctx.fillText("▶  LET'S PLAY", cx, by + 3);
 
   drawCursor();
   ctx.restore();
@@ -578,7 +647,7 @@ function drawDead() {
   ctx.fillStyle   = 'rgba(255,255,255,0.75)'; ctx.font = '22px system-ui';
   ctx.fillText('Score: ' + score + '   Best: ' + best, cx, cy - 10);
   ctx.fillStyle   = 'rgba(255,255,255,0.45)'; ctx.font = '15px system-ui';
-  ctx.fillText('☝ Point here and hold 0.5s to restart', cx, cy + 42);
+  ctx.fillText('☝ Point here and hold still to restart', cx, cy + 42);
 
   // restart hover target
   menuItems = [{ x: cx, y: cy + 42, act: 'restart', idx: 0 }];
@@ -636,11 +705,15 @@ function doRestart() {
 
 // ─── HOVER / HOLD ────────────────────────────────────────────────────────────
 function tickHover() {
-  if (!fingerVis) { hovIdx = -1; holdFrames = 0; holdFired = false; return; }
-  let found = -1;
+  if (hoverScreen !== STATE) { hoverScreen = STATE; hoverArmedAt = performance.now() + HOVER_ARM_MS; hovIdx = -1; holdFrames = 0; holdFired = false; }
+  if (!fingerVis || performance.now() < hoverArmedAt) { hovIdx = -1; holdFrames = 0; holdFired = false; return; }
+  // Nearest item within reach: the hover radius is larger than the spacing
+  // between menu items, so "first match" would pick the wrong neighbour.
+  let found = -1, bestD = HOVER_D * HOVER_D;
   for (const item of menuItems) {
     const dx = fX - item.x, dy = fY - item.y;
-    if (dx * dx + dy * dy < HOVER_D * HOVER_D) { found = item.idx; break; }
+    const d = dx * dx + dy * dy;
+    if (d < bestD) { bestD = d; found = item.idx; }
   }
   if (found !== -1) {
     if (hovIdx !== found) { hovIdx = found; holdFrames = 0; holdFired = false; }
@@ -651,6 +724,8 @@ function tickHover() {
       if      (act === 'play')    startCountdown();
       else if (act === 'quit')    { try { window.close(); } catch(e) {} }
       else if (act === 'restart') doRestart();
+      else if (act === 'how')     STATE = 'HOW';
+      else if (act === 'menu')    STATE = 'MENU';
     }
   } else {
     hovIdx = -1;
@@ -663,7 +738,8 @@ function tickHover() {
 function loop() {
   frameN++;
 
-  if (STATE === 'MENU' || STATE === 'DEAD') tickHover();
+  if (STATE === 'MENU' || STATE === 'DEAD' || STATE === 'HOW') tickHover();
+  if (STATE === 'HOW')       { drawHow();       return; }
   if (STATE === 'MENU')      { drawMenu();      return; }
   if (STATE === 'COUNTDOWN') { drawCountdown(); return; }
 
@@ -814,6 +890,7 @@ async function boot() {
 
 // ─── KEYBOARD FALLBACK ───────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && STATE === 'HOW') { STATE = 'MENU'; return; }
   if ((e.key === 'Enter' || e.key === ' ') && STATE === 'MENU') startCountdown();
   if ((e.key === 'Enter' || e.key === ' ') && STATE === 'DEAD') doRestart();
   if (STATE === 'PLAYING' && player) {
