@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HandTracker } from "./HandTracker";
+import { DwellCursor, HandProvider } from "@/lib/hand-context";
 
-type Screen = "menu" | "playing" | "paused" | "gameover";
+type Screen = "howto" | "menu" | "playing" | "paused" | "gameover";
 type Difficulty = "easy" | "medium" | "hard";
 
 interface Block {
@@ -54,7 +55,23 @@ function makeBlocks(): Block[] {
 }
 
 export function BlockBreaker() {
-  const [screen, setScreen] = useState<Screen>("menu");
+  return (
+    <HandProvider>
+      <BlockBreakerGame />
+    </HandProvider>
+  );
+}
+
+const HOW_TO_PLAY: { icon: string; title: string; text: string }[] = [
+  { icon: "✋", title: "MOVE THE PADDLE", text: "Hold your open hand up to the camera and slide it left and right along the guideline." },
+  { icon: "🧱", title: "BREAK BLOCKS", text: "The ball launches by itself. Bounce it into the blocks: +10 each, +500 for clearing the wall." },
+  { icon: "❤️", title: "3 LIVES", text: "You lose a life each time the ball falls past the paddle. Lose all three and it's game over." },
+  { icon: "👉", title: "MENUS", text: "Point at a button and hold your hand still until it fills to press it." },
+];
+
+function BlockBreakerGame() {
+  // How to Play is the first screen every time the game loads.
+  const [screen, setScreen] = useState<Screen>("howto");
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -265,6 +282,8 @@ export function BlockBreaker() {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center p-4 scanlines">
+      {/* During play the paddle is the pointer, so the menu cursor hides. */}
+      <DwellCursor visible={screen !== "playing"} />
       <div className="relative w-full" style={{ maxWidth: GAME_W }}>
         {/* HUD */}
         <div className="flex items-center justify-between mb-3 text-xs gap-2 flex-wrap">
@@ -285,6 +304,7 @@ export function BlockBreaker() {
           </div>
           {screen === "playing" || screen === "paused" ? (
             <button
+              data-dwell="1500"
               onClick={() => setScreen(screen === "playing" ? "paused" : "playing")}
               className="text-[10px] px-3 py-2 border-2 border-accent text-accent hover:bg-accent hover:text-accent-foreground transition"
             >
@@ -305,6 +325,23 @@ export function BlockBreaker() {
             className="block w-full h-full"
           />
 
+          {screen === "howto" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-background/95 text-center px-6">
+              <h1 className="text-2xl md:text-4xl text-primary text-glow leading-tight">HOW TO PLAY</h1>
+              <div className="grid grid-cols-2 gap-3 max-w-2xl w-full">
+                {HOW_TO_PLAY.map((h) => (
+                  <div key={h.title} className="border-2 border-muted p-3 text-left">
+                    <div className="text-xs text-[var(--neon-yellow)] text-glow mb-2">{h.icon} {h.title}</div>
+                    <div className="text-[10px] leading-relaxed text-foreground/85">{h.text}</div>
+                  </div>
+                ))}
+              </div>
+              <button data-dwell="" onClick={() => setScreen("menu")} className="btn-arcade">
+                ▶ LET'S PLAY
+              </button>
+            </div>
+          )}
+
           {screen === "menu" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-background/95 text-center px-4">
               <h1 className="text-3xl md:text-5xl text-primary text-glow leading-tight">
@@ -323,6 +360,7 @@ export function BlockBreaker() {
                   {(["easy", "medium", "hard"] as Difficulty[]).map((d) => (
                     <button
                       key={d}
+                      data-dwell=""
                       onClick={() => setDifficulty(d)}
                       className={`text-[10px] px-3 py-2 border-2 transition ${
                         difficulty === d
@@ -336,8 +374,11 @@ export function BlockBreaker() {
                 </div>
               </div>
 
-              <button onClick={() => startGame()} className="btn-arcade">
+              <button data-dwell="" onClick={() => startGame()} className="btn-arcade">
                 ▶ START GAME
+              </button>
+              <button data-dwell="" onClick={() => setScreen("howto")} className="btn-arcade-accent">
+                ? HOW TO PLAY
               </button>
               <div className="text-[8px] text-muted-foreground blink">INSERT COIN</div>
             </div>
@@ -347,10 +388,11 @@ export function BlockBreaker() {
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-background/90 text-center">
               <h2 className="text-2xl text-accent text-glow">PAUSED</h2>
               <div className="flex gap-3 flex-wrap justify-center">
-                <button onClick={() => setScreen("playing")} className="btn-arcade">
+                <button data-dwell="" onClick={() => setScreen("playing")} className="btn-arcade">
                   RESUME
                 </button>
                 <button
+                  data-dwell=""
                   onClick={() => {
                     if (score > highScore) {
                       setHighScore(score);
@@ -383,10 +425,10 @@ export function BlockBreaker() {
                 )}
               </div>
               <div className="flex gap-3 flex-wrap justify-center">
-                <button onClick={() => startGame()} className="btn-arcade">
+                <button data-dwell="" onClick={() => startGame()} className="btn-arcade">
                   PLAY AGAIN
                 </button>
-                <button onClick={() => setScreen("menu")} className="btn-arcade-accent">
+                <button data-dwell="" onClick={() => setScreen("menu")} className="btn-arcade-accent">
                   MAIN MENU
                 </button>
               </div>

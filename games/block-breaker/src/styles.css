@@ -130,3 +130,19 @@
   51%, 100% { opacity: 0.3; }
 }
 @utility blink { animation: blink 1s steps(1) infinite; }
+
+/* Hand-hover press: elements marked data-dwell fill up from the left while
+   the hand cursor rests on them (progress is set as --dwell by DwellCursor). */
+[data-dwell] {
+  position: relative;
+  overflow: hidden;
+}
+[data-dwell]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in oklab, var(--primary) 35%, transparent);
+  transform: scaleX(var(--dwell, 0));
+  transform-origin: left;
+}
