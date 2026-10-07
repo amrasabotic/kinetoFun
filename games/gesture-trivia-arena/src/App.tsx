@@ -19,11 +19,47 @@ function MenuButton({ label, onActivate, active }: { label: string; onActivate: 
   );
 }
 
+const HOW_TO_PLAY: { icon: string; title: string; text: string }[] = [
+  { icon: '☝️', title: 'Point', text: 'Move your index finger — the cursor follows your fingertip.' },
+  { icon: '⏳', title: 'Answer', text: 'Point at an answer and hold still until it fills to lock it in.' },
+  { icon: '🤖', title: 'Beat the CPU', text: 'You and the computer answer the same 9 questions. Highest score wins.' },
+  { icon: '⭐', title: 'Scoring', text: '100 points for each correct answer, plus up to 50 more for answering fast.' },
+  { icon: '⚡', title: 'Blitz mode', text: 'Only 8 seconds per question — running out of time counts as wrong.' },
+  { icon: '👉', title: 'Menus', text: 'Point at a button and hold your hand still until it fills to press it.' },
+];
+
+// Shown first every time the game loads, and reopened from the menu.
+function HowToPlayScreen({ onDone, gestureCursor }: { onDone: () => void; gestureCursor: { x: number; y: number } | null }) {
+  return (
+    <div className="gta-menu">
+      <h1 className="gta-menu__title">How to Play</h1>
+      <p className="gta-menu__subtitle">A quiz race against the computer, answered with your hand.</p>
+      <div className="gta-howto">
+        {HOW_TO_PLAY.map((s) => (
+          <div key={s.title} className="gta-howto__card">
+            <div className="gta-howto__icon">{s.icon}</div>
+            <div>
+              <div className="gta-howto__title">{s.title}</div>
+              <div className="gta-howto__text">{s.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <MenuButton label="Let's Play" onActivate={onDone} />
+      {gestureCursor && (
+        <div className="gta-cursor-dot" style={{ left: `${gestureCursor.x * 100}%`, top: `${gestureCursor.y * 100}%` }} />
+      )}
+    </div>
+  );
+}
+
 function MenuScreen({
   onStart,
+  onHowTo,
   gestureCursor,
 }: {
   onStart: (mode: GameMode, difficulty: Difficulty, daily: boolean) => void;
+  onHowTo: () => void;
   gestureCursor: { x: number; y: number } | null;
 }) {
   const [mode, setMode] = useState<GameMode>('classic');
@@ -62,7 +98,10 @@ function MenuScreen({
       </div>
 
       <div className="gta-menu__section">
-        <MenuButton label="Start Match" onActivate={() => onStart(mode, difficulty, daily)} />
+        <div className="gta-menu__row">
+          <MenuButton label="Start Match" onActivate={() => onStart(mode, difficulty, daily)} />
+          <MenuButton label="How to Play" onActivate={onHowTo} />
+        </div>
       </div>
 
       {gestureCursor && (
@@ -227,7 +266,9 @@ function gestureCursorDot(cursor: { x: number; y: number } | null) {
   return <div className="gta-cursor-dot" style={{ left: `${cursor.x * 100}%`, top: `${cursor.y * 100}%` }} />;
 }
 
-function CameraGate({ children }: { children: React.ReactNode }) {
+// allowWhileStarting lets How to Play show straight away while the camera starts;
+// everything else waits for hand tracking.
+function CameraGate({ children, allowWhileStarting = false }: { children: React.ReactNode; allowWhileStarting?: boolean }) {
   const { status } = useGestureContext();
   if (status === 'no-camera' || status === 'error') {
     return (
@@ -237,7 +278,7 @@ function CameraGate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (status === 'initializing') {
+  if (status === 'initializing' && !allowWhileStarting) {
     return (
       <div className="gta-camera-gate">
         <h2>Starting hand tracking…</h2>
@@ -250,16 +291,26 @@ function CameraGate({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [screen, setScreen] = useState<{ mode: GameMode; difficulty: Difficulty; daily: boolean } | null>(null);
+  // How to Play is the first screen every time the game loads.
+  const [showHowTo, setShowHowTo] = useState(true);
   const gesture = useGesture();
   const cursorNorm = gesture.isHovering ? { x: gesture.cursorX, y: gesture.cursorY } : null;
 
   return (
     <div className="gta-app">
-      <CameraGate>
+      <CameraGate allowWhileStarting={!screen && showHowTo}>
         {screen ? (
           <GameScreen mode={screen.mode} difficulty={screen.difficulty} daily={screen.daily} onExit={() => setScreen(null)} />
         ) : (
-          <MenuScreen onStart={(mode, difficulty, daily) => setScreen({ mode, difficulty, daily })} gestureCursor={cursorNorm} />
+          showHowTo ? (
+            <HowToPlayScreen onDone={() => setShowHowTo(false)} gestureCursor={cursorNorm} />
+          ) : (
+            <MenuScreen
+              onStart={(mode, difficulty, daily) => setScreen({ mode, difficulty, daily })}
+              onHowTo={() => setShowHowTo(true)}
+              gestureCursor={cursorNorm}
+            />
+          )
         )}
       </CameraGate>
     </div>

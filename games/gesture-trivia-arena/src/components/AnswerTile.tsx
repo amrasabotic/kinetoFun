@@ -11,9 +11,11 @@ interface AnswerTileProps {
 }
 
 export function AnswerTile({ label, index, onSelect, enabled, state }: AnswerTileProps) {
+  // No arming delay on answers: it would eat into the Blitz countdown and the
+  // speed bonus. ANSWER_HOLD_MS already guards against a quick glance.
   const { elRef, progress } = useDwellButton(ANSWER_HOLD_MS, () => {
     if (enabled) onSelect(index);
-  });
+  }, 0);
 
   return (
     <div
