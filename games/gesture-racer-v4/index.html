@@ -165,6 +165,10 @@ const curEl=document.getElementById('cursor');
 const crpCv=document.getElementById('cr-prog');
 const crpX=crpCv.getContext('2d');
 let dwellId=null, dwellT=0;
+// Choices ignore the hand for a moment after a screen appears and after each
+// pick, so a resting hand cannot select several things in a row by accident.
+const DWELL_ARM_MS=1500;
+let dwellArmedAt=performance.now()+DWELL_ARM_MS, dwellScreen=null;
 const DWELL=900;
 
 function drawCursor(){
@@ -283,22 +287,22 @@ function envNeon(rl,rr){
 }
 
 /* ── DRAW CAR ── */
-function drawCar(x,y,ci,alpha){
+function drawCar(x,y,ci,alpha,ctx=gx){
   const c=CARS[ci];
-  gx.save(); gx.globalAlpha=alpha??1; gx.translate(x,y);
-  gx.fillStyle=c.color; gx.beginPath(); gx.roundRect(-c.w/2,-c.h/2,c.w,c.h,6); gx.fill();
-  gx.fillStyle=c.trim;
-  gx.beginPath(); gx.roundRect(-c.w/2,-c.h/2,c.w,7,[4,4,0,0]); gx.fill();
-  gx.beginPath(); gx.roundRect(-c.w/2,c.h/2-7,c.w,7,[0,0,4,4]); gx.fill();
-  gx.fillStyle=c.roof; gx.beginPath(); gx.roundRect(-c.w/2+4,-c.h/2+18,c.w-8,c.h-38,5); gx.fill();
-  gx.fillStyle=c.glass;
-  gx.beginPath(); gx.roundRect(-c.w/2+5,-c.h/2+8,c.w-10,12,2); gx.fill();
-  gx.beginPath(); gx.roundRect(-c.w/2+5,c.h/2-20,c.w-10,10,2); gx.fill();
-  gx.fillStyle='#fff9c4'; gx.fillRect(-c.w/2+2,-c.h/2,5,4); gx.fillRect(c.w/2-7,-c.h/2,5,4);
-  gx.fillStyle='#ff5252'; gx.fillRect(-c.w/2+2,c.h/2-4,5,4); gx.fillRect(c.w/2-7,c.h/2-4,5,4);
-  gx.fillStyle='#222';
-  [[-c.w/2-2,-c.h/2+10],[c.w/2-2,-c.h/2+10],[-c.w/2-2,c.h/2-14],[c.w/2-2,c.h/2-14]].forEach(([wx,wy])=>gx.fillRect(wx,wy,4,10));
-  gx.restore(); gx.globalAlpha=1;
+  ctx.save(); ctx.globalAlpha=alpha??1; ctx.translate(x,y);
+  ctx.fillStyle=c.color; ctx.beginPath(); ctx.roundRect(-c.w/2,-c.h/2,c.w,c.h,6); ctx.fill();
+  ctx.fillStyle=c.trim;
+  ctx.beginPath(); ctx.roundRect(-c.w/2,-c.h/2,c.w,7,[4,4,0,0]); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(-c.w/2,c.h/2-7,c.w,7,[0,0,4,4]); ctx.fill();
+  ctx.fillStyle=c.roof; ctx.beginPath(); ctx.roundRect(-c.w/2+4,-c.h/2+18,c.w-8,c.h-38,5); ctx.fill();
+  ctx.fillStyle=c.glass;
+  ctx.beginPath(); ctx.roundRect(-c.w/2+5,-c.h/2+8,c.w-10,12,2); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(-c.w/2+5,c.h/2-20,c.w-10,10,2); ctx.fill();
+  ctx.fillStyle='#fff9c4'; ctx.fillRect(-c.w/2+2,-c.h/2,5,4); ctx.fillRect(c.w/2-7,-c.h/2,5,4);
+  ctx.fillStyle='#ff5252'; ctx.fillRect(-c.w/2+2,c.h/2-4,5,4); ctx.fillRect(c.w/2-7,c.h/2-4,5,4);
+  ctx.fillStyle='#222';
+  [[-c.w/2-2,-c.h/2+10],[c.w/2-2,-c.h/2+10],[-c.w/2-2,c.h/2-14],[c.w/2-2,c.h/2-14]].forEach(([wx,wy])=>ctx.fillRect(wx,wy,4,10));
+  ctx.restore(); ctx.globalAlpha=1;
 }
 
 /* ── PARTICLES ── */
@@ -322,82 +326,126 @@ function rr2(ctx,x,y,w,h,r,fill,stroke,lw){
 
 function drawMenu(){
   ux.clearRect(0,0,W,H); btns=[];
-  ux.fillStyle='rgba(0,0,0,.92)'; ux.fillRect(0,0,W,H);
+  // The selected map scrolls behind the menu as a live preview; darken it so text stays readable.
+  const shade=ux.createLinearGradient(0,0,0,H);
+  shade.addColorStop(0,'rgba(4,6,16,.78)'); shade.addColorStop(.5,'rgba(4,6,16,.62)'); shade.addColorStop(1,'rgba(4,6,16,.9)');
+  ux.fillStyle=shade; ux.fillRect(0,0,W,H);
 
-  const cx=W/2, bw=Math.min(W-40,340), bx=cx-bw/2;
-  let y=36;
+  // Everything scales with the screen so it reads well on a TV.
+  const u=Math.max(.7,Math.min(1.6,Math.min(W/1280,H/720)));
+  const font=(px,bold)=>(bold?'bold ':'')+Math.round(px*u)+'px -apple-system,"Segoe UI",sans-serif';
+  const cx=W/2;
+  const wide=W>=900;
+  const cw=Math.min(W*.92,1180*u);
+  const x0=cx-cw/2;
 
-  ux.fillStyle='#fff'; ux.font='bold 28px -apple-system,sans-serif'; ux.textAlign='center';
-  ux.fillText('🏎  GESTURE RACER',cx,y+24); y+=54;
+  // ── title ──
+  ux.textAlign='center';
+  ux.save(); ux.shadowColor='#f0a500'; ux.shadowBlur=28*u;
+  ux.fillStyle='#fff'; ux.font=font(58,true);
+  ux.fillText('GESTURE RACER',cx,H*.11+20*u);
+  ux.restore();
+  ux.fillStyle='rgba(255,255,255,.7)'; ux.font=font(19);
+  ux.fillText('Steer with your hand, dodge the traffic, and go as far as you can.',cx,H*.11+56*u);
 
-  ux.fillStyle='rgba(255,255,255,.5)'; ux.font='13px -apple-system,sans-serif';
-  ux.fillText('Move hand to aim  •  Hold 1 sec to select',cx,y); y+=32;
+  const top=H*.11+86*u;
+  const startH=66*u, bottomPad=28*u;
+  const avail=H-top-startH-bottomPad-24*u;
+  const gap=22*u;
 
-  // how to play box
-  rr2(ux,bx,y,bw,70,12,'rgba(255,255,255,.07)');
-  const tips=['↔  Move hand left / right  →  car follows','🖐  Open palm  →  accelerate','✊  Close fist  →  brake'];
-  ux.fillStyle='rgba(255,255,255,.35)'; ux.font='10px -apple-system,sans-serif'; ux.textAlign='left';
-  ux.fillText('HOW TO PLAY',bx+14,y+14);
-  ux.fillStyle='rgba(255,255,255,.75)'; ux.font='12px -apple-system,sans-serif';
-  tips.forEach((t,i)=>ux.fillText(t,bx+14,y+28+i*15));
-  y+=82;
+  // ── layout: side by side on wide screens, stacked on narrow ones ──
+  const howW=wide?cw*.4:cw;
+  const pickX=wide?x0+howW+gap:x0;
+  const pickW=wide?cw-howW-gap:cw;
+  const howH=wide?avail:Math.min(avail*.34,190*u);
+  const pickY=wide?top:top+howH+gap*.6;
+  const pickH=wide?avail:avail-howH-gap*.6;
 
-  // ── CARS ──
-  ux.fillStyle='rgba(255,255,255,.4)'; ux.font='10px -apple-system,sans-serif'; ux.textAlign='left';
-  ux.fillText('CHOOSE YOUR CAR',bx,y); y+=12;
-  const cw=(bw-10)/2, ch=62;
+  // ── how to play ──
+  rr2(ux,x0,top,howW,howH,18*u,'rgba(12,14,30,.82)','rgba(255,255,255,.14)',1.5);
+  ux.textAlign='left'; ux.fillStyle='#f0a500'; ux.font=font(16,true);
+  ux.fillText('HOW TO PLAY',x0+22*u,top+34*u);
+  const rows=[
+    ['↔️','Steer','Move your hand left and right — the car follows.'],
+    ['🖐','Accelerate','Open your palm to speed up.'],
+    ['✊','Brake','Make a fist to slow down.'],
+    ['💥','Survive','Dodge the traffic. The faster you go, the more you score.'],
+    ['👉','Menus','Point at a choice and hold still for a second.'],
+  ];
+  // One column beside the pickers on wide screens; two columns when stacked,
+  // so each tip keeps enough height for its title and description.
+  const rowsShown=wide?rows:rows.slice(0,4);
+  const howCols=wide?1:2;
+  const perCol=Math.ceil(rowsShown.length/howCols);
+  const colW=(howW-22*u)/howCols;
+  const rowH=Math.min((howH-58*u)/perCol,70*u);
+  rowsShown.forEach(([ic,t,d],i)=>{
+    const rx=x0+Math.floor(i/perCol)*colW;
+    const ry=top+52*u+(i%perCol)*rowH;
+    ux.font=font(26); ux.fillStyle='#fff'; ux.fillText(ic,rx+22*u,ry+28*u);
+    ux.font=font(17,true); ux.fillStyle='#fff'; ux.fillText(t,rx+66*u,ry+18*u);
+    ux.font=font(14); ux.fillStyle='rgba(255,255,255,.72)'; ux.fillText(d,rx+66*u,ry+39*u,colW-80*u);
+  });
+
+  // ── pickers ──
+  const card=(id,bX,bY,w,h,sel,accent)=>{
+    const hov=dwellId===id;
+    rr2(ux,bX,bY,w,h,14*u,sel?accent+'33':'rgba(12,14,30,.78)',sel?accent:hov?'rgba(255,255,255,.75)':'rgba(255,255,255,.16)',sel?3:1.5);
+    if(sel){ux.fillStyle=accent;ux.font=font(16,true);ux.textAlign='right';ux.fillText('✓',bX+w-12*u,bY+24*u);}
+    if(hov){const p=Math.min((Date.now()-dwellT)/DWELL,1);rr2(ux,bX+6*u,bY+h-10*u,(w-12*u)*p,5*u,3,'#00ff88');}
+    regBtn(id,bX,bY,w,h);
+  };
+  const cols=wide?4:2;
+  const cg=14*u;
+  const tileW=(pickW-cg*(cols-1))/cols;
+  const labelH=30*u;
+  const carRows=Math.ceil(CARS.length/cols), mapRows=Math.ceil(MAPS.length/cols);
+  const tileH=Math.max(56*u,Math.min(150*u,(pickH-labelH*2-gap-cg*(carRows+mapRows-2))/(carRows+mapRows)));
+
+  let y=pickY;
+  ux.textAlign='left'; ux.fillStyle='rgba(255,255,255,.6)'; ux.font=font(15,true);
+  ux.fillText('CHOOSE YOUR CAR',pickX,y+18*u); y+=labelH;
   CARS.forEach((c,i)=>{
-    const col=i%2, row=Math.floor(i/2);
-    const bX=bx+col*(cw+10), bY=y+row*(ch+8);
-    const sel=selCar===i, hov=dwellId==='car_'+i;
-    rr2(ux,bX,bY,cw,ch,10,sel?'rgba(240,165,0,.22)':'rgba(255,255,255,.07)',sel?'#f0a500':hov?'rgba(255,255,255,.6)':'rgba(255,255,255,.15)',sel?2:1);
-    // swatch
-    rr2(ux,bX+12,bY+15,18,30,4,c.color);
-    ux.fillStyle=sel?'#f0a500':'#fff'; ux.font=(sel?'bold ':'')+'13px -apple-system,sans-serif'; ux.textAlign='left';
-    ux.fillText(c.name,bX+38,bY+26);
-    if(sel){ux.fillStyle='#f0a500';ux.font='bold 13px sans-serif';ux.textAlign='right';ux.fillText('✓',bX+cw-10,bY+20);}
-    // dwell bar
-    if(hov){
-      const p=Math.min((Date.now()-dwellT)/DWELL,1);
-      rr2(ux,bX+4,bY+ch-8,(cw-8)*p,5,3,'#00ff88');
-    }
-    regBtn('car_'+i,bX,bY,cw,ch);
+    const bX=pickX+(i%cols)*(tileW+cg), bY=y+Math.floor(i/cols)*(tileH+cg);
+    card('car_'+i,bX,bY,tileW,tileH,selCar===i,'#f0a500');
+    const s=Math.min(1.6*u,(tileH-44*u)/c.h);
+    ux.save(); ux.translate(bX+tileW/2,bY+(tileH-26*u)/2+4*u); ux.scale(s,s); drawCar(0,0,i,1,ux); ux.restore();
+    ux.textAlign='center'; ux.fillStyle=selCar===i?'#f0a500':'#fff'; ux.font=font(15,selCar===i);
+    ux.fillText(c.name,bX+tileW/2,bY+tileH-14*u);
   });
-  y+=2*(ch+8)+10;
+  y+=carRows*(tileH+cg)-cg+gap;
 
-  // ── MAPS ──
-  ux.fillStyle='rgba(255,255,255,.4)'; ux.font='10px -apple-system,sans-serif'; ux.textAlign='left';
-  ux.fillText('CHOOSE MAP',bx,y); y+=12;
-  const mw=(bw-10)/2, mh=50;
+  ux.textAlign='left'; ux.fillStyle='rgba(255,255,255,.6)'; ux.font=font(15,true);
+  ux.fillText('CHOOSE MAP',pickX,y+18*u); y+=labelH;
   MAPS.forEach((m,i)=>{
-    const col=i%2, row=Math.floor(i/2);
-    const bX=bx+col*(mw+10), bY=y+row*(mh+8);
-    const sel=selMap===i, hov=dwellId==='map_'+i;
-    rr2(ux,bX,bY,mw,mh,10,sel?'rgba(79,195,247,.18)':'rgba(255,255,255,.07)',sel?'#4fc3f7':hov?'rgba(255,255,255,.6)':'rgba(255,255,255,.15)',sel?2:1);
-    rr2(ux,bX+10,bY+mh/2-8,22,16,3,m.road,m.line,1);
-    ux.fillStyle=sel?'#4fc3f7':'#fff'; ux.font=(sel?'bold ':'')+'12px -apple-system,sans-serif'; ux.textAlign='left';
-    ux.fillText(m.name,bX+40,bY+mh/2+5);
-    if(sel){ux.fillStyle='#4fc3f7';ux.font='bold 13px sans-serif';ux.textAlign='right';ux.fillText('✓',bX+mw-8,bY+18);}
-    if(hov){
-      const p=Math.min((Date.now()-dwellT)/DWELL,1);
-      rr2(ux,bX+4,bY+mh-7,(mw-8)*p,4,3,'#00ff88');
-    }
-    regBtn('map_'+i,bX,bY,mw,mh);
+    const bX=pickX+(i%cols)*(tileW+cg), bY=y+Math.floor(i/cols)*(tileH+cg);
+    card('map_'+i,bX,bY,tileW,tileH,selMap===i,'#4fc3f7');
+    // mini scene: sky, verges, road and lane dashes in the map's colours
+    const px=bX+10*u, py=bY+10*u, pw=tileW-20*u, ph=tileH-44*u;
+    ux.save(); ux.beginPath(); ux.roundRect(px,py,pw,ph,8*u); ux.clip();
+    ux.fillStyle=m.sky; ux.fillRect(px,py,pw,ph);
+    ux.fillStyle=m.kerb; ux.fillRect(px,py+ph*.35,pw,ph*.65);
+    ux.fillStyle=m.road; ux.fillRect(px+pw*.3,py,pw*.4,ph);
+    ux.strokeStyle=m.line; ux.lineWidth=2*u; ux.setLineDash([6*u,5*u]);
+    ux.beginPath(); ux.moveTo(px+pw/2,py); ux.lineTo(px+pw/2,py+ph); ux.stroke(); ux.setLineDash([]);
+    ux.restore();
+    ux.textAlign='center'; ux.fillStyle=selMap===i?'#4fc3f7':'#fff'; ux.font=font(15,selMap===i);
+    ux.fillText(m.name,bX+tileW/2,bY+tileH-14*u);
   });
-  y+=2*(mh+8)+12;
 
-  // ── START ──
-  const sw=210, sh=52, sX=cx-sw/2, sY=y;
+  // ── start ──
+  const sw=Math.min(cw,340*u), sX=cx-sw/2, sY=H-startH-bottomPad;
   const sHov=dwellId==='start';
   const sp=sHov?Math.min((Date.now()-dwellT)/DWELL,1):0;
-  ux.save(); ux.beginPath(); ux.roundRect(sX,sY,sw,sh,999); ux.clip();
-  ux.fillStyle='rgba(240,165,0,.2)'; ux.fillRect(sX,sY,sw,sh);
-  if(sp>0){ux.fillStyle='#f0a500';ux.fillRect(sX,sY,sw*sp,sh);}
+  ux.save(); ux.shadowColor='#f0a500'; ux.shadowBlur=sHov?30*u:14*u;
+  ux.beginPath(); ux.roundRect(sX,sY,sw,startH,999); ux.fillStyle='rgba(240,165,0,.25)'; ux.fill(); ux.restore();
+  ux.save(); ux.beginPath(); ux.roundRect(sX,sY,sw,startH,999); ux.clip();
+  if(sp>0){ux.fillStyle='#f0a500';ux.fillRect(sX,sY,sw*sp,startH);}
   ux.restore();
-  rr2(ux,sX,sY,sw,sh,999,null,'rgba(240,165,0,.85)',2);
-  ux.fillStyle=sp>.5?'#000':'#f0a500'; ux.font='bold 17px -apple-system,sans-serif'; ux.textAlign='center';
-  ux.fillText('▶  START RACE',cx,sY+34);
-  regBtn('start',sX,sY,sw,sh);
+  rr2(ux,sX,sY,sw,startH,999,null,'#f0a500',3);
+  ux.fillStyle=sp>.5?'#000':'#fff'; ux.font=font(24,true); ux.textAlign='center';
+  ux.fillText('▶  START RACE',cx,sY+startH/2+9*u);
+  regBtn('start',sX,sY,sw,startH);
 }
 
 function drawGameOver(){
@@ -465,16 +513,18 @@ function loop(ts){
 
   // ── dwell for menus ──
   if(gs==='menu'||gs==='dead'){
+    if(dwellScreen!==gs){ dwellScreen=gs; dwellArmedAt=performance.now()+DWELL_ARM_MS; }
     const h=hoveredBtn();
-    if(h&&handVisible){
+    if(h&&handVisible&&performance.now()>=dwellArmedAt){
       if(h!==dwellId){ dwellId=h; dwellT=Date.now(); }
-      else if(Date.now()-dwellT>=DWELL){ handleActivate(dwellId); dwellId=null; }
+      else if(Date.now()-dwellT>=DWELL){ handleActivate(dwellId); dwellId=null; dwellArmedAt=performance.now()+DWELL_ARM_MS; }
     } else { dwellId=null; }
-  }
+  } else { dwellScreen=null; }
 
   // ── render ──
   if(gs==='menu'){
-    gx.fillStyle='#111'; gx.fillRect(0,0,W,H);
+    roadY+=3*dt; frame++;
+    drawRoad(MAPS[selMap]);
     drawMenu();
     drawCursor();
   } else if(gs==='playing'){
