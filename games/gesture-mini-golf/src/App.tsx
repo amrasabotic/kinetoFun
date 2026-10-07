@@ -23,11 +23,47 @@ function MenuButton({ label, onActivate, active }: { label: string; onActivate: 
   );
 }
 
+const HOW_TO_PLAY: { icon: string; title: string; text: string }[] = [
+  { icon: '☝️', title: 'Aim', text: 'Point your index finger where you want the ball to go. A line shows the aim.' },
+  { icon: '✊', title: 'Charge', text: 'Make a fist to charge the putt. The longer you hold it, the harder the shot.' },
+  { icon: '🖐️', title: 'Putt', text: 'Open your hand to release the fist and hit the ball.' },
+  { icon: '⛳', title: 'Score', text: 'Sink each hole in as few strokes as you can. Par is shown for every hole.' },
+  { icon: '💧', title: 'Hazards', text: 'Sand slows the ball. Water costs a penalty stroke and sends you back to the tee.' },
+  { icon: '👉', title: 'Menus', text: 'Point at a button and hold your hand still until it fills to press it.' },
+];
+
+// Shown first every time the game loads, and reopened from the menu.
+function HowToPlayScreen({ onDone, gestureCursor }: { onDone: () => void; gestureCursor: { x: number; y: number } | null }) {
+  return (
+    <div className="gmg-menu">
+      <h1 className="gmg-menu__title">How to Play</h1>
+      <p className="gmg-menu__subtitle">Easy plays 4 holes; medium and hard play 6.</p>
+      <div className="gmg-howto">
+        {HOW_TO_PLAY.map((s) => (
+          <div key={s.title} className="gmg-howto__card">
+            <div className="gmg-howto__icon">{s.icon}</div>
+            <div>
+              <div className="gmg-howto__title">{s.title}</div>
+              <div className="gmg-howto__text">{s.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <MenuButton label="Let's Play" onActivate={onDone} />
+      {gestureCursor && (
+        <div className="gmg-cursor-dot" style={{ left: `${gestureCursor.x * 100}%`, top: `${gestureCursor.y * 100}%` }} />
+      )}
+    </div>
+  );
+}
+
 function MenuScreen({
   onStart,
+  onHowTo,
   gestureCursor,
 }: {
   onStart: (mode: GameMode, difficulty: Difficulty) => void;
+  onHowTo: () => void;
   gestureCursor: { x: number; y: number } | null;
 }) {
   const [mode, setMode] = useState<GameMode>('classic');
@@ -60,7 +96,10 @@ function MenuScreen({
       </div>
 
       <div className="gmg-menu__section">
-        <MenuButton label="Start Round" onActivate={() => onStart(mode, difficulty)} />
+        <div className="gmg-menu__row">
+          <MenuButton label="Start Round" onActivate={() => onStart(mode, difficulty)} />
+          <MenuButton label="How to Play" onActivate={onHowTo} />
+        </div>
       </div>
 
       {gestureCursor && (
@@ -211,7 +250,9 @@ function GameScreen({ mode, difficulty, onExit }: { mode: GameMode; difficulty: 
   );
 }
 
-function CameraGate({ children }: { children: React.ReactNode }) {
+// allowWhileStarting lets How to Play show straight away while the camera starts;
+// everything else waits for hand tracking.
+function CameraGate({ children, allowWhileStarting = false }: { children: React.ReactNode; allowWhileStarting?: boolean }) {
   const { status } = useGestureContext();
   if (status === 'no-camera' || status === 'error') {
     return (
@@ -221,7 +262,7 @@ function CameraGate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (status === 'initializing') {
+  if (status === 'initializing' && !allowWhileStarting) {
     return (
       <div className="gmg-camera-gate">
         <h2>Starting hand tracking…</h2>
@@ -234,16 +275,26 @@ function CameraGate({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [screen, setScreen] = useState<{ mode: GameMode; difficulty: Difficulty } | null>(null);
+  // How to Play is the first screen every time the game loads.
+  const [showHowTo, setShowHowTo] = useState(true);
   const gesture = useGesture();
   const cursorNorm = gesture.isHovering ? { x: gesture.cursorX, y: gesture.cursorY } : null;
 
   return (
     <div className="gmg-app">
-      <CameraGate>
+      <CameraGate allowWhileStarting={!screen && showHowTo}>
         {screen ? (
           <GameScreen mode={screen.mode} difficulty={screen.difficulty} onExit={() => setScreen(null)} />
         ) : (
-          <MenuScreen onStart={(mode, difficulty) => setScreen({ mode, difficulty })} gestureCursor={cursorNorm} />
+          showHowTo ? (
+            <HowToPlayScreen onDone={() => setShowHowTo(false)} gestureCursor={cursorNorm} />
+          ) : (
+            <MenuScreen
+              onStart={(mode, difficulty) => setScreen({ mode, difficulty })}
+              onHowTo={() => setShowHowTo(true)}
+              gestureCursor={cursorNorm}
+            />
+          )
         )}
       </CameraGate>
     </div>

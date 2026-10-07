@@ -413,3 +413,34 @@ html, body, #root {
   color: transparent;
   margin: 0;
 }
+
+/* How to Play cards */
+.gmg-howto {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 340px));
+  gap: 14px;
+}
+.gmg-howto__card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(74,222,128,0.4);
+  text-align: left;
+}
+.gmg-howto__icon {
+  font-size: 30px;
+  line-height: 1;
+}
+.gmg-howto__title {
+  font-weight: 700;
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+.gmg-howto__text {
+  font-size: 14px;
+  line-height: 1.45;
+  opacity: 0.8;
+}
