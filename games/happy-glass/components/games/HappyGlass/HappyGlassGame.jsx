@@ -16,6 +16,9 @@ const H = 560;
 // ─── Thumbs-up config ────────────────────────────────────────────────────────
 const THUMBSUP_HOLD_FRAMES = 18;
 const THUMBSUP_COOLDOWN    = 50;
+// The How to Play screen ignores thumbs-ups for ~1.5 s so it cannot be
+// skipped by a hand that was already showing one when the game loaded.
+const INTRO_THUMBSUP_COOLDOWN = 90;
 
 // ─── localStorage persistence ────────────────────────────────────────────────
 const SAVE_KEY = 'happyglass_progress';
@@ -96,7 +99,7 @@ export default function HappyGlassGame() {
       starsEarned:      0,
       levelConfig:      LEVELS[0],
       thumbsUpHeld:     0,
-      thumbsUpCooldown: 0,
+      thumbsUpCooldown: INTRO_THUMBSUP_COOLDOWN,
       // level-select fields (unused in idle but avoids undefined refs)
       hoveredCard:      0,
       highestUnlocked:  1,
@@ -219,7 +222,12 @@ export default function HappyGlassGame() {
 
   // ── Game loop ─────────────────────────────────────────────────────────────
   useGameLoop(() => {
-    if (!physicsReadyRef.current) return;
+    if (!physicsReadyRef.current) {
+      // Show How to Play while the physics engine is still loading, so the
+      // instructions are on screen from the moment the game appears.
+      if (gsRef.current.phase === 'idle') renderFrame(canvasRef.current, gsRef.current, null);
+      return;
+    }
 
     const gs      = gsRef.current;
     const physics = physicsRef.current;

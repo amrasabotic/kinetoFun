@@ -110,7 +110,7 @@ export function renderFrame(canvas, state, gesture) {
 
   // Phase overlays
   if (phase === 'idle') {
-    drawIdleOverlay(ctx, W, H);
+    drawIdleOverlay(ctx, W, H, thumbsUpHeld);
   } else if (phase === 'build') {
     drawBuildHint(ctx, W, H, thumbsUpHeld);
   } else if (phase === 'resolve') {
@@ -550,27 +550,69 @@ function drawHUD(ctx, W, H, phase, level, strokeCount, totalSpawned, inGlass, ta
 
 // ─── Overlays ────────────────────────────────────────────────────────────────
 
-function drawIdleOverlay(ctx, W, H) {
+const HOW_TO_PLAY = [
+  { icon: '💧', title: 'Fill the glass',   lines: ['Water pours from the spout at the top.', 'Get enough of it into the glass to pass.'] },
+  { icon: '🤏', title: 'Pinch to draw',    lines: ['Pinch thumb and index finger and move', 'to draw a wall. Open your fingers to stop.'] },
+  { icon: '👍', title: 'Thumbs up to pour', lines: ['Hold a thumbs up to release the water.', 'Your walls guide it into the glass.'] },
+  { icon: '⭐', title: 'Fewer lines, more stars', lines: ['Use as few lines as you can.', 'Not enough water? The level restarts.'] },
+];
+
+// Opening screen: shown as soon as the game loads, before level select.
+function drawIdleOverlay(ctx, W, H, thumbsUpHeld) {
   ctx.save();
   ctx.fillStyle = C.overlayBg;
   ctx.fillRect(0, 0, W, H);
+  // Layout below is drawn for a 470px-tall block; centre it vertically.
+  ctx.translate(0, Math.max(0, (H - 470) / 2));
 
-  ctx.fillStyle = C.overlayText;
-  ctx.font      = 'bold 44px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('💧 Happy Glass', W / 2, H / 2 - 70);
+  ctx.fillStyle = C.overlayText;
+  ctx.font      = 'bold 38px sans-serif';
+  ctx.fillText('💧 Happy Glass', W / 2, 58);
 
-  ctx.font      = '20px sans-serif';
-  ctx.fillStyle = C.overlayAccent;
-  ctx.fillText('Show your hand to the camera', W / 2, H / 2 - 14);
+  ctx.font      = 'bold 20px sans-serif';
+  ctx.fillStyle = '#ffe082';
+  ctx.fillText('HOW TO PLAY', W / 2, 96);
 
-  ctx.font      = 'bold 22px sans-serif';
-  ctx.fillStyle = '#69f0ae';
-  ctx.fillText('👍  Thumbs Up  to start', W / 2, H / 2 + 28);
+  const cardW = 360, cardH = 108, gap = 16;
+  const left  = (W - cardW * 2 - gap) / 2;
+  HOW_TO_PLAY.forEach((card, i) => {
+    const x = left + (i % 2) * (cardW + gap);
+    const y = 116 + Math.floor(i / 2) * (cardH + gap);
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    roundRectPath(ctx, x, y, cardW, cardH, 12);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(144,202,249,0.45)';
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
 
+    ctx.textAlign = 'left';
+    ctx.font      = '34px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(card.icon, x + 16, y + 48);
+
+    ctx.font      = 'bold 18px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(card.title, x + 66, y + 34);
+
+    ctx.font      = '14px sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    card.lines.forEach((ln, j) => ctx.fillText(ln, x + 66, y + 60 + j * 20));
+  });
+
+  ctx.textAlign = 'center';
   ctx.font      = '15px sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('Draw lines with PINCH • Release water with a second Thumbs Up', W / 2, H / 2 + 80);
+  ctx.fillStyle = C.overlayAccent;
+  ctx.fillText('Show your hand to the camera. Pick a level by hovering its card and giving a thumbs up.', W / 2, 382);
+
+  const progress = Math.min(1, (thumbsUpHeld || 0) / 18);
+  ctx.font      = 'bold 24px sans-serif';
+  ctx.fillStyle = '#69f0ae';
+  ctx.fillText(
+    progress > 0 ? `👍  Keep holding… ${Math.round(progress * 100)}%` : '👍  Hold a Thumbs Up to start',
+    W / 2,
+    430,
+  );
 
   ctx.restore();
 }
