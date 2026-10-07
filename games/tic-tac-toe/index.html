@@ -260,7 +260,7 @@
     transform: translate(-50%, -50%);
     transition: width 0.1s, height 0.1s, border-color 0.1s, background 0.1s;
     display: none;
-    z-index: 200;
+    z-index: 1100; /* above the How to Play overlay */
   }
   #screen-cursor.pinch {
     width: 24px; height: 24px;
@@ -270,6 +270,40 @@
   }
 
   /* ── Loading ── */
+  /* How to Play: shown above everything (including the camera loader) on load. */
+  #howto {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(10,10,15,0.97);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; padding: 24px;
+  }
+  #howto.hidden { display: none; }
+  #howto h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; letter-spacing: 0.02em; }
+  #howto h1 span { color: var(--accent); }
+  .howto-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 360px)); gap: 14px; }
+  .howto-card {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px 18px;
+  }
+  .howto-card .ic { font-size: 30px; line-height: 1; }
+  .howto-card .t { font-weight: 700; font-size: 17px; margin-bottom: 4px; }
+  .howto-card .d { font-size: 14px; line-height: 1.45; color: rgba(232,232,240,0.75); }
+  #howto-btn {
+    position: relative; overflow: hidden;
+    font-family: inherit; font-size: 1.3rem; font-weight: 700;
+    color: var(--text); background: rgba(124,111,255,0.15);
+    border: 2px solid var(--accent); border-radius: 999px;
+    padding: 16px 48px; cursor: pointer;
+  }
+  #howto-btn .fill {
+    position: absolute; inset: 0; width: 0%;
+    background: rgba(124,111,255,0.45); pointer-events: none;
+  }
+  #howto-btn span { position: relative; }
+  #howto-btn.disarmed { opacity: 0.45; }
+  .howto-note { font-size: 14px; color: var(--muted); }
+
   #loading {
     position: fixed; inset: 0;
     background: var(--bg);
@@ -288,6 +322,21 @@
 </style>
 </head>
 <body>
+
+<!-- How to Play -->
+<div id="howto">
+  <h1>How to <span>Play</span></h1>
+  <div class="howto-grid">
+    <div class="howto-card"><div class="ic">☝️</div><div><div class="t">Point</div><div class="d">Raise your hand to the camera. The circle on screen follows your index fingertip.</div></div></div>
+    <div class="howto-card"><div class="ic">🤏</div><div><div class="t">Pinch &amp; hold to place</div><div class="d">Over an empty square, pinch your thumb and index finger together and hold for about a second.</div></div></div>
+    <div class="howto-card"><div class="ic">❌⭕</div><div><div class="t">Take turns</div><div class="d">Two players share the camera. X goes first, then O — pass your turn after each move.</div></div></div>
+    <div class="howto-card"><div class="ic">🏆</div><div><div class="t">Win</div><div class="d">Get three in a row — across, down or diagonal. A full board with no line is a draw.</div></div></div>
+    <div class="howto-card"><div class="ic">🔁</div><div><div class="t">Next round</div><div class="d">After a game ends, open your hand, then pinch and hold anywhere to play again.</div></div></div>
+    <div class="howto-card"><div class="ic">📊</div><div><div class="t">Score</div><div class="d">Wins for X and O are counted at the top of the screen.</div></div></div>
+  </div>
+  <button id="howto-btn" class="disarmed"><div class="fill"></div><span>Let's Play</span></button>
+  <div class="howto-note">Point at the button, then pinch and hold to start</div>
+</div>
 
 <!-- Loading -->
 <div id="loading">
@@ -339,7 +388,7 @@
     <div id="board"></div>
     <div id="result-overlay">
       <div class="result-text" id="result-text"></div>
-      <div class="result-sub">Pinch to play again</div>
+      <div class="result-sub">Open your hand, then pinch &amp; hold to play again</div>
     </div>
   </div>
 
@@ -371,6 +420,22 @@ const PINCH_THRESH = 0.07; // normalised distance
 let board       = Array(9).fill(null);
 let currentTurn = 'X';
 let gameOver    = false;
+// After a mark is placed (or a round restarts) the pinch must be released
+// before it counts again, so one long pinch cannot place a second mark or
+// skip straight past the result.
+let needRelease = false;
+// How to Play overlay: open on load, dismissed by pinch-and-hold on its
+// button. It ignores the hand for a moment so a raised hand cannot skip it.
+const HOWTO_ARM_MS = 1500;
+let howtoOpen = true;
+const howtoArmedAt = performance.now() + HOWTO_ARM_MS;
+setTimeout(() => document.getElementById('howto-btn').classList.remove('disarmed'), HOWTO_ARM_MS);
+function closeHowto() {
+  howtoOpen = false;
+  needRelease = true;
+  document.getElementById('howto').classList.add('hidden');
+}
+document.getElementById('howto-btn').addEventListener('click', closeHowto);
 let scores      = {X:0, O:0};
 let hoveredCell = -1;
 let pinchHeld   = false;
@@ -549,12 +614,31 @@ hands.onResults(results => {
   screenCur.style.top     = sy + 'px';
   screenCur.classList.toggle('pinch', isPinching);
 
+  if (!isPinching) needRelease = false;
+
+  if (howtoOpen) {
+    const btn = document.getElementById('howto-btn');
+    const r = btn.getBoundingClientRect();
+    const over = sx >= r.left && sx <= r.right && sy >= r.top && sy <= r.bottom;
+    const fill = btn.querySelector('.fill');
+    if (over && isPinching && !needRelease && performance.now() >= howtoArmedAt) {
+      if (!pinchHeld) { pinchHeld = true; pinchStart = Date.now(); }
+      const pct = Math.min((Date.now() - pinchStart) / PINCH_HOLD, 1);
+      fill.style.width = (pct * 100) + '%';
+      if (pct >= 1) { pinchHeld = false; pinchStart = 0; fill.style.width = '0%'; closeHowto(); }
+    } else {
+      if (isPinching && performance.now() < howtoArmedAt) needRelease = true;
+      pinchHeld = false; pinchStart = 0; fill.style.width = '0%';
+    }
+    return;
+  }
+
   // Which cell is the finger over?
   const cellIdx = getCellUnderPoint(sx, sy);
   updateHover(cellIdx);
 
   // Pinch logic
-  if (isPinching) {
+  if (isPinching && !needRelease) {
     if (!pinchHeld) {
       pinchHeld = true;
       pinchStart = Date.now();
@@ -562,7 +646,7 @@ hands.onResults(results => {
     const held = Date.now() - pinchStart;
 
     if (gameOver) {
-      if (held > 700) resetGame();
+      if (held > 700) { resetGame(); needRelease = true; }
       return;
     }
 
@@ -576,6 +660,7 @@ hands.onResults(results => {
       }
       if (held >= PINCH_HOLD) {
         placeMove(cellIdx);
+        needRelease = true;
         pinchHeld = false; pinchStart = 0;
         cellEls.forEach((_,i) => resetRing(i));
       }
