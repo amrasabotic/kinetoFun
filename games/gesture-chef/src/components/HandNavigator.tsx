@@ -25,7 +25,23 @@ export function HandNavigator() {
 
     let dwellEl: Element | null = null;
     let dwellStart = 0;
-    let cooldown = false;
+    // Buttons ignore the hand for a moment after they appear and after each
+    // press, so a hand already resting on one cannot skip How to Play or press
+    // through several screens in a row.
+    const ARM_MS = 1500;
+    let armedAt = performance.now() + ARM_MS;
+    const observer = new MutationObserver((records) => {
+      for (const r of records) {
+        for (const n of Array.from(r.addedNodes)) {
+          if (n instanceof Element && (n.matches('button, [role="button"], a') || n.querySelector('button, [role="button"], a'))) {
+            armedAt = performance.now() + ARM_MS;
+            dwellEl = null;
+            return;
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
     const unsub = inputManager.on('pointerMove', ({ x, y }) => {
       handX = x;
@@ -53,7 +69,10 @@ export function HandNavigator() {
       const target = el?.closest('button, [role="button"], a') ?? null;
 
       let dwellProg = 0;
-      if (target && !cooldown) {
+      const armed = performance.now() >= armedAt;
+      if (target && !armed) {
+        dwellEl = null;
+      } else if (target) {
         if (target !== dwellEl) {
           dwellEl = target;
           dwellStart = Date.now();
@@ -63,9 +82,7 @@ export function HandNavigator() {
           (target as HTMLElement).click();
           dwellEl = null;
           dwellProg = 0;
-          cooldown = true;
-          // Brief cooldown prevents double-fires when navigating
-          setTimeout(() => { cooldown = false; }, 700);
+          armedAt = performance.now() + ARM_MS;
         }
       } else if (!target) {
         dwellEl = null;
@@ -114,6 +131,7 @@ export function HandNavigator() {
     return () => {
       cancelAnimationFrame(raf);
       unsub();
+      observer.disconnect();
     };
   }, []);
 

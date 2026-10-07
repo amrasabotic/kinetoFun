@@ -11,12 +11,20 @@ interface HomeScreenProps {
   onSettings: () => void;
 }
 
-const BG_EMOJIS = ['🍅', '🥕', '🧅', '🥦', '🍄', '🥒', '🧄', '🍳', '🥘', '🍜', '🥗', '🎂'];
+let howToShownThisLoad = false;
+
+const BG_EMOJIS =['🍅', '🥕', '🧅', '🥦', '🍄', '🥒', '🧄', '🍳', '🥘', '🍜', '🥗', '🎂'];
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   totalStars, bestScore, onPlay, onSettings,
 }) => {
-  const [showHowTo, setShowHowTo] = useState(false);
+  // How to Play opens over the home screen when the game first loads; coming
+  // back to home later in the same page load does not reopen it.
+  const [showHowTo, setShowHowTo] = useState(() => {
+    if (howToShownThisLoad) return false;
+    howToShownThisLoad = true;
+    return true;
+  });
   return (
   /* position: fixed + overflow-y: auto lets this screen escape the parent
      overflow:hidden clip and scroll on small displays */
@@ -160,11 +168,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <h2 style={{ margin: '0 0 18px', fontSize: 'clamp(1.4rem,3.5vw,1.9rem)', fontWeight: 900, color: '#FF6B35', textAlign: 'center' }}>
             🍳 How to Play
           </h2>
+          <p style={{ margin: '0 0 16px', textAlign: 'center', color: '#666', fontSize: '0.9rem', lineHeight: 1.5 }}>
+            Cook with your hand in front of the camera. Each recipe is a run of these mini-games:
+          </p>
           {[
-            { emoji: '🔪', name: 'Chop Chop!', desc: 'Hold mouse button and drag across vegetables to slice them. The faster you chop, the bigger your combo!' },
-            { emoji: '🥄', name: 'Stir It Up!', desc: 'Click inside the pot, then move your mouse in big circles to stir the soup. Fill the bar completely!' },
-            { emoji: '🥞', name: 'Flip It!', desc: 'Watch the cooking bar. When it hits the golden zone, quickly swipe the mouse upward (or press Space / ↑).' },
-            { emoji: '🎂', name: 'Decorate!', desc: 'Pick a decoration from the left palette, then click anywhere on the cake to place it. Rapid-place for combos!' },
+            { emoji: '🔪', name: 'Chop Chop!', desc: 'Make a fist and swipe your hand quickly across the vegetables to slice them. The faster you chop, the bigger your combo!' },
+            { emoji: '🥄', name: 'Stir It Up!', desc: 'Make a fist and move your hand in big circles around the pot to stir the soup. Fill the bar completely!' },
+            { emoji: '🥞', name: 'Flip It!', desc: 'Watch the cooking bar. When it hits the golden zone, make a fist and flick your hand up quickly.' },
+            { emoji: '🎂', name: 'Decorate!', desc: 'Point at a decoration on the left and hold still to pick it, then pinch and release quickly over the cake to place it.' },
+            { emoji: '👉', name: 'Buttons', desc: 'Point at any button and hold your hand still until the ring closes to press it.' },
           ].map(({ emoji, name, desc }) => (
             <div key={name} style={{ display: 'flex', gap: 14, marginBottom: 14, alignItems: 'flex-start' }}>
               <span style={{ fontSize: '1.7rem', flexShrink: 0 }}>{emoji}</span>
