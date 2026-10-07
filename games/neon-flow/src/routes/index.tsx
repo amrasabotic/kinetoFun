@@ -31,12 +31,15 @@ function Index() {
           Pinch your fingers to grab a glowing dot. Draw a path to its twin. Fill every cell.
           Match the minimum moves to earn a star.
         </p>
+        <p className="mt-3 text-sm text-[color:var(--neon-cyan)]">
+          Point at a button and hold your hand still to press it.
+        </p>
         <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
           <Button asChild variant="hero" size="lg">
-            <Link to="/play"><Play className="size-4" /> Play</Link>
+            <Link to="/play" data-dwell=""><Play className="size-4" /> Play</Link>
           </Button>
           <Button asChild variant="neonOutline" size="lg">
-            <Link to="/how-to-play"><BookOpen className="size-4" /> How to Play</Link>
+            <Link to="/how-to-play" data-dwell=""><BookOpen className="size-4" /> How to Play</Link>
           </Button>
         </div>
       </div>

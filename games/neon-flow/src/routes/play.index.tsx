@@ -27,7 +27,7 @@ function PlayMap() {
     <main className="min-h-screen px-4 py-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/"><ArrowLeft className="size-4" /> Home</Link>
+          <Link to="/" data-dwell=""><ArrowLeft className="size-4" /> Home</Link>
         </Button>
         <h1 className="text-2xl font-display neon-glow-cyan">LEVEL MAP</h1>
         <div className="flex items-center gap-2 panel px-3 py-1 text-sm">
@@ -59,6 +59,8 @@ function PlayMap() {
         })}
       </div>
 
+      {/* Mouse-only on purpose: it asks for confirmation in a browser dialog,
+          which a hand cursor cannot answer. */}
       <div className="mt-10 flex justify-center">
         <Button
           variant="ghost"
@@ -101,6 +103,7 @@ function LevelTile({
     <Link
       to="/play/$level"
       params={{ level: String(id) }}
+      data-dwell=""
       className={`${base} ${starClass}`}
       style={bg ? { background: bg } : undefined}
     >

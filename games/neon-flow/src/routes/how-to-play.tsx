@@ -8,7 +8,7 @@ export const Route = createFileRoute("/how-to-play")({
       { title: "How to Play · Neon Flow" },
       { name: "description", content: "Learn how to play Neon Flow: pinch to draw glowing paths, connect every color pair, fill the entire grid." },
       { property: "og:title", content: "How to Play Neon Flow" },
-      { property: "og:description", content: "Pinch with your hand or click with your mouse to draw paths between matching neon dots." },
+      { property: "og:description", content: "Pinch with your hand to draw paths between matching neon dots." },
     ],
   }),
   component: HowTo,
@@ -16,9 +16,9 @@ export const Route = createFileRoute("/how-to-play")({
 
 function HowTo() {
   return (
-    <main className="min-h-screen px-4 py-10 max-w-2xl mx-auto">
+    <main className="min-h-screen px-4 pt-10 pb-32 max-w-2xl mx-auto">
       <Button asChild variant="ghost" size="sm" className="mb-6">
-        <Link to="/"><ArrowLeft className="size-4" /> Home</Link>
+        <Link to="/" data-dwell=""><ArrowLeft className="size-4" /> Home</Link>
       </Button>
 
       <h1 className="text-4xl font-display font-black neon-glow-cyan">HOW TO PLAY</h1>
@@ -30,11 +30,11 @@ function HowTo() {
       <ol className="mt-8 space-y-5">
         <Step n={1} title="Track your hand">
           <p>
-            On the game screen, tap <span className="font-display text-[color:var(--neon-cyan)]">Use hand tracking</span> and
-            allow camera access. A <span className="font-display">+</span> cursor will follow your index finger.
+            Allow camera access when asked. A glowing cursor follows your index finger —
+            point at a button and hold your hand still until it fills to press it.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            No camera? Mouse and touch work too — click and drag instead of pinch.
+            On the board the cursor becomes a <span className="font-display">+</span> crosshair.
           </p>
         </Step>
         <Step n={2} title="Pinch to grab a color">
@@ -75,9 +75,10 @@ function HowTo() {
         </p>
       </div>
 
-      <div className="mt-8 flex justify-center">
+      {/* Fixed so it is reachable by hand without scrolling the page. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center bg-background/85 py-4 backdrop-blur">
         <Button asChild variant="hero" size="lg">
-          <Link to="/play">Start playing</Link>
+          <Link to="/play" data-dwell="">Start playing</Link>
         </Button>
       </div>
     </main>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { LEVELS, NEON_COLORS, minMovesFor, type LevelDef } from "@/lib/levels";
 import { recordCompletion, loadProgress } from "@/lib/progress";
-import { startHandTracking, type HandTracker } from "@/lib/hand-tracking";
+import { useHand } from "@/lib/hand-context";
 import { Button } from "@/components/ui/button";
 import { Pause, Play, Hand, Star, X, Redo2, Camera } from "lucide-react";
 
@@ -50,9 +50,8 @@ export function GameBoard({ levelId }: Props) {
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [pinch, setPinch] = useState(false);
 
-  // Hand tracking is the only gameplay input. Camera must be enabled to play.
-  const [handStatus, setHandStatus] = useState<"idle" | "loading" | "active" | "error">("idle");
-  const trackerRef = useRef<HandTracker | null>(null);
+  // Hand tracking is the only gameplay input; the camera starts when the game loads.
+  const { status: handStatus, video, subscribe, retry, setCursorHidden } = useHand();
   const landmarksRef = useRef<Array<{ x: number; y: number; z: number }> | null>(null);
 
   const boardRef = useRef<HTMLDivElement>(null);
@@ -173,27 +172,24 @@ export function GameBoard({ levelId }: Props) {
     prevPinch.current = pinch;
   }, [pinch, cursor, paused, completed, cursorCell, isEndpoint, beginPath, endPath, extendPath, activeColor]);
 
-  // ── Mouse fallback ───────────────────────────────────
   // ── Hand tracking ────────────────────────────────────
-  const enableHandTracking = async () => {
-    if (handStatus === "active" || handStatus === "loading") return;
-    setHandStatus("loading");
-    try {
-      const tracker = await startHandTracking(({ point, pinch: p, landmarks }) => {
+  useEffect(
+    () =>
+      subscribe(({ point, pinch: p, landmarks }) => {
         landmarksRef.current = landmarks;
         if (point) setCursor(point);
         setPinch(p);
-      });
-      trackerRef.current = tracker;
-      setHandStatus("active");
-    } catch (e) {
-      console.error(e);
-      setHandStatus("error");
-      setTimeout(() => setHandStatus("idle"), 2000);
-    }
-  };
+      }),
+    [subscribe],
+  );
 
-  useEffect(() => () => trackerRef.current?.stop(), []);
+  // The board crosshair is the pointer while drawing; the global hand cursor
+  // only shows when an overlay with buttons is open.
+  const boardInPlay = handStatus === "active" && !paused && !completed;
+  useEffect(() => {
+    setCursorHidden(boardInPlay);
+    return () => setCursorHidden(false);
+  }, [boardInPlay, setCursorHidden]);
 
   // ── Win condition ────────────────────────────────────
   useEffect(() => {
@@ -260,7 +256,10 @@ export function GameBoard({ levelId }: Props) {
           <Button variant="ghost" size="sm" onClick={reset} title="Reset">
             <Redo2 className="size-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setPaused(true)}>
+          {/* The only hand-pressable control mid-level, with a longer hold so a
+              drawing hand passing over it does not pause the game. Reset and
+              Exit are offered again in the pause menu. */}
+          <Button variant="ghost" size="sm" data-dwell="1500" onClick={() => setPaused(true)}>
             <Pause className="size-4" />
           </Button>
         </div>
@@ -344,8 +343,8 @@ export function GameBoard({ levelId }: Props) {
       </div>
 
       {/* Webcam + landmark overlay (corner) */}
-      {handStatus === "active" && trackerRef.current && (
-        <HandCamera video={trackerRef.current.video} landmarksRef={landmarksRef} />
+      {handStatus === "active" && video && (
+        <HandCamera video={video} landmarksRef={landmarksRef} />
       )}
 
       {/* Camera-required overlay (blocks gameplay until enabled) */}
@@ -358,11 +357,14 @@ export function GameBoard({ levelId }: Props) {
               Neon Flow is played with hand tracking. Pinch your thumb and index to grab and draw.
             </p>
             <div className="flex flex-col gap-3">
-              <Button variant="hero" onClick={enableHandTracking} disabled={handStatus === "loading"}>
-                <Hand className="size-4" />
-                {handStatus === "loading" ? "Starting camera…" : "Enable camera"}
-              </Button>
-              <Button variant="ghost" onClick={() => navigate({ to: "/play" })}>
+              {handStatus === "loading" ? (
+                <p className="font-display tracking-widest text-[color:var(--neon-cyan)]">Starting camera…</p>
+              ) : (
+                <Button variant="hero" onClick={retry}>
+                  <Hand className="size-4" /> Try camera again
+                </Button>
+              )}
+              <Button data-dwell="" variant="ghost" onClick={() => navigate({ to: "/play" })}>
                 <X className="size-4" /> Back to map
               </Button>
             </div>
@@ -380,13 +382,13 @@ export function GameBoard({ levelId }: Props) {
         <Overlay>
           <h2 className="text-3xl font-display neon-glow-cyan mb-6">Paused</h2>
           <div className="flex flex-col gap-3 w-56">
-            <Button onClick={() => setPaused(false)} variant="hero">
+            <Button data-dwell="" onClick={() => setPaused(false)} variant="hero">
               <Play className="size-4" /> Resume
             </Button>
-            <Button variant="outline" onClick={() => { reset(); setPaused(false); }}>
+            <Button data-dwell="" variant="outline" onClick={() => { reset(); setPaused(false); }}>
               <Redo2 className="size-4" /> Restart level
             </Button>
-            <Button variant="ghost" onClick={() => navigate({ to: "/play" })}>
+            <Button data-dwell="" variant="ghost" onClick={() => navigate({ to: "/play" })}>
               <X className="size-4" /> Exit to map
             </Button>
           </div>
@@ -411,9 +413,10 @@ export function GameBoard({ levelId }: Props) {
               <Stat label="Best" value={completed.best} highlight={completed.star} />
             </div>
             <div className="mt-6 flex gap-3 justify-center">
-              <Button variant="outline" onClick={reset}>Replay</Button>
+              <Button data-dwell="" variant="outline" onClick={reset}>Replay</Button>
               {level.id < LEVELS.length && (
                 <Button
+                  data-dwell=""
                   variant="hero"
                   onClick={() => {
                     setCompleted(null);
@@ -423,7 +426,7 @@ export function GameBoard({ levelId }: Props) {
                   Next level →
                 </Button>
               )}
-              <Button variant="ghost" onClick={() => navigate({ to: "/play" })}>Map</Button>
+              <Button data-dwell="" variant="ghost" onClick={() => navigate({ to: "/play" })}>Map</Button>
             </div>
           </div>
         </Overlay>
