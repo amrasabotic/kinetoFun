@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMediaPipe } from '../../hooks/useMediaPipe';
 import { CalibrationView } from '../../components/CalibrationView';
 import { CameraError } from '../../components/CameraError';
-import { HowToPlayOverlay, HOWTO_CONTINUE_ID } from '../../components/HowToPlayOverlay';
+import { HowToPlayOverlay, HOWTO_CONTINUE_ID, markHowToSeen, wasHowToSeen } from '../../components/HowToPlayOverlay';
 import { useDwellNav } from '../../hooks/useDwellNav';
 import type { HandPosition } from '../../types/gestures';
 import { GestureAnalyzer } from '../../mediapipe/gestureAnalyzer';
@@ -18,7 +18,6 @@ const L_SHOULDER = 11;
 const R_SHOULDER = 12;
 
 const analyzer = new GestureAnalyzer();
-const HOWTO_SEEN_KEY = 'gesture-runner:howto-seen';
 
 export default function CalibrationPage() {
   const router = useRouter();
@@ -39,8 +38,7 @@ export default function CalibrationPage() {
   const [dwellArmed, setDwellArmed] = useState(false);
 
   useEffect(() => {
-    let seen = false;
-    try { seen = sessionStorage.getItem(HOWTO_SEEN_KEY) === '1'; } catch { /* storage blocked */ }
+    const seen = wasHowToSeen();
     howToOpenRef.current = !seen;
     setHowTo(seen ? 'hidden' : 'show');
   }, []);
@@ -63,7 +61,7 @@ export default function CalibrationPage() {
   }, [howTo]);
 
   const handleHowToContinue = useCallback(() => {
-    try { sessionStorage.setItem(HOWTO_SEEN_KEY, '1'); } catch { /* storage blocked */ }
+    markHowToSeen();
     howToOpenRef.current = false;
     setHowTo('hidden');
   }, []);

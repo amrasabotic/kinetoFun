@@ -6,6 +6,7 @@ import { useMediaPipe } from '../../hooks/useMediaPipe';
 import { useDwellNav } from '../../hooks/useDwellNav';
 import { DwellButton } from '../../components/DwellButton';
 import { CameraError } from '../../components/CameraError';
+import { HowToPlayOverlay, HOWTO_CONTINUE_ID, claimHomeHowTo, markHowToSeen } from '../../components/HowToPlayOverlay';
 import { GameStorage } from '../../storage/GameStorage';
 import type { HandPosition } from '../../types/gestures';
 import { GestureAnalyzer } from '../../mediapipe/gestureAnalyzer';
@@ -14,6 +15,9 @@ const analyzerRef = { current: new GestureAnalyzer() };
 
 const BUTTON_W = 320;
 const BUTTON_H = 72;
+// Buttons ignore the hand for a moment after they appear, so a hand already
+// resting there cannot skip the instructions or press a menu button unread.
+const ARM_DELAY_MS = 1500;
 
 export default function HomePage() {
   const router = useRouter();
@@ -23,9 +27,48 @@ export default function HomePage() {
   const [bestScore, setBestScore] = useState(0);
   const [buttonRects, setButtonRects] = useState<Array<{ id: string; x: number; y: number; w: number; h: number }>>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  // How To Play opens over the menu as soon as the game loads. It starts
+  // visible so it is there even before hydration; returning to home later
+  // in the same page load closes it straight away.
+  const [howTo, setHowTo] = useState(true);
+  const [howToArmed, setHowToArmed] = useState(false);
+  const [menuArmed, setMenuArmed] = useState(false);
+  const [continueRect, setContinueRect] = useState<Array<{ id: string; x: number; y: number; w: number; h: number }>>([]);
 
   useEffect(() => {
     setBestScore(GameStorage.getBestScore());
+    if (!claimHomeHowTo()) {
+      setHowTo(false);
+      setMenuArmed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!howTo) return;
+    const armTimer = setTimeout(() => setHowToArmed(true), ARM_DELAY_MS);
+    function measure() {
+      const el = document.querySelector(`[data-dwell-id="${HOWTO_CONTINUE_ID}"]`);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setContinueRect([{ id: HOWTO_CONTINUE_ID, x: r.left, y: r.top, w: r.width, h: r.height }]);
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => {
+      clearTimeout(armTimer);
+      window.removeEventListener('resize', measure);
+    };
+  }, [howTo]);
+
+  useEffect(() => {
+    if (howTo || menuArmed) return;
+    const t = setTimeout(() => setMenuArmed(true), ARM_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [howTo, menuArmed]);
+
+  const handleHowToContinue = useCallback(() => {
+    markHowToSeen();
+    setHowTo(false);
   }, []);
 
   useEffect(() => {
@@ -72,7 +115,14 @@ export default function HomePage() {
       if (id === 'challenges') router.push('/challenges');
       if (id === 'settings') router.push('/settings');
     },
-    enabled: true,
+    enabled: !howTo && menuArmed,
+  });
+
+  const { hoveredId: howToHoveredId, dwellProgress: howToProgress } = useDwellNav({
+    buttons: continueRect,
+    handPositions,
+    onActivate: () => handleHowToContinue(),
+    enabled: howTo && howToArmed,
   });
 
   const primaryHand = handPositions.find((h) => h.visible);
@@ -84,7 +134,7 @@ export default function HomePage() {
       {/* Hand cursor */}
       {primaryHand && typeof window !== 'undefined' && (
         <div
-          className="fixed pointer-events-none z-50 w-8 h-8 rounded-full border-4 border-[#00ffcc] transition-none"
+          className="fixed pointer-events-none z-[110] w-8 h-8 rounded-full border-4 border-[#00ffcc] transition-none"
           style={{
             left: primaryHand.x * window.innerWidth - 16,
             top: primaryHand.y * window.innerHeight - 16,
@@ -184,6 +234,14 @@ export default function HomePage() {
         />
         <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-green-500" />
       </div>
+
+      {howTo && (
+        <HowToPlayOverlay
+          isHovered={howToHoveredId === HOWTO_CONTINUE_ID}
+          dwellProgress={howToProgress}
+          onContinue={handleHowToContinue}
+        />
+      )}
     </div>
   );
 }

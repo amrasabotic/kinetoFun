@@ -3,6 +3,28 @@
 import { DwellButton } from './DwellButton';
 
 export const HOWTO_CONTINUE_ID = 'howto-continue';
+const HOWTO_SEEN_KEY = 'gesture-runner:howto-seen';
+
+/** Remembers for this browser tab that the instructions were read, so calibration doesn't repeat them. */
+export function markHowToSeen() {
+  try { sessionStorage.setItem(HOWTO_SEEN_KEY, '1'); } catch { /* storage blocked */ }
+}
+
+export function wasHowToSeen(): boolean {
+  try { return sessionStorage.getItem(HOWTO_SEEN_KEY) === '1'; } catch { return false; }
+}
+
+// The home screen opens the instructions once per page load. Module state
+// survives client-side navigation back to home but resets on a full reload,
+// which is exactly when the game is "loaded" again.
+let homeHowToShown = false;
+
+/** True the first time it is called after a page load, false afterwards. */
+export function claimHomeHowTo(): boolean {
+  if (homeHowToShown) return false;
+  homeHowToShown = true;
+  return true;
+}
 
 interface HowToPlayOverlayProps {
   isHovered: boolean;
@@ -26,7 +48,8 @@ const POWER_UPS = [
 /**
  * Forced "read this before you play" overlay. Built for TV play, so it is
  * dismissed by hovering a hand over CONTINUE (dwell), not by mouse. The dwell
- * hook lives in the calibration page, which owns the hand tracking.
+ * hook lives in the page showing it (home on load, calibration as a fallback),
+ * which owns the hand tracking.
  */
 export function HowToPlayOverlay({ isHovered, dwellProgress, onContinue }: HowToPlayOverlayProps) {
   return (
@@ -71,7 +94,7 @@ export function HowToPlayOverlay({ isHovered, dwellProgress, onContinue }: HowTo
             ))}
           </p>
           <p className="text-gray-400">
-            Stand 2–4 m from the camera with your full body visible. Next you&apos;ll calibrate, and the game starts automatically once you&apos;re steady.
+            Stand 2–4 m from the camera with your full body visible. When you start, you&apos;ll calibrate first, and the run begins automatically once you&apos;re steady.
           </p>
         </div>
 
