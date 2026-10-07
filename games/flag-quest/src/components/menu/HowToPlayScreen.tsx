@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import HoverButton from '../common/HoverButton';
 
@@ -8,7 +9,18 @@ const STEPS: { icon: string; title: string; desc: string }[] = [
   { icon: '🏁', title: 'Finish the flag', desc: 'Fill every region to complete the flag. Fewer mistakes and a faster time earn more stars and a bigger combo bonus.' },
 ];
 
+// The button ignores the hand for a moment so a player whose finger is
+// already resting where it appears does not skip the screen unread.
+const ARM_DELAY_MS = 1500;
+
 export default function HowToPlayScreen({ onBack }: { onBack: () => void }) {
+  const [armed, setArmed] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setArmed(true), ARM_DELAY_MS);
+    return () => window.clearTimeout(t);
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-[#1a1140] via-[#160b30] to-[#0b0620] flex flex-col items-center justify-center text-white px-6">
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
@@ -38,11 +50,14 @@ export default function HowToPlayScreen({ onBack }: { onBack: () => void }) {
 
       <HoverButton
         onActivate={onBack}
-        ringColor="#8C5CFF"
-        className="px-8 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 font-semibold"
+        disabled={!armed}
+        dwellMs={900}
+        ringColor="#2FA35A"
+        className="px-10 py-4 rounded-2xl bg-green-500/20 border-2 border-green-400/60 text-2xl font-extrabold"
       >
-        ← Back to Menu
+        Let's Play!
       </HoverButton>
+      <p className="mt-3 text-sm text-white/50">Hold your fingertip on the button to continue</p>
     </div>
   );
 }

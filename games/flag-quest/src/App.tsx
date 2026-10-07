@@ -42,7 +42,10 @@ function nextWorldTourFlagId(currentFlagId: string, isUnlocked: (id: string) => 
 }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem(CALIBRATED_KEY) ? 'main-menu' : 'calibration'));
+  // Instructions open on every load, not just the first: calibration is
+  // remembered per device, so a new player on a shared TV would otherwise
+  // land on the menu without ever seeing how painting works.
+  const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem(CALIBRATED_KEY) ? 'howto' : 'calibration'));
   const [mode, setMode] = useState<GameMode>('world-tour');
   const [continent, setContinent] = useState<Continent | null>(null);
   const [activeFlagId, setActiveFlagId] = useState<string | null>(null);
@@ -79,9 +82,6 @@ export default function App() {
   function handleCalibrationDone() {
     unlockAudio();
     localStorage.setItem(CALIBRATED_KEY, '1');
-    // First time ever — calibration only runs once — show how the paint
-    // mechanic works before dropping the player into the menu. The "How to
-    // Play" tile stays available afterward for reopening it any time.
     setScreen('howto');
   }
 
