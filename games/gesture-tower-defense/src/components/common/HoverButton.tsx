@@ -4,6 +4,10 @@ import { useDwellProgress } from '../../hooks/useDwellProgress';
 import { playHoverTick, playConfirm } from '../../audio/sound';
 import ProgressRing from './ProgressRing';
 
+// Buttons ignore the hand for a moment after they appear, so a hand already
+// resting where one is drawn cannot skip How to Play or press through screens.
+const ARM_MS = 1500;
+
 interface Props {
   onActivate: () => void;
   dwellMs?: number;
@@ -20,6 +24,12 @@ export default function HoverButton({
   const ref = useRef<HTMLButtonElement>(null);
   const [hovering, setHovering] = useState(false);
   const lastTickRef = useRef(0);
+  const [armed, setArmed] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setArmed(true), ARM_MS);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (disabled || !frame.detected) { setHovering(false); return; }
@@ -33,7 +43,7 @@ export default function HoverButton({
     setHovering(inside);
   }, [frame.cursorX, frame.cursorY, frame.detected, disabled]);
 
-  const progress = useDwellProgress(hovering && !disabled, dwellMs, () => {
+  const progress = useDwellProgress(hovering && !disabled && armed, dwellMs, () => {
     playConfirm();
     onActivate();
   });

@@ -8,6 +8,7 @@ import MapSelect from './components/menu/MapSelect';
 import StatisticsScreen from './components/menu/StatisticsScreen';
 import SettingsScreen from './components/menu/SettingsScreen';
 import CreditsScreen from './components/menu/CreditsScreen';
+import HowToPlayScreen from './components/menu/HowToPlayScreen';
 import { GameScreen, type BattleResult } from './components/game/GameScreen';
 import { useSettingsStore } from './stores/settingsStore';
 import { useGameStore, todayIso, hasDailyCompletedToday } from './stores/gameStore';
@@ -17,7 +18,7 @@ import { MAPS } from './data/maps';
 import { dailySeed } from './utils/helpers';
 import type { GameMode } from './types';
 
-type Screen = 'calibration' | 'main-menu' | 'map-select' | 'statistics' | 'settings' | 'credits' | 'game';
+type Screen = 'calibration' | 'how-to-play' | 'main-menu' | 'map-select' | 'statistics' | 'settings' | 'credits' | 'game';
 
 const CALIBRATED_KEY = 'gesture-tower-defense-calibrated-v1';
 const DAILY_TOTAL_WAVES = 8;
@@ -39,7 +40,8 @@ function randomSeed() {
 }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem(CALIBRATED_KEY) ? 'main-menu' : 'calibration'));
+  // How to Play opens on every load (after the one-time calibration on a new device).
+  const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem(CALIBRATED_KEY) ? 'how-to-play' : 'calibration'));
   const [launch, setLaunch] = useState<Launch | null>(null);
 
   const musicVolume = useSettingsStore((s) => s.musicVolume);
@@ -61,11 +63,15 @@ export default function App() {
   function handleCalibrationDone() {
     unlockAudio();
     localStorage.setItem(CALIBRATED_KEY, '1');
-    setScreen('main-menu');
+    setScreen('how-to-play');
   }
 
   function handleMainMenuSelect(action: MainMenuAction) {
     unlockAudio();
+    if (action === 'how-to-play') {
+      setScreen('how-to-play');
+      return;
+    }
     if (action === 'campaign') {
       setScreen('map-select');
       return;
@@ -136,6 +142,7 @@ export default function App() {
 
       {screen === 'calibration' && <CalibrationScreen onDone={handleCalibrationDone} />}
 
+      {screen === 'how-to-play' && <HowToPlayScreen onDone={() => { unlockAudio(); setScreen('main-menu'); }} />}
       {screen === 'main-menu' && <MainMenu onSelect={handleMainMenuSelect} dailyDone={hasDailyCompletedToday(dailyCompletions)} />}
 
       {screen === 'map-select' && (

@@ -1,6 +1,6 @@
 import HoverButton from '../common/HoverButton';
 
-export type MainMenuAction = 'campaign' | 'endless' | 'daily' | 'statistics' | 'settings' | 'credits';
+export type MainMenuAction = 'campaign' | 'endless' | 'daily' | 'how-to-play' | 'statistics' | 'settings' | 'credits';
 
 interface MainMenuProps {
   onSelect: (action: MainMenuAction) => void;
@@ -21,6 +21,9 @@ export default function MainMenu({ onSelect, dailyDone }: MainMenuProps) {
         </HoverButton>
         <HoverButton onActivate={() => onSelect('daily')} ringColor="#FBBF24" className="td-menu-btn">
           {dailyDone ? 'Daily Challenge ✓' : 'Daily Challenge'}
+        </HoverButton>
+        <HoverButton onActivate={() => onSelect('how-to-play')} ringColor="#38BDF8" className="td-menu-btn">
+          How to Play
         </HoverButton>
         <HoverButton onActivate={() => onSelect('statistics')} ringColor="#4ADE80" className="td-menu-btn">
           Statistics
