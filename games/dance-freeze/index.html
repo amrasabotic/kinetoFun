@@ -291,7 +291,7 @@ function addToLeaderboard(entries){
    GAME STATE MACHINE
    States: menu | howto | settings | leaderboard | countdown | dance | freeze | results
 ═══════════════════════════════════════════ */
-let gs='menu';
+let gs='howto'; // How To Play is the first thing every player sees
 let round=0, totalRounds=8;
 let phaseTimer=0, phaseDur=0;
 let freezeThreshold=4; // motionScore above this = moving during freeze
@@ -904,9 +904,6 @@ function loop(ts){
 buildPlayers(numPlayers);
 requestAnimationFrame(t=>{lastT=t;loop(t);});
 
-// Briefly show the menu on first load, then open How To Play automatically
-// — unless the player already navigated away on their own.
-setTimeout(()=>{ if(gs==='menu') gs='howto'; }, 2200);
 
 function waitForMP(cb,n=0){
   if(typeof Hands!=='undefined'&&typeof Camera!=='undefined') cb();

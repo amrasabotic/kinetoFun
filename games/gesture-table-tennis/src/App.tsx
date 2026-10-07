@@ -36,15 +36,6 @@ export default function App() {
     store.recordHighScore(pendingMode, coins * 10);
   }, [save.statistics, pendingMode, store]);
 
-  // Briefly show the main menu on first load, then open How To Play
-  // automatically — unless the player already navigated away on their own.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (useGameStore.getState().screen === 'menu') store.setScreen('howToPlay');
-    }, 2200);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const isPlaying = screen === 'playing';
 

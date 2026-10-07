@@ -462,7 +462,7 @@ function GameScreen({
 
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [screen, setScreen]   = useState<Screen>('landing');
+  const [screen, setScreen]   = useState<Screen>('howto');
   const [highScore, setHighScore] = useState(0);
   const menuVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -474,14 +474,6 @@ export default function App() {
     setScreen('landing');
   }, []);
 
-  // Briefly show the landing screen on first load, then open instructions
-  // automatically — unless the player already navigated away on their own.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setScreen(s => (s === 'landing' ? 'howto' : s));
-    }, 2200);
-    return () => clearTimeout(t);
-  }, []);
 
   if (screen === 'landing') {
     return <LandingScreen onStart={handleStart} onHowTo={handleHowTo} videoRef={menuVideoRef} />;

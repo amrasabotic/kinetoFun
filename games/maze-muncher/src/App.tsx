@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useMediaPipe } from './hooks/useMediaPipe';
 import CameraFeed from './components/CameraFeed';
 import GameCanvas from './components/GameCanvas';
@@ -28,20 +28,12 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { handRef, status } = useMediaPipe(videoRef as React.RefObject<HTMLVideoElement>);
 
-  const [screen, setScreen] = useState<Screen>('menu');
+  const [screen, setScreen] = useState<Screen>('howtoplay');
   const [save, setSave] = useState(() => loadSave());
   const [level, setLevel] = useState(1);
   const [keepScore, setKeepScore] = useState(false);
   const [runId, setRunId] = useState(0);
 
-  // Briefly show the main menu on first load, then open How To Play
-  // automatically — unless the player already navigated away on their own.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setScreen(s => (s === 'menu' ? 'howtoplay' : s));
-    }, 2200);
-    return () => clearTimeout(t);
-  }, []);
   const [pending, setPending] = useState<{ score: number; level: number }>({ score: 0, level: 1 });
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [calibrating, setCalibrating] = useState(false);

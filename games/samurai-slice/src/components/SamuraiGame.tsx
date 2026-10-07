@@ -74,21 +74,13 @@ export default function SamuraiGame() {
   const rafRef = useRef<number | null>(null);
   const gestureHoldRef = useRef<{ g: Gesture | null; count: number }>({ g: null, count: 0 });
 
-  const [phase, setPhase] = useState<Phase>("menu");
+  const [phase, setPhase] = useState<Phase>("howto");
 
   useEffect(() => {
     if (phase === "gameover") window.parent.postMessage({ type: 'GAME_COMPLETE', score }, '*');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // Briefly show the main menu on first load, then open How To Play
-  // automatically — unless the player already navigated away on their own.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setPhase(p => (p === "menu" ? "howto" : p));
-    }, 2200);
-    return () => clearTimeout(t);
-  }, []);
   const [mode, setMode] = useState<Mode>("endless");
   const [level, setLevel] = useState(1);
   const [maxUnlocked, setMaxUnlocked] = useState<number>(() => loadMaxUnlocked());

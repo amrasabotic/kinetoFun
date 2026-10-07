@@ -210,7 +210,7 @@ function addToLeaderboard(score,saves,level){
    GAME STATE MACHINE
    States: menu | howto | settings | leaderboard | countdown | play | results
 ═══════════════════════════════════════════ */
-let gs='menu';
+let gs='howto'; // How To Play is the first thing every player sees
 let dwellId=null, dwellT=0;
 const DWELL=900;
 let btns=[];
@@ -1039,9 +1039,6 @@ function loop(ts){
 
 requestAnimationFrame(t=>{lastT=t; loop(t);});
 
-// Briefly show the menu on first load, then open How To Play automatically
-// — unless the player already navigated away on their own.
-setTimeout(()=>{ if(gs==='menu') gs='howto'; }, 2200);
 
 function waitForMP(cb,n=0){
   if(typeof Hands!=='undefined'&&typeof Camera!=='undefined') cb();

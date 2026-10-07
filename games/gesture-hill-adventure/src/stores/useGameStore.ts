@@ -27,7 +27,8 @@ interface GameStore {
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
-  screen: 'menu',
+  // How To Play is the first thing every player sees when the game loads.
+  screen: 'howtoplay',
   setScreen: (screen) => set({ screen }),
 
   save: loadSave(),

@@ -34,7 +34,6 @@ function GameCanvas({ state, dispatch, dailySeq }: CanvasProps) {
   const lastTRef = useRef<number>(0);
   const handsRef = useRef<HandData[]>([]);
   const mountedRef = useRef(true);
-  const introShownRef = useRef(false);
 
   /* Keep refs in sync without re-subscribing RAF */
   stateRef.current = state;
@@ -77,18 +76,6 @@ function GameCanvas({ state, dispatch, dailySeq }: CanvasProps) {
     return () => { obs.disconnect(); window.removeEventListener('resize', resize); };
   }, []);
 
-  /* First time the main menu is reached (right after calibration), briefly
-     show it then auto-open How To Play — unless the player already picked a
-     menu option themselves. The How To Play menu button still works the
-     same way afterward for reopening it any time. */
-  useEffect(() => {
-    if (state.screen !== 'menu' || introShownRef.current) return;
-    introShownRef.current = true;
-    const t = setTimeout(() => {
-      if (stateRef.current.screen === 'menu') dispatch({ type: 'NAVIGATE', screen: 'howto' });
-    }, 2200);
-    return () => clearTimeout(t);
-  }, [state.screen, dispatch]);
 
   /* HandTracker init */
   useEffect(() => {

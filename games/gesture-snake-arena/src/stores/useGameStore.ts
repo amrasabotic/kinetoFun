@@ -75,7 +75,8 @@ export const useGameStore = create<GameState>((set, get) => {
   const skin = SNAKE_SKINS.find(s => s.id === save.selectedSkin) ?? SNAKE_SKINS[0];
 
   return {
-    screen: 'menu',
+    // How To Play is the first thing every player sees when the game loads.
+    screen: 'howtoplay',
     save,
     activeSkinColors: skin.colors,
     activeAccessory: save.selectedAccessory,

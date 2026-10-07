@@ -52,7 +52,8 @@ interface GameStore {
 export const useGameStore = create<GameStore>((set, get) => {
   const save = loadSave();
   return {
-    screen: 'menu',
+    // How To Play is the first thing every player sees when the game loads.
+    screen: 'howToPlay',
     save,
     pendingMode: 'classic',
     pendingDifficulty: save.settings.defaultDifficulty,

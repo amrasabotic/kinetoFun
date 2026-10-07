@@ -58,15 +58,6 @@ export default function App() {
     return true;
   }
 
-  // Briefly show the main menu on first load, then open How To Play
-  // automatically — unless the player already navigated away on their own.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (useGameStore.getState().screen === 'menu') setScreen('howtoplay');
-    }, 2200);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // ── Check if game canvas should be visible ─────────────────────────────────
   const showCanvas = screen === 'playing' || screen === 'game-over';

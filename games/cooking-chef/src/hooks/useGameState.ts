@@ -20,7 +20,8 @@ function reducer(state: GameState, action: GameAction): GameState {
     case 'MP_READY':
       return { ...state, mpReady: true, screen: 'calibrate' };
     case 'CALIBRATION_DONE':
-      return { ...state, screen: 'menu' };
+      // How To Play is the first screen after calibration on every load.
+      return { ...state, screen: 'howto' };
     case 'START_GAME':
       return { ...state, mode: action.mode, sequence: action.sequence, mgIndex: 0, mgResults: [], screen: 'countdown' };
     case 'MINIGAME_COMPLETE':
