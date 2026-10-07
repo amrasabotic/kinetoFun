@@ -493,3 +493,36 @@ html, body, #root {
 @media (prefers-reduced-motion: reduce) {
   .lp-bg__bubble, .lp-bg__waves, .lp-tube__surface, .lp-calibration__camera-icon { animation: none; }
 }
+
+/* How to Play cards */
+.lp-howto {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 360px));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.lp-howto__card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(148,163,253,0.3);
+  text-align: left;
+}
+.lp-howto__icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.lp-howto__title {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 3px;
+  color: #eef2ff;
+}
+.lp-howto__text {
+  font-size: 14px;
+  line-height: 1.4;
+  color: #b8c4e0;
+}

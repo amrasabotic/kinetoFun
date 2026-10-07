@@ -11,11 +11,12 @@ interface MainMenuProps {
   onStatistics: () => void;
   onSettings: () => void;
   onCredits: () => void;
+  onHowToPlay: () => void;
   dailyDone: boolean;
   gesture: GestureState;
 }
 
-export function MainMenu({ onPlay, onLevelSelect, onEndless, onDaily, onStatistics, onSettings, onCredits, dailyDone, gesture }: MainMenuProps) {
+export function MainMenu({ onPlay, onLevelSelect, onEndless, onDaily, onStatistics, onSettings, onCredits, onHowToPlay, dailyDone, gesture }: MainMenuProps) {
   return (
     <div className="lp-screen">
       <AnimatedBackground />
@@ -28,6 +29,7 @@ export function MainMenu({ onPlay, onLevelSelect, onEndless, onDaily, onStatisti
           <DwellButton label="Level Select" onActivate={onLevelSelect} className="lp-menu-btn" />
           <DwellButton label="Endless Mode" onActivate={onEndless} className="lp-menu-btn" />
           <DwellButton label={dailyDone ? 'Daily Challenge ✓' : 'Daily Challenge'} onActivate={onDaily} className="lp-menu-btn" />
+          <DwellButton label="How to Play" onActivate={onHowToPlay} className="lp-menu-btn" />
           <DwellButton label="Statistics" onActivate={onStatistics} className="lp-menu-btn" />
           <DwellButton label="Settings" onActivate={onSettings} className="lp-menu-btn" />
           <DwellButton label="Credits" onActivate={onCredits} className="lp-menu-btn" />

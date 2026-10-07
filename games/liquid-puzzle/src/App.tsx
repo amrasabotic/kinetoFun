@@ -8,6 +8,7 @@ import { LevelSelect } from './components/LevelSelect';
 import { StatisticsScreen } from './components/StatisticsScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { CreditsScreen } from './components/CreditsScreen';
+import { HowToPlay } from './components/HowToPlay';
 import { GameScreen, type WinResult } from './components/GameScreen';
 import type { GameMode, Settings } from './types';
 import {
@@ -23,7 +24,7 @@ import {
 import { setMusicVolume, setSfxVolume, startAmbientMusic } from './systems/audio';
 import { dailySeed } from './utils/helpers';
 
-type ScreenName = 'menu' | 'levelSelect' | 'statistics' | 'settings' | 'credits' | 'game';
+type ScreenName = 'howto' | 'menu' | 'levelSelect' | 'statistics' | 'settings' | 'credits' | 'game';
 
 interface Launch {
   mode: GameMode;
@@ -44,7 +45,8 @@ interface AppShellProps {
 
 function AppShell({ save, setSave }: AppShellProps) {
   const gesture = useGesture();
-  const [screen, setScreen] = useState<ScreenName>('menu');
+  // How to Play is the first screen after calibration every time the game loads.
+  const [screen, setScreen] = useState<ScreenName>('howto');
   const [launch, setLaunch] = useState<Launch | null>(null);
   const [runKey, setRunKey] = useState(0);
 
@@ -112,6 +114,8 @@ function AppShell({ save, setSave }: AppShellProps) {
   }
 
   switch (screen) {
+    case 'howto':
+      return <HowToPlay onDone={() => setScreen('menu')} gesture={gesture} />;
     case 'levelSelect':
       return (
         <LevelSelect
@@ -146,6 +150,7 @@ function AppShell({ save, setSave }: AppShellProps) {
           onStatistics={() => setScreen('statistics')}
           onSettings={() => setScreen('settings')}
           onCredits={() => setScreen('credits')}
+          onHowToPlay={() => setScreen('howto')}
           dailyDone={hasDailyCompletedToday()}
           gesture={gesture}
         />
