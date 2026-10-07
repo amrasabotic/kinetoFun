@@ -154,6 +154,10 @@ let menuItems = [];
 let hoveredItem = -1;
 let hoverTimer = 0;
 const HOVER_SELECT_MS = 1000;
+// Menu items ignore the hand for a moment after each screen appears, so a hand
+// already resting on an item cannot skip How to Play or press through screens.
+const MENU_ARM_MS = 1500;
+let menuArmedAt = 0;
 let aimHoldTimer = 0;
 const AIM_HOLD_MS = 900;
 let aimFireTriggered = false;
@@ -163,6 +167,7 @@ let lastTime = 0;
 function buildMenu(items) {
   menuItems = items.map((it, i) => ({ label:it.label, action:it.action, id:i }));
   hoveredItem = -1; hoverTimer = 0;
+  menuArmedAt = performance.now() + MENU_ARM_MS;
 }
 
 function renderMenuItems() {
@@ -203,13 +208,16 @@ function showHelp() {
   overlay.style.display = 'flex';
   overlay.innerHTML = `
     <h1>How to Play</h1>
-    <p class="subtitle" style="margin-bottom:24px">Gesture Controls</p>
-    <div style="text-align:left;max-width:340px;line-height:2;color:rgba(255,255,255,0.7);font-size:14px">
-      <p>☝️ <strong style="color:#a78bfa">One finger</strong> — Navigate menus &amp; aim ball</p>
-      <p>✌️ <strong style="color:#60a5fa">Two fingers</strong> — Move the paddle</p>
-      <p>🎯 <strong style="color:#34d399">Hold aim 0.9s</strong> — Fires the ball</p>
+    <p class="subtitle" style="margin-bottom:18px">Break every brick using only your hand</p>
+    <div style="text-align:left;max-width:520px;line-height:1.9;color:rgba(255,255,255,0.78);font-size:15px">
+      <p>🧱 <strong style="color:#f472b6">Goal</strong> — Bounce the ball into the bricks until every one is broken.</p>
+      <p>☝️ <strong style="color:#a78bfa">One finger</strong> — Point to aim the ball; hold still for 0.9s to launch it.</p>
+      <p>✌️ <strong style="color:#60a5fa">Two fingers</strong> — Move your hand left and right to slide the paddle.</p>
+      <p>❤️ <strong style="color:#f87171">3 lives</strong> — You lose one each time the ball falls past the paddle.</p>
+      <p>🏁 <strong style="color:#34d399">3 levels</strong> — Each one has more bricks and a faster ball.</p>
+      <p>👉 <strong style="color:#facc15">Menus</strong> — Point at an item and hold until its bar fills.</p>
     </div>`;
-  buildMenu([{ label:'← Back', action:() => showMenu() }]);
+  buildMenu([{ label:'▶  Let\'s Play', action:() => showMenu() }]);
   renderMenuItems();
 }
 
@@ -288,6 +296,7 @@ function updateMenuHover(normX, normY) {
   });
 
   const now = performance.now();
+  if (now < menuArmedAt) newHover = -1;
   if (newHover !== hoveredItem) {
     hoveredItem = newHover; hoverTimer = now;
     menuItems.forEach((_,i) => {
@@ -587,11 +596,11 @@ function initHandTracking() {
 
   camera.start()
     .then(() => {
-      loadingScreen.style.display = 'none';
-      showMenu();
+      // How to Play is already on screen (shown at load); leave it there.
       requestAnimationFrame(gameLoop);
     })
     .catch(err => {
+      loadingScreen.style.display = 'flex';
       loadingScreen.innerHTML = `
         <h2 style="color:#f87171">Camera Error</h2>
         <p id="loadMsg" style="color:rgba(255,255,255,0.5);margin-top:12px;max-width:320px;text-align:center">${err.message}</p>
@@ -609,6 +618,10 @@ function waitForMediaPipe() {
   }
 }
 
+// How to Play is the first screen, shown straight away while the camera and
+// hand tracker start in the background.
+loadingScreen.style.display = 'none';
+showHelp();
 waitForMediaPipe();
 </script>
 </body>

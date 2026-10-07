@@ -70,7 +70,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 <script>
 // ── constants ──────────────────────────────────────────
-const ST = {LOAD:'LOAD',MENU:'MENU',PLAY:'PLAY',OVER:'OVER'};
+const ST = {LOAD:'LOAD',HOW:'HOW',MENU:'MENU',PLAY:'PLAY',OVER:'OVER'};
+// Buttons ignore the hand for a moment after a screen appears, so a hand already
+// pointing at one cannot skip How to Play or press through screens.
+const ARM_MS=1500;
 const COLS=4, ROWS=3, GSEC=60, HF=75;
 
 // ── state ──────────────────────────────────────────────
@@ -81,6 +84,7 @@ let ham={x:-300,y:-300,sw:false};
 let lastFist=false, swCD=0;
 let mBtns=[], selB=-1, hovC={};
 let gTmr=null;
+let btnArmedAt=0;
 
 // ── canvas ─────────────────────────────────────────────
 const canvas = document.getElementById('gc');
@@ -129,8 +133,11 @@ function buildBtns(){
     ];
   else if(st===ST.OVER)
     mBtns=[{label:'🔄  PLAY AGAIN', action:'play', x:W/2, y:H/2+158, w:256, h:62}];
+  else if(st===ST.HOW)
+    mBtns=[{label:"▶  LET'S PLAY", action:'menu', x:W/2, y:H*.87, w:280, h:62}];
   else mBtns=[];
   selB=-1; hovC={};
+  btnArmedAt=performance.now()+ARM_MS;
 }
 
 // ── gesture ────────────────────────────────────────────
@@ -401,30 +408,39 @@ function drawBtns(){
 }
 
 // ── screens ────────────────────────────────────────────
-function drawLoad(){
+// How to Play: drawn from the very first frame (while the camera starts) and
+// kept on screen until the player holds a hand on LET'S PLAY.
+function drawHow(loading){
   const W=canvas.width,H=canvas.height;
   drawBG();
-  ctx.save(); ctx.textAlign='center';
-  ctx.font=`bold ${Math.min(W*.09,74)}px 'Fredoka One',cursive`;
+  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.font=`bold ${Math.min(W*.08,66)}px 'Fredoka One',cursive`;
   ctx.fillStyle='#ffd93d'; ctx.shadowColor='#ff6b6b'; ctx.shadowBlur=22;
-  ctx.fillText('WHACK-A-MOLE',W/2,H*.22); ctx.shadowBlur=0;
-  ctx.font=`${Math.min(W*.03,22)}px 'Nunito',sans-serif`;
-  ctx.fillStyle='rgba(255,255,255,.75)';
-  ctx.fillText('🎥  Allow camera access when prompted',W/2,H*.34);
-  ctx.fillStyle='rgba(255,255,255,.45)';
-  ctx.font=`${Math.min(W*.024,18)}px 'Nunito',sans-serif`;
-  ctx.fillText('Then show your hand — everything runs on gestures',W/2,H*.41);
-  const ly=H*.68;
-  [['☝️','POINT','Hover to select'],['✋','OPEN PALM','Move hammer'],['✊','FIST','Smash moles!']].forEach(([ic,g,d],i)=>{
-    const lx=W/2+(i-1)*W*.27;
-    ctx.fillStyle='rgba(255,255,255,.07)';
-    ctx.beginPath(); ctx.roundRect(lx-68,ly-36,136,82,12); ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1; ctx.stroke();
-    ctx.font='1.7rem sans-serif'; ctx.textBaseline='middle'; ctx.fillText(ic,lx,ly-8);
-    ctx.font=`700 ${Math.min(W*.017,13)}px 'Nunito',sans-serif`; ctx.fillStyle='#ffd93d'; ctx.fillText(g,lx,ly+20);
-    ctx.font=`${Math.min(W*.014,11)}px 'Nunito',sans-serif`; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillText(d,lx,ly+35);
+  ctx.fillText('WHACK-A-MOLE',W/2,H*.13); ctx.shadowBlur=0;
+  ctx.font=`${Math.min(W*.032,26)}px 'Fredoka One',cursive`;
+  ctx.fillStyle='#fff'; ctx.fillText('HOW TO PLAY',W/2,H*.21);
+  const ly=H*.37;
+  [['☝️','POINT','Hold on a button to select'],['✋','OPEN PALM','Move the hammer'],['✊','FIST','Smash the mole!']].forEach(([ic,g,d],i)=>{
+    const lx=W/2+(i-1)*Math.min(W*.27,260);
+    ctx.fillStyle='rgba(255,255,255,.08)';
+    ctx.beginPath(); ctx.roundRect(lx-95,ly-55,190,118,14); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.textBaseline='middle';
+    ctx.font='2.4rem sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(ic,lx,ly-18);
+    ctx.font=`700 ${Math.min(W*.02,17)}px 'Nunito',sans-serif`; ctx.fillStyle='#ffd93d'; ctx.fillText(g,lx,ly+20);
+    ctx.font=`${Math.min(W*.016,14)}px 'Nunito',sans-serif`; ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillText(d,lx,ly+42);
   });
+  ctx.textBaseline='alphabetic';
+  ctx.font=`${Math.min(W*.022,19)}px 'Nunito',sans-serif`; ctx.fillStyle='rgba(255,255,255,.85)';
+  ['🐹  Moles pop out of the holes — smash them with a fist for 10 points.',
+   '❤️  You have 3 lives: every mole that gets away costs one.',
+   '⏱️  The round lasts 60 seconds, and the moles speed up as it goes.'].forEach((t,i)=>ctx.fillText(t,W/2,H*.58+i*H*.06));
+  if(loading){
+    ctx.font=`${Math.min(W*.022,18)}px 'Nunito',sans-serif`; ctx.fillStyle='rgba(255,255,255,.55)';
+    ctx.fillText('🎥  Starting the camera — allow access when asked',W/2,H*.87);
+  }
   ctx.restore();
+  if(!loading){ drawBtns(); drawCursor(); }
 }
 
 function drawMenu(){
@@ -484,10 +500,17 @@ function updateHover(){
   mBtns.forEach((b,i)=>{
     if(Math.abs(px-b.x)<b.w/2+8&&Math.abs(py-b.y)<b.h/2+8) found=i;
   });
+  if(performance.now()<btnArmedAt) found=-1;
   if(found!==selB){selB=found;hovC={};}
   if(found>=0){
     hovC[found]=(hovC[found]||0)+1;
-    if(hovC[found]>=HF){hovC={};if(mBtns[found].action==='play')startGame();}
+    if(hovC[found]>=HF){
+      hovC={};
+      const a=mBtns[found].action;
+      if(a==='play') startGame();
+      else if(a==='how'){ st=ST.HOW; buildBtns(); }
+      else if(a==='menu'){ st=ST.MENU; buildBtns(); }
+    }
   }
 }
 
@@ -517,7 +540,8 @@ function drawPreview(){
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  if     (st===ST.LOAD){ drawLoad(); }
+  if     (st===ST.LOAD){ drawHow(true); }
+  else if(st===ST.HOW){ drawHow(false); updateHover(); }
   else if(st===ST.MENU){ updateMoles(); drawMenu(); updateHover(); }
   else if(st===ST.PLAY){ updateMoles(); updateHammer(); drawPlay(); }
   else if(st===ST.OVER){ drawOver(); updateHover(); }
@@ -555,7 +579,7 @@ hands.onResults(res=>{
     document.getElementById('camBox').style.display='block';
     const cam=new Camera(video,{onFrame:async()=>{await hands.send({image:video});},width:1280,height:720});
     cam.start();
-    st=ST.MENU; buildBtns();
+    st=ST.HOW; buildBtns();
   } catch(e){
     document.getElementById('gn').textContent='CAMERA DENIED – RELOAD';
     console.error(e);
