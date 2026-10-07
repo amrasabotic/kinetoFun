@@ -1,6 +1,8 @@
 import { useRef, useEffect, useState, ReactNode } from 'react';
 import { useGesture } from '../../systems/GestureManager';
 
+const ARM_MS = 1500;
+
 interface GestureButtonProps {
   onActivate: () => void;
   children: ReactNode;
@@ -27,6 +29,9 @@ export default function GestureButton({
   const holdTimerRef = useRef<number | null>(null);
   const buttonId = useRef(id || `btn-${Math.random().toString(36).slice(2)}`);
   const activatedRef = useRef(false);
+  // A pinch already in progress when the button appears (or within a moment of
+  // it appearing) must be released first, so a screen cannot be skipped unread.
+  const armedAt = useRef(performance.now() + ARM_MS);
 
   // Register as hover target
   useEffect(() => {
@@ -67,6 +72,11 @@ export default function GestureButton({
         holdTimerRef.current = null;
       }
       activatedRef.current = false;
+      return;
+    }
+
+    if (state.isPinching && isHovered && performance.now() < armedAt.current) {
+      activatedRef.current = true;
       return;
     }
 

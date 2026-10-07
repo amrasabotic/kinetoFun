@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { GameScreen, GameMode, LevelData, PlayerProgress, GameSettings, Theme } from './data/types';
 import { levels } from './data/levels';
 import { themes } from './data/themes';
@@ -17,20 +17,16 @@ import GameBoard from './components/GameBoard/GameBoard';
 import { PauseOverlay, LevelCompleteOverlay } from './components/Menus/Overlays';
 
 function AppContent() {
-  const [screen, setScreen] = useState<GameScreen>('menu');
+  // The tutorial (How to Play) opens every time the game loads, then leads to the menu.
+  const [screen, setScreen] = useState<GameScreen>('tutorial');
   const [progress, setProgress] = useState<PlayerProgress>(loadProgress);
   const [settings, setSettings] = useState<GameSettings>(loadSettings);
   const [currentLevel, setCurrentLevel] = useState<LevelData | null>(null);
   const [gameMode, setGameMode] = useState<GameMode>('campaign');
   const [paused, setPaused] = useState(false);
   const [showComplete, setShowComplete] = useState<{ score: number; stars: number } | null>(null);
-  const [showTutorial] = useState(!localStorage.getItem('kinetofun_tutorial_done'));
 
   const currentTheme: Theme = themes.find((t) => t.id === progress.selectedTheme) ?? themes[0];
-
-  useEffect(() => {
-    if (showTutorial) setScreen('tutorial');
-  }, []);
 
   // Open palm gesture -> navigate back from menus
   useGestureEvent('openPalm', useCallback(() => {
@@ -160,10 +156,7 @@ function AppContent() {
     return (
       <Tutorial
         theme={currentTheme}
-        onComplete={() => {
-          localStorage.setItem('kinetofun_tutorial_done', 'true');
-          setScreen('menu');
-        }}
+        onComplete={() => setScreen('menu')}
       />
     );
   }
