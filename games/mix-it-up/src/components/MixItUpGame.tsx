@@ -46,7 +46,7 @@ const BOOM: Outcome[] = [
   { emoji: "🤯", title: "BRAIN MELT!", subtitle: "Science!", kind: "boom" },
 ];
 
-type Phase = "play" | "mixing" | "result";
+type Phase = "intro" | "play" | "mixing" | "result";
 
 const MAX_INGREDIENTS = 5;
 
@@ -74,7 +74,8 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
   });
   const [carrying, setCarrying] = useState<Ingredient | null>(null);
   const [beaker, setBeaker] = useState<Ingredient[]>([]);
-  const [phase, setPhase] = useState<Phase>("play");
+  // How to Play is shown first every time the lab opens.
+  const [phase, setPhase] = useState<Phase>("intro");
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [status, setStatus] = useState<string>("Loading hand tracking…");
   const [hoverProgress, setHoverProgress] = useState(0);
@@ -234,6 +235,29 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
     setPhase("play");
   }, []);
 
+  // Leave How to Play by holding the hand over "Let's Mix!". It ignores the
+  // hand for a moment after it appears so a raised hand cannot skip it unread.
+  const introBtnRef = useRef<HTMLDivElement>(null);
+  const introArmedAt = useRef(performance.now() + 1500);
+  const introHoverStart = useRef<number | null>(null);
+  const [introProgress, setIntroProgress] = useState(0);
+  useEffect(() => {
+    if (phase !== "intro") return;
+    const el = introBtnRef.current;
+    const r = el?.getBoundingClientRect();
+    const px = hand.x * window.innerWidth, py = hand.y * window.innerHeight;
+    const over = !!r && hand.visible && px >= r.left && px <= r.right && py >= r.top && py <= r.bottom;
+    if (!over || performance.now() < introArmedAt.current) {
+      introHoverStart.current = null;
+      setIntroProgress(0);
+      return;
+    }
+    if (introHoverStart.current === null) introHoverStart.current = performance.now();
+    const p = Math.min(1, (performance.now() - introHoverStart.current) / 1200);
+    setIntroProgress(p);
+    if (p >= 1) { introHoverStart.current = null; setIntroProgress(0); setPhase("play"); }
+  }, [hand, phase]);
+
   // Confirm by hovering the MIX button for 3 seconds.
   const hoverStartRef = useRef<number | null>(null);
   useEffect(() => {
@@ -364,6 +388,42 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
         ← Home
       </button>
 
+      {/* How to Play — above the camera loader so it is readable straight away */}
+      {phase === "intro" && (
+        <div className="absolute inset-0 z-[62] flex flex-col items-center justify-center gap-5 p-6" style={{ background: "var(--lab-bg)" }}>
+          <h2 className="text-6xl font-bold text-white cartoon-stroke">HOW TO PLAY</h2>
+          <div className="grid grid-cols-2 gap-4 max-w-4xl w-full">
+            {[
+              ["✋", "Move your hand", "The hand on screen follows your index fingertip."],
+              ["🤏", "Grab an ingredient", "Pinch your thumb and index finger over an ingredient on the shelves to pick it up."],
+              ["🧪", "Fill the beaker", "Carry it over the beaker and open your fingers to drop it in. Up to 5 ingredients."],
+              ["⏳", "Mix it", "Hold your hand over the MIX! button in the corner for 3 seconds."],
+              ["🎉", "Magic or KABOOM", "Every mix is a surprise — it might be magic, or it might explode!"],
+              ["🔁", "Again!", "After the result, pinch over the AGAIN button to start a new experiment."],
+            ].map(([ic, t, d]) => (
+              <div key={t} className="flex gap-4 items-start bg-white rounded-3xl border-4 border-[var(--border)] p-4 shadow-[0_6px_0_var(--border)]">
+                <span className="text-4xl leading-none">{ic}</span>
+                <div>
+                  <div className="text-xl font-bold">{t}</div>
+                  <div className="text-base font-semibold opacity-80 leading-snug">{d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div
+            ref={introBtnRef}
+            className="relative overflow-hidden text-3xl font-bold cartoon-stroke text-white px-12 py-5 rounded-3xl border-4 border-[var(--border)] shadow-[0_8px_0_var(--border)]"
+            style={{ background: "linear-gradient(180deg,#ff6b9d,#c2185b)" }}
+          >
+            <span className="relative z-10">LET'S MIX! 🚀</span>
+            <span className="absolute left-0 bottom-0 w-full bg-white/40 pointer-events-none" style={{ height: `${introProgress * 100}%` }} />
+          </div>
+          <p className="text-lg font-semibold text-white">
+            {status || "Hold your hand over the button to start"}
+          </p>
+        </div>
+      )}
+
       {/* Mixing overlay */}
       {phase === "mixing" && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 pointer-events-none">
@@ -390,7 +450,7 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
       {/* Hand cursor */}
       {hand.visible && (
         <div
-          className="pointer-events-none absolute z-[55] -translate-x-1/2 -translate-y-1/2 transition-transform"
+          className="pointer-events-none absolute z-[70] -translate-x-1/2 -translate-y-1/2 transition-transform"
           style={{
             left: `${hand.x * 100}%`,
             top: `${hand.y * 100}%`,

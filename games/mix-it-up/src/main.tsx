@@ -1,4 +1,4 @@
-import { StrictMode, useState } from 'react';
+import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MixItUpGame, Scientist } from './components/MixItUpGame';
 import './styles.css';
@@ -8,19 +8,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  if (stream) {
-    return (
-      <MixItUpGame
-        stream={stream}
-        onExit={() => {
-          stream.getTracks().forEach((t) => t.stop());
-          setStream(null);
-        }}
-      />
-    );
-  }
-
   const handleStart = () => {
+    if (loading) return;
     setError(null);
     setLoading(true);
     navigator.mediaDevices
@@ -33,6 +22,28 @@ function App() {
         else setError('Could not start the camera. ' + (e.message || ''));
       });
   };
+
+  // The game is played on TVs with no mouse, so the camera starts on its own;
+  // the button below stays as a retry when camera access fails.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current) return;
+    autoStarted.current = true;
+    handleStart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (stream) {
+    return (
+      <MixItUpGame
+        stream={stream}
+        onExit={() => {
+          stream.getTracks().forEach((t) => t.stop());
+          setStream(null);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden" style={{ background: 'var(--lab-bg)' }}>
