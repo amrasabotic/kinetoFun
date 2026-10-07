@@ -80,6 +80,7 @@ export const LevelMap: React.FC<LevelMapProps> = ({
       {/* Header */}
       <div className="relative z-20 flex items-center justify-between px-8 pt-6 pb-2">
         <button
+          data-dwell=""
           onClick={onBack}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white transition-all duration-200 backdrop-blur-sm border border-slate-700/50"
         >
@@ -169,7 +170,10 @@ export const LevelMap: React.FC<LevelMapProps> = ({
               <g
                 key={level.id}
                 className="cursor-pointer"
-                onClick={() => status !== 'locked' && setSelected(isSelected ? null : i)}
+                // Pressing a node only selects it. A hand held on a selected node
+                // presses it again, so toggling it off would undo the choice.
+                data-dwell={status === 'locked' ? undefined : ''}
+                onClick={() => status !== 'locked' && setSelected(i)}
                 style={{ cursor: status === 'locked' ? 'not-allowed' : 'pointer' }}
               >
                 {/* Glow ring when selected */}
@@ -383,6 +387,7 @@ export const LevelMap: React.FC<LevelMapProps> = ({
 
                 {/* Begin button */}
                 <button
+                  data-dwell=""
                   onClick={() => onSelectLevel(selected)}
                   className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
                   style={{

@@ -23,6 +23,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
 
         <div className="flex flex-col gap-3">
           <button
+            data-dwell=""
             onClick={onResume}
             className="flex items-center justify-center gap-3 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 w-48"
           >
@@ -31,6 +32,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
           </button>
 
           <button
+            data-dwell=""
             onClick={onRestart}
             className="flex items-center justify-center gap-3 px-8 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 w-48"
           >
@@ -39,6 +41,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
           </button>
 
           <button
+            data-dwell=""
             onClick={onQuit}
             className="flex items-center justify-center gap-3 px-8 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 w-48"
           >
@@ -48,6 +51,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
         </div>
 
         <button
+          data-dwell=""
           onClick={onToggleSound}
           className="p-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors mt-4"
         >

@@ -341,7 +341,9 @@ export const Game: React.FC<GameProps> = ({
             </div>
           )}
 
+          {/* Longer hold so the hand passing by while steering the shield does not pause. */}
           <button
+            data-dwell="1500"
             onClick={onPause}
             className="px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-lg backdrop-blur-sm transition-colors"
           >

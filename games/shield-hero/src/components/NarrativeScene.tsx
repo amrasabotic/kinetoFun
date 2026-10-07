@@ -94,10 +94,16 @@ export const Narrative: React.FC<NarrativeProps> = ({ level, onComplete, type })
 
         <div className="mt-8 text-center">
           <div className="flex items-center justify-center gap-2 text-slate-400 group-hover:text-slate-300 transition-colors">
-            <span className="text-sm">
-              {currentSceneIndex < scenes.length - 1 ? 'Click to continue' : 'Click to start'}
-            </span>
-            <ChevronRight className="w-4 h-4 animate-pulse" />
+            {/* A real button so the scene can be advanced by hand (data-dwell);
+                clicking anywhere still works for mouse players. */}
+            <button
+              data-dwell=""
+              onClick={(e) => { e.stopPropagation(); handleNext(); }}
+              className="flex items-center gap-2 rounded-xl bg-emerald-500 px-8 py-3 text-lg font-semibold text-white"
+            >
+              {currentSceneIndex < scenes.length - 1 ? 'Continue' : 'Start'}
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
 
           <div className="flex justify-center gap-2 mt-4">

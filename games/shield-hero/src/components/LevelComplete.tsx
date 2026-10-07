@@ -56,6 +56,7 @@ export const LevelComplete: React.FC<LevelCompleteProps> = ({
         <div className="flex gap-4">
           {hasNextLevel && (
             <button
+              data-dwell=""
               onClick={onNextLevel}
               className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
             >
@@ -65,6 +66,7 @@ export const LevelComplete: React.FC<LevelCompleteProps> = ({
           )}
 
           <button
+            data-dwell=""
             onClick={onQuit}
             className="flex items-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
           >

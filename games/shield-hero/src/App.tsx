@@ -7,6 +7,8 @@ import { Narrative } from './components/NarrativeScene';
 import { LevelComplete } from './components/LevelComplete';
 import { LevelMap } from './components/LevelMap';
 import { CameraFeed } from './components/CameraFeed';
+import { HandCursor } from './components/HandCursor';
+import { HowToPlay } from './components/HowToPlay';
 import { useHandTracking } from './hooks/useHandTracking';
 import { GameState, GameMode, GameStats, Level } from './types/game';
 import { levels } from './data/levels';
@@ -32,18 +34,25 @@ const App: React.FC = () => {
   const [storyScores, setStoryScores] = useState<number[]>(Array(levels.length).fill(0));
   // How many levels have been completed (unlocks the next one on the map)
   const [unlockedUpTo, setUnlockedUpTo] = useState(0);
+  // How to Play is the first thing shown when the game loads.
+  const [showHowTo, setShowHowTo] = useState(true);
 
   const {
     initialize: initHandTracking,
     startCamera,
     getPosition,
-    stop: stopTracking,
     isInitialized,
     isStarting,
     error: initError
   } = useHandTracking();
 
   const gameKeyRef = useRef(0);
+
+  // The hand drives the menus too (TV play, no mouse), so tracking starts on
+  // load and keeps running between screens instead of only during a match.
+  useEffect(() => {
+    initHandTracking();
+  }, [initHandTracking]);
 
   useEffect(() => {
     const loadHighScores = async () => {
@@ -112,10 +121,9 @@ const App: React.FC = () => {
   }, [gameMode]);
 
   const handleQuit = useCallback(() => {
-    stopTracking();
     setGameState('menu');
     setIsPaused(false);
-  }, [stopTracking]);
+  }, []);
 
   const handleBackToMap = useCallback(() => {
     setGameState('levelMap');
@@ -195,14 +203,13 @@ const App: React.FC = () => {
       setCompletedLevel(null);
     } else {
       // All levels complete
-      stopTracking();
       setGameState('menu');
     }
-  }, [currentLevelIndex, stopTracking]);
+  }, [currentLevelIndex]);
 
   const currentLevel = levels[currentLevelIndex];
 
-  const showCamera = isInitialized && gameState !== 'menu' && gameState !== 'levelMap';
+  const showCamera = isInitialized;
 
   const isPlaying = gameState === 'story' || gameState === 'endless';
   const isPausedState = gameState === 'paused';
@@ -218,8 +225,11 @@ const App: React.FC = () => {
           onToggleSound={() => setSoundEnabled(!soundEnabled)}
           isInitializing={isStarting}
           initError={initError}
+          onHowToPlay={() => setShowHowTo(true)}
         />
       )}
+
+      {gameState === 'menu' && showHowTo && <HowToPlay onDone={() => setShowHowTo(false)} />}
 
       {gameState === 'levelMap' && (
         <LevelMap
@@ -284,6 +294,9 @@ const App: React.FC = () => {
       {showCamera && (
         <CameraFeed onVideoReady={handleVideoReady} />
       )}
+
+      {/* During play the shield is the pointer, so the menu cursor hides. */}
+      <HandCursor getPosition={getPosition} visible={!isPlaying} />
     </div>
   );
 };

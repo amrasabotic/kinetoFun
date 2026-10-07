@@ -62,6 +62,7 @@ export const GameOver: React.FC<GameOverProps> = ({
 
         <div className="flex gap-4">
           <button
+            data-dwell=""
             onClick={onRestart}
             className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
           >
@@ -70,6 +71,7 @@ export const GameOver: React.FC<GameOverProps> = ({
           </button>
 
           <button
+            data-dwell=""
             onClick={onQuit}
             className="flex items-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
           >
