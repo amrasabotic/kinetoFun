@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LEVELS, buildGrid, WORD_COLORS, type BuiltGrid } from "@/lib/levels";
 import { markCompleted } from "@/lib/progress";
-import { useHandTracking, HAND_CONNECTIONS, type HandLandmark } from "@/lib/use-hand-tracking";
+import { HAND_CONNECTIONS, type HandLandmark } from "@/lib/use-hand-tracking";
+import { useHand } from "@/lib/hand-context";
 
 export const Route = createFileRoute("/play/$level")({
   head: ({ params }) => ({
@@ -56,8 +57,14 @@ function wordColorVar(idx: number) {
 
 function GameSurface({ levelDef, onExit, onNext }: { levelDef: typeof LEVELS[number]; onExit: () => void; onNext: () => void }) {
   const grid = useMemo(() => buildGrid(levelDef), [levelDef]);
-  const [enableHand, setEnableHand] = useState(true);
-  const hand = useHandTracking(enableHand);
+  // The camera is started once for the whole game (HandProvider).
+  const { hand, setCursorHidden } = useHand();
+  const [hideCameraNotice, setHideCameraNotice] = useState(false);
+  // This screen draws its own cursor for grabbing letters.
+  useEffect(() => {
+    setCursorHidden(true);
+    return () => setCursorHidden(false);
+  }, [setCursorHidden]);
 
   const [cursor, setCursor] = useState({ x: 0, y: 0 });
   const [pinching, setPinching] = useState(false);
@@ -223,7 +230,8 @@ function GameSurface({ levelDef, onExit, onNext }: { levelDef: typeof LEVELS[num
 
       {/* Top bar */}
       <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-6 py-4">
-        <button onClick={onExit} className="rounded-2xl bg-card/80 px-4 py-2 font-display text-sm font-bold shadow-tile backdrop-blur hover:bg-card">
+        {/* Longer hold so a hand resting near it while thinking does not leave the level. */}
+        <button data-dwell="2000" onClick={onExit} className="rounded-2xl bg-card/80 px-4 py-2 font-display text-sm font-bold shadow-tile backdrop-blur hover:bg-card">
           ← Levels
         </button>
         <div className="rounded-2xl bg-card/80 px-5 py-2 text-center font-display shadow-tile backdrop-blur">
@@ -263,8 +271,8 @@ function GameSurface({ levelDef, onExit, onNext }: { levelDef: typeof LEVELS[num
         <span className="font-semibold">
           {hand.active ? "Hand tracked" : hand.error ? "Mouse mode" : "Starting camera…"}
         </span>
-        {hand.error && (
-          <button onClick={() => setEnableHand(false)} className="ml-2 text-muted-foreground underline">dismiss</button>
+        {hand.error && !hideCameraNotice && (
+          <button onClick={() => setHideCameraNotice(true)} className="ml-2 text-muted-foreground underline">dismiss</button>
         )}
       </div>
 
@@ -564,11 +572,11 @@ function WinOverlay({ level, isLast, onNext, onMenu }: { level: number; isLast: 
           {isLast ? "You finished every puzzle. Word wizard status: confirmed." : "Next level unlocked."}
         </p>
         <div className="mt-8 flex justify-center gap-3">
-          <button onClick={onMenu} className="rounded-2xl bg-muted px-6 py-3 font-display font-bold">
+          <button data-dwell="" onClick={onMenu} className="rounded-2xl bg-muted px-6 py-3 font-display font-bold">
             Level Map
           </button>
           {!isLast && (
-            <button onClick={onNext} className="rounded-2xl bg-primary px-8 py-3 font-display font-bold text-primary-foreground shadow-tile">
+            <button data-dwell="" onClick={onNext} className="rounded-2xl bg-primary px-8 py-3 font-display font-bold text-primary-foreground shadow-tile">
               Next ▶
             </button>
           )}

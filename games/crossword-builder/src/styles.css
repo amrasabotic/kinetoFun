@@ -123,3 +123,19 @@
   .bg-sunset { background-image: var(--gradient-sunset); background-color: transparent; }
   .no-select { user-select: none; -webkit-user-select: none; }
 }
+
+/* Hand-hover press: elements marked data-dwell fill up from the left while
+   the hand cursor rests on them (progress is set as --dwell by DwellCursor). */
+[data-dwell] {
+  position: relative;
+  overflow: hidden;
+}
+[data-dwell]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
+  transform: scaleX(var(--dwell, 0));
+  transform-origin: left;
+}

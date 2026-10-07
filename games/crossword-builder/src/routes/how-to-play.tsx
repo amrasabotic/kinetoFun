@@ -12,7 +12,7 @@ export const Route = createFileRoute("/how-to-play")({
 
 function HowToPlay() {
   const steps = [
-    { n: 1, title: "Enable your camera", body: "When the game starts, allow webcam access so MediaPipe can see your hand. You'll see a small live preview." },
+    { n: 1, title: "Enable your camera", body: "Allow webcam access when asked so the game can see your hand. Point at a button and hold your hand still until it fills to press it." },
     { n: 2, title: "Move the cursor", body: "Point your index finger at the screen. A glowing cursor follows your fingertip in real time." },
     { n: 3, title: "Pinch to grab", body: "Touch your thumb to your index finger to pinch. Pinch a letter tile from the bank on the right to pick it up." },
     { n: 4, title: "Drop into the grid", body: "Move the letter over an empty box and release the pinch. Correct words turn green and lock in." },
@@ -20,9 +20,9 @@ function HowToPlay() {
     { n: 6, title: "Progress through 20 levels", body: "Each level unlocks the next. Words get longer and crosswords grow as you climb." },
   ];
   return (
-    <main className="min-h-screen px-6 py-12">
+    <main className="min-h-screen px-6 pt-12 pb-36">
       <div className="mx-auto max-w-3xl">
-        <Link to="/" className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+        <Link to="/" data-dwell="" className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
           ← Back
         </Link>
         <h1 className="mt-4 font-display text-6xl font-bold">How to Play</h1>
@@ -44,8 +44,9 @@ function HowToPlay() {
           ))}
         </ol>
 
-        <div className="mt-10 flex justify-center gap-4">
-          <Link to="/levels" className="rounded-3xl bg-primary px-10 py-4 font-display text-2xl font-bold text-primary-foreground shadow-pop">
+        {/* Fixed so it is reachable by hand without scrolling the page. */}
+        <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center gap-4 bg-background/85 py-5 backdrop-blur">
+          <Link to="/levels" data-dwell="" className="rounded-3xl bg-primary px-10 py-4 font-display text-2xl font-bold text-primary-foreground shadow-pop">
             Start playing
           </Link>
         </div>

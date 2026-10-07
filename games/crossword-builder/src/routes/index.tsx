@@ -50,12 +50,14 @@ function Home() {
         >
           <Link
             to="/levels"
+            data-dwell=""
             className="rounded-3xl bg-primary px-12 py-5 font-display text-3xl font-bold text-primary-foreground shadow-pop transition-transform hover:-translate-y-1 active:translate-y-0"
           >
             ▶ Play
           </Link>
           <Link
             to="/how-to-play"
+            data-dwell=""
             className="rounded-3xl bg-card px-10 py-5 font-display text-2xl font-bold text-foreground shadow-tile transition-transform hover:-translate-y-1"
           >
             How to Play
@@ -63,7 +65,7 @@ function Home() {
         </motion.div>
 
         <p className="mt-16 text-xs uppercase tracking-widest text-muted-foreground">
-          Allow camera access to track your hand. Works best in a well-lit room.
+          Allow camera access to track your hand. Point at a button and hold still to press it.
         </p>
       </div>
     </main>

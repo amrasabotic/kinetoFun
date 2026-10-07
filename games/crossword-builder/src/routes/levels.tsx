@@ -23,7 +23,7 @@ function LevelMap() {
     <main className="min-h-screen px-6 py-10">
       <div className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between">
-          <Link to="/" className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">← Menu</Link>
+          <Link to="/" data-dwell="" className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">← Menu</Link>
           <p className="font-display text-sm text-muted-foreground">{completed.length} / 20 complete</p>
         </div>
         <h1 className="mt-4 font-display text-6xl font-bold">Choose a level</h1>
@@ -57,6 +57,7 @@ function LevelTile({ id, name, unlocked, done }: { id: number; name: string; unl
     <Link
       to="/play/$level"
       params={{ level: String(id) }}
+      data-dwell=""
       className={`${base} shadow-pop hover:-translate-y-1 ${done ? "bg-success text-success-foreground" : "bg-card text-foreground"}`}
     >
       <span className="text-xs font-semibold uppercase tracking-widest text-foreground/50">Level</span>
