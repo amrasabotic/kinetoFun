@@ -414,3 +414,34 @@ html, body, #root {
   color: transparent;
   margin: 0;
 }
+
+/* How to Play cards */
+.gbl-howto {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 340px));
+  gap: 14px;
+}
+.gbl-howto__card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(251,191,36,0.4);
+  text-align: left;
+}
+.gbl-howto__icon {
+  font-size: 30px;
+  line-height: 1;
+}
+.gbl-howto__title {
+  font-weight: 700;
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+.gbl-howto__text {
+  font-size: 14px;
+  line-height: 1.45;
+  opacity: 0.8;
+}

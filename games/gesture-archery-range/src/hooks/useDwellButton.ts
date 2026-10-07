@@ -13,6 +13,9 @@ export function useDwellButton(holdMs: number, onActivate: () => void) {
   const sinceRef = useRef(0);
   const wasOverRef = useRef(false);
   const firedRef = useRef(false);
+  // Ignore the hand for a moment after the button appears, so a hand already
+  // resting on it cannot skip How to Play or press through screens.
+  const armedAtRef = useRef(performance.now() + 1500);
 
   useEffect(() => {
     let raf = 0;
@@ -23,8 +26,8 @@ export function useDwellButton(holdMs: number, onActivate: () => void) {
         const rect = el.getBoundingClientRect();
         const px = gesture.cursorX * window.innerWidth;
         const py = gesture.cursorY * window.innerHeight;
-        const isOver = px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
         const now = performance.now();
+        const isOver = now >= armedAtRef.current && px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
         if (isOver) {
           if (!wasOverRef.current) {
             sinceRef.current = now;
