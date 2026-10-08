@@ -27,6 +27,17 @@
     }
     .screen.active { display: flex; }
 
+    /* ─── How to Play screen ──────────────────────────────────────────────── */
+    #screenHowto { background: var(--bg); flex-direction: column; gap: 26px; padding: 24px; }
+    .howto-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 360px)); gap: 14px; }
+    .howto-card {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 18px;
+    }
+    .howto-card .ic { font-size: 2rem; line-height: 1; }
+    .howto-card .t  { font-weight: 700; font-size: 1.1rem; margin-bottom: 4px; color: var(--text); }
+    .howto-card .d  { font-size: 0.92rem; line-height: 1.45; color: var(--muted); }
+
     /* ─── Setup screen ────────────────────────────────────────────────────── */
     #screenSetup { background: var(--bg); flex-direction: column; gap: 32px; padding: 24px; }
 
@@ -229,7 +240,25 @@
 <body>
 
 <!-- ══ SETUP SCREEN ══════════════════════════════════════════════════════════ -->
-<div id="screenSetup" class="screen active">
+<div id="screenHowto" class="screen active">
+  <div class="setup-title">How to Play</div>
+  <div class="howto-grid">
+    <div class="howto-card"><div class="ic">☝️</div><div><div class="t">Start a round</div><div class="d">Point one finger and hold it still to start a round. A 3-2-1 countdown appears.</div></div></div>
+    <div class="howto-card"><div class="ic">✊✋✌️</div><div><div class="t">Show your move</div><div class="d">When the countdown ends, show a fist (rock), an open hand (paper) or two fingers (scissors).</div></div></div>
+    <div class="howto-card"><div class="ic">🏆</div><div><div class="t">Who wins</div><div class="d">Rock beats scissors, scissors beats paper, paper beats rock. The same move is a tie.</div></div></div>
+    <div class="howto-card"><div class="ic">🔢</div><div><div class="t">Pick the rounds</div><div class="d">Next, show a fist for 5 rounds, an open hand for 10 or two fingers for 15 — then point and hold to begin.</div></div></div>
+  </div>
+  <div class="dwell-ring-wrap">
+    <svg id="howtoRingSvg" width="64" height="64" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(124,106,255,0.2)" stroke-width="5"/>
+      <circle class="fg" cx="32" cy="32" r="26" fill="none" stroke="var(--accent)" stroke-width="5"
+        stroke-linecap="round" stroke-dasharray="0 164" transform="rotate(-90 32 32)"/>
+    </svg>
+    <span style="margin-left:10px;font-size:1rem;color:var(--muted)">☝️ Point &amp; hold to continue</span>
+  </div>
+</div>
+
+<div id="screenSetup" class="screen">
   <div class="setup-title">✊ Rock · Paper · Scissors ✌️</div>
   <div class="setup-subtitle">
     <span class="cam-ready-dot" id="camDot"></span>
@@ -373,6 +402,8 @@ const scoreCpuEl   = document.getElementById('scoreCpu');
 const roundNumEl   = document.getElementById('roundNum');
 const roundTotalEl = document.getElementById('roundTotal');
 
+const screenHowto   = document.getElementById('screenHowto');
+const howtoRingFg   = document.querySelector('#howtoRingSvg .fg');
 const screenSetup   = document.getElementById('screenSetup');
 const screenResults = document.getElementById('screenResults');
 const camDot        = document.getElementById('camDot');
@@ -403,7 +434,11 @@ let totalRounds   = 10;
 let roundsPlayed  = 0;
 let busy          = false;
 let gameActive    = false;   // true while main game screen is showing
-let currentScreen = 'setup'; // 'setup' | 'game' | 'results'
+let currentScreen = 'howto'; // 'howto' | 'setup' | 'game' | 'results'
+// Point-and-hold ignores the hand for a moment after each screen appears, so
+// a hand already pointing cannot skip How to Play or start a game at once.
+const SCREEN_ARM_MS = 1500;
+let screenArmedAt = performance.now() + SCREEN_ARM_MS;
 
 // Dwell tracking (context-sensitive)
 let dwellStart = null;
@@ -483,6 +518,9 @@ async function initRecognizer() {
 // ── Screen management ─────────────────────────────────────────────────────────
 function showScreen(name) {
   currentScreen = name;
+  screenArmedAt = performance.now() + SCREEN_ARM_MS;
+  screenHowto.classList.toggle('active', name === 'howto');
+  howtoRingFg.setAttribute('stroke-dasharray', `0 ${RING_C_SETUP}`);
   screenSetup.classList.toggle('active', name === 'setup');
   screenResults.classList.toggle('active', name === 'results');
   gameActive = (name === 'game');
@@ -555,7 +593,9 @@ function renderLoop() {
   }
 
   // ── Screen-specific gesture handling ──────────────────────────────────────
-  if (currentScreen === 'setup') {
+  if (currentScreen === 'howto') {
+    handleHowtoGesture(now);
+  } else if (currentScreen === 'setup') {
     handleSetupGesture(now);
   } else if (currentScreen === 'game' && !busy) {
     handleGameGesture(now);
@@ -564,6 +604,20 @@ function renderLoop() {
   }
 
   requestAnimationFrame(renderLoop);
+}
+
+// ── How to Play screen gestures ───────────────────────────────────────────────
+// ☝️+hold = continue to the round picker
+function handleHowtoGesture(now) {
+  if (currentGesture === 'point' && now >= screenArmedAt) {
+    if (dwellStart === null) dwellStart = now;
+    const pct = Math.min((now - dwellStart) / DWELL_SETUP, 1);
+    howtoRingFg.setAttribute('stroke-dasharray', `${pct * RING_C_SETUP} ${RING_C_SETUP}`);
+    if (pct >= 1) { dwellStart = null; showScreen('setup'); }
+  } else if (dwellStart !== null) {
+    dwellStart = null;
+    howtoRingFg.setAttribute('stroke-dasharray', `0 ${RING_C_SETUP}`);
+  }
 }
 
 // ── Setup screen gestures ─────────────────────────────────────────────────────
@@ -576,7 +630,7 @@ function handleSetupGesture(now) {
     return;
   }
 
-  if (currentGesture === 'point' && gestureRecognizer) {
+  if (currentGesture === 'point' && gestureRecognizer && now >= screenArmedAt) {
     if (dwellStart === null) dwellStart = now;
     const elapsed = now - dwellStart;
     const pct = Math.min(elapsed / DWELL_SETUP, 1);
@@ -616,7 +670,7 @@ function handleGameGesture(now) {
 // ── Results screen gestures ───────────────────────────────────────────────────
 // ☝️+hold = play again
 function handleResultsGesture(now) {
-  if (currentGesture === 'point') {
+  if (currentGesture === 'point' && now >= screenArmedAt) {
     if (dwellStart === null) dwellStart = now;
     const elapsed = now - dwellStart;
     const pct = Math.min(elapsed / DWELL_SETUP, 1);
