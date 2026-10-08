@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MixItUpGame, Scientist } from "@/components/MixItUpGame";
 
 export const Route = createFileRoute("/")({
@@ -16,14 +16,16 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [exited, setExited] = useState(false);
   if (stream) return <MixItUpGame stream={stream} onExit={() => {
+    setExited(true);
     stream.getTracks().forEach(t => t.stop());
     setStream(null);
   }} />;
-  return <HomeScreen onStream={setStream} />;
+  return <HomeScreen onStream={setStream} autoStart={!exited} />;
 }
 
-function HomeScreen({ onStream }: { onStream: (s: MediaStream) => void }) {
+function HomeScreen({ onStream, autoStart }: { onStream: (s: MediaStream) => void; autoStart: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +45,15 @@ function HomeScreen({ onStream }: { onStream: (s: MediaStream) => void }) {
         else setError("Could not start the camera. " + (e.message || ""));
       });
   };
+
+  // The game runs on a TV with no mouse, so the camera starts by itself and
+  // play begins on the How to Play screen, which is dismissed by hand. The
+  // button stays for retrying after an error. After the player exits, the
+  // screen waits instead of starting again straight away.
+  useEffect(() => {
+    if (autoStart) handleStart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div

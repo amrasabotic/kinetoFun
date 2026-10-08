@@ -36,7 +36,7 @@ export default function SkinsScreen({
 
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-6 pb-3">
-        <button className="text-white/60 font-display text-lg hover:text-white transition-colors"
+        <button className="px-5 py-3 rounded-2xl bg-white/10 text-white/80 font-display text-lg hover:text-white transition-colors"
           onClick={() => { playClick(); onBack(); }}>← Back</button>
         <h2 className="text-2xl font-black font-display text-white flex-1">Cosmetics</h2>
         <div className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold font-sans"
@@ -141,14 +141,14 @@ function SkinCard({ name, colors, cost, owned, selected, onSelect, onBuy }: {
       </div>
       <div className="font-display font-bold text-white text-sm text-center">{name}</div>
       {owned
-        ? <button className="py-1.5 rounded-xl text-xs font-bold font-sans transition-all"
+        ? <button className="py-3 rounded-xl text-sm font-bold font-sans transition-all"
             style={selected
               ? { background: 'rgba(124,58,237,0.6)', color: '#fff' }
               : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}
             onClick={onSelect}>
             {selected ? '✓ Selected' : 'Select'}
           </button>
-        : <button className="py-1.5 rounded-xl text-xs font-bold font-sans"
+        : <button className="py-3 rounded-xl text-sm font-bold font-sans"
             style={{ background: 'rgba(255,215,0,0.15)', color: '#FFD740', border: '1px solid #FFD74040' }}
             onClick={onBuy}>
             🪙 {cost}
@@ -172,14 +172,14 @@ function SimpleCard({ name, cost, owned, selected, onSelect, onBuy }: {
       </div>
       <div className="font-display font-bold text-white text-sm text-center">{name}</div>
       {owned
-        ? <button className="py-1.5 rounded-xl text-xs font-bold font-sans"
+        ? <button className="py-3 rounded-xl text-sm font-bold font-sans"
             style={selected
               ? { background: 'rgba(124,58,237,0.6)', color: '#fff' }
               : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}
             onClick={onSelect}>
             {selected ? '✓ Active' : 'Select'}
           </button>
-        : <button className="py-1.5 rounded-xl text-xs font-bold font-sans"
+        : <button className="py-3 rounded-xl text-sm font-bold font-sans"
             style={{ background: 'rgba(255,215,0,0.15)', color: '#FFD740', border: '1px solid #FFD74040' }}
             onClick={onBuy}>
             🪙 {cost}

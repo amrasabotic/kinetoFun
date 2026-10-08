@@ -3,6 +3,7 @@ import LandingScreen from './LandingScreen';
 import HowToPlayScreen from './HowToPlayScreen';
 import OrderScreen from './OrderScreen';
 import BakingScreen from './BakingScreen';
+import MenuHandCursor from './MenuHandCursor';
 import type { GameScreen, PizzaOrder } from './types';
 import { PIZZA_ORDERS } from './types';
 
@@ -65,6 +66,7 @@ export default function App() {
       {screen === 'baking' && (
         <BakingScreen order={currentOrder} onBake={handleBake} />
       )}
+      {screen !== 'baking' && <MenuHandCursor />}
       {screen === 'result' && (
         <OrderScreen
           order={currentOrder}

@@ -33,7 +33,7 @@ export default function StatisticsScreen({ stats, onBack }: Props) {
     <div className="w-full h-screen flex flex-col overflow-hidden"
       style={{ background: 'linear-gradient(135deg, #0a0a1e, #0d0d35)' }}>
       <div className="flex items-center gap-4 px-6 pt-6 pb-4">
-        <button className="text-white/60 font-display text-lg hover:text-white transition-colors"
+        <button className="px-5 py-3 rounded-2xl bg-white/10 text-white/80 font-display text-lg hover:text-white transition-colors"
           onClick={() => { playClick(); onBack(); }}>← Back</button>
         <h2 className="text-2xl font-black font-display text-white">Statistics</h2>
       </div>

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { GameSettings } from '../../types';
 import { setMusicVolume, setSfxVolume, playClick } from '../../game/audio/audioSystem';
 
@@ -9,11 +10,12 @@ interface Props {
 }
 
 export default function SettingsScreen({ settings, onChange, onBack, onReset }: Props) {
+  const [confirmReset, setConfirmReset] = useState(false);
   return (
     <div className="w-full h-screen flex flex-col overflow-hidden"
       style={{ background: 'linear-gradient(135deg, #0a0a1e, #0d0d35)' }}>
       <div className="flex items-center gap-4 px-6 pt-6 pb-4">
-        <button className="text-white/60 font-display text-lg hover:text-white transition-colors"
+        <button className="px-5 py-3 rounded-2xl bg-white/10 text-white/80 font-display text-lg hover:text-white transition-colors"
           onClick={() => { playClick(); onBack(); }}>← Back</button>
         <h2 className="text-2xl font-black font-display text-white">Settings</h2>
       </div>
@@ -54,10 +56,15 @@ export default function SettingsScreen({ settings, onChange, onBack, onReset }: 
         </Section>
 
         <button
-          className="w-full py-3 rounded-2xl font-display font-bold text-red-400 mt-4 transition-all active:scale-95"
+          className="w-full py-4 rounded-2xl font-display font-bold text-red-400 mt-4 transition-all active:scale-95"
           style={{ background: 'rgba(255,82,82,0.08)', border: '1px solid rgba(255,82,82,0.2)' }}
-          onClick={() => { if (confirm('Reset all progress?')) { playClick(); onReset(); } }}>
-          Reset All Progress
+          onClick={() => {
+            playClick();
+            // A browser confirm dialog cannot be answered by hand, so the
+            // button asks for a second press instead.
+            if (confirmReset) onReset(); else setConfirmReset(true);
+          }}>
+          {confirmReset ? 'Press again to erase everything' : 'Reset All Progress'}
         </button>
       </div>
     </div>
@@ -79,16 +86,30 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function SliderRow({ label, value, min = 0, max = 1, step = 0.05, onChange }: {
+// Settings are changed by hand on a TV, so every control is a large button:
+// a slider or dropdown cannot be operated with the hand cursor.
+const STEP_BTN = 'w-12 h-12 rounded-xl text-2xl font-bold text-white disabled:opacity-30';
+const STEP_BTN_STYLE = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' };
+
+function SliderRow({ label, value, min = 0, max = 1, step = 0.1, onChange }: {
   label: string; value: number; min?: number; max?: number; step?: number;
   onChange: (v: number) => void;
 }) {
+  const set = (v: number) => {
+    playClick();
+    onChange(Math.round(Math.min(max, Math.max(min, v)) * 100) / 100);
+  };
+  const fill = (value - min) / (max - min);
   return (
     <div className="flex items-center gap-4 px-4 py-3">
       <div className="text-sm font-sans text-white/80 w-40">{label}</div>
-      <input type="range" min={min} max={max} step={step} value={value}
-        className="flex-1 accent-violet-500"
-        onChange={e => onChange(parseFloat(e.target.value))} />
+      <button className={STEP_BTN} style={STEP_BTN_STYLE} disabled={value <= min}
+        onClick={() => set(value - step)} aria-label={`Lower ${label}`}>−</button>
+      <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+        <div className="h-full bg-violet-500" style={{ width: `${fill * 100}%` }} />
+      </div>
+      <button className={STEP_BTN} style={STEP_BTN_STYLE} disabled={value >= max}
+        onClick={() => set(value + step)} aria-label={`Raise ${label}`}>+</button>
       <div className="text-xs font-sans text-white/40 w-10 text-right">{value.toFixed(1)}</div>
     </div>
   );
@@ -99,11 +120,11 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
     <div className="flex items-center justify-between px-4 py-3">
       <div className="text-sm font-sans text-white/80">{label}</div>
       <button
-        className="w-12 h-6 rounded-full transition-all relative"
+        className="w-24 h-12 rounded-full transition-all relative"
         style={{ background: value ? '#7C3AED' : 'rgba(255,255,255,0.15)' }}
         onClick={() => { playClick(); onChange(!value); }}>
-        <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-          style={{ left: value ? '26px' : '2px' }} />
+        <div className="absolute top-1 w-10 h-10 bg-white rounded-full shadow transition-all"
+          style={{ left: value ? '52px' : '4px' }} />
       </button>
     </div>
   );
@@ -117,12 +138,18 @@ function SelectRow({ label, value, options, onChange }: {
   return (
     <div className="flex items-center justify-between px-4 py-3">
       <div className="text-sm font-sans text-white/80">{label}</div>
-      <select
-        className="bg-transparent text-white/80 text-sm font-sans rounded-lg px-2 py-1 border border-white/10"
-        value={value}
-        onChange={e => onChange(e.target.value)}>
-        {options.map(o => <option key={o.value} value={o.value} className="bg-gray-900">{o.label}</option>)}
-      </select>
+      <div className="flex gap-2">
+        {options.map(o => (
+          <button key={o.value}
+            className="px-4 h-12 rounded-xl text-sm font-bold font-sans"
+            style={o.value === value
+              ? { background: '#7C3AED', color: '#fff' }
+              : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}
+            onClick={() => { playClick(); onChange(o.value); }}>
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

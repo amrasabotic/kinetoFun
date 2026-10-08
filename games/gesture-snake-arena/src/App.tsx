@@ -10,6 +10,7 @@ import Statistics  from './components/ui/Statistics';
 import SettingsScreen from './components/ui/Settings';
 import HowToPlay   from './components/ui/HowToPlay';
 import Credits     from './components/ui/Credits';
+import HandCursor  from './components/ui/HandCursor';
 
 const T = { duration: 0.25, ease: 'easeInOut' as const };
 
@@ -53,6 +54,12 @@ export default function App() {
 
 
   const showCanvas = screen === 'playing';
+
+  // The camera image is mirrored, so the cursor follows the hand on screen.
+  const getHandPoint = () => {
+    const h = handRef.current;
+    return h.detected ? { x: 1 - h.palmX, y: h.palmY } : null;
+  };
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#0b0e1a]">
@@ -134,6 +141,8 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <HandCursor getPoint={getHandPoint} />
     </div>
   );
 }

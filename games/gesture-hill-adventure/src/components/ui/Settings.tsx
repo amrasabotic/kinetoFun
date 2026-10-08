@@ -35,12 +35,12 @@ export default function Settings({ settings, onChange, onBack, onReset }: Props)
         <motion.button
           whileTap={{ scale: 0.92 }}
           onClick={() => toggle(settingKey)}
-          className="w-12 h-6 rounded-full flex items-center px-0.5 transition-all"
+          className="w-20 h-11 rounded-full flex items-center px-1 transition-all"
           style={{ background: on ? '#FF6B35' : 'rgba(255,255,255,0.15)' }}
         >
           <motion.div
-            className="w-5 h-5 bg-white rounded-full shadow"
-            animate={{ x: on ? 24 : 0 }}
+            className="w-9 h-9 bg-white rounded-full shadow"
+            animate={{ x: on ? 36 : 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           />
         </motion.button>
@@ -64,11 +64,25 @@ export default function Settings({ settings, onChange, onBack, onReset }: Props)
           </div>
           <span className="text-white/60 text-sm font-bold">{fmt(value)}</span>
         </div>
-        <input
-          type="range" min={min} max={max} step={step} value={value}
-          onChange={e => change(Number(e.target.value))}
-          className="w-full accent-orange-500"
-        />
+        {/* Buttons rather than a range input: the hand cursor can press a
+            button but cannot drag a slider. */}
+        <div className="flex items-center gap-3">
+          <button
+            disabled={value <= min}
+            onClick={() => { playUiClick(); change(Math.round(Math.max(min, value - step) * 100) / 100); }}
+            className="w-12 h-12 rounded-xl text-2xl font-bold text-white glass disabled:opacity-30"
+            aria-label={`Lower ${label}`}
+          >−</button>
+          <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full bg-orange-500" style={{ width: `${((value - min) / (max - min)) * 100}%` }} />
+          </div>
+          <button
+            disabled={value >= max}
+            onClick={() => { playUiClick(); change(Math.round(Math.min(max, value + step) * 100) / 100); }}
+            className="w-12 h-12 rounded-xl text-2xl font-bold text-white glass disabled:opacity-30"
+            aria-label={`Raise ${label}`}
+          >+</button>
+        </div>
       </div>
     );
   }
@@ -84,7 +98,7 @@ export default function Settings({ settings, onChange, onBack, onReset }: Props)
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => { playUiClick(); onBack(); }}
-          className="glass rounded-xl px-4 py-2 text-white font-bold text-sm"
+          className="glass rounded-xl px-5 py-3 text-white font-bold text-base"
         >
           ← Back
         </motion.button>

@@ -16,6 +16,7 @@ import Garage      from './components/ui/Garage';
 import HowToPlay   from './components/ui/HowToPlay';
 import SettingsScreen  from './components/ui/Settings';
 import Statistics  from './components/ui/Statistics';
+import HandCursor  from './components/ui/HandCursor';
 import type { VehicleSkin } from './types';
 
 const TRANSITION = { duration: 0.28, ease: 'easeInOut' as const };
@@ -61,6 +62,14 @@ export default function App() {
 
   // ── Check if game canvas should be visible ─────────────────────────────────
   const showCanvas = screen === 'playing' || screen === 'game-over';
+
+  // The main menu and How to Play run their own hand-pressed buttons; every
+  // other screen with buttons uses the shared hand cursor.
+  const cursorScreens = ['garage', 'settings', 'statistics', 'game-over'];
+  const getHandPoint = () => {
+    const h = handRef.current;
+    return h.detected ? { x: h.palmX, y: h.palmY } : null;
+  };
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#0b0e1a]">
@@ -141,6 +150,8 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <HandCursor getPoint={getHandPoint} enabled={cursorScreens.includes(screen)} />
     </div>
   );
 }

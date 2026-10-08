@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import HandCursor, { type HandPoint } from "./HandCursor";
 import { classifyGesture, GESTURE_META, type Gesture } from "@/lib/gestures";
 import { loadHandLandmarker } from "@/lib/mediapipe";
 
@@ -73,6 +74,9 @@ export default function SamuraiGame() {
   const landmarkerRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
   const gestureHoldRef = useRef<{ g: Gesture | null; count: number }>({ g: null, count: 0 });
+  // Palm position, mirrored, for the menu hand cursor.
+  const handPointRef = useRef<HandPoint>(null);
+  const getHandPoint = useCallback(() => handPointRef.current, []);
 
   const [phase, setPhase] = useState<Phase>("howto");
 
@@ -168,6 +172,7 @@ export default function SamuraiGame() {
         try {
           const result = landmarker.detectForVideo(video, ts);
           const lm = result?.landmarks?.[0];
+          handPointRef.current = lm ? { x: 1 - lm[9].x, y: lm[9].y } : null;
           const g = lm ? classifyGesture(lm) : null;
           setLiveGesture(g);
 
@@ -371,10 +376,17 @@ export default function SamuraiGame() {
     setPhase("playing");
   }, []);
 
+  // The menus are used on a TV with no mouse, so the camera starts with the
+  // game rather than on the first button press: the hand cursor needs it.
+  useEffect(() => {
+    ensureCamera().catch((err: any) => setError(err?.message || "Failed to start camera / model"));
+  }, [ensureCamera]);
+
   const approach = enemy?.approach ?? 1;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden ink-vignette text-foreground">
+      <HandCursor getPoint={getHandPoint} enabled={phase !== "playing" && phase !== "loading"} />
       <ParallaxBg distance={bgScroll} slowed={!!enemy && approach < 0.6} />
 
       <Stage enemy={enemy} approach={approach} />

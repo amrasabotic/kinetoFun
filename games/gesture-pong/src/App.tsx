@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useHandTracking } from './useHandTracking';
 import { useGameCanvas } from './useGameCanvas';
+import HandCursor from './HandCursor';
 import { initialGameState, stepGame, TABLE } from './gameLogic';
 import type { GameState, Difficulty } from './gameLogic';
 
@@ -15,10 +16,37 @@ export default function App() {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
 
 
-  if (screen === 'landing') return <LandingScreen onPlay={() => setScreen('difficulty')} onHow={() => setScreen('howtoplay')} />;
-  if (screen === 'howtoplay') return <HowToPlayScreen onBack={() => setScreen('landing')} />;
-  if (screen === 'difficulty') return <DifficultyScreen onSelect={(d) => { setDifficulty(d); setScreen('game'); }} onBack={() => setScreen('landing')} />;
-  return <GameScreen difficulty={difficulty} onQuit={() => setScreen('landing')} />;
+  if (screen === 'game') return <GameScreen difficulty={difficulty} onQuit={() => setScreen('landing')} />;
+  return (
+    <>
+      {screen === 'landing' && <LandingScreen onPlay={() => setScreen('difficulty')} onHow={() => setScreen('howtoplay')} />}
+      {screen === 'howtoplay' && <HowToPlayScreen onBack={() => setScreen('landing')} />}
+      {screen === 'difficulty' && <DifficultyScreen onSelect={(d) => { setDifficulty(d); setScreen('game'); }} onBack={() => setScreen('landing')} />}
+      <MenuHandCursor />
+    </>
+  );
+}
+
+/**
+ * The menus are used on a TV with no mouse, so they get their own camera
+ * feed and hand cursor. It unmounts with the menus, which frees the camera
+ * for the game screen.
+ */
+function MenuHandCursor() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hand = useHandTracking(videoRef as React.RefObject<HTMLVideoElement>);
+  const handRef = useRef(hand);
+  handRef.current = hand;
+  const getPoint = useCallback(() => {
+    const h = handRef.current;
+    return h.detected ? { x: h.indexTipX, y: h.indexTipY } : null;
+  }, []);
+  return (
+    <>
+      <video ref={videoRef} className="absolute opacity-0 pointer-events-none w-1 h-1" muted playsInline />
+      <HandCursor getPoint={getPoint} />
+    </>
+  );
 }
 
 // ──────────────────────────────────────────────
@@ -206,6 +234,12 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
   };
 
   const gs = displayState;
+  // Only the end-of-match buttons are pressed by hand: during a rally the
+  // hand steers the paddle and must not trigger Restart or Quit.
+  const getHandPoint = () => {
+    const h = handDataRef.current;
+    return h.detected ? { x: h.indexTipX, y: h.indexTipY } : null;
+  };
   const isEndless = difficulty === 'endless';
   const diffLabel = difficulty === 'endless' ? 'Endless' : difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
 
@@ -216,6 +250,7 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
 
   return (
     <div className="h-screen bg-gray-950 flex items-center justify-center overflow-hidden">
+      <HandCursor getPoint={getHandPoint} enabled={gs.phase === 'gameOver'} />
       <div className="flex items-stretch gap-4 h-full py-4 px-4" style={{ maxHeight: CANVAS_H + 32 }}>
 
         {/* ── Left panel: Bot ── */}
@@ -335,11 +370,11 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
                 )}
                 <div className="flex gap-3 mt-1">
                   <button onClick={handleRestart}
-                    className="px-6 py-2.5 bg-green-500 hover:bg-green-400 active:scale-95 text-black font-bold rounded-xl transition-all">
+                    className="px-8 py-4 text-lg bg-green-500 hover:bg-green-400 active:scale-95 text-black font-bold rounded-xl transition-all">
                     Play Again
                   </button>
                   <button onClick={onQuit}
-                    className="px-6 py-2.5 bg-white/12 hover:bg-white/20 active:scale-95 text-white font-bold rounded-xl transition-all">
+                    className="px-8 py-4 text-lg bg-white/12 hover:bg-white/20 active:scale-95 text-white font-bold rounded-xl transition-all">
                     Quit
                   </button>
                 </div>
