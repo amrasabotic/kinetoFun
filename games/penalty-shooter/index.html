@@ -118,7 +118,11 @@
 //  CONFIG
 // ══════════════════════════════════════════════
 const TOTAL_SHOTS  = 5;
-const DWELL_FRAMES = 15;   // ~0.5 sec at 30fps
+const DWELL_FRAMES = 27;   // ~0.9 sec at 30fps
+// Buttons ignore the hand for a moment after a screen appears, so a hand
+// already pointing at one cannot skip the instructions or restart at once.
+const DWELL_ARM_MS = 1500;
+let dwellPhase = null, dwellArmedAt = 0;
 
 // ══════════════════════════════════════════════
 //  CANVAS
@@ -223,8 +227,10 @@ function processGestures(){
   const {phase, gesture, ftX, ftY} = S;
 
   // ── Menu: dwell finger over button ──
+  if(phase !== 'start' && phase !== 'gameover') dwellPhase = null;
   if(phase === 'start' || phase === 'gameover'){
-    if(gesture === 'point'){
+    if(dwellPhase !== phase){ dwellPhase = phase; dwellArmedAt = performance.now() + DWELL_ARM_MS; }
+    if(gesture === 'point' && performance.now() >= dwellArmedAt){
       const W=gc.width, H=gc.height;
       const px=ftX*W, py=ftY*H;
       const id = phase==='start' ? 'start' : 'restart';
@@ -285,10 +291,19 @@ function setGbar(txt, cls){
 // ══════════════════════════════════════════════
 //  BUTTON RECTS (canvas coords)
 // ══════════════════════════════════════════════
+// The start button sits under the instruction cards; drawStartScreen records
+// where that is (the cards' height depends on the screen size).
+let START_BUTTON_Y = null;
+
 function getButtonRect(id){
   const W=gc.width, H=gc.height;
+  if(id==='start'){
+    const u=startScale(W,H);
+    const bw=Math.min(440*u, W*0.6), bh=70*u;
+    return {x:W/2-bw/2, y:START_BUTTON_Y ?? H*0.66, w:bw, h:bh};
+  }
   const bw=Math.min(360, W*0.48), bh=64;
-  if(id==='start'||id==='restart') return {x:W/2-bw/2, y:H*0.60, w:bw, h:bh};
+  if(id==='restart') return {x:W/2-bw/2, y:H*0.60, w:bw, h:bh};
   return {x:0,y:0,w:0,h:0};
 }
 
@@ -599,51 +614,81 @@ function drawFingerCursor(W,H){
 }
 
 // ── START SCREEN ──
+// Layout scale: everything is sized from the screen so it reads well on a TV.
+function startScale(W,H){ return Math.max(0.6, Math.min(1.6, Math.min(W/1280, H/720))); }
+
+const START_CARDS = [
+  {icon:'☝️', title:'AIM',            desc:'Point one finger at the goal. The crosshair follows your fingertip.'},
+  {icon:'🖐', title:'SHOOT',          desc:'Open your hand wide to kick the ball at the crosshair.'},
+  {icon:'🧤', title:'BEAT THE KEEPER', desc:'5 shots. The keeper moves along the line and gets faster after every kick.'},
+  {icon:'⭐', title:'SCORE',          desc:'100 points for each goal, plus a bonus for shots placed near the middle.'},
+];
+
+function wrapCentered(text, cx, y, maxW, lineH){
+  const words=text.split(' '); let line=''; let yy=y;
+  for(const w of words){
+    const test=line?line+' '+w:w;
+    if(ctx.measureText(test).width>maxW && line){ ctx.fillText(line,cx,yy); line=w; yy+=lineH; }
+    else line=test;
+  }
+  if(line) ctx.fillText(line,cx,yy);
+}
+
 function drawStartScreen(W,H){
+  const u=startScale(W,H);
+  // Centre the whole block (title, cards, button, hint) vertically.
+  const cols0 = W/H >= 1.5 && W >= 900 ? 4 : 2;
+  const rows0 = Math.ceil(START_CARDS.length/cols0);
+  const blockH = 130*u + rows0*(150*u+16*u) + 18*u + 70*u + 44*u;
+  const y0 = Math.max(H*0.03, (H - blockH)/2 - 24*u);
   ctx.save();
-  ctx.fillStyle='rgba(8,14,26,0.90)'; ctx.fillRect(0,0,W,H);
-  ctx.textAlign='center';
+  // Opaque background so the goal and keeper do not show through the text.
+  const bg=ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#0a1424'); bg.addColorStop(1,'#0d2016');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
 
-  // Big ball
-  const bscale = Math.min(2.8, W*0.003);
-  drawBall(W/2 - Math.min(W*0.18, 160), H*0.16, bscale);
-
-  // Title — clamp so it never overflows
-  const titleSize = Math.min(Math.floor(W*0.052), 58);
-  ctx.font=`700 ${titleSize}px 'Oswald',sans-serif`;
+  // Title
+  ctx.font=`700 ${Math.round(64*u)}px 'Oswald',sans-serif`;
   ctx.fillStyle='#f7c948';
-  ctx.shadowColor='rgba(247,201,72,0.4)'; ctx.shadowBlur=24;
-  ctx.fillText('PENALTY SHOOTER', W/2, H*0.17);
+  ctx.shadowColor='rgba(247,201,72,0.45)'; ctx.shadowBlur=26*u;
+  ctx.fillText('⚽  PENALTY SHOOTER', W/2, y0+64*u);
   ctx.shadowBlur=0;
+  ctx.font=`${Math.round(20*u)}px 'Inter',sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.fillText('Score as many goals as you can using only your hand', W/2, y0+100*u);
 
-  ctx.font=`${Math.round(W*0.018)}px 'Inter',sans-serif`;
-  ctx.fillStyle='rgba(255,255,255,0.55)';
-  ctx.fillText('Use hand gestures to aim and shoot', W/2, H*0.25);
-
-  // Guide boxes — side by side, sized to screen
-  const bw=Math.min(170, W*0.19), bh=84, gap=12;
-  const total=bw*2+gap, sx=(W-total)/2;
-  const by2=H*0.30;
-  [
-    {icon:'☝️', title:'POINT',      desc:'Aim the crosshair\nwith one finger'},
-    {icon:'🖐',  title:'OPEN PALM', desc:'Instantly shoots\nthe ball'},
-  ].forEach((b,i)=>{
-    const bx=sx+i*(bw+gap);
+  // Instruction cards: four in a row on wide screens, two by two otherwise.
+  const cols = W/H >= 1.5 && W >= 900 ? 4 : 2;
+  const gap=16*u;
+  const maxRow=Math.min(W*0.9, 1160*u);
+  const cw=(maxRow-gap*(cols-1))/cols;
+  const ch=150*u;
+  const rows=Math.ceil(START_CARDS.length/cols);
+  const top=y0+130*u;
+  const x0=W/2-maxRow/2;
+  START_CARDS.forEach((c,i)=>{
+    const bx=x0+(i%cols)*(cw+gap), by=top+Math.floor(i/cols)*(ch+gap);
     ctx.fillStyle='rgba(255,255,255,0.07)';
-    ctx.strokeStyle='rgba(255,255,255,0.14)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.roundRect(bx,by2,bw,bh,10); ctx.fill(); ctx.stroke();
-    ctx.font='24px sans-serif'; ctx.fillStyle='#fff';
-    ctx.fillText(b.icon, bx+bw/2, by2+26);
-    ctx.font=`700 12px 'Oswald',sans-serif`; ctx.fillStyle='#f7c948';
-    ctx.fillText(b.title, bx+bw/2, by2+46);
-    ctx.font=`11px 'Inter',sans-serif`; ctx.fillStyle='rgba(255,255,255,0.55)';
-    b.desc.split('\n').forEach((line,li)=>{ ctx.fillText(line,bx+bw/2,by2+60+li*13); });
+    ctx.strokeStyle='rgba(247,201,72,0.3)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.roundRect(bx,by,cw,ch,14*u); ctx.fill(); ctx.stroke();
+    ctx.font=`${Math.round(34*u)}px sans-serif`; ctx.fillStyle='#fff';
+    ctx.fillText(c.icon, bx+cw/2, by+44*u);
+    ctx.font=`700 ${Math.round(18*u)}px 'Oswald',sans-serif`; ctx.fillStyle='#f7c948';
+    ctx.fillText(c.title, bx+cw/2, by+74*u);
+    ctx.font=`${Math.round(15*u)}px 'Inter',sans-serif`; ctx.fillStyle='rgba(255,255,255,0.78)';
+    wrapCentered(c.desc, bx+cw/2, by+100*u, cw-28*u, 20*u);
   });
 
+  START_BUTTON_Y = top + rows*(ch+gap) + 18*u;
   drawDwellButton(W,H,'start','☝️   POINT HERE TO START');
 
-  ctx.font=`11px 'Inter',sans-serif`; ctx.fillStyle='rgba(255,255,255,0.2)';
-  ctx.fillText('No camera? Arrow keys to aim · Space to shoot · Enter to start',W/2,H*0.93);
+  // Keyboard fallback, kept clear of the gesture bar at the bottom edge.
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.font=`${Math.round(14*u)}px 'Inter',sans-serif`; ctx.fillStyle='rgba(255,255,255,0.4)';
+  const btn=getButtonRect('start');
+  ctx.fillText('Hold your pointing finger on the button to start  ·  No camera? Arrow keys aim, Space shoots, Enter starts',
+    W/2, btn.y+btn.h+30*u);
   ctx.restore();
 }
 
@@ -695,7 +740,7 @@ function drawDwellButton(W,H,id,label){
     ctx.fillStyle=`rgba(247,201,72,${pct*0.18})`;
     ctx.beginPath(); ctx.roundRect(btn.x,btn.y,btn.w*pct,btn.h,14); ctx.fill();
   }
-  const fs = Math.min(Math.round(W*0.024), 26);
+  const fs = Math.round(Math.min(btn.h*0.42, 30*startScale(W,H)));
   ctx.font=`700 ${fs}px 'Oswald',sans-serif`;
   ctx.fillStyle=active?'#fff':'#f7c948';
   ctx.textAlign='center'; ctx.textBaseline='middle';
