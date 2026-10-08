@@ -30,11 +30,47 @@ function MenuButton({ label, onActivate, active }: { label: string; onActivate: 
   );
 }
 
+const HOWTO_STEPS = [
+  { icon: '☝️', title: 'Point', desc: 'Hold up your index finger. The glowing dot follows it across the letters.' },
+  { icon: '🤏', title: 'Pinch the first letter', desc: 'Touch your thumb to your index finger over the first letter of a word.' },
+  { icon: '➡️', title: 'Trace and let go', desc: 'Keep pinching, slide to the last letter, then open your fingers to check it.' },
+  { icon: '💡', title: 'Hints', desc: 'Stuck? Hold the Hint button to flash where a word starts. Each hint costs a few points.' },
+  { icon: '🙌', title: 'New puzzle', desc: 'During a game, raise both hands to shuffle a fresh puzzle.' },
+  { icon: '🎮', title: 'Modes', desc: 'Classic, Timed (3 minutes), Zen with no clock, or one Daily puzzle.' },
+];
+
+function HowToScreen({ onDone, gestureCursor }: { onDone: () => void; gestureCursor: { x: number; y: number } | null }) {
+  return (
+    <div className="wsh-menu">
+      <h1 className="wsh-menu__title">How to Play</h1>
+      <p className="wsh-menu__subtitle">Find every hidden word in the grid. Words run across, down or diagonally.</p>
+      <div className="wsh-howto">
+        {HOWTO_STEPS.map((s) => (
+          <div key={s.title} className="wsh-howto__card">
+            <div className="wsh-howto__icon">{s.icon}</div>
+            <div>
+              <div className="wsh-howto__title">{s.title}</div>
+              <div className="wsh-howto__desc">{s.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="wsh-menu__hint">Hover a button with your finger and hold still to press it.</p>
+      <MenuButton label="Let's Play" onActivate={onDone} />
+      {gestureCursor && (
+        <div className="wsh-cursor-dot" style={{ left: `${gestureCursor.x * 100}%`, top: `${gestureCursor.y * 100}%` }} />
+      )}
+    </div>
+  );
+}
+
 function MenuScreen({
   onStart,
+  onHowTo,
   gestureCursor,
 }: {
   onStart: (mode: GameMode, difficulty: Difficulty) => void;
+  onHowTo: () => void;
   gestureCursor: { x: number; y: number } | null;
 }) {
   const [mode, setMode] = useState<GameMode>('classic');
@@ -64,8 +100,9 @@ function MenuScreen({
         </div>
       </div>
 
-      <div className="wsh-menu__section">
+      <div className="wsh-menu__section wsh-menu__row">
         <MenuButton label="Start Game" onActivate={() => onStart(mode, difficulty)} />
+        <MenuButton label="How to Play" onActivate={onHowTo} />
       </div>
 
       {gestureCursor && (
@@ -246,6 +283,8 @@ function CameraGate({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [screen, setScreen] = useState<{ mode: GameMode; difficulty: Difficulty } | null>(null);
+  // How to Play is the first screen every time the game opens.
+  const [showHowTo, setShowHowTo] = useState(true);
   const gesture = useGesture();
   const cursorNorm = gesture.isHovering ? { x: gesture.cursorX, y: gesture.cursorY } : null;
 
@@ -254,8 +293,14 @@ export default function App() {
       <CameraGate>
         {screen ? (
           <GameScreen mode={screen.mode} difficulty={screen.difficulty} onExit={() => setScreen(null)} />
+        ) : showHowTo ? (
+          <HowToScreen onDone={() => setShowHowTo(false)} gestureCursor={cursorNorm} />
         ) : (
-          <MenuScreen onStart={(mode, difficulty) => setScreen({ mode, difficulty })} gestureCursor={cursorNorm} />
+          <MenuScreen
+            onStart={(mode, difficulty) => setScreen({ mode, difficulty })}
+            onHowTo={() => setShowHowTo(true)}
+            gestureCursor={cursorNorm}
+          />
         )}
       </CameraGate>
     </div>

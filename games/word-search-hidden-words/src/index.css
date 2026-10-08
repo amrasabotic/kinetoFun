@@ -65,6 +65,37 @@ html, body, #root {
   max-width: 520px;
 }
 
+.wsh-menu__hint {
+  color: #a78bfa;
+  font-size: 14px;
+  margin: 0;
+}
+
+.wsh-howto {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 280px));
+  gap: 14px;
+}
+
+.wsh-howto__card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(167,139,250,0.3);
+}
+
+.wsh-howto__icon { font-size: 30px; line-height: 1; }
+.wsh-howto__title { font-weight: 700; color: #efe6ff; margin-bottom: 4px; }
+.wsh-howto__desc { font-size: 14px; line-height: 1.45; color: #cbb8f5; }
+
+@media (max-width: 900px) {
+  .wsh-howto { grid-template-columns: repeat(2, minmax(0, 280px)); }
+}
+
 .wsh-menu__section h3 {
   margin: 0 0 8px;
   color: #a78bfa;
