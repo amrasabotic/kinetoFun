@@ -14,13 +14,16 @@ export default function App() {
 
 
   if (screen === 'landing')   return <LandingScreen onPlay={() => setScreen('game')} onHow={() => setScreen('howtoplay')} />;
-  if (screen === 'howtoplay') return <HowToPlayScreen onBack={() => setScreen('landing')} />;
+  if (screen === 'howtoplay') return <HowToPlayScreen onDone={() => setScreen('landing')} />;
   return <GameScreen onQuit={() => setScreen('landing')} />;
 }
 
 // ── Dwell gesture navigation (same pattern as gesture-drums) ──────────────────
 
 const DWELL_MS = 900;
+// Each menu screen ignores the hand for a moment after it appears, so a hand
+// already resting where a new button shows up does not press it.
+const ARM_MS = 1500;
 const CURSOR_R = 22;
 
 function MenuGestureLayer({ children }: { children: (props: {
@@ -37,10 +40,11 @@ function MenuGestureLayer({ children }: { children: (props: {
   const dwellStartRef = useRef<number | null>(null);
   const activeIdRef = useRef<string | null>(null);
   const rafRef = useRef<number>(0);
+  const armedAtRef = useRef(performance.now() + ARM_MS);
 
   const loop = useCallback((ts: number) => {
     const h = handRef.current;
-    if (!h.detected) {
+    if (!h.detected || performance.now() < armedAtRef.current) {
       setActiveId(null); setDwellProgress(0);
       dwellStartRef.current = null; activeIdRef.current = null;
       rafRef.current = requestAnimationFrame(loop); return;
@@ -181,39 +185,44 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
 
 // ── How To Play Screen ────────────────────────────────────────────────────────
 
-function HowToPlayScreen({ onBack }: { onBack: () => void }) {
+function HowToPlayScreen({ onDone }: { onDone: () => void }) {
   const items = [
-    { icon: '🤏', title: 'Pinch to Grab', desc: 'Bring your thumb tip and index finger tip together (pinch gesture) while your hand is near the bird in the slingshot. A dashed circle shows the grab zone.' },
-    { icon: '⬅️', title: 'Pull Back', desc: 'While pinching, move your hand left and downward to pull the slingshot back. White dots show the predicted trajectory arc in real time.' },
-    { icon: '✋', title: 'Release to Launch', desc: 'Open your fingers (release the pinch) to fire! The further you pulled, the faster the bird flies. Aim for the pigs!' },
-    { icon: '🐷', title: 'Destroy the Pigs', desc: 'Hit green pigs directly to kill them (+500 pts each). Break surrounding blocks for bonus points. Smash everything to clear the level!' },
-    { icon: '🧱', title: 'Block Types', desc: 'Glass (blue, easy), Wood (brown, medium), Stone (grey, hard — needs a powerful hit). Stone blocks take two hits to break.' },
-    { icon: '⭐', title: 'Bonus Birds', desc: 'Each bird left unused after clearing a level gives you +1000 bonus points. Use fewer birds for a higher score!' },
-    { icon: '🔄', title: 'Levels', desc: '4 unique levels of increasing difficulty. Complete all 4 and the game loops back — try to beat your score!' },
+    { icon: '🤏', title: 'Pinch to grab', desc: 'Move your hand near the bird and pinch your thumb and index finger together.' },
+    { icon: '⬅️', title: 'Pull back', desc: 'Keep pinching and pull left and down. The dotted arc shows where the bird will fly.' },
+    { icon: '✋', title: 'Let go', desc: 'Open your fingers to launch. The further you pull, the faster it flies.' },
+    { icon: '🐷', title: 'Pop the pigs', desc: 'Hit every pig to clear the level. Each one is worth 500 points.' },
+    { icon: '🧱', title: 'Smash blocks', desc: 'Glass and wood break in one hit. Stone needs two, so hit it hard.' },
+    { icon: '⭐', title: 'Save birds', desc: 'Every bird left over when you clear a level adds 1000 bonus points.' },
   ];
 
   return (
     <MenuGestureLayer>
       {({ activeId, dwellProgress }) => (
         <div className="h-screen bg-gradient-to-b from-sky-400 to-sky-200 flex flex-col items-center justify-center overflow-hidden px-6">
-          <div className="w-full max-w-md flex flex-col gap-4">
-            <h2 className="text-3xl font-black text-white text-center drop-shadow">How to Play</h2>
-            <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
-              {items.map(item => (
-                <div key={item.title} className="flex gap-3 bg-white/20 rounded-xl p-3 border border-white/20">
-                  <div className="w-8 flex-shrink-0 flex items-start justify-center pt-0.5 text-xl">{item.icon}</div>
-                  <div>
-                    <p className="text-white font-bold text-sm">{item.title}</p>
-                    <p className="text-white/70 text-xs leading-relaxed mt-0.5">{item.desc}</p>
+          <div className="w-full max-w-5xl flex flex-col items-center gap-6">
+            <h2 className="text-5xl font-black text-white text-center drop-shadow-lg">
+              How to <span className="text-red-500">Play</span>
+            </h2>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+              {items.map((item, i) => (
+                <div key={item.title} className="flex flex-col gap-2 bg-white/90 rounded-2xl p-5 shadow-lg shadow-sky-900/10">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl leading-none">{item.icon}</span>
+                    <span className="text-xs font-bold text-red-500 tracking-widest uppercase">Step {i + 1}</span>
                   </div>
+                  <p className="text-slate-800 font-black text-lg leading-tight">{item.title}</p>
+                  <p className="text-slate-600 text-sm leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
-            <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
-              onClick={onBack}
-              className="w-full py-3 bg-white/20 hover:bg-white/30 active:scale-95 text-white font-semibold rounded-xl transition-all border border-white/30">
-              Back
-            </GestureBtn>
+            <p className="text-sky-900/70 text-sm text-center">4 levels, each harder than the last. Hold your hand over a button to press it.</p>
+            <div className="w-full max-w-xs">
+              <GestureBtn dwellId="done" activeId={activeId} dwellProgress={dwellProgress}
+                onClick={onDone}
+                className="w-full py-4 bg-red-500 hover:bg-red-400 active:scale-95 text-white font-black text-xl rounded-xl tracking-wide transition-all shadow-lg shadow-red-900/40">
+                Let's Play
+              </GestureBtn>
+            </div>
           </div>
         </div>
       )}
