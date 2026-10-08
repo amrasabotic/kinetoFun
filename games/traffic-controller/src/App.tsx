@@ -17,13 +17,16 @@ export default function App() {
 
 
   if (screen === 'landing')   return <LandingScreen onPlay={() => setScreen('game')} onHow={() => setScreen('howtoplay')} />;
-  if (screen === 'howtoplay') return <HowToPlayScreen onBack={() => setScreen('landing')} />;
+  if (screen === 'howtoplay') return <HowToPlayScreen onDone={() => setScreen('landing')} />;
   return <GameScreen onQuit={() => setScreen('landing')} />;
 }
 
 // ── Dwell gesture navigation ──────────────────────────────────────────────────
 
 const DWELL_MS  = 900;
+// Each menu screen ignores the hand for a moment after it appears, so a hand
+// already resting where a new button shows up does not press it.
+const ARM_MS    = 1500;
 const CURSOR_R  = 22;
 
 function MenuGestureLayer({ children }: {
@@ -39,10 +42,11 @@ function MenuGestureLayer({ children }: {
   const dwellStartRef  = useRef<number | null>(null);
   const activeIdRef    = useRef<string | null>(null);
   const rafRef         = useRef<number>(0);
+  const armedAtRef     = useRef(performance.now() + ARM_MS);
 
   const loop = useCallback((ts: number) => {
     const h = handRef.current;
-    if (!h.detected) {
+    if (!h.detected || performance.now() < armedAtRef.current) {
       setActiveId(null); setDwellProgress(0);
       dwellStartRef.current = null; activeIdRef.current = null;
       rafRef.current = requestAnimationFrame(loop); return;
@@ -186,38 +190,57 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
 
 // ── How To Play ───────────────────────────────────────────────────────────────
 
-function HowToPlayScreen({ onBack }: { onBack: () => void }) {
-  const items = [
-    { icon: '👉', title: 'Point Right → N-S Green', desc: 'Point your index finger to the RIGHT to open the North-South lane. Cars from the top and bottom will flow through the intersection.' },
-    { icon: '👈', title: 'Point Left → E-W Green', desc: 'Point your index finger to the LEFT to open the East-West lane. Left and right traffic gets the green light.' },
-    { icon: '👋', title: 'Wave → Pedestrians', desc: 'Wave your hand side-to-side to let pedestrians cross. All car lanes go red while people walk.' },
-    { icon: '✋', title: 'Open Palm → All Stop', desc: 'Hold your open palm toward the camera to force all traffic to stop. Use to prevent a dangerous build-up.' },
-    { icon: '😡', title: 'Angry Cars', desc: 'Cars left waiting too long (anger bar goes full) will run the red light — that\'s a strike. You have 3 strikes.' },
-    { icon: '🚶', title: 'Pedestrian Warnings', desc: 'When pedestrians appear (yellow figure), wave before their patience runs out (12 seconds) or lose a strike.' },
-    { icon: '⏱️', title: 'Auto-Reset', desc: 'Each green phase lasts up to 7 seconds, then resets to all-red. You must keep gesturing to manage the flow.' },
+function HowToPlayScreen({ onDone }: { onDone: () => void }) {
+  const controls = [
+    { icon: '👉', title: 'Point right', light: 'North–South green', desc: 'Cars from the top and bottom drive through.' },
+    { icon: '👈', title: 'Point left', light: 'East–West green', desc: 'Cars from the left and right drive through.' },
+    { icon: '👋', title: 'Wave', light: 'Walk signal', desc: 'All cars stop and people cross the road.' },
+    { icon: '✋', title: 'Open palm', light: 'All red', desc: 'Every lane stops. Use it to calm a busy junction.' },
+  ];
+  const dangers = [
+    { icon: '😡', title: 'Angry cars', desc: 'A car kept waiting too long runs the red light. That is a strike.' },
+    { icon: '🚶', title: 'Waiting walkers', desc: 'People who wait 12 seconds without a walk signal also cost a strike.' },
+    { icon: '💥', title: '3 strikes', desc: 'Three strikes and the game is over. Cars score 10, walkers 25.' },
   ];
   return (
     <MenuGestureLayer>
       {({ activeId, dwellProgress }) => (
         <div className="h-screen bg-gradient-to-br from-gray-950 via-amber-950 to-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
-          <div className="w-full max-w-md flex flex-col gap-4">
-            <h2 className="text-3xl font-black text-white text-center drop-shadow">How to Play</h2>
-            <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
-              {items.map(item => (
-                <div key={item.title} className="flex gap-3 bg-white/8 rounded-xl p-3 border border-white/10">
-                  <div className="w-8 flex-shrink-0 flex items-start justify-center pt-0.5 text-xl">{item.icon}</div>
+          <div className="w-full max-w-5xl flex flex-col items-center gap-5">
+            <h2 className="text-5xl font-black text-white text-center drop-shadow-lg">
+              How to <span className="text-amber-400">Play</span>
+            </h2>
+            <p className="text-xs font-bold text-amber-400/80 tracking-[0.3em] uppercase">Your hand controls the lights</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+              {controls.map(c => (
+                <div key={c.title} className="flex flex-col items-center text-center gap-2 bg-white/[0.07] border border-amber-400/30 rounded-2xl p-5">
+                  <span className="text-5xl leading-none">{c.icon}</span>
+                  <p className="text-white font-black text-lg leading-tight">{c.title}</p>
+                  <span className="text-xs font-bold text-black bg-amber-400 rounded-full px-3 py-1">{c.light}</span>
+                  <p className="text-white/70 text-sm leading-snug">{c.desc}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs font-bold text-red-400/90 tracking-[0.3em] uppercase mt-1">Watch out</p>
+            <div className="grid grid-cols-3 gap-4 w-full">
+              {dangers.map(d => (
+                <div key={d.title} className="flex gap-3 items-start bg-red-500/10 border border-red-400/25 rounded-2xl p-4">
+                  <span className="text-3xl leading-none">{d.icon}</span>
                   <div>
-                    <p className="text-white font-bold text-sm">{item.title}</p>
-                    <p className="text-white/60 text-xs leading-relaxed mt-0.5">{item.desc}</p>
+                    <p className="text-white font-bold">{d.title}</p>
+                    <p className="text-white/65 text-sm leading-snug mt-0.5">{d.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
-            <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
-              onClick={onBack}
-              className="w-full py-3 bg-white/10 hover:bg-white/20 active:scale-95 text-white font-semibold rounded-xl transition-all border border-white/20">
-              Back
-            </GestureBtn>
+            <p className="text-white/45 text-sm text-center">A green light turns back to red after about 7 seconds, so keep directing traffic.</p>
+            <div className="w-full max-w-xs">
+              <GestureBtn dwellId="done" activeId={activeId} dwellProgress={dwellProgress}
+                onClick={onDone}
+                className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xl rounded-xl tracking-wide transition-all shadow-lg shadow-amber-900/50">
+                Let's Play
+              </GestureBtn>
+            </div>
           </div>
         </div>
       )}
