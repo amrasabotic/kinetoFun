@@ -243,10 +243,10 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
         <div className="h-screen flex flex-col items-center justify-center overflow-hidden px-6 py-4"
           style={{ background: 'linear-gradient(160deg,#061428 0%,#0a2040 45%,#061020 100%)' }}>
 
-          <div className="w-full max-w-lg flex flex-col gap-4 h-full">
+          <div className="w-full max-w-6xl flex flex-col gap-4">
             <h2 className="text-4xl font-black text-white text-center pt-2 shrink-0">How to Play</h2>
 
-            <div className="flex flex-col gap-3 overflow-y-auto flex-1 pb-1">
+            <div className="grid grid-cols-3 gap-3 w-full">
               {HOW_ITEMS.map(item => (
                 <div key={item.title}
                   className="flex gap-4 rounded-2xl p-4 border border-white/8"
@@ -257,7 +257,7 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
                   </div>
                   <div className="flex flex-col justify-center">
                     <p className="text-white font-bold text-base">{item.title}</p>
-                    <p className="text-white/50 text-sm leading-relaxed mt-0.5">{item.desc}</p>
+                    <p className="text-white/60 text-sm leading-snug mt-0.5">{item.desc}</p>
                   </div>
                 </div>
               ))}
