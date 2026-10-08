@@ -21,9 +21,9 @@ export const Route = createFileRoute("/how-to-play")({
 
 const steps = [
   {
-    icon: "📷",
-    title: "Allow your camera",
-    body: "Target Master needs your webcam to see your hand. Tracking runs entirely in your browser — nothing is uploaded.",
+    icon: "👋",
+    title: "Press buttons",
+    body: "Move your open hand to steer the pointer. Hold it over a button until the ring fills.",
   },
   {
     icon: "✋",
@@ -44,20 +44,17 @@ const steps = [
 
 function HowToPlay() {
   return (
-    <div className="relative min-h-screen w-full overflow-auto p-6 md:p-12">
+    <div className="relative min-h-screen w-full overflow-auto p-6 md:p-10">
       <div className="max-w-4xl mx-auto">
-        <Link to="/" className="inline-block opacity-80 hover:opacity-100 mb-6">
-          ← Back
-        </Link>
         <h1 className="text-5xl md:text-6xl font-black text-shadow-bold mb-2">
           How to <span className="text-[color:var(--primary)]">Play</span>
         </h1>
-        <p className="opacity-80 text-lg">Four simple steps to master the bow.</p>
+        <p className="opacity-80 text-lg">Four simple steps to master the bow. Hit enough targets to clear each level.</p>
 
         <div className="grid gap-4 mt-8 sm:grid-cols-2">
           {steps.map((s, i) => (
-            <div key={i} className="panel p-6">
-              <div className="text-5xl mb-3">{s.icon}</div>
+            <div key={i} className="panel px-6 py-4">
+              <div className="text-4xl mb-2">{s.icon}</div>
               <div className="text-xs uppercase tracking-widest text-[color:var(--muted-foreground)]">
                 Step {i + 1}
               </div>
@@ -67,18 +64,14 @@ function HowToPlay() {
           ))}
         </div>
 
-        <div className="panel p-6 mt-6">
-          <h2 className="text-2xl font-bold mb-3">💡 Tips</h2>
-          <ul className="space-y-2 opacity-90 list-disc pl-6">
-            <li>Stand back about an arm's length from the camera with good lighting.</li>
-            <li>Keep your hand inside the frame — moving offscreen breaks tracking.</li>
-            <li>Snappy fist → release gives a fast shot; long draws hit harder.</li>
-            <li>In Adventure, clear each level's target goal to unlock the next.</li>
-            <li>In Endless, targets keep coming faster — see how long you can keep up.</li>
-          </ul>
-        </div>
 
-        <div className="flex flex-wrap gap-3 mt-8">
+        <div className="flex flex-wrap gap-3 mt-6 justify-center">
+          <Link
+            to="/"
+            className="rounded-full bg-[color:var(--primary)] text-[color:var(--primary-foreground)] px-10 py-4 text-xl font-bold glow-primary hover:scale-105 transition-transform"
+          >
+            ▶ Let's Play
+          </Link>
           <Link
             to="/levels"
             className="rounded-full bg-[color:var(--primary)] text-[color:var(--primary-foreground)] px-8 py-4 text-xl font-bold glow-primary hover:scale-105 transition-transform"

@@ -40,7 +40,7 @@ function LevelsMap() {
           Adventure <span className="text-[color:var(--primary)]">Map</span>
         </h1>
         <p className="opacity-80 mt-2">
-          Tap a level to start. Difficulty grows as you climb the trail.
+          Hold your open hand over a level to start. Difficulty grows as you climb the trail.
         </p>
       </div>
 

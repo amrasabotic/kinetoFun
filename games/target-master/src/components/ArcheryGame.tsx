@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  getHandLandmarker,
-  readHand,
-  HandSmoother,
-  type HandState,
-} from "@/lib/handTracker";
+import { HandSmoother, type HandState } from "@/lib/handTracker";
+import { ensureHandInput, latestHand, rearmPointer } from "@/lib/handInput";
 
 type Target = {
   id: number;
@@ -113,7 +109,14 @@ export default function ArcheryGame({ mode, startLevel = 0 }: Props) {
   const modeRef = useRef(mode);
   useEffect(() => {
     phaseRef.current = phase;
+    // The menu pointer stands aside while aiming, since a fist draws the bow
+    // and the open hand would otherwise press the HUD buttons.
+    document.body.dataset.handPointer = phase === "playing" ? "off" : "on";
+    rearmPointer();
   }, [phase]);
+  useEffect(() => () => {
+    document.body.dataset.handPointer = "on";
+  }, []);
   useEffect(() => {
     levelIdxRef.current = levelIdx;
   }, [levelIdx]);
@@ -131,17 +134,11 @@ export default function ArcheryGame({ mode, startLevel = 0 }: Props) {
     setErrMsg(null);
     setPhase("loading");
     try {
-      if (!videoRef.current?.srcObject) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720, facingMode: "user" },
-          audio: false,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
+      const stream = await ensureHandInput();
+      if (videoRef.current && videoRef.current.srcObject !== stream) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
       }
-      await getHandLandmarker();
       setScore(0);
       setLevelIdx(startLevel);
       levelIdxRef.current = startLevel;
@@ -163,12 +160,11 @@ export default function ArcheryGame({ mode, startLevel = 0 }: Props) {
     }
   }, [startLevel]);
 
-  // Stop camera on unmount
+  // The camera is shared with the menus, so leaving only detaches it here.
   useEffect(() => {
+    const v = videoRef.current;
     return () => {
-      const v = videoRef.current;
-      const stream = v?.srcObject as MediaStream | null;
-      stream?.getTracks().forEach((t) => t.stop());
+      if (v) v.srcObject = null;
     };
   }, []);
 
@@ -176,7 +172,6 @@ export default function ArcheryGame({ mode, startLevel = 0 }: Props) {
   useEffect(() => {
     let raf = 0;
     let cancelled = false;
-    let lastVideoTime = -1;
 
     const loop = async () => {
       if (cancelled) return;
@@ -202,24 +197,10 @@ export default function ArcheryGame({ mode, startLevel = 0 }: Props) {
       ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
       ctx.clearRect(0, 0, W, H);
 
-      // Hand tracking (run even when paused so cursor is ready when resuming)
-      if (
-        (phaseRef.current === "playing" || phaseRef.current === "paused") &&
-        video.readyState >= 2 &&
-        video.currentTime !== lastVideoTime
-      ) {
-        lastVideoTime = video.currentTime;
-        try {
-          const lm = await getHandLandmarker();
-          const result = lm.detectForVideo(video, performance.now());
-          const hand = readHand(result);
-          if (hand) {
-            stateRef.current.hand = hand;
-            stateRef.current.lastHandT = performance.now();
-          }
-        } catch {
-          /* ignore frame errors */
-        }
+      const { hand, lastT } = latestHand();
+      if (hand) {
+        stateRef.current.hand = hand;
+        stateRef.current.lastHandT = lastT;
       }
 
       tick(ctx, W, H);
@@ -425,8 +406,6 @@ export default function ArcheryGame({ mode, startLevel = 0 }: Props) {
   }, [startLevel]);
 
   const handleQuit = useCallback(() => {
-    const stream = videoRef.current?.srcObject as MediaStream | null;
-    stream?.getTracks().forEach((t) => t.stop());
     if (videoRef.current) videoRef.current.srcObject = null;
     navigate({ to: "/" });
   }, [navigate]);
@@ -526,6 +505,9 @@ export default function ArcheryGame({ mode, startLevel = 0 }: Props) {
             <p className="mt-5 text-lg opacity-90 leading-relaxed">
               Aim with your open hand. <b>Close your fist</b> to draw the bow,
               then <b>open</b> to release the arrow.
+            </p>
+            <p className="mt-2 text-sm opacity-75">
+              Hold your open hand over a button to press it.
             </p>
             <button
               onClick={startGame}
