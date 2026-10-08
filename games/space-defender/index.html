@@ -35,8 +35,9 @@
     align-items: center; justify-content: center; gap: 22px; z-index: 90;
   }
   #start-screen.visible { display: flex; }
+  #start-screen { gap: 18px; padding: 24px; }
   #start-screen h1 {
-    font-size: 3.5rem; letter-spacing: .2em; color: #00e5ff;
+    font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: .2em; color: #00e5ff; text-align: center;
     text-shadow: 0 0 40px #00e5ffaa, 0 0 80px #00e5ff44;
     animation: pulse 2s ease-in-out infinite;
   }
@@ -45,12 +46,18 @@
     50%      { text-shadow: 0 0 60px #00e5ffcc, 0 0 120px #00e5ff66; }
   }
   .subtitle { font-size: 1rem; color: #7c4dff; letter-spacing: .12em; text-transform: uppercase; }
-  .instructions {
-    background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.2);
-    border-radius: 12px; padding: 22px 36px;
-    max-width: 480px; text-align: center; line-height: 2; color: #ccc; font-size: .88rem;
+  .howto-label { font-size: .8rem; letter-spacing: .35em; color: #7c4dff; text-transform: uppercase; margin-top: 4px; }
+  .howto-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 260px)); gap: 14px;
   }
-  .instructions span { color: #00e5ff; font-weight: bold; }
+  .howto-card {
+    background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.22);
+    border-radius: 14px; padding: 16px 18px; text-align: left;
+  }
+  .howto-card .ic { font-size: 1.9rem; line-height: 1; margin-bottom: 10px; }
+  .howto-card .t  { color: #00e5ff; font-weight: bold; letter-spacing: .12em; text-transform: uppercase; font-size: .95rem; margin-bottom: 6px; }
+  .howto-card .d  { color: #ccd; font-size: .85rem; line-height: 1.55; }
+  @media (max-width: 860px) { .howto-grid { grid-template-columns: repeat(2, minmax(0, 260px)); } }
 
   /* ── DWELL BUTTON (shared) ── */
   .dwell-btn {
@@ -154,11 +161,14 @@
 <div id="start-screen">
   <p class="subtitle">Hand Gesture Edition</p>
   <h1>SPACE DEFENDER</h1>
-  <div class="instructions">
-    <span>✋ MOVE HAND</span> — Pilot your ship<br>
-    <span>☝️ POINT</span> — Auto-aim &amp; fire lasers<br>
-    <span>✊ FIST</span> — Shield burst (3 charges)<br><br>
-    Survive the asteroid field. Destroy to score.
+  <div class="howto-label">How to Play</div>
+  <div class="howto-grid">
+    <div class="howto-card"><div class="ic">✋</div><div class="t">Fly</div><div class="d">Move your hand and your ship follows it around the screen.</div></div>
+    <div class="howto-card"><div class="ic">☝️</div><div class="t">Fire</div><div class="d">Point one finger to fire lasers. They aim at the nearest asteroid for you.</div></div>
+    <div class="howto-card"><div class="ic">✊</div><div class="t">Shield</div><div class="d">Make a fist for a short shield that smashes any asteroid it touches. You have 3.</div></div>
+    <div class="howto-card"><div class="ic">💎</div><div class="t">Survive</div><div class="d">You have 3 lives. Each asteroid that hits your ship costs one.</div></div>
+    <div class="howto-card"><div class="ic">☄️</div><div class="t">Score</div><div class="d">Big asteroids split in two. Smaller pieces are worth more points.</div></div>
+    <div class="howto-card"><div class="ic">🌊</div><div class="t">Waves</div><div class="d">Clear the field to bring on the next wave, with more and faster rocks.</div></div>
   </div>
   <button class="dwell-btn" id="start-btn">
     <div class="fill-bar"></div>
@@ -241,6 +251,7 @@ const hand = { x: 0.5, y: 0.5, pointing: false, fist: false, visible: false };
 //  DWELL BUTTON SYSTEM  (works for both start & restart)
 // ═══════════════════════════════════════════════════
 const DWELL_TIME = 2000; // ms
+const DWELL_ARM_MS = 1500;
 const dwellState = {};   // keyed by button id
 
 function initDwellBtn(btn, onActivate) {
@@ -258,9 +269,13 @@ function tickDwellBtn(btn) {
     screen.style.display === 'flex' ||
     getComputedStyle(screen).display !== 'none'
   );
-  if (!screenVisible) { s.dwell = 0; return; }
+  if (!screenVisible) { s.dwell = 0; s.shownAt = null; return; }
+  // Ignore the hand briefly after the screen appears, so a hand already
+  // resting on the button cannot launch before the player has read anything.
+  if (s.shownAt == null) s.shownAt = performance.now();
+  const armed = performance.now() - s.shownAt >= DWELL_ARM_MS;
 
-  if (!hand.visible) {
+  if (!hand.visible || !armed) {
     s.dwell = Math.max(0, s.dwell - 30);
     btn.classList.remove('active');
     btn.querySelector('.fill-bar').style.width = (s.dwell / DWELL_TIME * 100) + '%';
@@ -683,11 +698,10 @@ function setupMediaPipe(){
     .then(stream=>{
       videoEl.srcObject=stream; videoEl.play();
       const camera=new Camera(videoEl,{onFrame:async()=>{await hands.send({image:videoEl});},width:640,height:480});
-      camera.start();
-      setTimeout(()=>{
+      camera.start().finally(()=>{
         document.getElementById('loading-screen').style.display='none';
         document.getElementById('start-screen').classList.add('visible');
-      },3200);
+      });
     })
     .catch(err=>{
       console.error(err);
