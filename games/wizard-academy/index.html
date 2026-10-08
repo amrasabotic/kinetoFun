@@ -91,6 +91,18 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
 .sc .icon { font-size:2rem; }
 .sc .nm { font-size:0.85rem; color:#f0c040; font-weight:700; margin-top:6px; }
 .sc .gs { font-size:0.8rem; color:#8870aa; margin-top:4px; }
+.howto-lbl { font-size:0.8rem; letter-spacing:0.3em; text-transform:uppercase; color:#f0c040; text-align:center; }
+.sc { width:190px; }
+.sc .fx { font-size:0.8rem; color:#d8ccf0; margin-top:6px; line-height:1.4; }
+.rules { display:grid; grid-template-columns:repeat(3, minmax(0, 250px)); gap:12px; }
+.rule {
+  display:flex; gap:12px; align-items:flex-start; text-align:left;
+  background:rgba(0,0,0,0.35); border:1px solid rgba(155,89,245,0.25);
+  border-radius:12px; padding:12px 14px;
+}
+.rule .ic { font-size:1.6rem; line-height:1; }
+.rule .t  { color:#f0c040; font-weight:700; font-size:0.9rem; margin-bottom:3px; }
+.rule .d  { color:#c8bce0; font-size:0.8rem; line-height:1.45; }
 .hint { color:#9b59f5; font-style:italic; font-size:0.95rem; text-align:center; }
 
 /* ── HUD ── */
@@ -183,10 +195,16 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
   <div class="screen" id="intro">
     <h1>✦ Wizard Academy ✦</h1>
     <p style="color:#8870aa;font-style:italic">Master spells. Defeat monsters.</p>
+    <div class="howto-lbl">How to Play</div>
+    <div class="rules">
+      <div class="rule"><div class="ic">☝️</div><div><div class="t">Draw in the air</div><div class="d">Point one finger and trace a spell shape in front of you.</div></div></div>
+      <div class="rule"><div class="ic">✋</div><div><div class="t">Start over</div><div class="d">Open your hand to wipe a shape that went wrong.</div></div></div>
+      <div class="rule"><div class="ic">👹</div><div><div class="t">Beat 5 waves</div><div class="d">Monsters hit you every 6 seconds. Defeat them all before your HP runs out.</div></div></div>
+    </div>
     <div class="spells">
-      <div class="sc"><div class="icon">🔥</div><div class="nm">Fireball</div><div class="gs">Circle ○</div></div>
-      <div class="sc"><div class="icon">🛡️</div><div class="nm">Shield</div><div class="gs">Triangle △</div></div>
-      <div class="sc"><div class="icon">⚡</div><div class="nm">Lightning</div><div class="gs">Zigzag ∿</div></div>
+      <div class="sc"><div class="icon">🔥</div><div class="nm">Fireball</div><div class="gs">Draw a circle ○</div><div class="fx">Deals 40 damage</div></div>
+      <div class="sc"><div class="icon">🛡️</div><div class="nm">Shield</div><div class="gs">Draw a triangle △</div><div class="fx">Heals 20 HP and softens the next hit</div></div>
+      <div class="sc"><div class="icon">⚡</div><div class="nm">Lightning</div><div class="gs">Draw a zigzag ∿</div><div class="fx">Deals 60 damage</div></div>
     </div>
     <p class="hint">☝️ Point ONE finger at the button and hold 1.5s</p>
     <button class="gbtn" id="btn-start">✦ BEGIN ✦<div class="bar" id="bar-start"></div></button>
@@ -292,6 +310,7 @@ const SELS = {
 
 function showScreen(name) {
   gs.screen = name;
+  btnArmedAt = performance.now() + DWELL_ARM_MS;
   Object.entries(SELS).forEach(([k,el]) => el.classList.toggle('off', k !== name));
   if (name === 'game') renderMonsters();
 }
@@ -447,8 +466,13 @@ const BTNS = {
 };
 const dwellTimers = {}; // id -> start timestamp
 const DWELL_MS = 1500;
+// Buttons ignore the finger for a moment after each screen appears, so the
+// intro can be read and a finger still pointing cannot press through.
+const DWELL_ARM_MS = 1500;
+let btnArmedAt = 0;
 
 function checkButtons(fingerX, fingerY) {
+  if (performance.now() < btnArmedAt) return;
   // fingerX/Y are in screen pixel coords
   Object.entries(BTNS).forEach(([id, cfg]) => {
     const btn = document.getElementById(id);
