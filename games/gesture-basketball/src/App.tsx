@@ -260,10 +260,10 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
   return (
     <MenuGestureLayer>
       {({ hand: _h, activeId, dwellProgress }) => (
-        <div className="h-screen flex flex-col items-center overflow-hidden px-5 py-4"
+        <div className="h-screen flex flex-col items-center justify-center overflow-hidden px-6 py-4"
           style={{ background: 'linear-gradient(160deg,#1a0800 0%,#2d1200 50%,#1a0800 100%)' }}>
           <h2 className="text-3xl font-black text-white pt-2 pb-3 shrink-0">How to Play</h2>
-          <div className="flex flex-col gap-2.5 overflow-y-auto flex-1 w-full max-w-lg pb-2">
+          <div className="grid grid-cols-3 gap-3 w-full">
             {HOW_ITEMS.map(item => (
               <div key={item.title} className="flex gap-4 rounded-2xl p-4"
                 style={{ background: 'rgba(255,255,255,0.10)', border: `1.5px solid ${item.color}55` }}>
@@ -272,13 +272,13 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
                   {item.icon}
                 </div>
                 <div>
-                  <p className="text-white font-bold text-sm">{item.title}</p>
-                  <p className="text-orange-100 text-xs leading-relaxed mt-1 font-medium" style={{ opacity: 0.88 }}>{item.desc}</p>
+                  <p className="text-white font-bold text-base">{item.title}</p>
+                  <p className="text-orange-100 text-sm leading-snug mt-1 font-medium" style={{ opacity: 0.88 }}>{item.desc}</p>
                 </div>
               </div>
             ))}
           </div>
-          <div className="shrink-0 w-full max-w-lg pt-2">
+          <div className="shrink-0 w-full max-w-6xl pt-2">
             <GestureBtn dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
               onClick={onBack}
               className="w-full min-h-[64px] flex items-center justify-center text-white font-bold text-lg rounded-2xl"
