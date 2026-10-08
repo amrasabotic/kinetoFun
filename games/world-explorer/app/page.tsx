@@ -8,6 +8,7 @@ import { useGameStore } from '@/store/gameStore';
 const Camera = dynamic(() => import('@/components/Camera'), { ssr: false });
 import GestureCursor from '@/components/GestureCursor';
 import MainMenu from '@/components/MainMenu';
+import HowToPlay from '@/components/HowToPlay';
 import ModeSelect from '@/components/ModeSelect';
 import DestinationCard from '@/components/DestinationCard';
 import QuestionCard from '@/components/QuestionCard';
@@ -33,6 +34,8 @@ const GESTURE_LABELS: Record<string, string> = {
 export default function WorldExplorer() {
   const { screen, showModeSelect, mode } = useGameStore();
   const [isHydrated, setIsHydrated] = useState(false);
+  // How to Play is the first screen every time the game opens.
+  const [showHowTo, setShowHowTo] = useState(true);
   const [gestureState, setGestureState] = useState<FullGestureState>({
     gesture: 'NONE',
     cursorX: 0.5,
@@ -65,12 +68,12 @@ export default function WorldExplorer() {
 
   // Wave on main menu → go to mode select
   useEffect(() => {
-    if (screen === 'MAIN_MENU' && gestureState.isWave && !waveHandledRef.current) {
+    if (screen === 'MAIN_MENU' && !showHowTo && gestureState.isWave && !waveHandledRef.current) {
       waveHandledRef.current = true;
       showModeSelect();
       setTimeout(() => { waveHandledRef.current = false; }, 1500);
     }
-  }, [gestureState.isWave, screen, showModeSelect]);
+  }, [gestureState.isWave, screen, showModeSelect, showHowTo]);
 
   const gestureLabel = gestureState.isWave
     ? '👋 Waving!'
@@ -89,10 +92,23 @@ export default function WorldExplorer() {
       />
 
       {/* Game screens */}
-      {screen === 'MAIN_MENU' && (
+      {screen === 'MAIN_MENU' && showHowTo && (
+        <HowToPlay
+          cursorX={gestureState.cursorX}
+          cursorY={gestureState.cursorY}
+          handPresent={gestureState.handPresent}
+          onDone={() => setShowHowTo(false)}
+        />
+      )}
+
+      {screen === 'MAIN_MENU' && !showHowTo && (
         <MainMenu
           gestureHint={gestureLabel}
           onWaveDetected={() => showModeSelect()}
+          cursorX={gestureState.cursorX}
+          cursorY={gestureState.cursorY}
+          handPresent={gestureState.handPresent}
+          onHowTo={() => setShowHowTo(true)}
         />
       )}
 
@@ -158,7 +174,7 @@ export default function WorldExplorer() {
           before a hand is detected (previously it vanished the instant a
           hand appeared, which is exactly when the player needs it to know
           how to wave/select). */}
-      {screen === 'MAIN_MENU' && (
+      {screen === 'MAIN_MENU' && !showHowTo && (
         <div className="fixed bottom-40 right-4 bg-black/60 rounded-2xl p-4 border border-white/20 max-w-[200px] text-right">
           <p className="text-white/80 text-sm font-bold mb-2">Controls</p>
           <p className="text-white/60 text-xs">☝️ Point = aim</p>

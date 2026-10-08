@@ -2,28 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
+import { DwellButton } from '@/components/HowToPlay';
 
 interface MainMenuProps {
   gestureHint: string;
   onWaveDetected: () => void;
+  cursorX: number;
+  cursorY: number;
+  handPresent: boolean;
+  onHowTo: () => void;
 }
 
 const GLOBE_EMOJIS = ['🌍', '🌎', '🌏'];
 
-export default function MainMenu({ gestureHint, onWaveDetected }: MainMenuProps) {
-  const { highScores, showModeSelect } = useGameStore();
+export default function MainMenu({ gestureHint, cursorX, cursorY, handPresent, onHowTo }: MainMenuProps) {
+  const { highScores } = useGameStore();
   const [globeIdx, setGlobeIdx] = useState(0);
-  const [wavePrompt, setWavePrompt] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setGlobeIdx((i) => (i + 1) % 3), 1000);
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => setWavePrompt(true), 1500);
-    return () => clearTimeout(t);
-  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-white select-none">
@@ -39,15 +39,23 @@ export default function MainMenu({ gestureHint, onWaveDetected }: MainMenuProps)
       </div>
 
       {/* Wave to start */}
-      {wavePrompt && (
-        <div className="animate-pop flex flex-col items-center gap-6 mb-12">
-          <div className="text-8xl animate-bounce-gentle">👋</div>
-          <div className="text-center">
-            <p className="text-4xl font-bold text-yellow-300 mb-2">Wave to Start!</p>
-            <p className="text-xl text-white/70">Show your hand to the camera and wave</p>
-          </div>
+      <div className="animate-pop flex flex-col items-center gap-6 mb-10">
+        <div className="text-8xl animate-bounce-gentle">👋</div>
+        <div className="text-center">
+          <p className="text-4xl font-bold text-yellow-300 mb-2">Wave to Start!</p>
+          <p className="text-xl text-white/70">Show your hand to the camera and wave</p>
         </div>
-      )}
+      </div>
+
+      <DwellButton
+        cursorX={cursorX}
+        cursorY={cursorY}
+        handPresent={handPresent}
+        onDone={onHowTo}
+        className="mb-10 px-10 py-3 rounded-2xl bg-white/10 border border-white/30 text-xl font-bold"
+      >
+        ❓ How to Play
+      </DwellButton>
 
       {/* High scores */}
       <div className="flex gap-8 mb-10">
