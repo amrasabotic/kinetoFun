@@ -14,6 +14,11 @@ import GameIframe from "@/components/games/GameIframe";
 import { getGameEntry } from "@/games/registry";
 import type { AchievementSyncResult, BadgeSummary, GameRewardResult } from "@/lib/rewards/catalog";
 import { syncAchievements } from "@/services/achievements.service";
+import { RewardToasts, type RewardToast } from "@/components/rewards/RewardToasts";
+import { playRewardChime } from "@/lib/rewards/chime";
+
+/** How long the end-of-game reward card waits before leaving on its own. */
+const REWARD_CARD_MS = 15000;
 
 /** In-game achievements collected during this visit to the play page. */
 interface Collected {
@@ -70,6 +75,8 @@ function GameLaunchContent() {
   const [xpEarned, setXpEarned] = useState(0);
   const [rewards, setRewards] = useState<GameRewardResult | null>(null);
   const [collected, setCollected] = useState<Collected>(NOTHING_COLLECTED);
+  const [toasts, setToasts] = useState<RewardToast[]>([]);
+  const dismissToast = useCallback(() => setToasts((prev) => prev.slice(1)), []);
   const sentAchievementsRef = useRef(new Set<string>());
   const sessionIdRef = useRef<string | null>(null);
   const sessionStartedRef = useRef(false);
@@ -100,6 +107,25 @@ function GameLaunchContent() {
     if (!game) return;
     const result = await syncAchievements(game.id, sentAchievementsRef.current, reportedIds);
     if (!result || (result.newAchievements.length === 0 && result.newBadges.length === 0)) return;
+    const items: RewardToast[] = [
+      ...result.newBadges.map((b) => ({
+        key: `badge-${b.id}`,
+        kind: "badge" as const,
+        emoji: b.emoji,
+        title: b.title,
+        description: b.description,
+      })),
+      ...result.newAchievements.map((a) => ({
+        key: `achievement-${a.id}`,
+        kind: "collectible" as const,
+        emoji: a.emoji,
+        title: a.title,
+        description: a.description,
+      })),
+    ];
+    // The ticket total for the sync is shown once, on its first notification.
+    if (items.length > 0 && result.ticketsEarned > 0) items[0].tickets = result.ticketsEarned;
+    setToasts((prev) => [...prev, ...items]);
     setCollected((prev) => ({
       achievements: [...prev.achievements, ...result.newAchievements],
       badges: [...prev.badges, ...result.newBadges],
@@ -158,17 +184,26 @@ function GameLaunchContent() {
     }
   }, [game, refresh, endSessionOnce, collectAchievements]);
 
+  const hasRewardCard =
+    (rewards !== null && (rewards.lines.length > 0 || rewards.newBadges.length > 0)) ||
+    collected.achievements.length > 0 ||
+    collected.badges.length > 0;
+
   useEffect(() => {
     if (phase !== "done") return;
-    // Games are played on a TV without a mouse, so this screen must leave on
-    // its own; stay longer when there is a reward summary to read.
-    const hasSummary = (rewards && rewards.lines.length > 0) || collected.achievements.length > 0;
-    const delay = hasSummary ? 7000 : 2000;
+    // Games are played on a TV without a mouse and may be left unattended, so
+    // this screen must leave on its own. A reward card waits long enough to be
+    // read aloud and can be dismissed sooner with the remote's OK button.
+    const delay = hasRewardCard ? REWARD_CARD_MS : 2000;
     const timeout = setTimeout(() => {
       if (game) router.push(`/games/${game.id}`);
     }, delay);
     return () => clearTimeout(timeout);
-  }, [phase, game, router, rewards, collected]);
+  }, [phase, game, router, hasRewardCard]);
+
+  useEffect(() => {
+    if (phase === "done" && hasRewardCard) playRewardChime("badge");
+  }, [phase, hasRewardCard]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -266,7 +301,26 @@ function GameLaunchContent() {
         {(rewards || collected.achievements.length > 0) && (
           <RewardSummary rewards={rewards} collected={collected} />
         )}
-        <p className="mt-2 text-sm text-white/50">Returning to game page…</p>
+        {hasRewardCard ? (
+          <>
+            <Link
+              href={`/games/${game.id}`}
+              data-focusable
+              autoFocus
+              className="mt-6 rounded-full bg-amber-400 px-8 py-3 text-lg font-black text-amber-950 hover:bg-amber-300"
+            >
+              Continue
+            </Link>
+            <div className="mt-4 h-1 w-48 overflow-hidden rounded-full bg-white/15">
+              <div
+                className="h-full origin-left bg-amber-300"
+                style={{ animation: `kf-countdown ${REWARD_CARD_MS}ms linear forwards` }}
+              />
+            </div>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-white/50">Returning to game page…</p>
+        )}
       </FullScreenOverlay>
     );
   }
@@ -304,6 +358,7 @@ function GameLaunchContent() {
         onAchievementUnlocked={(id) => { collectAchievements([id]); }}
         fullscreen
       />
+      <RewardToasts queue={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
@@ -317,7 +372,8 @@ function RewardSummary({
 }) {
   const badges = [...(rewards?.newBadges ?? []), ...collected.badges];
   return (
-    <div className="mt-5 w-80 max-w-[calc(100vw-2rem)] space-y-3">
+    <div className="mt-5 w-[34rem] max-w-[calc(100vw-2rem)] space-y-4"
+      style={{ animation: "kf-reward-pop 500ms ease-out both" }}>
       {rewards && rewards.ticketsEarned > 0 && (
         <div className="rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4">
           <p className="text-center text-xl font-black text-amber-300">

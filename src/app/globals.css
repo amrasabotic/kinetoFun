@@ -430,3 +430,22 @@ html[data-reduce-motion] * {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
 }
+
+/* ─── Reward celebrations ───────────────────────────────────────────────────── */
+
+@keyframes kf-reward-toast {
+  0% { transform: translate(-50%, -140%); opacity: 0; }
+  12%, 88% { transform: translate(-50%, 0); opacity: 1; }
+  100% { transform: translate(-50%, -140%); opacity: 0; }
+}
+
+@keyframes kf-reward-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes kf-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
