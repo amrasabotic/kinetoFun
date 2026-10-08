@@ -2,15 +2,10 @@ import HoverButton from '../common/HoverButton';
 
 export default function HowToPlay({ onBack }: { onBack: () => void }) {
   return (
-    <div className="absolute inset-0 bg-[#12101a] text-white flex flex-col items-center px-8 py-6 overflow-y-auto">
-      <div className="flex items-center justify-between w-full max-w-lg mb-6">
-        <h1 className="text-2xl font-extrabold">❔ How to Play</h1>
-        <HoverButton onSelect={onBack} className="rounded-full overflow-hidden">
-          <div className="px-4 py-1.5 bg-white/10 text-sm font-bold">Back</div>
-        </HoverButton>
-      </div>
+    <div className="absolute inset-0 bg-[#12101a] text-white flex flex-col items-center justify-center px-8 py-6 gap-6 overflow-hidden">
+      <h1 className="text-5xl font-extrabold">❔ How to Play</h1>
 
-      <div className="w-full max-w-lg flex flex-col gap-4">
+      <div className="w-full max-w-6xl grid grid-cols-4 gap-4">
         <Row icon="🖐️" title="Move" desc="Move your open hand left and right — your crowd follows your wrist position." />
         <Row icon="✊" title="Charge Mode" desc="Make a fist and hold for half a second to unleash Charge Mode: your crowd glows, smashes obstacles, and defeats enemies faster for 3 seconds. 20s cooldown." />
         <Row icon="✋" title="Pause / Resume" desc="Hold an open palm still for 1 second to pause. Do it again to resume." />
@@ -19,17 +14,21 @@ export default function HowToPlay({ onBack }: { onBack: () => void }) {
         <Row icon="⚔️" title="Enemy Crowds" desc="Crash into a rival crowd to trigger an automatic 1-for-1 battle. The bigger crowd usually wins." />
         <Row icon="👑" title="Bosses & Castles" desc="Every 5th level ends in a boss fight. Every level ends with a castle — the more crowd you have left, the faster it falls." />
       </div>
+
+      <HoverButton onSelect={onBack} className="rounded-2xl overflow-hidden">
+        <div className="px-16 py-4 bg-amber-500 text-black text-xl font-black">▶ Let's Play</div>
+      </HoverButton>
     </div>
   );
 }
 
 function Row({ icon, title, desc }: { icon: string; title: string; desc: string }) {
   return (
-    <div className="flex gap-4 items-start p-4 rounded-xl bg-white/5">
-      <span className="text-3xl">{icon}</span>
+    <div className="flex flex-col gap-2 p-4 rounded-xl bg-white/5 border border-white/10">
+      <span className="text-4xl">{icon}</span>
       <div>
-        <h3 className="font-bold">{title}</h3>
-        <p className="text-sm text-white/60">{desc}</p>
+        <h3 className="font-bold text-lg">{title}</h3>
+        <p className="text-sm text-white/70 leading-snug">{desc}</p>
       </div>
     </div>
   );
