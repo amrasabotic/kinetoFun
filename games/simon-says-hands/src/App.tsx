@@ -210,15 +210,15 @@ function HowToPlayScreen({ onBack }: { onBack: () => void }) {
     <MenuGestureLayer>
       {({ activeId, dwellProgress }) => (
         <div className="h-screen bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950 flex flex-col items-center justify-center overflow-hidden px-6">
-          <div className="w-full max-w-md flex flex-col gap-4">
+          <div className="w-full max-w-6xl flex flex-col gap-4">
             <h2 className="text-3xl font-black text-white text-center drop-shadow">How to Play</h2>
-            <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+            <div className="grid grid-cols-3 gap-3 w-full">
               {items.map(item => (
                 <div key={item.title} className="flex gap-3 bg-white/8 rounded-xl p-3 border border-white/10">
                   <div className="w-8 flex-shrink-0 flex items-start justify-center pt-0.5 text-xl">{item.icon}</div>
                   <div>
-                    <p className="text-white font-bold text-sm">{item.title}</p>
-                    <p className="text-white/60 text-xs leading-relaxed mt-0.5">{item.desc}</p>
+                    <p className="text-white font-bold text-base">{item.title}</p>
+                    <p className="text-white/60 text-sm leading-snug mt-0.5">{item.desc}</p>
                   </div>
                 </div>
               ))}
