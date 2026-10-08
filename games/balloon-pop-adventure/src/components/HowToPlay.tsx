@@ -27,12 +27,13 @@ export function HowToPlay({ onClose }: HowToPlayProps) {
       display:    'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: 'center',
       background: 'rgba(5,5,20,0.92)',
       backdropFilter: 'blur(8px)',
       zIndex:     25,
-      overflowY:  'auto',
-      padding:    'clamp(16px, 3vw, 40px)',
+      // Fits one TV screen: there is no way to scroll by hand.
+      overflow:   'hidden',
+      padding:    'clamp(12px, 2.5vh, 32px) clamp(16px, 3vw, 40px)',
     }}>
       {/* Title */}
       <div style={{
@@ -41,8 +42,7 @@ export function HowToPlay({ onClose }: HowToPlayProps) {
         color:        '#FFFFFF',
         letterSpacing: '3px',
         textAlign:    'center',
-        marginBottom: 'clamp(16px, 3vh, 32px)',
-        marginTop:    'clamp(8px, 2vh, 20px)',
+        marginBottom: 'clamp(10px, 2.5vh, 24px)',
         background:   'linear-gradient(135deg, #FFD700, #FF6B35)',
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor:  'transparent',
@@ -93,21 +93,6 @@ export function HowToPlay({ onClose }: HowToPlayProps) {
             ))}
           </div>
 
-          {/* Dwell click illustration */}
-          <div style={{
-            marginTop:    'clamp(12px, 2vh, 24px)',
-            padding:      'clamp(10px, 2vw, 20px)',
-            background:   'rgba(78,205,196,0.1)',
-            borderRadius: '12px',
-            border:       '1px solid rgba(78,205,196,0.3)',
-          }}>
-            <div style={{ color: '#4ECDC4', fontWeight: 'bold', fontSize: 'clamp(0.85rem, 1.8vw, 1.05rem)', marginBottom: '6px' }}>
-              ⭕ Dwell to Select
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 'clamp(0.8rem, 1.6vw, 1rem)', lineHeight: 1.5 }}>
-              A ring appears around your cursor when hovering a button. When the ring completes, the button is pressed — no physical click needed!
-            </div>
-          </div>
         </div>
 
         {/* Right: balloon types */}
@@ -119,13 +104,13 @@ export function HowToPlay({ onClose }: HowToPlayProps) {
           padding:      'clamp(16px, 3vw, 32px)',
         }}>
           <SectionTitle icon="🎈" label="Balloon Types" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.5vh, 14px)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.2vh, 12px)' }}>
             {BALLOON_TYPES.map((b, i) => (
               <div key={i} style={{
                 display:      'flex',
                 alignItems:   'center',
                 gap:          '14px',
-                padding:      'clamp(8px, 1.5vw, 14px)',
+                padding:      'clamp(6px, 1.2vh, 12px) clamp(8px, 1.5vw, 14px)',
                 background:   `${b.color}18`,
                 borderRadius: '12px',
                 border:       `1px solid ${b.color}40`,
@@ -163,7 +148,6 @@ export function HowToPlay({ onClose }: HowToPlayProps) {
           borderRadius: '16px',
           cursor:       'pointer',
           boxShadow:    '0 6px 30px rgba(255,80,100,0.5)',
-          marginBottom: 'clamp(16px, 3vh, 32px)',
           transition:   'transform 0.15s',
         }}
         onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
