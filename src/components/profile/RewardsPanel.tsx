@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Flame, Gift, Sparkles, Ticket } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame, Gift, Sparkles, Ticket } from "lucide-react";
 import { useRewards } from "@/features/rewards/useRewards";
 import { useGames } from "@/features/games/useGames";
 import { relativeTime } from "@/lib/format";
@@ -100,39 +101,102 @@ export function RewardsPanel() {
 
       <Collectibles collections={rewards.collections} gameTitle={gameTitle} />
 
-      <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
-        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-          <Gift className="h-4 w-4 text-primary" /> Recent tickets
-        </h2>
-        {rewards.recent.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Finish a game to earn your first tickets.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border/30">
-            {rewards.recent.map((entry) => (
-              <li key={entry.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-foreground">{entry.label}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {[gameTitle(entry.gameId), relativeTime(entry.createdAt)].filter(Boolean).join(" · ")}
-                  </span>
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 font-bold tabular-nums",
-                    entry.delta > 0 ? "text-amber-600 dark:text-amber-300" : "text-muted-foreground",
-                  )}
-                >
-                  {entry.delta > 0 ? "+" : ""}
-                  {entry.delta}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <RecentTickets recent={rewards.recent} gameTitle={gameTitle} />
     </section>
+  );
+}
+
+const RECENT_PAGE_SIZE = 8;
+const COLLECTION_PAGE_SIZE = 5;
+const UNSTARTED_PAGE_SIZE = 20;
+
+function Pager({
+  page,
+  pageCount,
+  onChange,
+}: {
+  page: number;
+  pageCount: number;
+  onChange: (page: number) => void;
+}) {
+  if (pageCount <= 1) return null;
+  const btn =
+    "flex h-8 w-8 items-center justify-center rounded-full border border-border/40 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
+  return (
+    <div className="mt-3 flex items-center justify-center gap-3">
+      <button
+        type="button"
+        data-focusable
+        aria-label="Previous page"
+        disabled={page === 0}
+        onClick={() => onChange(page - 1)}
+        className={btn}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      <span className="text-xs tabular-nums text-muted-foreground">
+        {page + 1} / {pageCount}
+      </span>
+      <button
+        type="button"
+        data-focusable
+        aria-label="Next page"
+        disabled={page >= pageCount - 1}
+        onClick={() => onChange(page + 1)}
+        className={btn}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function RecentTickets({
+  recent,
+  gameTitle,
+}: {
+  recent: RewardsOverview["recent"];
+  gameTitle: (id: string | null) => string | undefined;
+}) {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.ceil(recent.length / RECENT_PAGE_SIZE);
+  const current = Math.min(page, Math.max(pageCount - 1, 0));
+  const visible = recent.slice(current * RECENT_PAGE_SIZE, (current + 1) * RECENT_PAGE_SIZE);
+
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
+      <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
+        <Gift className="h-4 w-4 text-primary" /> Recent tickets
+      </h2>
+      {recent.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Finish a game to earn your first tickets.
+        </p>
+      ) : (
+        <ul className="divide-y divide-border/30">
+          {visible.map((entry) => (
+            <li key={entry.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-foreground">{entry.label}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {[gameTitle(entry.gameId), relativeTime(entry.createdAt)].filter(Boolean).join(" · ")}
+                </span>
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 font-bold tabular-nums",
+                  entry.delta > 0 ? "text-amber-600 dark:text-amber-300" : "text-muted-foreground",
+                )}
+              >
+                {entry.delta > 0 ? "+" : ""}
+                {entry.delta}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Pager page={current} pageCount={pageCount} onChange={setPage} />
+    </div>
   );
 }
 
@@ -143,6 +207,8 @@ function Collectibles({
   collections: RewardsOverview["collections"];
   gameTitle: (id: string | null) => string | undefined;
 }) {
+  const [startedPage, setStartedPage] = useState(0);
+  const [unstartedPage, setUnstartedPage] = useState(0);
   const withProgress = collections
     .map((c) => ({ ...c, earned: c.items.filter((i) => i.earnedAt).length }))
     .sort((a, b) => b.earned - a.earned);
@@ -150,6 +216,19 @@ function Collectibles({
   const notStarted = withProgress.filter((c) => c.earned === 0);
   const total = withProgress.reduce((sum, c) => sum + c.items.length, 0);
   const earnedTotal = withProgress.reduce((sum, c) => sum + c.earned, 0);
+
+  const startedPages = Math.ceil(started.length / COLLECTION_PAGE_SIZE);
+  const startedCurrent = Math.min(startedPage, Math.max(startedPages - 1, 0));
+  const startedVisible = started.slice(
+    startedCurrent * COLLECTION_PAGE_SIZE,
+    (startedCurrent + 1) * COLLECTION_PAGE_SIZE,
+  );
+  const unstartedPages = Math.ceil(notStarted.length / UNSTARTED_PAGE_SIZE);
+  const unstartedCurrent = Math.min(unstartedPage, Math.max(unstartedPages - 1, 0));
+  const unstartedVisible = notStarted.slice(
+    unstartedCurrent * UNSTARTED_PAGE_SIZE,
+    (unstartedCurrent + 1) * UNSTARTED_PAGE_SIZE,
+  );
 
   return (
     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
@@ -168,7 +247,7 @@ function Collectibles({
         </p>
       ) : (
         <ul className="mb-4 space-y-3">
-          {started.map((c) => (
+          {startedVisible.map((c) => (
             <li key={c.gameId} className="rounded-xl border border-border/30 p-3">
               <div className="mb-2 flex items-center justify-between text-sm">
                 <Link href={`/games/${c.gameId}`} className="font-semibold text-foreground hover:underline">
@@ -199,10 +278,11 @@ function Collectibles({
           ))}
         </ul>
       )}
+      <Pager page={startedCurrent} pageCount={startedPages} onChange={setStartedPage} />
 
       {notStarted.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {notStarted.map((c) => (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {unstartedVisible.map((c) => (
             <Link
               key={c.gameId}
               href={`/games/${c.gameId}`}
@@ -214,6 +294,7 @@ function Collectibles({
           ))}
         </div>
       )}
+      <Pager page={unstartedCurrent} pageCount={unstartedPages} onChange={setUnstartedPage} />
     </div>
   );
 }
