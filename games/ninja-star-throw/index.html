@@ -76,6 +76,17 @@
 
   .screen.hidden { display: none; }
 
+  /* How to Play */
+  .howto-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 360px)); gap: 14px; margin: 0.5rem 0 1.2rem; }
+  .howto-card {
+    display: flex; gap: 14px; align-items: flex-start; text-align: left;
+    background: rgba(245,240,232,0.06); border: 1px solid rgba(212,160,23,0.35);
+    border-radius: 14px; padding: 14px 18px;
+  }
+  .howto-card .ic { font-size: 2rem; line-height: 1; }
+  .howto-card .t  { font-family: 'Noto Serif JP', serif; font-weight: 700; font-size: 1.15rem; color: var(--gold); margin-bottom: 4px; }
+  .howto-card .d  { font-size: 0.95rem; line-height: 1.45; color: var(--paper); opacity: 0.85; }
+
   /* ── MENU ── */
   .menu-title {
     font-family: 'Noto Serif JP', serif;
@@ -370,6 +381,26 @@
     <div class="loading-text" id="load-text">Initialising MediaPipe…</div>
   </div>
 
+  <!-- HOW TO PLAY -->
+  <div id="howto-screen" class="screen hidden">
+    <div class="menu-title" style="font-size:clamp(1.8rem,4vw,3rem);margin-bottom:0.3em;">How to Play</div>
+    <div class="howto-grid">
+      <div class="howto-card"><div class="ic">✊</div><div><div class="t">Aim</div><div class="d">Make a fist and move it — the spinning star on screen follows your hand.</div></div></div>
+      <div class="howto-card"><div class="ic">🖐</div><div><div class="t">Throw</div><div class="d">Open your hand to throw the star. It flies at the target nearest your aim.</div></div></div>
+      <div class="howto-card"><div class="ic">🎯</div><div><div class="t">Hit targets</div><div class="d">Every hit scores a point. A star that misses breaks your combo.</div></div></div>
+      <div class="howto-card"><div class="ic">🔥</div><div><div class="t">Combos</div><div class="d">Hit 3 or more in a row and each hit is worth double your combo count.</div></div></div>
+      <div class="howto-card"><div class="ic">⏱</div><div><div class="t">Beat the clock</div><div class="d">Score as much as you can before time runs out: 60, 45 or 30 seconds depending on the level.</div></div></div>
+      <div class="howto-card"><div class="ic">☝</div><div><div class="t">Menus</div><div class="d">Point one finger at a button and hold it there until the bar fills.</div></div></div>
+    </div>
+    <button class="gesture-btn" id="btn-howto-done" data-action="menu">
+      <div class="fill-bar"></div>
+      <span class="btn-icon">⚔</span>
+      <span>Let's Play</span>
+    </button>
+    <div class="gesture-hint">☝ hover with index finger · hold to select</div>
+    <div class="finger-cursor" id="howto-finger" style="left:-100px;top:-100px;">☝</div>
+  </div>
+
   <!-- MENU -->
   <div id="menu-screen" class="screen hidden">
     <div class="shuriken-icon">✦</div>
@@ -385,6 +416,11 @@
       <div class="fill-bar"></div>
       <span class="btn-icon">⚑</span>
       <span>Choose Level</span>
+    </button>
+    <button class="gesture-btn" id="btn-howto" data-action="howto">
+      <div class="fill-bar"></div>
+      <span class="btn-icon">?</span>
+      <span>How to Play</span>
     </button>
 
     <div class="gesture-hint">☝ hover with index finger · hold 1.5s to select</div>
@@ -537,13 +573,16 @@ const screens = {
 // ─────────────────────────────────────────────
 function showScreen(name) {
   STATE.screen = name;
+  dwellArmedAt = performance.now() + DWELL_ARM_MS;
   $('loading-screen').classList.add('hidden');
   $('menu-screen').classList.add('hidden');
+  $('howto-screen').classList.add('hidden');
   $('level-screen').classList.add('hidden');
   $('overlay-screen').classList.add('hidden');
   $('hud').classList.add('hidden');
   if (name === 'loading') $('loading-screen').classList.remove('hidden');
   if (name === 'menu')    $('menu-screen').classList.remove('hidden');
+  if (name === 'howto')   $('howto-screen').classList.remove('hidden');
   if (name === 'levels')  $('level-screen').classList.remove('hidden');
   if (name === 'overlay') $('overlay-screen').classList.remove('hidden');
   if (name === 'game')    $('hud').classList.remove('hidden');
@@ -583,11 +622,16 @@ function classifyGesture(lm) {
 let dwellTarget = null;
 let dwellStart  = 0;
 const DWELL_MS  = 1500;
+// Buttons ignore the hand for a moment after each screen appears, so a hand
+// already resting on one cannot skip How to Play or press through screens.
+const DWELL_ARM_MS = 1500;
+let dwellArmedAt = 0;
 
 function updateMenuGesture(nx, ny, gest) {
   // nx,ny in viewport px
   const fingerEl = {
     menu:    $('menu-finger'),
+    howto:   $('howto-finger'),
     levels:  $('level-finger'),
     overlay: $('overlay-finger'),
   }[STATE.screen];
@@ -596,7 +640,7 @@ function updateMenuGesture(nx, ny, gest) {
   fingerEl.style.left = nx + 'px';
   fingerEl.style.top  = ny + 'px';
 
-  if (gest !== 'point') {
+  if (gest !== 'point' || performance.now() < dwellArmedAt) {
     clearDwell();
     return;
   }
@@ -649,6 +693,7 @@ function triggerButton(btn) {
   if (action === 'back')    showScreen('menu');
   if (action === 'retry')   startGame();
   if (action === 'menu')    showScreen('menu');
+  if (action === 'howto')   showScreen('howto');
 }
 
 // ─────────────────────────────────────────────
@@ -1169,7 +1214,8 @@ async function boot() {
   text.textContent = ok ? 'Ready!' : 'Camera unavailable — keyboard fallback active';
   await new Promise(r => setTimeout(r, 600));
 
-  showScreen('menu');
+  // How to Play is the first screen after loading, every time.
+  showScreen('howto');
 }
 
 // ─────────────────────────────────────────────
@@ -1182,6 +1228,7 @@ document.addEventListener('keydown', e => {
     setTimeout(() => gesture = 'none', 200);
   }
   if (e.code === 'Enter' && STATE.screen === 'menu') startGame();
+  else if (e.code === 'Enter' && STATE.screen === 'howto') showScreen('menu');
   if (e.code === 'KeyR' && STATE.screen === 'game') { STATE.running = false; clearInterval(timerInt); showScreen('menu'); }
 });
 
