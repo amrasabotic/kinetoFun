@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface HandState {
   x: number; // viewport px
@@ -17,8 +17,6 @@ declare global {
 const MEDIAPIPE_HANDS = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
 const MEDIAPIPE_CAMERA = "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
 
-let scriptsPromise: Promise<void> | null = null;
-
 function loadScript(src: string): Promise<void> {
   return new Promise((res, rej) => {
     if (document.querySelector(`script[src="${src}"]`)) return res();
@@ -31,92 +29,101 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-async function loadMediaPipe() {
-  if (!scriptsPromise) {
-    scriptsPromise = (async () => {
-      await loadScript(MEDIAPIPE_HANDS);
-      await loadScript(MEDIAPIPE_CAMERA);
-    })();
-  }
-  return scriptsPromise;
+/*
+ * One camera and one hand tracker for the whole app. The menus and the puzzle
+ * both read from it, because the game is played on TVs where every screen
+ * must respond to the hand, and two trackers would fight over the webcam.
+ */
+const HIDDEN: HandState = { x: 0, y: 0, pinching: false, visible: false };
+let current: HandState = HIDDEN;
+let stream: MediaStream | null = null;
+let startPromise: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function publish(next: HandState) {
+  current = next;
+  listeners.forEach((l) => l());
 }
 
-export function useHandTracking(videoRef: React.RefObject<HTMLVideoElement | null>, enabled = true) {
-  const [state, setState] = useState<HandState>({ x: 0, y: 0, pinching: false, visible: false });
+function startTracking(): Promise<void> {
+  if (!startPromise) {
+    startPromise = (async () => {
+      await loadScript(MEDIAPIPE_HANDS);
+      await loadScript(MEDIAPIPE_CAMERA);
+      const video = document.createElement("video");
+      video.muted = true;
+      video.playsInline = true;
+
+      const hands = new window.Hands({
+        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+      });
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 0,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6,
+      });
+      hands.onResults((results: any) => {
+        if (!results.multiHandLandmarks?.length) {
+          if (current.visible) publish({ ...current, visible: false, pinching: false });
+          return;
+        }
+        const lm = results.multiHandLandmarks[0];
+        const index = lm[8];
+        const thumb = lm[4];
+        // Mirror horizontally so movement matches webcam mirror.
+        const x = (1 - index.x) * window.innerWidth;
+        const y = index.y * window.innerHeight;
+        const pinching = Math.hypot(index.x - thumb.x, index.y - thumb.y) < 0.06;
+        publish({ x, y, pinching, visible: true });
+      });
+
+      const camera = new window.Camera(video, {
+        onFrame: async () => {
+          if (video.readyState >= 2) await hands.send({ image: video });
+        },
+        width: 640,
+        height: 480,
+      });
+      await camera.start();
+      stream = video.srcObject as MediaStream | null;
+      listeners.forEach((l) => l());
+    })();
+    // Let a later screen retry if the camera was refused or failed to load.
+    startPromise.catch(() => {
+      startPromise = null;
+    });
+  }
+  return startPromise;
+}
+
+/**
+ * The shared hand state. `videoRef`, when given, shows the camera feed.
+ * While `enabled` is false the hand reads as not visible.
+ */
+export function useHandTracking(
+  videoRef?: React.RefObject<HTMLVideoElement | null>,
+  enabled = true,
+) {
+  const [, setTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-  const handsRef = useRef<any>(null);
-  const cameraRef = useRef<any>(null);
-  const pinchingRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await loadMediaPipe();
-        if (cancelled) return;
-        const video = videoRef.current;
-        if (!video) return;
-
-        const hands = new window.Hands({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-        hands.setOptions({
-          maxNumHands: 1,
-          modelComplexity: 0,
-          minDetectionConfidence: 0.6,
-          minTrackingConfidence: 0.6,
-        });
-        hands.onResults((results: any) => {
-          if (cancelled) return;
-          const vw = window.innerWidth;
-          const vh = window.innerHeight;
-          if (results.multiHandLandmarks?.length) {
-            const lm = results.multiHandLandmarks[0];
-            const index = lm[8];
-            const thumb = lm[4];
-            // Mirror horizontally so movement matches webcam mirror.
-            const nx = 1 - index.x;
-            const ny = index.y;
-            const x = nx * vw;
-            const y = ny * vh;
-            const dx = (index.x - thumb.x);
-            const dy = (index.y - thumb.y);
-            const dist = Math.hypot(dx, dy);
-            const pinching = dist < 0.06;
-            pinchingRef.current = pinching;
-            setState({ x, y, pinching, visible: true });
-          } else {
-            if (pinchingRef.current) pinchingRef.current = false;
-            setState((s) => ({ ...s, visible: false, pinching: false }));
-          }
-        });
-        handsRef.current = hands;
-
-        const camera = new window.Camera(video, {
-          onFrame: async () => {
-            if (handsRef.current && video.readyState >= 2) {
-              await handsRef.current.send({ image: video });
-            }
-          },
-          width: 640,
-          height: 480,
-        });
-        cameraRef.current = camera;
-        await camera.start();
-        setReady(true);
-      } catch (e: any) {
-        setError(e?.message ?? "Camera failed");
-      }
-    })();
-
+    const onChange = () => setTick((t) => t + 1);
+    listeners.add(onChange);
+    startTracking().catch((e: any) => setError(e?.message ?? "Camera failed"));
     return () => {
-      cancelled = true;
-      try { cameraRef.current?.stop?.(); } catch {}
-      try { handsRef.current?.close?.(); } catch {}
+      listeners.delete(onChange);
     };
-  }, [enabled, videoRef]);
+  }, []);
 
-  return { state, error, ready };
+  useEffect(() => {
+    const v = videoRef?.current;
+    if (v && stream && v.srcObject !== stream) {
+      v.srcObject = stream;
+      v.play().catch(() => {});
+    }
+  });
+
+  return { state: enabled ? current : HIDDEN, error, ready: stream !== null };
 }

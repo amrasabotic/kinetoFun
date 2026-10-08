@@ -162,6 +162,17 @@ function Play() {
   useEffect(() => {
     if (complete && lvl) unlockLevel(lvl.id + 1);
   }, [complete, lvl]);
+
+  // The menu pointer only works on the pause and level-complete panels; while
+  // the puzzle is live the pinch selects letters instead.
+  const solving = !paused && !complete;
+  useEffect(() => {
+    document.body.dataset.handPointer = solving ? "off" : "on";
+    window.dispatchEvent(new Event("hand-pointer:rearm"));
+    return () => {
+      document.body.dataset.handPointer = "on";
+    };
+  }, [solving]);
   useEffect(() => {
     if (complete) window.parent.postMessage({ type: 'GAME_COMPLETE', score: found.length * 100 }, '*');
   // eslint-disable-next-line react-hooks/exhaustive-deps

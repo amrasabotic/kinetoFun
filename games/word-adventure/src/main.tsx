@@ -5,6 +5,9 @@ import { QueryClient } from '@tanstack/react-query';
 import { routeTree } from './routeTree.gen';
 import './styles.css';
 
+// Every visit opens on How to Play before the main menu.
+if (!window.location.hash || window.location.hash === "#/") window.location.hash = "#/how-to-play";
+
 const queryClient = new QueryClient();
 const router = createRouter({
   routeTree,

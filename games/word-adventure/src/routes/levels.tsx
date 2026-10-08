@@ -28,7 +28,7 @@ function Levels() {
       </div>
 
       <h1 className="mt-4 text-5xl font-black tracking-tight">Choose a level</h1>
-      <p className="mt-2 text-muted-foreground">Beat a level to unlock the next.</p>
+      <p className="mt-2 text-muted-foreground">Beat a level to unlock the next. Hold your finger over a level to start it.</p>
 
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {LEVELS.map((lvl) => {
