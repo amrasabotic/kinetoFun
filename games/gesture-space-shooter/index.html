@@ -24,6 +24,11 @@
   #cursor.shooting { border-color: #ff0; box-shadow: 0 0 16px rgba(255,220,0,0.7); background: rgba(255,220,0,0.08); }
   #cursor::after { content: ''; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #7ff; border-radius: 50%; transform: translate(-50%,-50%); }
   #cursor.shooting::after { background: #ff0; }
+  .howto-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 340px)); gap: 12px; margin-bottom: 18px; }
+  .howto-card { display: flex; gap: 14px; align-items: flex-start; text-align: left; border: 1px solid rgba(127,255,255,0.3); background: rgba(0,40,50,0.35); border-radius: 8px; padding: 12px 16px; }
+  .howto-card .ic { font-size: 28px; line-height: 1; }
+  .howto-card .t { color: #7ff; font-weight: 700; font-size: 15px; letter-spacing: 1px; margin-bottom: 4px; }
+  .howto-card .d { color: rgba(220,255,255,0.8); font-size: 13px; line-height: 1.5; }
   .level-badge { font-size: 11px; letter-spacing: 2px; color: rgba(127,255,255,0.4); margin-bottom: 4px; text-transform: uppercase; text-align: center; }
 </style>
 </head>
@@ -62,7 +67,7 @@ resize();
 window.addEventListener('resize', resize);
 
 /* ── STATE ── */
-const STATE = { LOADING: 0, MENU: 1, LEVEL_SELECT: 2, PLAYING: 3, DEAD: 4, WIN: 5 };
+const STATE = { LOADING: 0, MENU: 1, LEVEL_SELECT: 2, PLAYING: 3, DEAD: 4, WIN: 5, HOWTO: 6 };
 let state = STATE.LOADING;
 
 /* ── HAND TRACKING STATE ── */
@@ -72,6 +77,10 @@ let handVisible = false;
 /* ── MENU LOGIC ── */
 const menuBtns = [];
 let lastHoveredBtn = -1, hoverFrames = 0;
+// Buttons ignore the hand for a moment after each menu appears, so a hand
+// already resting on one cannot skip How to Play or press through screens.
+const MENU_ARM_MS = 1500;
+let menuArmedAt = 0;
 
 /* ── LEVELS ── */
 const LEVELS = [
@@ -247,7 +256,7 @@ function gameLoop() {
   }
 
   /* MENU HOVER */
-  if (state === STATE.MENU || state === STATE.LEVEL_SELECT || state === STATE.DEAD || state === STATE.WIN) {
+  if (state === STATE.MENU || state === STATE.HOWTO || state === STATE.LEVEL_SELECT || state === STATE.DEAD || state === STATE.WIN) {
     updateMenuHover();
     renderHoverProgress();
   }
@@ -370,6 +379,7 @@ function clearOverlay() {
   overlay.style.display = 'flex';
   lastHoveredBtn = -1;
   hoverFrames = 0;
+  menuArmedAt = performance.now() + MENU_ARM_MS;
 }
 
 function makeBtn(label, action, parent) {
@@ -388,6 +398,25 @@ function showMainMenu() {
   wrap.innerHTML = `<div class="menu-title">✦ SPACE GESTURES ✦</div><div class="menu-sub">hand-tracked space shooter</div>`;
   makeBtn('▶  Start Game', () => showLevelSelect(), wrap);
   makeBtn('⚡  Quick Play', () => startLevel(0), wrap);
+  makeBtn('?  How to Play', () => showHowTo(), wrap);
+  overlay.appendChild(wrap);
+}
+
+function showHowTo() {
+  state = STATE.HOWTO;
+  clearOverlay();
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:16px;';
+  wrap.innerHTML = `<div class="menu-title">How to Play</div>
+    <div class="howto-grid">
+      <div class="howto-card"><div class="ic">☝</div><div><div class="t">Fly</div><div class="d">Point one finger. Your ship follows your fingertip around the screen.</div></div></div>
+      <div class="howto-card"><div class="ic">✌</div><div><div class="t">Shoot</div><div class="d">Show two or more fingers to fire. Keep them up for a stream of shots.</div></div></div>
+      <div class="howto-card"><div class="ic">👾</div><div><div class="t">Clear the sector</div><div class="d">Destroy every enemy ship to win. Each sector has more, faster enemies.</div></div></div>
+      <div class="howto-card"><div class="ic">❤</div><div><div class="t">Dodge</div><div class="d">Your ship survives 3 hits. Steer away from enemy shots.</div></div></div>
+      <div class="howto-card"><div class="ic">⏳</div><div><div class="t">Menus</div><div class="d">Point one finger at a button and hold it there until the ring closes.</div></div></div>
+      <div class="howto-card"><div class="ic">✊</div><div><div class="t">Rest</div><div class="d">Make a fist or show one finger to stop shooting.</div></div></div>
+    </div>`;
+  makeBtn("▶  Let's Play", () => showMainMenu(), wrap);
   overlay.appendChild(wrap);
 }
 
@@ -423,7 +452,7 @@ function buildResultMenu(win) {
 
 /* ── MENU HOVER DETECTION ── */
 function updateMenuHover() {
-  if (fingerCount !== 1) { lastHoveredBtn = -1; hoverFrames = 0; return; }
+  if (fingerCount !== 1 || performance.now() < menuArmedAt) { lastHoveredBtn = -1; hoverFrames = 0; return; }
   const contRect = document.getElementById('container').getBoundingClientRect();
   let foundIdx = -1;
 
@@ -522,13 +551,11 @@ async function initHandTracking() {
     });
     await cam.start();
     camStatus.textContent = 'Camera: on ✓';
-    state = STATE.MENU;
-    showMainMenu();
+    showHowTo();
   } catch (err) {
     camStatus.textContent = 'Camera unavailable — mouse mode';
     console.warn('Hand tracking unavailable:', err);
-    state = STATE.MENU;
-    showMainMenu();
+    showHowTo();
   }
 }
 
