@@ -540,26 +540,26 @@ export function HowToPlayScreen({ onBack, dwellX, dwellY }: { onBack: () => void
     { icon: '⚡', title: 'Power-Ups', desc: 'Grab glowing power-ups for special abilities like Giant Mouth or Slow Motion.' },
   ];
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center z-20 overflow-y-auto py-8"
+    <div className="fixed inset-0 flex flex-col items-center justify-center z-20 overflow-hidden py-6"
       style={{ background: 'linear-gradient(135deg, #0f0a1e, #1a0a3e)' }}>
-      <div className="w-full max-w-lg px-6">
+      <div className="w-full max-w-5xl px-6">
         <h2 className="text-white text-4xl font-bold text-center mb-6 pop-in" style={{ fontFamily: 'Fredoka One, sans-serif' }}>
           How To Play
         </h2>
-        <div className="grid grid-cols-1 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-8">
           {steps.map((s, i) => (
             <div key={i} className="flex items-start gap-4 p-4 rounded-2xl fade-in"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', animationDelay: `${i * 0.08}s` }}>
               <div className="text-4xl flex-shrink-0">{s.icon}</div>
               <div>
                 <div className="text-white font-bold text-lg" style={{ fontFamily: 'Fredoka One, sans-serif' }}>{s.title}</div>
-                <div className="text-purple-300 text-sm">{s.desc}</div>
+                <div className="text-purple-200 text-base leading-snug">{s.desc}</div>
               </div>
             </div>
           ))}
         </div>
         <DwellButton onClick={onBack} dwellX={dwellX} dwellY={dwellY}
-          className="w-full py-4 rounded-2xl text-xl"
+          className="w-full max-w-sm mx-auto block py-4 rounded-2xl text-xl"
           style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', fontFamily: 'Fredoka One, sans-serif' }}>
           ← Back
         </DwellButton>
