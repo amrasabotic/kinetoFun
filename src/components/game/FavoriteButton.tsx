@@ -9,6 +9,7 @@ export function FavoriteButton({ gameId, className }: { gameId: string; classNam
   const active = isFavorite(gameId);
 
   return (
+    // Button
     <button
       type="button"
       aria-label={active ? "Remove from favorites" : "Add to favorites"}
