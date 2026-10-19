@@ -20,6 +20,9 @@ export const SNAP_PX = 56;
 /** Set on the element the hand is over, for styling (see globals.css). */
 export const HAND_HOVER_ATTR = "data-hand-hover";
 
+// Elements with this attribute fire again on a continued hold (paging tiles).
+const REPEAT_ATTR = "data-dwell-repeat";
+
 export interface DwellFrame {
   target: HTMLElement | null;
   /** 0–1 fill of the dwell ring. */
@@ -106,7 +109,8 @@ export class DwellEngine {
     const progress = Math.min(1, Math.max(0, (now - countFrom) / DWELL_MS));
 
     if (progress >= 1) {
-      this.spent = target;
+      if (target.hasAttribute(REPEAT_ATTR)) this.hoverStartedAt = now;
+      else this.spent = target;
       this.cooldownUntil = now + COOLDOWN_MS;
       target.click();
     }

@@ -17,8 +17,9 @@ export const metadata: Metadata = {
  * holding it over a button selects it (see features/hand-input).
  */
 export default function TvLayout({ children }: { children: React.ReactNode }) {
+  // overflow-clip, not hidden: the glows overflow, and a hidden box can still be scrolled.
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#050a1a] px-10 py-12 text-white">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-clip bg-[#050a1a] px-10 py-12 text-white">
       {/* Soft brand glows, so a mostly-empty TV screen isn't a flat rectangle. */}
       <div
         aria-hidden
@@ -29,7 +30,7 @@ export default function TvLayout({ children }: { children: React.ReactNode }) {
         className="pointer-events-none absolute -bottom-1/3 right-0 h-[55vh] w-[55vh] rounded-full bg-accent/15 blur-[140px]"
       />
       <HandInputProvider>
-        <main className="relative z-10 w-full max-w-6xl">{children}</main>
+        <main className="relative z-10 w-full">{children}</main>
       </HandInputProvider>
     </div>
   );

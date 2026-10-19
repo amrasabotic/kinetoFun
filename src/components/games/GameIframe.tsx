@@ -6,7 +6,9 @@ import { useEffect, useRef } from "react";
 export type GameEvent =
   | { type: "GAME_COMPLETE"; score: number }
   | { type: "XP_EARNED"; amount: number }
-  | { type: "ACHIEVEMENT_UNLOCKED"; id: string };
+  | { type: "ACHIEVEMENT_UNLOCKED"; id: string }
+  // Player chose to leave (e.g. "Back to games"), with no final score.
+  | { type: "GAME_EXIT" };
 
 interface GameIframeProps {
   /** URL to the game's index.html under /public/games/ */
@@ -19,6 +21,8 @@ interface GameIframeProps {
   onXpEarned?: (amount: number) => void;
   /** Called when the game sends an ACHIEVEMENT_UNLOCKED event */
   onAchievementUnlocked?: (id: string) => void;
+  /** Called when the game sends a GAME_EXIT event */
+  onExit?: () => void;
 }
 
 export default function GameIframe({
@@ -27,6 +31,7 @@ export default function GameIframe({
   onGameComplete,
   onXpEarned,
   onAchievementUnlocked,
+  onExit,
 }: GameIframeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -44,12 +49,14 @@ export default function GameIframe({
         onXpEarned(typeof data.amount === "number" ? data.amount : 0);
       } else if (data.type === "ACHIEVEMENT_UNLOCKED" && onAchievementUnlocked) {
         onAchievementUnlocked(typeof data.id === "string" ? data.id : "");
+      } else if (data.type === "GAME_EXIT" && onExit) {
+        onExit();
       }
     }
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [onGameComplete, onXpEarned, onAchievementUnlocked]);
+  }, [onGameComplete, onXpEarned, onAchievementUnlocked, onExit]);
 
   return (
     <iframe

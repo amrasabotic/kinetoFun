@@ -16,6 +16,7 @@ import type { AchievementSyncResult, BadgeSummary, GameRewardResult } from "@/li
 import { syncAchievements } from "@/services/achievements.service";
 import { RewardToasts, type RewardToast } from "@/components/rewards/RewardToasts";
 import { playRewardChime } from "@/lib/rewards/chime";
+import { useTvMode } from "@/features/tv/tv-mode";
 
 /** How long the end-of-game reward card waits before leaving on its own. */
 const REWARD_CARD_MS = 15000;
@@ -69,6 +70,9 @@ function GameLaunchContent() {
   const { games, loading } = useGames();
   const game = findGame(games, params.id);
   const entry = getGameEntry(params.id);
+  // A TV returns to its own game screen, which it can operate by hand.
+  const tv = useTvMode();
+  const backHref = tv ? `/tvsetup/games/${params.id}` : `/games/${params.id}`;
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [elapsed, setElapsed] = useState(0);
@@ -184,6 +188,21 @@ function GameLaunchContent() {
     }
   }, [game, refresh, endSessionOnce, collectAchievements]);
 
+  const leaveGame = useCallback(async () => {
+    // A score being saved finishes first; the done screen then leaves on its own.
+    if (phase !== "playing") return;
+    await collectAchievements();
+    await endSessionOnce();
+    router.push(backHref);
+  }, [phase, collectAchievements, endSessionOnce, router, backHref]);
+
+  // On a TV nobody can operate this screen, so a locked world goes back by itself.
+  useEffect(() => {
+    if (!tv || lockedCost === null) return;
+    const timeout = setTimeout(() => router.replace(backHref), 4000);
+    return () => clearTimeout(timeout);
+  }, [tv, lockedCost, router, backHref]);
+
   const hasRewardCard =
     (rewards !== null && (rewards.lines.length > 0 || rewards.newBadges.length > 0)) ||
     collected.achievements.length > 0 ||
@@ -195,11 +214,9 @@ function GameLaunchContent() {
     // this screen must leave on its own. A reward card waits long enough to be
     // read aloud and can be dismissed sooner with the remote's OK button.
     const delay = hasRewardCard ? REWARD_CARD_MS : 2000;
-    const timeout = setTimeout(() => {
-      if (game) router.push(`/games/${game.id}`);
-    }, delay);
+    const timeout = setTimeout(() => router.push(backHref), delay);
     return () => clearTimeout(timeout);
-  }, [phase, game, router, hasRewardCard]);
+  }, [phase, router, backHref, hasRewardCard]);
 
   useEffect(() => {
     if (phase === "done" && hasRewardCard) playRewardChime("badge");
@@ -237,7 +254,9 @@ function GameLaunchContent() {
     return (
       <FullScreenOverlay>
         <p className="text-white/70 mb-4">Game not found.</p>
-        <Link href="/library" className="text-primary underline">Back to Library</Link>
+        <Link href={tv ? "/tvsetup/games" : "/library"} className="text-primary underline">
+          Back to Library
+        </Link>
       </FullScreenOverlay>
     );
   }
@@ -252,14 +271,14 @@ function GameLaunchContent() {
         </p>
         <div className="mt-6 flex gap-3">
           <Link
-            href={`/games/${game.id}`}
+            href={backHref}
             data-focusable
             className="rounded-full bg-amber-400 px-5 py-2.5 text-sm font-bold text-amber-950 hover:bg-amber-300"
           >
             🎟️ Unlock for {lockedCost}
           </Link>
           <Link
-            href="/library"
+            href={tv ? "/tvsetup/games" : "/library"}
             data-focusable
             className="rounded-full border border-white/30 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/10"
           >
@@ -304,7 +323,7 @@ function GameLaunchContent() {
         {hasRewardCard ? (
           <>
             <Link
-              href={`/games/${game.id}`}
+              href={backHref}
               data-focusable
               autoFocus
               className="mt-6 rounded-full bg-amber-400 px-8 py-3 text-lg font-black text-amber-950 hover:bg-amber-300"
@@ -333,16 +352,15 @@ function GameLaunchContent() {
       {/* Slim top bar */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
-          <button
-            onClick={async () => {
-              await collectAchievements();
-              await endSessionOnce();
-              router.push(`/games/${game.id}`);
-            }}
-            className="rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-          >
-            ← Exit
-          </button>
+          {/* Mouse-only, so hidden on a TV; games there leave via GAME_EXIT. */}
+          {!tv && (
+            <button
+              onClick={leaveGame}
+              className="rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+            >
+              ← Exit
+            </button>
+          )}
           <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
             {game.title}
@@ -355,6 +373,7 @@ function GameLaunchContent() {
       <GameIframe
         src={entry.indexPath}
         onGameComplete={handleGameComplete}
+        onExit={leaveGame}
         onAchievementUnlocked={(id) => { collectAchievements([id]); }}
         fullscreen
       />

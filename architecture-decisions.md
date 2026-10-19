@@ -1575,3 +1575,11 @@ No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) a
 **Found and fixed along the way.** `/tvsetup` did not fit a 1080p screen (pairing code cut off, countdown off-screen): spacing and QR size reduced. `cn()` only joins classes, so a page's size override on `Button`/`ButtonLink` could lose to the size preset (GET STARTED rendered at `text-lg`); TV pages now use Tailwind's important modifier (`text-4xl!`) for overrides, and the secondary button gets `text-white!` because its default text colour is meant for the light theme.
 
 **Not yet done (next milestones).** GET STARTED still leads to the desktop home `/`, which has no hand control; the TV home (`/tvsetup/games`) is Milestone B. In-game exit (`GAME_EXIT`), `tv_ready` games, Pi provisioning kit and the on-device benchmark follow.
+
+**Follow-up [2026-10-19] — Milestone B: TV games home and playing from the TV.**
+- **Tabs over one grid, not stacked rows.** Continue playing, Favorites, All games and one tab per category, each a paged 4×2 grid, so the home fits one 1080p screen with targets large enough to hold a hand on. Empty tabs are hidden.
+- **Tab and page live in the URL** (`?tab=&page=`); the last one is kept in sessionStorage so Back from a game, even after playing, returns to the same place without relying on browser history.
+- **A game screen sits between the grid and the game**, so a stray hold opens details, never the game itself.
+- **Paging tiles repeat on a continued hold** (`data-dwell-repeat`); every other target still needs the hand to leave before it fires again.
+- **`GAME_EXIT` joins the game-to-platform messages.** Handled like Exit (collect achievements, end session, navigate back) and ignored while a score is being saved. In TV mode the mouse-only Exit is hidden and every return goes to `/tvsetup/games/[id]`; desktop is unchanged.
+- **Layout fixes found while testing:** this project's `--spacing` is 0.27rem, so full-height TV pages compute their height from `var(--spacing)` rather than assuming Tailwind's default; the TV shell uses `overflow-clip` because an `overflow-hidden` box with overflowing glows can still be scrolled by focus or scroll calls, which shifted whole screens out of view.

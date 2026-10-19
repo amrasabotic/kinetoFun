@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-10-19 (TV mode Milestone A: hand-controlled TV screens — ADR-067)
+> Last updated: 2026-10-19 (TV mode Milestones A+B: hand-controlled TV screens, TV games home, GAME_EXIT — ADR-067)
 >
 > ⚠️ **Migrations 0011 (favorites) and 0012 (user display settings) are written but NOT yet applied** — same DB-role limitation described below. The favorites feature and server-side settings persistence will silently no-op (empty list / setting not saved server-side) until the user runs these against AWS RDS via their DB GUI.
 >
@@ -42,6 +42,8 @@ Users will be able to:
 ---
 
 ## Completed Features
+
+- **[2026-10-19] TV mode, Milestone B: TV games home and playing from the TV (ADR-067).** `/tvsetup/games` (tabs + paged 4×2 grid of `components/tv/TvGameCard`; tab/page in the URL, remembered for Back via `features/tv/tv-home-state.ts`) and `/tvsetup/games/[id]` (cover, top/own best from the leaderboard, PLAY, favorite toggle, secret-world unlock). `features/tv/useTvSignedIn` sends a signed-out TV back to `/tvsetup`. GET STARTED now opens the TV home. `GameEvent` gained `GAME_EXIT` (`GameIframe` `onExit`); the play page handles it like Exit, and in TV mode hides the mouse-only Exit and returns to `/tvsetup/games/[id]`. This project's `--spacing` is 0.27rem, so full-height TV pages use `h-[calc(100vh_-_var(--spacing)*24)]`; the TV layout uses `overflow-clip` so it can never be scrolled. **Open:** no game sends `GAME_EXIT` yet (Step 7).
 
 - **[2026-10-19] TV mode, Milestone A: hand-controlled TV screens (ADR-067).** Everything under the `(tv)` layout (`/tvsetup`, `/tvsetup/getstarted`) is now driven by webcam: `src/features/hand-input/` (`HandInputProvider`, `tracker.ts`, `dwell.ts`, `one-euro.ts`, `HandCursor`, `HandStatusHint`, `HandDebugOverlay`) shows an index-finger cursor and clicks any `[data-focusable]` element held for 900 ms (1.5 s disarm after each screen change or `rearm()`, no repeat while holding, 56 px snap). Only the `(tv)` layout mounts it, so desktop never opens the camera; leaving the TV routes stops the camera track. `?handdebug=1` shows backend/fps/latency and a camera preview. TV mode flag `src/features/tv/tv-mode.ts` (`useTvMode`, set by `TvModeSync` on `/tvsetup*`, `?tv=0` clears) for later use outside the TV routes. MediaPipe self-hosted: `@mediapipe/tasks-vision` 0.10.35, WASM copied to `public/mediapipe/tasks-vision-0.10.35/wasm` by `scripts/copy-mediapipe-assets.mjs` (`predev`/`prebuild`, gitignored), hand model committed under `public/mediapipe/models/`, `/mediapipe/*` cached immutable. Disconnect on the welcome screen now asks for confirmation; `/tvsetup` fits 1080p. Verified in Chromium with a fake webcam (still photo of a hand); not yet with a live webcam or on a Pi. **Open:** GET STARTED still goes to the desktop `/` until the TV home (Milestone B) exists.
 
@@ -270,7 +272,7 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 - **Game cover images (✅ — infrastructure done, ADR-016):** Storage bucket `game-covers` created; `Game.coverImage` optional (maps to `cover_image` column); all 4 cover sites use `next/image` when set, gradient fallback otherwise. Next step: upload images + run the UPDATE SQL.
 - No real game SDK or runtime — `/games/[id]/play` is a placeholder screen (score is entered manually).
 - No multiplayer yet — `game_sessions.user_id` is single-player owner; `session_players` reserved for Phase 3.
-- No Raspberry Pi deployment yet. Webcam hand control exists only on the TV screens under `/tvsetup` (ADR-067); the TV games home, in-game exit by hand (`GAME_EXIT`) and Pi kiosk kit are Phase 4 Milestones B–D.
+- No Raspberry Pi deployment yet. Webcam hand control exists only on the TV screens under `/tvsetup` (ADR-067); the TV games home and `GAME_EXIT` handling exist (Milestone B); games sending `GAME_EXIT`, `tv_ready` and the Pi kiosk kit are Milestones C–D.
 - No paywall / purchasing.
 
 ### Phase 2 handoff notes

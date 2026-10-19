@@ -4,8 +4,8 @@
 //
 // This is where the TV redeems its pairing secret for its own KinetoFun
 // session (POST .../claim sets the normal kf_auth cookie). From here on the TV
-// is a signed-in client like any other, so GET STARTED simply drops into the
-// existing player home and every existing game / score / session API works.
+// is a signed-in client like any other, so GET STARTED opens the TV games
+// home and every existing game / score / session API works.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -163,7 +163,7 @@ export default function TvGetStartedPage() {
         <p className="text-2xl text-white/50">Let&apos;s get started.</p>
       </div>
 
-      <ButtonLink href="/" size="lg" className="h-24 px-20 text-4xl!">
+      <ButtonLink href="/tvsetup/games" size="lg" className="h-24 px-20 text-4xl!">
         GET STARTED
       </ButtonLink>
 
