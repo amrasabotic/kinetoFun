@@ -5,6 +5,7 @@ import { SessionProvider } from "@/features/auth/session-context";
 import { SpatialNavigation } from "@/components/navigation/SpatialNavigation";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { DisplaySettingsSync } from "@/features/settings/DisplaySettingsSync";
+import { TvModeSync } from "@/features/tv/TvModeSync";
 
 export const metadata: Metadata = {
   title: "KinetoFun — Play with a wave",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
           <SessionProvider>
             <DisplaySettingsSync />
+            <TvModeSync />
             <SpatialNavigation>{children}</SpatialNavigation>
           </SessionProvider>
           <Toaster position="bottom-right" richColors />

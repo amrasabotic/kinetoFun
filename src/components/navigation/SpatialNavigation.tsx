@@ -14,7 +14,7 @@ import { useEffect } from "react";
  * Enter/Space already activate native buttons and links, so no extra handling
  * is needed for selection.
  */
-const SELECTOR = "[data-focusable]:not([disabled]):not([aria-hidden='true'])";
+export const FOCUSABLE_SELECTOR = "[data-focusable]:not([disabled]):not([aria-hidden='true'])";
 
 type Direction = "up" | "down" | "left" | "right";
 
@@ -27,7 +27,7 @@ const KEY_TO_DIR: Record<string, Direction> = {
 
 function visibleCandidates(): HTMLElement[] {
   return Array.from(
-    document.querySelectorAll<HTMLElement>(SELECTOR),
+    document.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
   ).filter((el) => el.offsetParent !== null || el === document.activeElement);
 }
 

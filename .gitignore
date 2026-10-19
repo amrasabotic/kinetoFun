@@ -24,6 +24,9 @@
 **/out/
 public/games/
 
+# MediaPipe WASM runtime (copied from node_modules by scripts/copy-mediapipe-assets.mjs)
+public/mediapipe/tasks-vision-*/
+
 # old games location — no longer used, ignore if it still exists on disk
 src/app/(app)/games/games/
 

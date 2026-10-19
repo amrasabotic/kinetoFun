@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { HandInputProvider } from "@/features/hand-input/HandInputProvider";
 
 export const metadata: Metadata = {
   title: "KinetoFun TV",
@@ -11,6 +12,9 @@ export const metadata: Metadata = {
  * from several metres away, so everything here is deliberately oversized and
  * centred. Uses the app's existing theme tokens; nothing about the rest of the
  * site changes.
+ *
+ * Every screen here is driven by hand: the webcam moves an on-screen cursor and
+ * holding it over a button selects it (see features/hand-input).
  */
 export default function TvLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,7 +28,9 @@ export default function TvLayout({ children }: { children: React.ReactNode }) {
         aria-hidden
         className="pointer-events-none absolute -bottom-1/3 right-0 h-[55vh] w-[55vh] rounded-full bg-accent/15 blur-[140px]"
       />
-      <main className="relative z-10 w-full max-w-6xl">{children}</main>
+      <HandInputProvider>
+        <main className="relative z-10 w-full max-w-6xl">{children}</main>
+      </HandInputProvider>
     </div>
   );
 }

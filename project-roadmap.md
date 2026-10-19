@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-09-21 (Gesture Runner 404 fix + How-to-Play overlay — see ADR-065)
+> Last updated: 2026-10-19 (Phase 4 TV mode plan added; Milestone A done — see ADR-067)
 
 ---
 
@@ -44,11 +44,38 @@
 - [ ] Game lifecycle management
 - [ ] Multiplayer session handling
 
-### Phase 4 — Hardware Input Layer (LATER)
-- [ ] Raspberry Pi integration
-- [ ] Camera feed processing
-- [ ] MediaPipe hand tracking
-- [ ] Gesture → UI event translation
+### Phase 4 — TV mode: webcam-controlled TV on a Raspberry Pi
+Goal: a Raspberry Pi connected to a TV boots into `/tvsetup`, the user pairs with their phone, and from then on the whole TV experience (menus and games) is driven by hand gestures seen by a webcam. The desktop/laptop experience stays exactly as it is. Approach: a **TV mode** in the existing web app, with one shared hand-input layer (on-screen hand cursor + hold-to-select "dwell") that is mounted only in TV screens. Milestones A–C can be built and tested on a laptop with a webcam; only Step 10 needs the Pi.
+
+**Ground rules**
+- Desktop is unchanged: nothing in this phase opens the camera or alters layout outside TV mode.
+- One camera user at a time: the TV menus release the camera before a game iframe starts and take it back when the game ends (a Pi cannot run two hand trackers at once).
+- Dwell timings follow the games: ~900 ms hold to select, dwell disarmed for ~1.5 s after each screen change, continuous hover required, short cooldown after a selection.
+- No text input and no free scrolling on TV screens.
+
+**Milestone A — Hand-controlled TV menus (no Pi needed)**
+- [x] **[2026-10-19] Step 1 — TV mode flag.** (ADR-067) `src/features/tv/tv-mode.ts` + `useTvMode()`. Visiting `/tvsetup` marks the device as a TV (persisted in the browser); `?tv=0` clears it. The flag survives disconnecting, because the device is still a TV. Done when desktop pages are identical with the flag off.
+- [x] **[2026-10-19] Step 2 — Self-hosted MediaPipe assets.** (ADR-067) `@mediapipe/tasks-vision` WASM + `hand_landmarker.task` served from `/mediapipe/` with long-lived cache headers, so the Pi downloads the model once instead of on every game launch and does not depend on third-party CDNs. The menus use it first; games move over in Step 7.
+- [x] **[2026-10-19] Step 3 — Hand-input layer** (`src/features/hand-input/`, ADR-067). Verified in Chromium with a fake webcam fed a still photo of a hand: detection, cursor, dwell select, no repeat on hold, re-arm after a confirmation appears, camera released on leaving the TV screens. Not yet tried with a live webcam and a person moving. `HandInputProvider`: one 640×480 camera stream, one HandLandmarker (GPU with CPU fallback), camera stopped on unmount. Smoothed, mirrored cursor mapping where the central part of the camera frame covers the whole screen. `HandCursor` ring that fills during dwell. Dwell engine: nearest `[data-focusable]` under the cursor with magnetic snap, selection by `el.click()` so existing buttons/links need no changes. Cursor hidden when no hand is seen, with a "Raise your hand" hint. `?handdebug=1` overlay (fps, latency, confidence) for the Pi benchmark. Mounted only in the `(tv)` layout. Done when `/tvsetup/getstarted` can be used with a laptop webcam and no mouse.
+- [x] **[2026-10-19] Step 4 — Existing TV screens hand-ready.** "Try again" on `/tvsetup`, GET STARTED and Disconnect on `/tvsetup/getstarted` are dwell targets; Disconnect asks for confirmation so a stray hold cannot sign the TV out. Also fixed: `/tvsetup` now fits a 1080p screen, and TV button text sizes were being overridden by the button presets. **Moved to Step 5:** pointing GET STARTED at the TV home (it still goes to the desktop `/`, which has no hand control yet).
+
+**Milestone B — TV games home**
+- [ ] **Step 5 — TV home `/tvsetup/games`.** GET STARTED on `/tvsetup/getstarted` points here. Greeting, category tabs, a paged 4×2 grid of large cards with big previous/next tiles, Continue playing and Favourites rows. Reuses `useGames`, `useContinuePlaying`, `useFavorites` (no new APIs). Game screen `/tvsetup/games/[id]` with cover, best score, PLAY and BACK, so a stray hold never launches a game directly.
+- [ ] **Step 6 — Playing in TV mode.** The play page lives in the `(play)` layout, so leaving the TV screens unmounts the menu hand layer and frees the camera for the game iframe (verify on Linux Chromium). In TV mode the mouse-only "← Exit" is hidden, and finishing or exiting returns to `/tvsetup/games/[id]` instead of `/games/[id]`. Add `{ type: "GAME_EXIT" }` to `GameEvent`, handled like the Exit button (collect achievements, end session, navigate back).
+
+**Milestone C — Game readiness**
+- [ ] **Step 7 — Game audit and rollout.** `scripts/audit-tv-games.mjs` reports per game: posts `GAME_COMPLETE`, posts `GAME_EXIT`, mouse-only controls, MediaPipe asset source. Add a `tv_ready` flag on `games` (migration + SuperAdmin toggle); the TV home lists only `tv_ready` games, so TV can launch with a curated first set. Roll out in batches: a dwell "Back to games" (`GAME_EXIT`) on each game's pause/end screen, `GAME_COMPLETE` where missing, self-hosted MediaPipe assets.
+- [ ] **Step 8 — Pi-like testing on a laptop.** 1920×1080 kiosk window, DevTools CPU throttling 4–6×, player 2–3 m from the screen, ordinary room light. Targets: menu tracking ≥ 20 fps, ≥ 19/20 dwell selections succeed, no accidental selection during 2 minutes of standing in view.
+
+**Milestone D — Ready for the hardware**
+- [ ] **Step 9 — Pi provisioning kit** (`device/raspberry-pi/`). `setup.sh` for Raspberry Pi OS Bookworm 64-bit: Chromium autostarted in `--kiosk` at `https://kineto.fun/tvsetup?device=<KEY>`, screen blanking off, cursor hidden, systemd restart on crash. Managed Chromium policy (`VideoCaptureAllowedUrls`, autoplay) so no camera permission prompt ever appears. README: per-unit device keys, checking `chrome://gpu`, updates. Hardware: Raspberry Pi 5 8 GB, official 27 W PSU, active cooler, NVMe or A2 microSD, micro-HDMI→HDMI, 720p/1080p wide-angle webcam with good low-light performance mounted on the TV.
+- [ ] **Step 10 — First day on the Pi.** Run the kit, confirm hardware-accelerated WebGL in `chrome://gpu`, measure the menus with `?handdebug=1`, then benchmark one light (alphabet-zoo), one medium (gesture-runner) and one heavy game (table tennis or hill adventure). Outcome: ship / lower camera resolution and inference rate / fall back to native MediaPipe on the Pi streaming landmarks to the browser over a WebSocket.
+- [ ] **Step 11 — Documentation.** Update `project-context.md` and this roadmap; ADR for TV mode, the TV-only hand layer, the single-camera hand-off, `GAME_EXIT` and `tv_ready`.
+
+**Open questions**
+- TV home URL: `/tvsetup/games` (current choice) or `/tv` (`/tv/join` is already the phone pairing page).
+- Which 15–20 games are marked `tv_ready` first.
+- Menus follow one hand; decide whether the first raised hand should "take control" when several people are in view.
 
 ---
 

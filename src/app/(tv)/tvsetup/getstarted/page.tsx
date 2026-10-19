@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, PartyPopper } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { useSession } from "@/features/auth/session-context";
+import { useHandInput } from "@/features/hand-input/HandInputProvider";
 import {
   clearStoredTvSession,
   readStoredTvSession,
@@ -29,6 +30,8 @@ export default function TvGetStartedPage() {
   const [userName, setUserName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
+  const { rearm } = useHandInput();
 
   const storedRef = useRef<StoredTvSession | null>(null);
   // React 19 mounts effects twice in dev; claiming twice would mint a second
@@ -109,6 +112,18 @@ export default function TvGetStartedPage() {
     router.replace("/tvsetup");
   }, [router, refresh]);
 
+  // The confirm buttons appear right where the hand already is, so dwell is
+  // disarmed again each time the choice changes.
+  const askDisconnect = useCallback(() => {
+    setConfirmingDisconnect(true);
+    rearm();
+  }, [rearm]);
+
+  const cancelDisconnect = useCallback(() => {
+    setConfirmingDisconnect(false);
+    rearm();
+  }, [rearm]);
+
   if (phase === "claiming") {
     return (
       <div className="flex flex-col items-center gap-8 text-center" role="status">
@@ -127,7 +142,7 @@ export default function TvGetStartedPage() {
           size="lg"
           onClick={handleDisconnect}
           disabled={leaving}
-          className="h-20 px-14 text-3xl"
+          className="h-20 px-14 text-3xl!"
         >
           Start over
         </Button>
@@ -148,19 +163,49 @@ export default function TvGetStartedPage() {
         <p className="text-2xl text-white/50">Let&apos;s get started.</p>
       </div>
 
-      <ButtonLink href="/" size="lg" className="h-24 px-20 text-4xl">
+      <ButtonLink href="/" size="lg" className="h-24 px-20 text-4xl!">
         GET STARTED
       </ButtonLink>
 
-      <button
-        type="button"
-        data-focusable
-        onClick={handleDisconnect}
-        disabled={leaving}
-        className="rounded-xl px-6 py-3 text-xl text-white/40 transition hover:text-white/80 disabled:opacity-50"
-      >
-        {leaving ? "Disconnecting…" : "Not you? Disconnect this TV"}
-      </button>
+      {/* Two steps, because a hand resting in the wrong place for a second
+          would otherwise sign the TV out and send the family back to the QR
+          code. */}
+      {confirmingDisconnect ? (
+        <div className="flex flex-col items-center gap-6" role="alertdialog" aria-label="Disconnect this TV?">
+          <p className="text-2xl text-white/70">
+            Disconnect this TV? You&apos;ll need a phone to connect it again.
+          </p>
+          <div className="flex items-center gap-6">
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={cancelDisconnect}
+              disabled={leaving}
+              className="h-16 px-10 text-2xl! text-white!"
+            >
+              Keep connected
+            </Button>
+            <Button
+              variant="danger"
+              size="lg"
+              onClick={handleDisconnect}
+              disabled={leaving}
+              className="h-16 px-10 text-2xl!"
+            >
+              {leaving ? "Disconnecting…" : "Disconnect"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          data-focusable
+          onClick={askDisconnect}
+          className="rounded-xl px-8 py-4 text-2xl text-white/40 transition hover:text-white/80"
+        >
+          Not you? Disconnect this TV
+        </button>
+      )}
     </div>
   );
 }

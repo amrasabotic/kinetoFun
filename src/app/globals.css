@@ -274,6 +274,24 @@ body {
     0 0 0 6px var(--ring);
 }
 
+/* Element under the TV hand cursor (src/features/hand-input/dwell.ts). Bolder
+   than the keyboard focus ring because it is read from across a room; white so
+   it stays visible on primary-coloured buttons against the dark TV screens. */
+[data-focusable][data-hand-hover] {
+  scale: 1.04;
+  box-shadow:
+    0 0 0 4px #ffffff,
+    0 0 40px color-mix(in srgb, var(--ring) 70%, transparent);
+  transition:
+    scale 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+@keyframes kf-hint-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── Playful Animations ────────────────────────────────────────────────────── */
 
 @keyframes kf-float {

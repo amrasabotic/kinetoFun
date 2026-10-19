@@ -43,8 +43,8 @@ function TvSetup() {
   const isPaired = status === "authenticated" || status === "ready";
 
   return (
-    <div className="flex flex-col items-center gap-12 text-center">
-      <header className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-8 text-center">
+      <header className="flex flex-col items-center gap-4">
         <Image src="/logo.png" alt="KinetoFun" width={220} height={64} priority />
         <h1 className="text-6xl font-black tracking-tight sm:text-7xl">
           WELCOME TO KINETOFUN
@@ -55,12 +55,12 @@ function TvSetup() {
       </header>
 
       {session && !isPaired ? (
-        <div className="flex flex-col items-center gap-8">
-          <PairingQr value={session.joinUrl} size={440} />
+        <div className="flex flex-col items-center gap-5">
+          <PairingQr value={session.joinUrl} size={360} />
 
           <div className="flex flex-col items-center gap-3">
             <p className="text-xl uppercase tracking-[0.35em] text-white/50">Code</p>
-            <p className="font-mono text-7xl font-black tracking-[0.2em] text-accent">
+            <p className="font-mono text-6xl font-black tracking-[0.2em] text-accent">
               {session.pairingCode}
             </p>
           </div>
@@ -73,7 +73,7 @@ function TvSetup() {
         </div>
       ) : (
         <div
-          className="flex h-[440px] w-[440px] flex-col items-center justify-center gap-6 rounded-[2rem] border border-white/10 bg-white/[0.04] backdrop-blur-2xl"
+          className="flex h-[360px] w-[360px] flex-col items-center justify-center gap-6 rounded-[2rem] border border-white/10 bg-white/[0.04] backdrop-blur-2xl"
           role="status"
         >
           <LoaderCircle className="h-16 w-16 animate-spin text-primary" />
@@ -98,7 +98,7 @@ function TvSetup() {
       {error && (
         <div className="flex flex-col items-center gap-6" role="alert">
           <p className="max-w-2xl text-2xl text-destructive">{error}</p>
-          <Button size="lg" onClick={regenerate} className="h-16 px-10 text-2xl">
+          <Button size="lg" onClick={regenerate} className="h-16 px-10 text-2xl!">
             <RefreshCw className="h-6 w-6" />
             Try again
           </Button>
