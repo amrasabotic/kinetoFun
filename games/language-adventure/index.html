@@ -113,6 +113,7 @@
       transition: background .15s, box-shadow .15s;
     }
     #cursor.dwelling   .c-dwell { opacity: 1; }
+    .btn[hidden] { display: none; }
     #cursor.pinching   .c-dot   { background: var(--primary-g); box-shadow: 0 0 18px var(--primary-g); }
     #cursor.pinching   .c-ring  { border-color: var(--primary-g); box-shadow: 0 0 18px var(--primary-g); }
     #cursor.open-palm  .c-ring  { border-color: var(--success); box-shadow: 0 0 18px var(--success); }
@@ -521,6 +522,7 @@
   </div>
   <button class="btn btn-primary" data-action="goto-category">▶ Start Game</button>
   <button class="btn btn-secondary" data-action="goto-howto">❓ How to Play</button>
+  <button class="btn btn-secondary" data-action="exit" id="btn-exit" hidden>↩ Back to games</button>
 </div>
 
 <!-- ════ SCREEN: CATEGORY ════ -->
@@ -988,7 +990,10 @@ function dispatchAction(el) {
   else if (action === 'select-cat')    startGame(el.dataset.cat);
   else if (action === 'play-again')    startGame(S.category.id);
   else if (el.classList.contains('ans-btn')) handleAnswer(el.dataset.opt);
+  else if (action === 'exit')          window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
 }
+// Only inside the KinetoFun platform is there somewhere to go back to.
+document.getElementById('btn-exit').hidden = window.parent === window;
 
 function findTarget(x, y) {
   const el = document.elementFromPoint(x, y);

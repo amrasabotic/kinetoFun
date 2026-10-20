@@ -403,6 +403,8 @@ function screenMenu(){
   const bw=200,bh=50,bx=W/2-bw/2;
   btns=[mkB('p',bx,H*.4,bw,bh,'PLAY',()=>{st=ST.SEL;}),
         mkB('h',bx,H*.4+64,bw,bh,'HOW TO PLAY',()=>{st=ST.HOW;})];
+  // Only inside the KinetoFun platform is there somewhere to go back to.
+  if(window.parent!==window)btns.push(mkB('x',bx,H*.4+128,bw,bh,'BACK TO GAMES',()=>window.parent.postMessage({type:'GAME_EXIT'},'*')));
   btns.forEach(b=>drawB(b,'#33aaff'));tickBtns();
   cx.fillStyle='rgba(255,255,255,0.2)';cx.font='12px Segoe UI';cx.textAlign='center';
   cx.fillText('Point finger = navigate   Open palm = jump   Fist = nothing',W/2,H*.93);

@@ -210,6 +210,7 @@
     width: 44px; height: 44px;
     background: rgba(0,212,255,0.55);
   }
+  #exit-box { position: absolute; top: 24px; left: 24px; padding: 14px 24px; border: 2px solid rgba(0,212,255,.5); border-radius: 14px; background: rgba(0,0,0,.35); color: #fff; font-weight: 700; font-size: 18px; }
 </style>
 </head>
 <body>
@@ -233,6 +234,7 @@
   </div>
 
   <div id="start-screen" class="screen" style="display:none">
+    <div id="exit-box" hidden>↩ Back to games</div>
     <h1>🐟 Fish Catcher</h1>
     <p class="sub">Hand gesture game</p>
     <div class="instructions">
@@ -586,12 +588,21 @@ function drawFlash() {
 
 // ─── Point hover for start/restart ───────────────────────────────
 let pointHoverFrames = 0;
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const exitBox = document.getElementById('exit-box');
+exitBox.hidden = window.parent === window;
+function pointingAtExit() {
+  if (exitBox.hidden || state !== 'start') return false;
+  const r = exitBox.getBoundingClientRect();
+  return netPos.x >= r.left && netPos.x <= r.right && netPos.y >= r.top && netPos.y <= r.bottom;
+}
 function checkPointAction() {
   if (gesture === 'point') {
     pointHoverFrames++;
     if (pointHoverFrames >= 45) { // ~1.5s at 30fps
       pointHoverFrames = 0;
-      if (state === 'start') startGame();
+      if (pointingAtExit()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+      else if (state === 'start') startGame();
       else if (state === 'gameover') startGame();
     }
   } else {

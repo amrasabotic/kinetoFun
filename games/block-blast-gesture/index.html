@@ -82,6 +82,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
         <h2>BLOCK BLAST</h2>
         <p class="sub">Select pieces from the tray and place them on the grid. Fill complete rows or columns to clear them!</p>
         <div class="gbtn" id="btn-start" data-action="start"><div class="bar" id="bar-btn-start"></div><span class="lbl">▶ START GAME</span></div>
+        <div class="gbtn hidden" id="btn-exit" data-action="exit"><div class="bar" id="bar-btn-exit"></div><span class="lbl">↩ BACK TO GAMES</span></div>
         <p class="sub" style="font-size:10px;margin-top:4px;">Point finger at button and hold 1s — or click it</p>
       </div>
       <div class="screen hidden" id="scOver">
@@ -294,8 +295,12 @@ gc.addEventListener('click',e=>{
   const p=dragPiece,adj=clamp(p.shape,gx-Math.floor(p.shape[0].length/2),gy-Math.floor(p.shape.length/2));
   if(canPlace(p.shape,adj.gx,adj.gy)){doPlace(p.shape,p.color,adj.gx,adj.gy);afterPlace(selIdx);}
 });
+// Only inside the KinetoFun platform is there somewhere to go back to.
+if(window.parent!==window)document.getElementById('btn-exit').classList.remove('hidden');
+function exitToPlatform(){window.parent.postMessage({type:'GAME_EXIT'},'*');}
 document.querySelectorAll('.gbtn').forEach(b=>b.addEventListener('click',()=>{
   if(b.dataset.action==='start'||b.dataset.action==='restart')startGame();
+  else if(b.dataset.action==='exit')exitToPlatform();
 }));
 
 function show(id){document.getElementById(id).classList.remove('hidden');}
@@ -332,6 +337,7 @@ function processBtnDwell(btn){
   if(pct>=100){
     dwellBtnDone=true;btn.classList.add('fired');
     if(btn.dataset.action==='start'||btn.dataset.action==='restart')startGame();
+    else if(btn.dataset.action==='exit')exitToPlatform();
     setTimeout(()=>{btn.classList.remove('fired','hover');if(bar)bar.style.width='0%';},500);
   }
 }

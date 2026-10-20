@@ -120,6 +120,7 @@
   }
 
   /* ── GESTURE BUTTONS ── */
+  .gesture-btn[hidden] { display: none; }
   .gesture-btn {
     position: relative;
     display: flex;
@@ -422,6 +423,11 @@
       <span class="btn-icon">?</span>
       <span>How to Play</span>
     </button>
+    <button class="gesture-btn" id="btn-exit" data-action="exit" hidden>
+      <div class="fill-bar"></div>
+      <span class="btn-icon">↩</span>
+      <span>Back to games</span>
+    </button>
 
     <div class="gesture-hint">☝ hover with index finger · hold 1.5s to select</div>
     <div class="finger-cursor" id="menu-finger" style="left:-100px;top:-100px;">☝</div>
@@ -694,7 +700,10 @@ function triggerButton(btn) {
   if (action === 'retry')   startGame();
   if (action === 'menu')    showScreen('menu');
   if (action === 'howto')   showScreen('howto');
+  if (action === 'exit')    window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
 }
+// Only inside the KinetoFun platform is there somewhere to go back to.
+document.getElementById('btn-exit').hidden = window.parent === window;
 
 // ─────────────────────────────────────────────
 //  GAME OBJECTS

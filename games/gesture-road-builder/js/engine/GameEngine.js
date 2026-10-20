@@ -672,6 +672,7 @@ GRB.GameEngine = class {
         this.ui.toggleCameraPreview();
         break; // stay on settings screen
       case 'back':       this._goToMainMenu(); break;
+      case 'exit':       window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); break;
       case 'resume':
         this.state = this.isEndless ? STATE.ENDLESS_SIM : STATE.SIMULATION; break;
       case 'retry':      this._retryLevel();  break;

@@ -42,6 +42,9 @@ const SCREENS = {
   ]
 };
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+if (window.parent !== window) SCREENS.main.push(BTN('exit', 'Back to Games', 480, 512, 220, 40));
+
 GRB.MenuSystem = class {
   constructor(saveSystem) {
     this.save = saveSystem;

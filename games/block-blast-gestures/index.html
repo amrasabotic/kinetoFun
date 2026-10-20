@@ -256,6 +256,10 @@ html,body{
           <div class="bar" id="bar-btn-start"></div>
           <span class="lbl">▶ &nbsp;START GAME</span>
         </div>
+        <div class="gbtn hidden" id="btn-exit" data-action="exit">
+          <div class="bar" id="bar-btn-exit"></div>
+          <span class="lbl">↩ &nbsp;BACK TO GAMES</span>
+        </div>
         <p class="sub" style="font-size:11px;margin-top:4px;">Camera starts automatically · allow access when prompted</p>
       </div>
 
@@ -664,8 +668,11 @@ function doAction(a){
     case'resume':  doResume();  break;
     case'restart': startGame(); break;
     case'pause':   if(alive&&!paused) togglePause(); break;
+    case'exit':    window.parent.postMessage({type:'GAME_EXIT'},'*'); break;
   }
 }
+// Only inside the KinetoFun platform is there somewhere to go back to.
+if(window.parent!==window) document.getElementById('btn-exit').classList.remove('hidden');
 
 function btnAtPoint(vx,vy){
   for(const b of document.querySelectorAll('.gbtn')){

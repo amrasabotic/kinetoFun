@@ -451,6 +451,15 @@ function drawDifficulty(dt){
     drawDwellBar(bx,cY,cW,cH,'d_'+key);
   });
 
+  // Only inside the KinetoFun platform is there somewhere to go back to.
+  if(window.parent!==window){
+    const ex=24,ey=24,ew=210,eh=52;
+    regBtn('exit',ex,ey,ew,eh);
+    card(ex,ey,ew,eh,14,dwellId==='exit'?'rgba(255,255,255,0.18)':'rgba(255,255,255,0.07)','rgba(255,255,255,0.25)',1.5);
+    txt('↩ Back to games',ex+ew/2,ey+33,'bold 18px sans-serif','#fff');
+    drawDwellBar(ex,ey,ew,eh,'exit');
+  }
+
   // Confirm bar
   if(selectedDiff){
     const cfg=DIFF[selectedDiff];
@@ -462,6 +471,7 @@ function drawDifficulty(dt){
 
   // Dwell to select
   tickDwell(id=>{
+    if(id==='exit'){ window.parent.postMessage({type:'GAME_EXIT'},'*'); return; }
     const key=id.replace('d_','');
     if(selectedDiff!==key){ sfxSelect();selectedDiff=key; }
   });

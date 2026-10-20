@@ -210,6 +210,8 @@
     .result-banner.lose { background: rgba(255,79,106,0.12); border-color: var(--lose); color: var(--lose); }
     .result-banner.tie  { background: rgba(255,210,79,0.12); border-color: var(--tie);  color: var(--tie); }
 
+    #exitBox { position: absolute; top: 24px; left: 24px; padding: 14px 24px; border: 2px solid rgba(124,106,255,0.5); border-radius: 14px; color: #fff; font-weight: 700; }
+    #exitBox.hover { border-color: var(--accent); box-shadow: 0 0 20px rgba(124,106,255,0.5); }
     /* Play button with dwell fill */
     .play-btn {
       position: relative; overflow: hidden;
@@ -259,6 +261,7 @@
 </div>
 
 <div id="screenSetup" class="screen">
+  <div id="exitBox" hidden>↩ Back to games</div>
   <div class="setup-title">✊ Rock · Paper · Scissors ✌️</div>
   <div class="setup-subtitle">
     <span class="cam-ready-dot" id="camDot"></span>
@@ -442,6 +445,16 @@ let screenArmedAt = performance.now() + SCREEN_ARM_MS;
 
 // Dwell tracking (context-sensitive)
 let dwellStart = null;
+let tipX = -1, tipY = -1;
+
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const exitBox = document.getElementById('exitBox');
+exitBox.hidden = window.parent === window;
+function pointingAtExit() {
+  if (exitBox.hidden || currentGesture !== 'point') return false;
+  const r = exitBox.getBoundingClientRect();
+  return tipX >= r.left && tipX <= r.right && tipY >= r.top && tipY <= r.bottom;
+}
 
 // ── Gesture detection ─────────────────────────────────────────────────────────
 function detectGesture(lm, gestureName) {
@@ -582,6 +595,9 @@ function renderLoop() {
   ctx.restore();
 
   currentGesture = detectGesture(lm0, gName);
+  // The preview is mirrored, so the fingertip's screen x is flipped too.
+  tipX = lm0 ? (1 - lm0[8].x) * innerWidth : -1;
+  tipY = lm0 ? lm0[8].y * innerHeight : -1;
 
   // Badge (always visible)
   if (currentGesture !== 'none') {
@@ -630,6 +646,8 @@ function handleSetupGesture(now) {
     return;
   }
 
+  const onExit = pointingAtExit();
+  exitBox.classList.toggle('hover', onExit);
   if (currentGesture === 'point' && gestureRecognizer && now >= screenArmedAt) {
     if (dwellStart === null) dwellStart = now;
     const elapsed = now - dwellStart;
@@ -637,10 +655,11 @@ function handleSetupGesture(now) {
     const dash = pct * RING_C_SETUP;
     confirmRingFg.setAttribute('stroke-dasharray', `${dash} ${RING_C_SETUP}`);
     const remaining = Math.ceil((DWELL_SETUP - elapsed) / 1000);
-    confirmHint.textContent = remaining > 0 ? `Hold… ${remaining}` : 'Starting!';
+    confirmHint.textContent = onExit ? 'Back to games…' : remaining > 0 ? `Hold… ${remaining}` : 'Starting!';
     if (elapsed >= DWELL_SETUP) {
       dwellStart = null;
-      startGame();
+      if (onExit) window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+      else startGame();
     }
   } else {
     if (dwellStart !== null) { dwellStart = null; resetRingSetup(); }

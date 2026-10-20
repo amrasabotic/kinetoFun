@@ -446,6 +446,16 @@ function drawMenu(){
   ux.fillStyle=sp>.5?'#000':'#fff'; ux.font=font(24,true); ux.textAlign='center';
   ux.fillText('▶  START RACE',cx,sY+startH/2+9*u);
   regBtn('start',sX,sY,sw,startH);
+
+  // Only inside the KinetoFun platform is there somewhere to go back to.
+  if(window.parent!==window){
+    const ew=200*u, eh=48*u, eX=16*u, eY=16*u, eHov=dwellId==='exit';
+    rr2(ux,eX,eY,ew,eh,999,'rgba(12,14,30,.78)',eHov?'rgba(255,255,255,.75)':'rgba(255,255,255,.3)',1.5);
+    if(eHov){const p=Math.min((Date.now()-dwellT)/DWELL,1);rr2(ux,eX+10*u,eY+eh-8*u,(ew-20*u)*p,4*u,2,'#00ff88');}
+    ux.fillStyle='#fff'; ux.font=font(16,true); ux.textAlign='center';
+    ux.fillText('↩  Back to games',eX+ew/2,eY+eh/2+6*u);
+    regBtn('exit',eX,eY,ew,eh);
+  }
 }
 
 function drawGameOver(){
@@ -489,6 +499,7 @@ function handleActivate(id){
   if(id.startsWith('car_'))      selCar=parseInt(id.split('_')[1]);
   else if(id.startsWith('map_')) selMap=parseInt(id.split('_')[1]);
   else if(id==='start')          startGame();
+  else if(id==='exit')           window.parent.postMessage({type:'GAME_EXIT'},'*');
   else if(id==='restart'){       gs='menu'; document.getElementById('hud').style.display='none'; }
 }
 

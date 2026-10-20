@@ -72,6 +72,8 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
   border-radius:0 0 14px 14px;
 }
 .gbtn.danger { background:linear-gradient(135deg,#6a0030,#cc0050); }
+.gbtn[hidden] { display:none; }
+#btn-exit { position:absolute; top:52px; left:24px; }
 .gbtn.success { background:linear-gradient(135deg,#0a4a00,#1a8800); }
 
 /* ── INTRO ── */
@@ -208,6 +210,7 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
     </div>
     <p class="hint">☝️ Point ONE finger at the button and hold 1.5s</p>
     <button class="gbtn" id="btn-start">✦ BEGIN ✦<div class="bar" id="bar-start"></div></button>
+    <button class="gbtn" id="btn-exit" hidden>↩ BACK TO GAMES<div class="bar" id="bar-exit"></div></button>
   </div>
 
   <!-- GAME -->
@@ -464,6 +467,11 @@ const BTNS = {
   'btn-retry': { barId:'bar-retry', action: startGame },
   'btn-again': { barId:'bar-again', action: startGame },
 };
+// Only inside the KinetoFun platform is there somewhere to go back to.
+if (window.parent !== window) {
+  document.getElementById('btn-exit').hidden = false;
+  BTNS['btn-exit'] = { barId:'bar-exit', action: () => window.parent.postMessage({ type:'GAME_EXIT' }, '*') };
+}
 const dwellTimers = {}; // id -> start timestamp
 const DWELL_MS = 1500;
 // Buttons ignore the finger for a moment after each screen appears, so the

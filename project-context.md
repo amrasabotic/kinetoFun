@@ -43,6 +43,8 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-20] TV mode, Milestone C batch 4 (ADR-067).** 18 single-file HTML games can be left by hand (72 of 102). Each got an embedded-only "Back to games" in that game's own button system (canvas-drawn buttons, DOM dwell buttons, or, for games with no cursor at all, a box the pointing fingertip must be over when the hold completes).
+
 - **[2026-10-20] TV mode, Milestone C batch 3 (ADR-067).** 14 more games can be left by hand (54 of 102): embedded-only "Back to games" on the main menus of the remaining React/Vite games with hand-operated menus, plus flags-game (plain JS: a fourth mode card, hidden unless embedded).
 
 - **[2026-10-20] TV mode, Milestone C batch 2 (ADR-067).** 17 more games can be left by hand (40 of 102): embedded-only "Back to games" on the main menu of the GestureBtn-template games, the `data-dwell` games and spear-stickman / the-sniper-code; maze-muncher's Quit sent an unhandled `GAME_QUIT` and now sends `GAME_EXIT`.

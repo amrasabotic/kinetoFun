@@ -257,6 +257,8 @@
   .dwell-btn span { position: relative; }
   .dwell-btn.hover { transform: scale(1.06); box-shadow: 0 0 28px rgba(240, 192, 64, 0.6); }
   .dwell-btn.disarmed { opacity: 0.4; }
+  .dwell-btn[hidden] { display: none; }
+  #exitBtn { margin-top: 14px; }
 
   .start-hint {
     font-size: 13px;
@@ -397,6 +399,7 @@
       </div>
     </div>
     <div class="dwell-btn disarmed" id="startBtn"><span>Start</span></div>
+    <div class="dwell-btn disarmed" id="exitBtn" hidden><span>Back to games</span></div>
     <div class="start-hint">Point at the button and hold your hand still to start</div>
     <div class="cam-note">Camera access required · Keep your hand visible</div>
   </div>
@@ -752,16 +755,22 @@ function showScreen(id) {
   resetDwell();
 }
 
-function activeDwellButton() {
-  if (state === 'splash') return document.getElementById('startBtn');
-  if (state === 'gameover') return document.getElementById('restartBtn');
-  return null;
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+document.getElementById('exitBtn').hidden = !embedded;
+let dwellTarget = null;
+
+function activeDwellButtons() {
+  if (state === 'splash') return embedded ? ['startBtn', 'exitBtn'] : ['startBtn'];
+  if (state === 'gameover') return ['restartBtn'];
+  return [];
 }
 
 function resetDwell() {
   dwellArmedAt = performance.now() + DWELL_ARM_MS;
   dwellStart = null;
-  ['startBtn', 'restartBtn'].forEach(id => {
+  dwellTarget = null;
+  ['startBtn', 'restartBtn', 'exitBtn'].forEach(id => {
     const btn = document.getElementById(id);
     btn.classList.add('disarmed');
     btn.classList.remove('hover');
@@ -769,16 +778,15 @@ function resetDwell() {
   });
   clearTimeout(dwellArmTimer);
   dwellArmTimer = setTimeout(() => {
-    const btn = activeDwellButton();
-    if (btn) btn.classList.remove('disarmed');
+    activeDwellButtons().forEach(id => document.getElementById(id).classList.remove('disarmed'));
   }, DWELL_ARM_MS);
 }
 
 // Called once per hand-tracking frame; handDetected is false when no hand is visible.
 function updateDwell(handDetected) {
   const cursorEl = document.getElementById('handCursor');
-  const btn = activeDwellButton();
-  if (!btn) { cursorEl.style.display = 'none'; dwellStart = null; return; }
+  const btns = activeDwellButtons().map(id => document.getElementById(id));
+  if (!btns.length) { cursorEl.style.display = 'none'; dwellStart = null; dwellTarget = null; return; }
 
   cursorEl.style.display = handDetected ? 'block' : 'none';
   cursorEl.style.left = cursorX + 'px';
@@ -786,23 +794,28 @@ function updateDwell(handDetected) {
 
   const now = performance.now();
   const armed = now >= dwellArmedAt;
-  btn.classList.toggle('disarmed', !armed);
+  let btn = null;
+  btns.forEach(b => {
+    b.classList.toggle('disarmed', !armed);
+    const r = b.getBoundingClientRect();
+    const over = handDetected && cursorX >= r.left && cursorX <= r.right && cursorY >= r.top && cursorY <= r.bottom;
+    b.classList.toggle('hover', over && armed);
+    if (over) btn = b;
+    else b.style.setProperty('--p', 0);
+  });
 
-  const r = btn.getBoundingClientRect();
-  const over = handDetected && cursorX >= r.left && cursorX <= r.right && cursorY >= r.top && cursorY <= r.bottom;
-  btn.classList.toggle('hover', over && armed);
-
-  if (!over || !armed) {
+  if (!btn || !armed) {
     dwellStart = null;
-    btn.style.setProperty('--p', 0);
+    dwellTarget = null;
     return;
   }
-  if (dwellStart === null) dwellStart = now;
+  if (btn !== dwellTarget) { dwellTarget = btn; dwellStart = now; }
   const p = Math.min(1, (now - dwellStart) / DWELL_HOLD_MS);
   btn.style.setProperty('--p', p);
   if (p >= 1) {
     cursorEl.style.display = 'none';
-    startGame();
+    if (btn.id === 'exitBtn') window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+    else startGame();
   }
 }
 

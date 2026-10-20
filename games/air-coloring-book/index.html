@@ -126,6 +126,7 @@
     transition:border-color 0.15s;
   }
   .tool-btn .icon { font-size:1.3rem; }
+  .tool-btn[hidden] { display:none; }
   .tool-btn.active { border-color:var(--accent); background:#2e1a2a; }
   .tool-btn.hovering { border-color:var(--accent2); }
   .tool-btn .hover-ring {
@@ -246,12 +247,18 @@
       <span class="icon">➡️</span>Next
       <div class="hover-ring"></div>
     </div>
+    <div class="tool-btn" id="btn-exit" data-action="exit" hidden>
+      <span class="icon">↩️</span>Exit
+      <div class="hover-ring"></div>
+    </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 <script>
+// Only inside the KinetoFun platform is there somewhere to go back to.
+document.getElementById('btn-exit').hidden = window.parent === window;
 // ═══════════════════════════════════════════════
 //  ANIMALS DATA
 // ═══════════════════════════════════════════════
@@ -701,6 +708,7 @@ function fireHoverAction(el) {
   else if(action === 'tool:erase') setTool('erase');
   else if(action === 'clear') clearCanvas();
   else if(action === 'next') nextAnimal();
+  else if(action === 'exit') window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
 }
 
 // Called every frame with the finger tip position in PAGE coords

@@ -73,6 +73,10 @@
     transition: width .05s linear; border-radius: 30px;
   }
   .dwell-btn .btn-label { position: relative; z-index: 1; }
+  .dwell-btn[hidden] { display: none; }
+  #exit-btn        { position: absolute; top: 24px; left: 24px; border: 2px solid #7c4dff; color: #b39dff; }
+  #exit-btn        .fill-bar { background: rgba(124,77,255,.22); }
+  #exit-btn.active { border-color: #00e5ff; color: #00e5ff; box-shadow: 0 0 30px #00e5ff44; }
 
   #start-btn        { border: 2px solid #00e5ff; color: #00e5ff; }
   #start-btn        .fill-bar { background: rgba(0,229,255,.18); }
@@ -173,6 +177,10 @@
   <button class="dwell-btn" id="start-btn">
     <div class="fill-bar"></div>
     <span class="btn-label">LAUNCH MISSION</span>
+  </button>
+  <button class="dwell-btn" id="exit-btn" hidden>
+    <div class="fill-bar"></div>
+    <span class="btn-label">BACK TO GAMES</span>
   </button>
   <p class="gesture-hint">✋ Hold hand over button to launch</p>
 </div>
@@ -733,9 +741,17 @@ initDwellBtn(restartBtn, ()=>{
 // ═══════════════════════════════════════════════════
 //  MENU LOOP (runs always for dwell + hand cursor)
 // ═══════════════════════════════════════════════════
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const exitBtn = document.getElementById('exit-btn');
+if (window.parent !== window) {
+  exitBtn.hidden = false;
+  initDwellBtn(exitBtn, () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*'));
+}
+
 function menuLoop(){
   tickDwellBtn(startBtn);
   tickDwellBtn(restartBtn);
+  tickDwellBtn(exitBtn);
   requestAnimationFrame(menuLoop);
 }
 requestAnimationFrame(menuLoop);

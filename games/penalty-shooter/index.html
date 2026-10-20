@@ -233,15 +233,16 @@ function processGestures(){
     if(gesture === 'point' && performance.now() >= dwellArmedAt){
       const W=gc.width, H=gc.height;
       const px=ftX*W, py=ftY*H;
-      const id = phase==='start' ? 'start' : 'restart';
-      const btn = getButtonRect(id);
-      const inside = px>=btn.x && px<=btn.x+btn.w && py>=btn.y && py<=btn.y+btn.h;
-      if(inside){
+      const ids = phase==='start' ? (EMBEDDED ? ['start','exit'] : ['start']) : ['restart'];
+      const id = ids.find(i=>{ const b=getButtonRect(i); return px>=b.x && px<=b.x+b.w && py>=b.y && py<=b.y+b.h; });
+      if(id){
+        if(S.dwellTarget !== id) S.dwellFrames = 0;
         S.dwellTarget = id;
         S.dwellFrames++;
         if(S.dwellFrames >= DWELL_FRAMES){
           S.dwellFrames = 0; S.dwellTarget = null;
-          phase==='start' ? startGame() : restartGame();
+          if(id==='exit') window.parent.postMessage({type:'GAME_EXIT'},'*');
+          else phase==='start' ? startGame() : restartGame();
         }
       } else {
         S.dwellFrames = 0; S.dwellTarget = null;
@@ -295,8 +296,12 @@ function setGbar(txt, cls){
 // where that is (the cards' height depends on the screen size).
 let START_BUTTON_Y = null;
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const EMBEDDED = window.parent !== window;
+
 function getButtonRect(id){
   const W=gc.width, H=gc.height;
+  if(id==='exit') return {x:24, y:24, w:Math.min(280, W*0.3), h:60};
   if(id==='start'){
     const u=startScale(W,H);
     const bw=Math.min(440*u, W*0.6), bh=70*u;
@@ -682,6 +687,7 @@ function drawStartScreen(W,H){
 
   START_BUTTON_Y = top + rows*(ch+gap) + 18*u;
   drawDwellButton(W,H,'start','☝️   POINT HERE TO START');
+  if(EMBEDDED) drawDwellButton(W,H,'exit','↩  BACK TO GAMES');
 
   // Keyboard fallback, kept clear of the gesture bar at the bottom edge.
   ctx.textAlign='center'; ctx.textBaseline='alphabetic';
