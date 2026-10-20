@@ -3,6 +3,10 @@ import HandCursor, { type HandPoint } from "./HandCursor";
 import { classifyGesture, GESTURE_META, type Gesture } from "@/lib/gestures";
 import { loadHandLandmarker } from "@/lib/mediapipe";
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 type Phase = "menu" | "howto" | "levelMap" | "loading" | "playing" | "levelComplete" | "gameover";
 type Mode = "endless" | "level";
 
@@ -598,6 +602,14 @@ function MenuScreen({
         >
           How to play
         </button>
+          {embedded && (
+            <button
+              onClick={exitToPlatform}
+              className="min-w-[200px] rounded-md border-2 border-border bg-card/60 px-8 py-4 font-blade text-sm uppercase tracking-[0.35em] text-foreground hover:bg-card"
+            >
+              Back to games
+            </button>
+          )}
       </div>
 
       {error && <p className="mt-6 max-w-md text-sm text-destructive">{error}</p>}

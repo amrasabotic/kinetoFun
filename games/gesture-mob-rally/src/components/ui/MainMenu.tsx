@@ -1,6 +1,10 @@
 import type { Screen } from '../../types';
 import HoverButton from '../common/HoverButton';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 export default function MainMenu({
   coins, highScore, onNavigate, onFullscreen,
 }: {
@@ -29,6 +33,7 @@ export default function MainMenu({
         <MenuButton onSelect={() => onNavigate('howtoplay')}>❔ How to Play</MenuButton>
         <MenuButton onSelect={onFullscreen}>⛶ Fullscreen</MenuButton>
         <MenuButton onSelect={() => onNavigate('credits')}>ℹ Credits</MenuButton>
+        {embedded && <MenuButton onSelect={exitToPlatform}>↩ Back to games</MenuButton>}
       </div>
 
       <p className="mt-8 text-xs text-white/30">Hover a button with your fingertip for a moment to select it</p>

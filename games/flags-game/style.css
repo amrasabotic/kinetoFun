@@ -92,6 +92,8 @@ body { font-family: var(--font-main); color: var(--text-primary); }
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   cursor: default; transition: all 0.25s ease; position: relative; overflow: hidden;
 }
+/* Without this the flex display above would override the hidden attribute. */
+.mode-card[hidden] { display: none; }
 .mode-card::before {
   content: ''; position: absolute; inset: 0;
   background: linear-gradient(135deg, transparent, rgba(0,212,255,0.03));

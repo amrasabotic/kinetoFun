@@ -43,6 +43,8 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-20] TV mode, Milestone C batch 3 (ADR-067).** 14 more games can be left by hand (54 of 102): embedded-only "Back to games" on the main menus of the remaining React/Vite games with hand-operated menus, plus flags-game (plain JS: a fourth mode card, hidden unless embedded).
+
 - **[2026-10-20] TV mode, Milestone C batch 2 (ADR-067).** 17 more games can be left by hand (40 of 102): embedded-only "Back to games" on the main menu of the GestureBtn-template games, the `data-dwell` games and spear-stickman / the-sniper-code; maze-muncher's Quit sent an unhandled `GAME_QUIT` and now sends `GAME_EXIT`.
 
 - **[2026-10-19] TV mode, Milestone C batch 1: TV-ready games and leaving games by hand (ADR-067).** `scripts/audit-tv-games.mjs` reports per game: registered, framework, `GAME_COMPLETE`, exit by hand, dwell, click handlers, MediaPipe source (23 of 102 can be left by hand now). `games.tv_ready` (migration `0018_tv_ready.sql`, **not yet applied**) + `setGameTvReady` + `PATCH /api/admin/games/[id]/tv-ready` + SuperAdmin "Show on TV / Hide from TV" and TV badge; `features/tv/tv-games.ts` lists only TV-ready games on the TV once the column exists. Batch 1 game changes (source only; builds land in gitignored `public/games/`): 14 Flag Quest–family games plus bubble-shooter and gesture-love-balls send `GAME_EXIT` instead of a zero-score `GAME_COMPLETE` when leaving; gesture-tower-defense and six Sudoku-family games got a "Back to games" button on their main menu (embedded only).

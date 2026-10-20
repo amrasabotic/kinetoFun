@@ -1,6 +1,10 @@
 import { motion } from 'framer-motion';
 import type { SaveData } from '../../types';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 interface Props {
   save: SaveData;
   onPlay: () => void;
@@ -24,6 +28,7 @@ export default function MainMenu({ save, onPlay, onModes, onCosmetics, onStats, 
     { label: '⚙️  Settings', onClick: onSettings },
     { label: '📖  How To Play', onClick: onHowToPlay },
     { label: '🎖  Credits', onClick: onCredits },
+    ...(embedded ? [{ label: '↩️  Back to games', onClick: exitToPlatform }] : []),
   ];
 
   return (

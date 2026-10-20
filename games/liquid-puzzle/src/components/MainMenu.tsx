@@ -3,6 +3,10 @@ import { DwellButton } from './DwellButton';
 import { Cursor } from './Cursor';
 import type { GestureState } from '../types';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 interface MainMenuProps {
   onPlay: () => void;
   onLevelSelect: () => void;
@@ -33,6 +37,7 @@ export function MainMenu({ onPlay, onLevelSelect, onEndless, onDaily, onStatisti
           <DwellButton label="Statistics" onActivate={onStatistics} className="lp-menu-btn" />
           <DwellButton label="Settings" onActivate={onSettings} className="lp-menu-btn" />
           <DwellButton label="Credits" onActivate={onCredits} className="lp-menu-btn" />
+          {embedded && <DwellButton label="Back to games" onActivate={exitToPlatform} className="lp-menu-btn" />}
         </div>
       </div>
       <Cursor gesture={gesture} />

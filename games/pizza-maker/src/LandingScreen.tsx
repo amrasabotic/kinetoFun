@@ -1,5 +1,9 @@
 import { ChefHat, BookOpen } from 'lucide-react';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 interface LandingScreenProps {
   onPlay: () => void;
   onHowToPlay: () => void;
@@ -54,6 +58,14 @@ export default function LandingScreen({ onPlay, onHowToPlay }: LandingScreenProp
           <BookOpen className="w-5 h-5" />
           How to Play
         </button>
+          {embedded && (
+            <button
+              onClick={exitToPlatform}
+              className="flex items-center gap-2 px-8 py-3 bg-white/80 hover:bg-white text-orange-700 text-lg font-bold rounded-full shadow-md border border-orange-200 transition-all duration-150"
+            >
+              Back to games
+            </button>
+          )}
       </div>
 
       {/* Floating ingredient decorations */}

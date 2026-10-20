@@ -1,6 +1,10 @@
 import React from 'react';
 import type { HighScores, Settings } from '../game/types';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 interface MenuProps {
   highScores:  HighScores;
   settings:    Settings;
@@ -75,6 +79,11 @@ export function Menu({ highScores, settings, onPlay, onSettings, onHowToPlay }: 
             Sound: {settings.soundEnabled ? '🔊' : '🔇'}
           </span>
         </GestureBtn>
+        {embedded && (
+          <GestureBtn onClick={exitToPlatform} outline style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)', padding: 'clamp(12px, 2.2vh, 20px)' }}>
+            ↩️ Back to games
+          </GestureBtn>
+        )}
       </div>
 
       {/* High scores */}

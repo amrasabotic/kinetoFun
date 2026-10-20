@@ -3,6 +3,10 @@ import type { GameSettings } from '../../types';
 import { Button } from '../ui/Button';
 import { audioManager } from '../../utils/audio';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 interface HomeScreenProps {
   totalStars: number;
   bestScore: number;
@@ -133,6 +137,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <Button variant="ghost" size="md" onClick={() => setShowHowTo(true)}>
         ❓ How to Play
       </Button>
+      {embedded && (
+        <Button variant="ghost" size="md" onClick={exitToPlatform}>
+          ↩️ Back to games
+        </Button>
+      )}
     </div>
 
     {/* Input hint */}

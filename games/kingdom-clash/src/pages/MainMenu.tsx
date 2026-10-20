@@ -1,5 +1,9 @@
 import DwellButton from "@/components/DwellButton";
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 interface Props {
   cursor: { x: number; y: number } | null;
   onPlay: () => void;
@@ -107,6 +111,21 @@ export default function MainMenu({ cursor, onPlay, onHowToPlay }: Props) {
           >
             HOW TO PLAY
           </DwellButton>
+            {embedded && (
+              <DwellButton
+                cursor={cursor}
+                onActivate={exitToPlatform}
+                className="w-full px-8 py-3 text-sm font-bold tracking-widest rounded-lg uppercase border overflow-hidden"
+                style={{
+                  background: "rgba(0,0,0,0.4)",
+                  color: "#aaa",
+                  borderColor: "#444",
+                  fontFamily: "monospace",
+                }}
+              >
+                BACK TO GAMES
+              </DwellButton>
+            )}
         </div>
 
         <div className="text-xs text-gray-600 mt-2">

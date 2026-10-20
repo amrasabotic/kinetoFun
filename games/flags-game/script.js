@@ -58,9 +58,13 @@ function showHome() {
 }
 
 function selectMode(modeIndex) {
-  const modes = ['campaign', 'arcade', 'survival'];
+  const modes = ['campaign', 'arcade', 'survival', 'exit'];
   const mode = modes[modeIndex];
   if (!mode) return;
+  if (mode === 'exit') {
+    window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+    return;
+  }
   app.mode = mode;
 
   if (mode === 'campaign') {
@@ -618,5 +622,7 @@ document.getElementById('debug-toggle').addEventListener('click', () => {
 
 // ── Boot ──────────────────────────────────────────────────────
 initCursor();
+// Only inside the KinetoFun platform is there somewhere to go back to.
+document.getElementById('exit-card').hidden = window.parent === window;
 showScreen('home');
 initMediaPipe();
