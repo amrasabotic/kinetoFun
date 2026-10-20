@@ -16,7 +16,7 @@ import { useShop } from "@/features/rewards/useShop";
 import { useTvSignedIn } from "@/features/tv/useTvSignedIn";
 import { tvHomeHref } from "@/features/tv/tv-home-state";
 import { findGame } from "@/services/games.service";
-import { getGameEntry } from "@/games/registry";
+import { tvGames } from "@/features/tv/tv-games";
 import { formatScore, playersLabel } from "@/lib/format";
 
 export default function TvGamePage() {
@@ -47,7 +47,7 @@ export default function TvGamePage() {
     );
   }
 
-  if (!game || !getGameEntry(game.id)) {
+  if (!game || !tvGames(games).some((g) => g.id === game.id)) {
     return (
       <div className="flex flex-col items-center gap-10 py-32 text-center">
         <h1 className="text-5xl font-black">This game isn&apos;t available</h1>

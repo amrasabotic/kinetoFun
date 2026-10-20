@@ -57,6 +57,8 @@ export interface Game {
   createdAt?: string;
   /** Ticket price to unlock this game as a secret world; absent for ordinary games. */
   unlockCost?: number;
+  /** Listed on the TV. Undefined until migration 0018 is applied. */
+  tvReady?: boolean;
 }
 
 /** A managed category in the SuperAdmin taxonomy (`categories` table). */

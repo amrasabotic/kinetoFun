@@ -1,6 +1,9 @@
 import HoverButton from '../common/HoverButton';
 
-export type MainMenuAction = 'campaign' | 'endless' | 'daily' | 'how-to-play' | 'statistics' | 'settings' | 'credits';
+export type MainMenuAction = 'campaign' | 'endless' | 'daily' | 'how-to-play' | 'statistics' | 'settings' | 'credits' | 'exit';
+
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
 
 interface MainMenuProps {
   onSelect: (action: MainMenuAction) => void;
@@ -34,6 +37,11 @@ export default function MainMenu({ onSelect, dailyDone }: MainMenuProps) {
         <HoverButton onActivate={() => onSelect('credits')} ringColor="#94A3B8" className="td-menu-btn">
           Credits
         </HoverButton>
+        {embedded && (
+          <HoverButton onActivate={() => onSelect('exit')} ringColor="#F87171" className="td-menu-btn">
+            Back to games
+          </HoverButton>
+        )}
       </div>
     </div>
   );

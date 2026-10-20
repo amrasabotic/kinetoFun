@@ -41,6 +41,7 @@ interface GameRow {
   play_count: number | null;
   created_at?: string;
   unlock_cost?: number | null;
+  tv_ready?: boolean;
 }
 
 function toGame(row: GameRow): Game {
@@ -70,6 +71,7 @@ function toGame(row: GameRow): Game {
     playCount: row.play_count ?? 0,
     createdAt: row.created_at ?? undefined,
     unlockCost: row.unlock_cost ?? undefined,
+    tvReady: row.tv_ready,
   };
 }
 
@@ -260,6 +262,15 @@ export async function bulkDeleteGames(ids: string[]): Promise<void> {
  * Make a game a secret world with the given ticket price, or pass null to make
  * it an ordinary free game again. Players who already unlocked it keep it.
  */
+/** Show or hide a game on the TV. */
+export async function setGameTvReady(id: string, tvReady: boolean): Promise<Game | null> {
+  const row = await queryOne<GameRow>(
+    `UPDATE public.games SET tv_ready = $1 WHERE id = $2 RETURNING *`,
+    [tvReady, id],
+  );
+  return row ? toGame(row) : null;
+}
+
 export async function setGameUnlockCost(id: string, unlockCost: number | null): Promise<Game | null> {
   const row = await queryOne<GameRow>(
     `UPDATE public.games SET unlock_cost = $1 WHERE id = $2 RETURNING *`,

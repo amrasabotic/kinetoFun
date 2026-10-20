@@ -35,7 +35,9 @@ export default function App() {
 
   function exitToPlatform() {
     stopMusic();
-    window.parent?.postMessage({ type: 'GAME_COMPLETE', score: Math.round(totalTicketsEarned) }, '*');
+    const score = Math.round(totalTicketsEarned);
+    // Nothing scored this visit: leave without saving a zero score.
+    window.parent?.postMessage(score > 0 ? { type: 'GAME_COMPLETE', score } : { type: 'GAME_EXIT' }, '*');
   }
 
   function handleCalibrationDone() {

@@ -390,7 +390,7 @@ function GameScreen({
 
   const handleQuit = useCallback(() => {
     const score = Math.floor(gsRef.current.score);
-    window.parent.postMessage({ type: 'GAME_COMPLETE', score }, '*');
+    window.parent.postMessage(score > 0 ? { type: 'GAME_COMPLETE', score } : { type: 'GAME_EXIT' }, '*');
     onQuit();
   }, [onQuit]);
 

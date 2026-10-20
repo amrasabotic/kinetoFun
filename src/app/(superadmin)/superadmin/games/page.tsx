@@ -20,6 +20,7 @@ import {
   ArrowUpDown,
   BarChart2,
   Lock,
+  Tv,
 } from "lucide-react";
 import type {
   Game,
@@ -190,6 +191,21 @@ export default function GamesPage() {
       else pageItems.forEach((g) => next.add(g.id));
       return next;
     });
+  }
+
+  async function toggleTvReady(game: Game) {
+    try {
+      const res = await fetch(`/api/admin/games/${game.id}/tv-ready`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tvReady: !game.tvReady }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error ?? "Failed to update the game.");
+      setGames((prev) => prev.map((g) => (g.id === game.id ? { ...g, tvReady: j.game.tvReady } : g)));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update the game.");
+    }
   }
 
   async function confirmDelete() {
@@ -468,6 +484,15 @@ export default function GamesPage() {
                                   {g.unlockCost}
                                 </span>
                               )}
+                              {g.tvReady && (
+                                <span
+                                  title="Shown on the TV"
+                                  className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700"
+                                >
+                                  <Tv className="h-3 w-3" />
+                                  TV
+                                </span>
+                              )}
                             </p>
                             <p className="truncate text-xs text-slate-400">
                               {g.shortDescription || g.tagline || g.id}
@@ -504,6 +529,11 @@ export default function GamesPage() {
                               label: g.unlockCost ? "Secret world price" : "Make secret world",
                               icon: <Lock className="h-4 w-4" />,
                               onClick: () => setSecretWorld(g),
+                            },
+                            {
+                              label: g.tvReady ? "Hide from TV" : "Show on TV",
+                              icon: <Tv className="h-4 w-4" />,
+                              onClick: () => void toggleTvReady(g),
                             },
                             {
                               label: "Analytics",

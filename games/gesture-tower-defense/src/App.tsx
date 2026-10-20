@@ -68,6 +68,10 @@ export default function App() {
 
   function handleMainMenuSelect(action: MainMenuAction) {
     unlockAudio();
+    if (action === 'exit') {
+      window.parent?.postMessage({ type: 'GAME_EXIT' }, '*');
+      return;
+    }
     if (action === 'how-to-play') {
       setScreen('how-to-play');
       return;

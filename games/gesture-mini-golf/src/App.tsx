@@ -13,6 +13,10 @@ import { sfx } from './systems/audio';
 import { recordRound, hasDailyCompletedToday } from './systems/save';
 import { useGestureContext } from './mediaPipe/GestureProvider';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 function MenuButton({ label, onActivate, active }: { label: string; onActivate: () => void; active?: boolean }) {
   const { elRef, progress } = useDwellButton(600, onActivate);
   return (
@@ -99,6 +103,7 @@ function MenuScreen({
         <div className="gmg-menu__row">
           <MenuButton label="Start Round" onActivate={() => onStart(mode, difficulty)} />
           <MenuButton label="How to Play" onActivate={onHowTo} />
+          {embedded && <MenuButton label="Back to games" onActivate={exitToPlatform} />}
         </div>
       </div>
 

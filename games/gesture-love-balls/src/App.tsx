@@ -532,7 +532,7 @@ function GameScreen({ levelId, onComplete, onQuit, onNext }: {
   const handRef   = useMediaPipe(videoRef as React.RefObject<HTMLVideoElement>);
 
   const handleQuit = () => {
-    window.parent?.postMessage({ type: 'GAME_COMPLETE', score: 0 }, '*');
+    window.parent?.postMessage({ type: 'GAME_EXIT' }, '*');
     onQuit();
   };
 

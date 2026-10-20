@@ -38,7 +38,9 @@ export default function App() {
     // This is a persistent sim, not a scored round: submit lifetime coins earned so
     // far as the score, since it only ever grows — consistent with the platform's
     // "max score per user" leaderboard semantics used by every other game.
-    window.parent?.postMessage({ type: 'GAME_COMPLETE', score: Math.round(totalCoinsEarned) }, '*');
+    const score = Math.round(totalCoinsEarned);
+    // Nothing scored this visit: leave without saving a zero score.
+    window.parent?.postMessage(score > 0 ? { type: 'GAME_COMPLETE', score } : { type: 'GAME_EXIT' }, '*');
   }
 
   function handleCalibrationDone() {

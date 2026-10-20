@@ -13,7 +13,7 @@ import { useFavorites } from "@/features/games/useFavorites";
 import { useContinuePlaying } from "@/features/sessions/useContinuePlaying";
 import { useTvSignedIn } from "@/features/tv/useTvSignedIn";
 import { saveTvHomeQuery } from "@/features/tv/tv-home-state";
-import { getGameEntry } from "@/games/registry";
+import { tvGames } from "@/features/tv/tv-games";
 import { TvGameCard } from "@/components/tv/TvGameCard";
 
 const PAGE_SIZE = 8;
@@ -34,8 +34,7 @@ function TvGamesHome() {
   const { gameIds: recentIds, loading: recentLoading } = useContinuePlaying(signedIn);
   const { isFavorite, loaded: favoritesLoaded } = useFavorites();
 
-  // Only games with a build behind them can be launched.
-  const playable = useMemo(() => games.filter((g) => getGameEntry(g.id)), [games]);
+  const playable = useMemo(() => tvGames(games), [games]);
 
   const tabs: Tab[] = [
     {
@@ -64,7 +63,7 @@ function TvGamesHome() {
   if (tabs.length === 0) {
     return (
       <p className="py-40 text-center text-4xl font-bold text-white/70">
-        No games are available yet.
+        No games are ready for the TV yet.
       </p>
     );
   }

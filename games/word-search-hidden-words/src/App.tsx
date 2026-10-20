@@ -13,6 +13,10 @@ import { sfx } from './systems/audio';
 import { recordCompletion, hasDailyCompletedToday } from './systems/save';
 import { useGestureContext } from './mediaPipe/GestureProvider';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 const TIME_LIMIT_SECONDS: Record<GameMode, number | null> = {
   classic: null,
   timed: 180,
@@ -103,6 +107,7 @@ function MenuScreen({
       <div className="wsh-menu__section wsh-menu__row">
         <MenuButton label="Start Game" onActivate={() => onStart(mode, difficulty)} />
         <MenuButton label="How to Play" onActivate={onHowTo} />
+        {embedded && <MenuButton label="Back to games" onActivate={exitToPlatform} />}
       </div>
 
       {gestureCursor && (
