@@ -177,6 +177,10 @@ function setupMenuButtons() {
   buttons = [
     makeButton('START GAME', 'hover to select', W/2-110, H*0.62, 220, 56, '#00f5ff', beginCountdown)
   ];
+  // Only inside the KinetoFun platform is there somewhere to go back to.
+  if (window.parent !== window) {
+    buttons.push(makeButton('BACK TO GAMES', 'hover to select', 24, 24, 240, 56, '#bf00ff', () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*')));
+  }
 }
 
 function setupGameoverButtons() {

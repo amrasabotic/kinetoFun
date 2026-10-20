@@ -130,6 +130,8 @@ function buildBtns(){
     mBtns=[
       {label:'🎮  PLAY',    action:'play', x:W/2, y:H*.54, w:240, h:62},
       {label:'❓  HOW TO',  action:'how',  x:W/2, y:H*.67, w:240, h:62},
+      // Only inside the KinetoFun platform is there somewhere to go back to.
+      ...(window.parent!==window ? [{label:'↩  BACK TO GAMES', action:'exit', x:W/2, y:H*.80, w:280, h:62}] : []),
     ];
   else if(st===ST.OVER)
     mBtns=[{label:'🔄  PLAY AGAIN', action:'play', x:W/2, y:H/2+158, w:256, h:62}];
@@ -508,6 +510,7 @@ function updateHover(){
       hovC={};
       const a=mBtns[found].action;
       if(a==='play') startGame();
+      else if(a==='exit') window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
       else if(a==='how'){ st=ST.HOW; buildBtns(); }
       else if(a==='menu'){ st=ST.MENU; buildBtns(); }
     }

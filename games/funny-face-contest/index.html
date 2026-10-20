@@ -196,6 +196,8 @@
     cursor: pointer;
     overflow: hidden;
   }
+  .gesture-btn[hidden] { display: none; }
+  #exit-btn { margin-top: 16px; }
 
   .gesture-btn-fill {
     position: absolute;
@@ -323,6 +325,10 @@
       <div class="gesture-btn-fill" id="start-btn-fill"></div>
       <span>☝️ Hold to Start</span>
     </div>
+    <div class="gesture-btn" id="exit-btn" hidden>
+      <div class="gesture-btn-fill"></div>
+      <span>↩ Back to games</span>
+    </div>
   </div>
 
   <div class="hand-cursor" id="hand-cursor" style="display:none"></div>
@@ -358,6 +364,9 @@ const EXPRESSIONS = [
 
 let score = 0, timeLeft = 30, gameRunning = false, currentTarget = null;
 let holdProgress = 0, holdInterval = null, holdActive = false;
+// Only inside the KinetoFun platform is there somewhere to go back to.
+let exitProgress = 0;
+document.getElementById('exit-btn').hidden = window.parent === window;
 let comboCount = 0, lastMatchTime = 0;
 let matchHoldTime = 0, matchHoldRequired = 800;
 let faceLandmarks = null, handLandmarks = null;
@@ -576,6 +585,16 @@ function processGesture() {
 
   const overlay = screenOverlay;
   if (!overlay.classList.contains('hidden')) {
+    const exitBtn = document.getElementById('exit-btn');
+    if (exitBtn && !exitBtn.hidden) {
+      const er = exitBtn.getBoundingClientRect();
+      const cr = document.getElementById('game-container').getBoundingClientRect();
+      const overExit = cx > er.left - cr.left && cx < er.right - cr.left && cy > er.top - cr.top && cy < er.bottom - cr.top;
+      exitProgress = overExit ? exitProgress + 3 : 0;
+      exitBtn.querySelector('.gesture-btn-fill').style.width = Math.min(exitProgress, 100) + '%';
+      if (exitProgress >= 100) { exitProgress = 0; window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); return; }
+      if (overExit) return;
+    }
     const btn = document.getElementById('start-btn');
     const rect = btn.getBoundingClientRect();
     const containerRect = document.getElementById('game-container').getBoundingClientRect();

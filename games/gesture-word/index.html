@@ -577,6 +577,7 @@
     <div class="cta-ring">👊</div>
     <div class="cta-text">Make a <strong>Fist</strong> then <strong>open your palm</strong> to start</div>
   </div>
+  <div class="cta-text" id="exit-hint" hidden>Show <strong>two fingers ✌️</strong> to go back to games</div>
 </div>
 
 <!-- GAME -->
@@ -941,7 +942,16 @@ function triggerCooldown() {
   setTimeout(() => { state.gestureCooldown = false; }, state.gestureCooldownMs);
 }
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+document.getElementById('exit-hint').hidden = !embedded;
+
 function handleStartScreenGesture(gesture) {
+  // Two fingers has no other meaning on the start screen.
+  if (gesture === 'TWO_FINGERS' && embedded) {
+    window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+    return;
+  }
   // Track fist then open palm to start
   if (gesture === 'FIST') {
     state.startGestureSequence = ['FIST'];

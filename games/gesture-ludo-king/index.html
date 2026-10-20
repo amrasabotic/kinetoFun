@@ -124,6 +124,8 @@ html, body { width: 100%; height: 100%; background: #1a1a2e; overflow: hidden; f
 #gesture-bar { height: 3px; background: #378ADD; width: 0%; transition: width 0.05s; border-radius: 3px; }
 
 /* Splash screen */
+#exit-box { position: absolute; top: 16px; left: 16px; padding: 12px 18px; border: 2px solid rgba(55,138,221,.5); border-radius: 12px; background: rgba(55,138,221,.12); font-weight: 700; }
+#exit-box.over { border-color: #378ADD; background: rgba(55,138,221,.3); }
 #splash {
   position: absolute;
   inset: 0;
@@ -181,6 +183,7 @@ body.turn-yellow #turn-pill { --tc: #EF9F27; }
 
   <!-- Splash / intro -->
   <div id="splash">
+    <div id="exit-box" hidden>☝️ Point here to go back to games</div>
     <h2>✋ Gesture Ludo King</h2>
     <p>Play Ludo entirely with your hand. Point your finger to select pieces, open your palm to roll the dice.</p>
     <div class="splash-gestures">
@@ -787,12 +790,37 @@ function onResults(res) {
 
 // ── Splash screen ──
 let splashPointStart = 0, splashPointPct = 0;
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const exitBox = document.getElementById('exit-box');
+exitBox.hidden = window.parent === window;
+let exitStart = 0;
+
+// tipX/tipY are normalised over the board, which the splash covers.
+function pointingAtExit(splash, tipX, tipY) {
+  if (exitBox.hidden) return false;
+  const s = splash.getBoundingClientRect(), r = exitBox.getBoundingClientRect();
+  const x = s.left + tipX * s.width, y = s.top + tipY * s.height;
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
 
 function handleSplash(gesture, tipX, tipY) {
   const splash = document.getElementById('splash');
   const hint   = document.getElementById('splash-hint');
   const sbar   = document.getElementById('splash-bar');
   if (!splash) return;
+
+  const onExit = gesture === 'point' && pointingAtExit(splash, tipX, tipY);
+  exitBox.classList.toggle('over', onExit);
+  if (onExit) {
+    splashPointStart = 0; splashPointPct = 0;
+    if (!exitStart) exitStart = Date.now();
+    const p = Math.min(1, (Date.now() - exitStart) / 1500);
+    sbar.style.width = Math.round(p * 100) + '%';
+    hint.textContent = `Hold ☝️ to go back to games… ${Math.round(p * 100)}%`;
+    if (p >= 1) { exitStart = 0; window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+    return;
+  }
+  exitStart = 0;
 
   if (gesture==='point') {
     // Check if pointing at START area (center of splash)

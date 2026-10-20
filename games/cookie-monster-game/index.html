@@ -113,6 +113,8 @@ function buildButtons() {
   buttons = [];
   if (state === 'start') {
     buttons.push({ id: 'start', label: '▶  Start Game', x: W / 2, y: H * 0.82, w: 240, h: 58, action: startGame });
+    // Only inside the KinetoFun platform is there somewhere to go back to.
+    if (window.parent !== window) buttons.push({ id: 'exit', label: '↩  Back to games', x: 154, y: 54, w: 260, h: 52, action: () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*') });
   } else if (state === 'gameover') {
     buttons.push({ id: 'restart', label: '↺  Play Again', x: W / 2, y: H * 0.67, w: 220, h: 52, action: () => { startGame(); } });
   }

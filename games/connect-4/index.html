@@ -94,6 +94,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 /* gesture instruction cards */
 .ov-cards{display:flex;gap:14px;margin-top:4px}
+#exit-box{position:absolute;top:24px;left:24px;padding:16px 24px;border:2px solid rgba(37,99,235,.5);border-radius:14px;background:rgba(37,99,235,.1);font-weight:700}
+#exit-box.over{border-color:#60a5fa;background:rgba(37,99,235,.3)}
 .ov-card{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 20px;min-width:100px}
 .ov-card .ec{font-size:28px}
 .ov-card .lbl{font-size:12px;color:var(--tm);text-align:center;line-height:1.3}
@@ -136,6 +138,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 <!-- GESTURE-ONLY OVERLAY — no buttons -->
 <div id="overlay">
+  <div id="exit-box" hidden>✋ Hold here to go back to games</div>
   <div id="ov-title">Connect 4</div>
   <div id="ov-sub">Hand Gesture Edition</div>
 
@@ -367,6 +370,10 @@ function updateOverlayGestureHint(gesture){
   document.getElementById('card-fist').classList.toggle('active-card',gesture==='fist'&&started);
 }
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const exitBox=document.getElementById('exit-box');
+exitBox.hidden=window.parent===window;
+
 function onResults(results){
   hc.width=video.videoWidth||210;
   hc.height=video.videoHeight||158;
@@ -391,6 +398,13 @@ function onResults(results){
   const gesture=classify(lm);
   updateOverlayGestureHint(gesture);
 
+  // The camera image is mirrored on screen, so the palm's screen x is flipped.
+  const onExit=!exitBox.hidden&&!document.getElementById('overlay').classList.contains('hidden')&&(()=>{
+    const r=exitBox.getBoundingClientRect(),px=(1-lm[9].x)*innerWidth,py=lm[9].y*innerHeight;
+    return px>=r.left&&px<=r.right&&py>=r.top&&py<=r.bottom;
+  })();
+  exitBox.classList.toggle('over',onExit);
+
   /* OPEN HAND → start / restart */
   if(gesture==='open'){
     if(!openHolding){openHolding=true;openStart=Date.now();}
@@ -401,7 +415,8 @@ function onResults(results){
     if(!started)document.getElementById('waiting-msg').textContent='Hold… starting in '+Math.max(1,remaining)+'s';
     if(pct>=1){
       openHolding=false;setRing(0);
-      startGame();
+      if(onExit)window.parent.postMessage({type:'GAME_EXIT'},'*');
+      else startGame();
     }
   } else {
     if(openHolding){openHolding=false;setRing(0);

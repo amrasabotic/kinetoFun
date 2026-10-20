@@ -368,6 +368,10 @@ function drawStart() {
   ctx.fillStyle='rgba(232,232,240,0.6)'; ctx.font='15px system-ui';
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('🙌  Raise both hands above your head to start', GW/2, GH*0.86);
+  if (EMBEDDED) {
+    ctx.fillStyle='rgba(232,232,240,0.45)'; ctx.font='14px system-ui';
+    ctx.fillText('🤸  Hold a T-pose to go back to games', GW/2, GH*0.79);
+  }
   rArc(GW/2, GH*0.93, 18, prog, '#7c6bff');
 }
 
@@ -466,6 +470,9 @@ function updateHUD() {
   $g('gesture-bar').textContent=GLABELS[gs.lastGesture]||'🤔';
 }
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const EMBEDDED = window.parent !== window;
+
 // ── main loop ──
 function loop() {
   const g = readGesture();
@@ -473,9 +480,13 @@ function loop() {
   switch(phase) {
     case 'start':
       if(g.raise) raiseTimer++; else raiseTimer=0;
+      // A T-pose means nothing on the start screen, so it is the way back to the platform.
+      if(EMBEDDED && g.tpose) tposeTimer++; else tposeTimer=0;
       drawStart();
       setHUD(false);
-      $g('gesture-bar').textContent = raiseTimer>0 ? `🙌 Hold… ${Math.round(raiseTimer/RAISE_FRAMES*100)}%` : '🙌 Raise both hands to start';
+      $g('gesture-bar').textContent = tposeTimer>0 ? `🤸 Hold… back to games ${Math.round(tposeTimer/TPOSE_FRAMES*100)}%`
+        : raiseTimer>0 ? `🙌 Hold… ${Math.round(raiseTimer/RAISE_FRAMES*100)}%` : '🙌 Raise both hands to start';
+      if(tposeTimer>=TPOSE_FRAMES){ tposeTimer=0; window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
       if(raiseTimer>=RAISE_FRAMES){ raiseTimer=0; initGameState(); phase='calibrating'; }
       break;
 

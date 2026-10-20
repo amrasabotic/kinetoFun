@@ -188,6 +188,8 @@ function showMenu() {
   buildMenu([
     { label:'▶  Play', action:() => showLevelSelect() },
     { label:'❓  How to Play', action:() => showHelp() },
+    // Only inside the KinetoFun platform is there somewhere to go back to.
+    ...(window.parent !== window ? [{ label:'↩  Back to games', action:() => window.parent.postMessage({ type:'GAME_EXIT' }, '*') }] : []),
   ]);
   renderMenuItems();
 }

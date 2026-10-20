@@ -121,6 +121,7 @@ video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
     <button class="btn" data-act="play"><div class="bar"></div><span>🎮 Play Game</span></button>
     <button class="btn" data-act="levels"><div class="bar"></div><span>🗺️ Choose Map</span></button>
     <button class="btn" data-act="how"><div class="bar"></div><span>❓ How to Play</span></button>
+    <button class="btn" data-act="exit" id="exitBtn" hidden><div class="bar"></div><span>↩ Back to games</span></button>
   </div>
 </div>
 
@@ -585,8 +586,13 @@ function doHover(px,py){
   }
 }
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+document.getElementById('exitBtn').hidden = window.parent === window;
+
 function doAction(act,id){
   switch(act){
+    case 'exit':
+      window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); break;
     case 'play':
       show(null); startGame(); break;
     case 'levels':

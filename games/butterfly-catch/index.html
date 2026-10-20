@@ -472,7 +472,9 @@ function drawStartScreen(now) {
 
   // Gesture button: START GAME
   gestureButtons = [
-    makeBtn('start', 'Start Game', '🦋', 'Hover here to begin →', cx, y + 10, () => startGame())
+    makeBtn('start', 'Start Game', '🦋', 'Hover here to begin →', cx, y + 10, () => startGame()),
+    // Only inside the KinetoFun platform is there somewhere to go back to.
+    ...(window.parent !== window ? [makeBtn('exit', 'Back to games', '↩️', 'Hover here to leave', cx, y + 110, () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*'))] : [])
   ];
   gestureButtons.forEach(btn => drawGestureBtn(btn, now));
 }

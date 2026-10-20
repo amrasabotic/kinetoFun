@@ -497,7 +497,9 @@ function drawCursor() {
 }
 
 // ─── MENU ────────────────────────────────────────────────────────────────────
-const MENU_DEFS = [{ lbl: '▶  PLAY', act: 'play' }, { lbl: '❓  HOW TO PLAY', act: 'how' }, { lbl: '✕  QUIT', act: 'quit' }];
+// Inside the KinetoFun platform, quitting goes back to its game list; window.close() does nothing in an iframe.
+const EMBEDDED = window.parent !== window;
+const MENU_DEFS = [{ lbl: '▶  PLAY', act: 'play' }, { lbl: '❓  HOW TO PLAY', act: 'how' }, { lbl: EMBEDDED ? '↩  BACK TO GAMES' : '✕  QUIT', act: 'quit' }];
 
 function drawMenu() {
   const W = gc.width, H = gc.height, cx = W / 2, cy = H / 2;
@@ -722,7 +724,7 @@ function tickHover() {
       holdFired = true;
       const act = (menuItems.find(m => m.idx === found) || {}).act;
       if      (act === 'play')    startCountdown();
-      else if (act === 'quit')    { try { window.close(); } catch(e) {} }
+      else if (act === 'quit')    { if (EMBEDDED) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); else try { window.close(); } catch(e) {} }
       else if (act === 'restart') doRestart();
       else if (act === 'how')     STATE = 'HOW';
       else if (act === 'menu')    STATE = 'MENU';

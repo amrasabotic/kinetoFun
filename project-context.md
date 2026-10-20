@@ -43,6 +43,8 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-20] TV mode, Milestone C batch 5 (ADR-067).** 17 more single-file HTML games can be left by hand (89 of 102). Notable fixes along the way: Gesture Pop's start/game-over buttons were click-only and its cursor was hidden behind the menus (now a menu cursor + hold-to-select); Hand Snake's Quit called `window.close()`; pose- or shape-only games without a cursor exit with a gesture that has no other meaning on that screen (T-pose in Monster Dodge, ✌️ in Gesture Word) or by holding the hand over a box (Connect 4, Ludo King).
+
 - **[2026-10-20] TV mode, Milestone C batch 4 (ADR-067).** 18 single-file HTML games can be left by hand (72 of 102). Each got an embedded-only "Back to games" in that game's own button system (canvas-drawn buttons, DOM dwell buttons, or, for games with no cursor at all, a box the pointing fingertip must be over when the hold completes).
 
 - **[2026-10-20] TV mode, Milestone C batch 3 (ADR-067).** 14 more games can be left by hand (54 of 102): embedded-only "Back to games" on the main menus of the remaining React/Vite games with hand-operated menus, plus flags-game (plain JS: a fourth mode card, hidden unless embedded).

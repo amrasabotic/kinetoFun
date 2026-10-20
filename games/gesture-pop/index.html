@@ -27,6 +27,8 @@
   .glass { background: rgba(10, 10, 40, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(120, 80, 255, 0.3); border-radius: 24px; }
   .glow-btn { cursor: pointer; transition: all 0.2s; border: 2px solid; border-radius: 16px; padding: 16px 48px; font-size: 1.4rem; font-weight: 700; letter-spacing: 2px; pointer-events: all; }
   .glow-btn:hover { transform: scale(1.05); }
+  .glow-btn { background-image: linear-gradient(90deg, rgba(192,132,252,0.45) calc(var(--p, 0) * 100%), transparent 0) !important; }
+  #menuCursor { position: fixed; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; border: 3px solid #c084fc; background: rgba(192,132,252,0.25); z-index: 9000; pointer-events: none; display: none; }
   .glow-btn-purple { color: #c084fc; border-color: #c084fc; background: rgba(192,132,252,0.1); box-shadow: 0 0 20px rgba(192,132,252,0.4); }
   .glow-btn-purple:hover { background: rgba(192,132,252,0.25); box-shadow: 0 0 40px rgba(192,132,252,0.7); }
 
@@ -133,6 +135,10 @@
     <button class="glow-btn glow-btn-purple" id="startBtn" onclick="startGame()">
       ▶ PLAY NOW
     </button>
+    <button class="glow-btn glow-btn-purple" id="exitBtn" hidden style="margin-top:16px" onclick="window.parent.postMessage({ type: 'GAME_EXIT' }, '*')">
+      ↩ BACK TO GAMES
+    </button>
+    <div style="color:#7c3aed; font-size:0.85rem; margin-top:16px;">Point at a button and hold your hand still to press it</div>
   </div>
 </div>
 
@@ -249,6 +255,41 @@ function setLoadProgress(pct, msg) {
   document.getElementById('loadingStatus').textContent = msg;
 }
 
+// ─── MENU HOLD-TO-SELECT ──────────────────────────────────────────────────────
+// Menus are used on a TV with no mouse, and the canvas cursor sits behind the menu screens.
+const MENU_DWELL_MS = 1200, MENU_ARM_MS = 1500;
+let menuTarget = null, menuSince = 0, menuScreen = null, menuArmedAt = 0;
+const menuCursor = document.createElement('div');
+menuCursor.id = 'menuCursor';
+document.body.appendChild(menuCursor);
+// Only inside the KinetoFun platform is there somewhere to go back to.
+document.getElementById('exitBtn').hidden = window.parent === window;
+
+function clearMenuTarget() {
+  if (menuTarget) menuTarget.style.setProperty('--p', 0);
+  menuTarget = null;
+}
+
+function menuDwell() {
+  const screen = document.querySelector('.screen:not(.hidden)');
+  const buttons = screen ? [...screen.querySelectorAll('button.glow-btn:not([hidden])')] : [];
+  if (!cursor.visible || !buttons.length) { menuCursor.style.display = 'none'; clearMenuTarget(); return; }
+  const now = performance.now();
+  if (screen !== menuScreen) { menuScreen = screen; menuArmedAt = now + MENU_ARM_MS; }
+  const x = cursor.x * innerWidth, y = cursor.y * innerHeight;
+  menuCursor.style.display = 'block';
+  menuCursor.style.transform = `translate(${x - 14}px, ${y - 14}px)`;
+  const target = now < menuArmedAt ? null : buttons.find(b => {
+    const r = b.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }) || null;
+  if (target !== menuTarget) { clearMenuTarget(); menuTarget = target; menuSince = now; }
+  if (!target) return;
+  const p = Math.min(1, (now - menuSince) / MENU_DWELL_MS);
+  target.style.setProperty('--p', p);
+  if (p >= 1) { clearMenuTarget(); menuArmedAt = now + MENU_ARM_MS; target.click(); }
+}
+
 function onHandResults(results) {
   if (!handDetected && results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
     handDetected = true;
@@ -259,6 +300,7 @@ function onHandResults(results) {
   if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
     cursor.visible = false;
     pinchDistance = 1;
+    menuDwell();
     return;
   }
 
@@ -276,6 +318,7 @@ function onHandResults(results) {
 
   processPinch();
   updateHoverCluster();
+  menuDwell();
 }
 
 // ─── PINCH STATE MACHINE ──────────────────────────────────────────────────────

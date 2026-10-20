@@ -279,6 +279,7 @@ button.gu-focused{background:linear-gradient(135deg,#3a30b0,#6a3090)!important}
       <div class="gg-item"><span>👁</span> Hold steady</div>
     </div>
     <button class="btn-primary" id="btn-play">✋ Start Playing</button>
+    <button class="btn-secondary" id="btn-exit" style="display:none">↩ Back to games</button>
     <div class="meta" id="menu-meta">XP: 0 &nbsp;•&nbsp; ⭐ 0 stars</div>
   </div>
 </div>
@@ -1071,6 +1072,9 @@ function colorFromWheelPos(px, py, cx, cy, R) {
 //    DRAW hold 600ms     → confirm focused item (stability-gated)
 //    FIST                → back / cancel
 // ═══════════════════════════════════════════════════════════
+// Only inside the KinetoFun platform is there somewhere to go back to.
+if (window.parent !== window) document.getElementById('btn-exit').style.display = '';
+
 const GestureUI = (() => {
   let activeScreen = null;   // current DOM screen id, or null = game playing
   let items        = [];     // focusable elements on activeScreen
@@ -1187,6 +1191,7 @@ const GestureUI = (() => {
     else if (id==='btn-retry')        actions.retry?.();
     else if (id==='btn-next')         actions.nextLevel?.();
     else if (id==='btn-to-levels')    actions.goLevels?.();
+    else if (id==='btn-exit')         window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
     else if (el.classList.contains('world-card')) {
       const wId = parseInt(el.dataset.worldId);
       if (!isNaN(wId)) actions.selectWorld?.(wId);

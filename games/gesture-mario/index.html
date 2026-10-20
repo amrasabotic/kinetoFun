@@ -856,14 +856,23 @@ function updateHoverCanvas(items){
   }
 }
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+function mainMenuItems(){
+  const items=[{id:'play',icon:'🎮',label:'Start Game — Level 1'}];
+  if(window.parent!==window)items.push({id:'exit',icon:'↩',label:'Back to games'});
+  return items;
+}
+
 function handleAction(id){
-  if(id==='play'){
+  if(id==='exit'){
+    window.parent.postMessage({type:'GAME_EXIT'},'*');
+  } else if(id==='play'){
     currentLevel=0;startGame();
   } else if(id==='restart'){
     startGame();
   } else if(id==='menu'){
     gameState='menu';
-    menuItems=[{id:'play',icon:'🎮',label:'Start Game — Level 1'}];
+    menuItems=mainMenuItems();
     scoreHUD.style.display='none';gestureHUD.style.display='none';
   } else if(id==='next_level'){
     if(currentLevel+1<LEVELS.length){
@@ -910,7 +919,7 @@ function onResults(results){
       if((Date.now()-splashHoldStart)/800>=1){
         splashHoldActive=false;
         gameState='menu';
-        menuItems=[{id:'play',icon:'🎮',label:'Start Game — Level 1'}];
+        menuItems=mainMenuItems();
         scoreHUD.style.display='block';gestureHUD.style.display='block';
       }
     } else splashHoldActive=false;

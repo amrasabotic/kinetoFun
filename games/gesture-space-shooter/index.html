@@ -399,6 +399,8 @@ function showMainMenu() {
   makeBtn('▶  Start Game', () => showLevelSelect(), wrap);
   makeBtn('⚡  Quick Play', () => startLevel(0), wrap);
   makeBtn('?  How to Play', () => showHowTo(), wrap);
+  // Only inside the KinetoFun platform is there somewhere to go back to.
+  if (window.parent !== window) makeBtn('↩  Back to games', () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*'), wrap);
   overlay.appendChild(wrap);
 }
 

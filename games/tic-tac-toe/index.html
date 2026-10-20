@@ -302,6 +302,13 @@
   }
   #howto-btn span { position: relative; }
   #howto-btn.disarmed { opacity: 0.45; }
+  #exit-btn { position: relative; overflow: hidden; font-family: inherit; font-size: 1.1rem; font-weight: 700; color: var(--text); background: rgba(124,111,255,0.08); border: 2px solid rgba(124,111,255,0.5); border-radius: 999px; padding: 12px 40px; cursor: pointer; }
+  #exit-btn[hidden] { display: none; }
+  #exit-btn .fill { position: absolute; inset: 0; width: 0%; background: rgba(124,111,255,0.45); pointer-events: none; }
+  #exit-btn span { position: relative; }
+  #exit-btn.disarmed { opacity: 0.45; }
+  #result-exit { margin-top: 10px; padding: 10px 18px; border: 2px solid rgba(124,111,255,0.5); border-radius: 12px; font-size: 0.8rem; }
+  #result-exit.over { border-color: var(--accent); background: rgba(124,111,255,0.2); }
   .howto-note { font-size: 14px; color: var(--muted); }
 
   #loading {
@@ -335,6 +342,7 @@
     <div class="howto-card"><div class="ic">📊</div><div><div class="t">Score</div><div class="d">Wins for X and O are counted at the top of the screen.</div></div></div>
   </div>
   <button id="howto-btn" class="disarmed"><div class="fill"></div><span>Let's Play</span></button>
+  <button id="exit-btn" class="disarmed" hidden><div class="fill"></div><span>Back to games</span></button>
   <div class="howto-note">Point at the button, then pinch and hold to start</div>
 </div>
 
@@ -389,6 +397,7 @@
     <div id="result-overlay">
       <div class="result-text" id="result-text"></div>
       <div class="result-sub">Open your hand, then pinch &amp; hold to play again</div>
+      <div id="result-exit" hidden>🤏 Pinch &amp; hold here to go back to games</div>
     </div>
   </div>
 
@@ -429,7 +438,14 @@ let needRelease = false;
 const HOWTO_ARM_MS = 1500;
 let howtoOpen = true;
 const howtoArmedAt = performance.now() + HOWTO_ARM_MS;
-setTimeout(() => document.getElementById('howto-btn').classList.remove('disarmed'), HOWTO_ARM_MS);
+setTimeout(() => ['howto-btn', 'exit-btn'].forEach(id => document.getElementById(id).classList.remove('disarmed')), HOWTO_ARM_MS);
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const EMBEDDED = window.parent !== window;
+document.getElementById('exit-btn').hidden = !EMBEDDED;
+document.getElementById('result-exit').hidden = !EMBEDDED;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+const isOver = (el, x, y) => { const r = el.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+let pinchTarget = null;
 function closeHowto() {
   howtoOpen = false;
   needRelease = true;
@@ -617,18 +633,22 @@ hands.onResults(results => {
   if (!isPinching) needRelease = false;
 
   if (howtoOpen) {
-    const btn = document.getElementById('howto-btn');
-    const r = btn.getBoundingClientRect();
-    const over = sx >= r.left && sx <= r.right && sy >= r.top && sy <= r.bottom;
-    const fill = btn.querySelector('.fill');
-    if (over && isPinching && !needRelease && performance.now() >= howtoArmedAt) {
-      if (!pinchHeld) { pinchHeld = true; pinchStart = Date.now(); }
+    const targets = ['howto-btn', 'exit-btn'].map(id => document.getElementById(id)).filter(b => !b.hidden);
+    const hit = targets.find(b => isOver(b, sx, sy)) || null;
+    targets.forEach(b => { if (b !== hit) b.querySelector('.fill').style.width = '0%'; });
+    if (hit && isPinching && !needRelease && performance.now() >= howtoArmedAt) {
+      if (!pinchHeld || pinchTarget !== hit) { pinchHeld = true; pinchStart = Date.now(); pinchTarget = hit; }
+      const fill = hit.querySelector('.fill');
       const pct = Math.min((Date.now() - pinchStart) / PINCH_HOLD, 1);
       fill.style.width = (pct * 100) + '%';
-      if (pct >= 1) { pinchHeld = false; pinchStart = 0; fill.style.width = '0%'; closeHowto(); }
+      if (pct >= 1) {
+        pinchHeld = false; pinchStart = 0; fill.style.width = '0%';
+        if (hit.id === 'exit-btn') exitToPlatform(); else closeHowto();
+      }
     } else {
       if (isPinching && performance.now() < howtoArmedAt) needRelease = true;
-      pinchHeld = false; pinchStart = 0; fill.style.width = '0%';
+      pinchHeld = false; pinchStart = 0;
+      targets.forEach(b => { b.querySelector('.fill').style.width = '0%'; });
     }
     return;
   }
@@ -646,7 +666,10 @@ hands.onResults(results => {
     const held = Date.now() - pinchStart;
 
     if (gameOver) {
-      if (held > 700) { resetGame(); needRelease = true; }
+      const resultExit = document.getElementById('result-exit');
+      const onExit = !resultExit.hidden && isOver(resultExit, sx, sy);
+      resultExit.classList.toggle('over', onExit);
+      if (held > 700) { if (onExit) exitToPlatform(); else resetGame(); needRelease = true; }
       return;
     }
 
