@@ -110,7 +110,7 @@ export default function App() {
 
   const handleQuit = useCallback(() => {
     try {
-      window.parent?.postMessage({ type: 'GAME_QUIT' }, '*');
+      window.parent?.postMessage({ type: 'GAME_EXIT' }, '*');
     } catch {
       /* ignore */
     }

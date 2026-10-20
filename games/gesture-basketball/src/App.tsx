@@ -25,6 +25,10 @@ import type { MenuHandData } from './useMenuHand';
 
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 function detectFist(hands: NormalizedLandmark[][]): boolean {
   if (!hands.length) return false;
   const h = hands[0];
@@ -231,6 +235,14 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
                 style={{ background: 'rgba(255,255,255,0.14)', border: '1.5px solid rgba(255,255,255,0.35)' } as React.CSSProperties}>
                 How to Play
               </GestureBtn>
+              {embedded && (
+                <GestureBtn dwellId="exit" activeId={activeId} dwellProgress={dwellProgress}
+                  onClick={exitToPlatform}
+                  className="w-full min-h-[64px] flex items-center justify-center text-white font-bold text-lg rounded-2xl"
+                  style={{ background: 'rgba(255,255,255,0.14)', border: '1.5px solid rgba(255,255,255,0.35)' } as React.CSSProperties}>
+                  Back to games
+                </GestureBtn>
+              )}
             </div>
           </div>
         </div>

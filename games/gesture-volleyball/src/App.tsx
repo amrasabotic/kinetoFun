@@ -12,6 +12,10 @@ import {
 } from './audio';
 import type { MenuHandData } from './useMenuHand';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 // ── Screen router ─────────────────────────────────────────────────────────────
 
 type Screen = 'landing' | 'howtoplay' | 'difficulty' | 'game';
@@ -211,6 +215,14 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
                 style={{ background: 'rgba(255,255,255,0.06)' } as React.CSSProperties}>
                 How to Play
               </GestureBtn>
+              {embedded && (
+                <GestureBtn dwellId="exit" activeId={activeId} dwellProgress={dwellProgress}
+                  onClick={exitToPlatform}
+                  className="w-full min-h-[72px] flex items-center justify-center text-white/80 font-bold text-lg rounded-2xl tracking-wide transition-all border border-white/15"
+                  style={{ background: 'rgba(255,255,255,0.06)' } as React.CSSProperties}>
+                  Back to games
+                </GestureBtn>
+              )}
             </div>
           </div>
         </div>

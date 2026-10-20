@@ -8,6 +8,10 @@ import type { Progress } from '../utils/storage';
 import type { RunResult } from '../game/engine';
 import * as snd from '../utils/audio';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 const CURSOR_R = 24;
 const PANEL_BG = 'linear-gradient(165deg,#161021 0%,#241a33 50%,#120d1c 100%)';
 const PRIMARY = 'linear-gradient(90deg,#d97706,#f59e0b)';
@@ -146,6 +150,12 @@ export function Landing({ progress, onPlay, onShop, onHowTo, onSettings }: {
                 ⚙️ Settings
               </DBtn>
             </div>
+            {embedded && (
+              <DBtn id="exit" active={active} progress={p} onClick={exitToPlatform}
+                className="py-3 rounded-2xl text-base font-semibold text-white bg-white/10 border border-white/15">
+                ↩️ Back to games
+              </DBtn>
+            )}
           </div>
           <p className="text-white/40 text-xs mt-7 text-center max-w-md">
             Move your hand to aim · Make a fist to charge, release to throw · Pinch for a quick throw · Swipe to dodge

@@ -1,6 +1,10 @@
 import React from 'react';
 import { Shield, Infinity, BookOpen, Volume2, VolumeX, HelpCircle } from 'lucide-react';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 interface MenuProps {
   onStartStory: () => void;
   onStartEndless: () => void;
@@ -96,6 +100,15 @@ export const Menu: React.FC<MenuProps> = ({
             <HelpCircle className="w-5 h-5" />
             How to Play
           </button>
+            {embedded && (
+              <button
+                data-dwell=""
+                onClick={exitToPlatform}
+                className="flex items-center justify-center gap-3 px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
+              >
+                Back to games
+              </button>
+            )}
         </div>
 
         <div className="mt-8 flex items-center gap-4">

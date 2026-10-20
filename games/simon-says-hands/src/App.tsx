@@ -9,6 +9,10 @@ import {
 import type { GameState } from './gameLogic';
 import { initAudio, playPanel, playCorrect, playWin, playFail, playSlap } from './audio';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 type Screen = 'landing' | 'howtoplay' | 'game';
 
 
@@ -186,6 +190,13 @@ function LandingScreen({ onPlay, onHow }: { onPlay: () => void; onHow: () => voi
                 className="w-full py-3 bg-white/10 hover:bg-white/20 active:scale-95 text-white font-semibold text-base rounded-xl transition-all border border-white/20">
                 How to Play
               </GestureBtn>
+              {embedded && (
+                <GestureBtn dwellId="exit" activeId={activeId} dwellProgress={dwellProgress}
+                  onClick={exitToPlatform}
+                  className="w-full py-3 bg-white/10 hover:bg-white/20 active:scale-95 text-white font-semibold text-base rounded-xl transition-all border border-white/20">
+                  Back to games
+                </GestureBtn>
+              )}
             </div>
           </div>
         </div>

@@ -6,6 +6,10 @@ import type { Progress } from '../utils/storage';
 import type { MissionResult } from '../game/engine';
 import * as snd from '../utils/audio';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 const CURSOR_R = 26;
 
 // ── DwellLayer ────────────────────────────────────────────────────────────────
@@ -152,6 +156,12 @@ export function Landing({ progress, onCampaign, onEndless, onHowTo, onSettings }
                 ⚙️ Settings
               </DBtn>
             </div>
+            {embedded && (
+              <DBtn id="exit" active={active} progress={p} onClick={exitToPlatform}
+                className="py-3 rounded-2xl text-base font-semibold text-white bg-white/10 border border-white/15">
+                ↩️ Back to games
+              </DBtn>
+            )}
           </div>
           <p className="text-white/40 text-xs mt-8">Move your hand to aim · Pinch to fire · Open palm to zoom · Hold still to steady</p>
         </div>

@@ -2,6 +2,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DwellCursor, HandProvider, useHand } from "./handControl";
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 type Screen = "menu" | "howto" | "difficulty" | "game";
 type Difficulty = "easy" | "medium" | "hard" | "endless";
 
@@ -102,6 +106,7 @@ function Menu({ onPlay, onHow }: { onPlay: () => void; onHow: () => void }) {
       <div className="mt-12 flex flex-col gap-4 w-full max-w-xs">
         <BigButton onClick={onPlay} variant="primary">▶ Play</BigButton>
         <BigButton onClick={onHow} variant="ghost">? How To Play</BigButton>
+        {embedded && <BigButton onClick={exitToPlatform} variant="ghost">← Back to games</BigButton>}
       </div>
 
       <div className="mt-16 grid grid-cols-3 gap-6 text-xs text-white/50">

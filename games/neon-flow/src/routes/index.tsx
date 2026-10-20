@@ -2,6 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Hand, Play, BookOpen } from "lucide-react";
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -41,6 +45,11 @@ function Index() {
           <Button asChild variant="neonOutline" size="lg">
             <Link to="/how-to-play" data-dwell=""><BookOpen className="size-4" /> How to Play</Link>
           </Button>
+          {embedded && (
+            <Button variant="neonOutline" size="lg" data-dwell="" onClick={exitToPlatform}>
+              Back to games
+            </Button>
+          )}
         </div>
       </div>
 

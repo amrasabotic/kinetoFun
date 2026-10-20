@@ -7,6 +7,10 @@ import { useMenuHand } from '../../hooks/useMediaPipe';
 import { playUiClick } from '../../game/audio/audioSystem';
 import type { SaveData } from '../../types';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 const DWELL_MS = 900;
 const CURSOR_R = 26;
 
@@ -200,6 +204,7 @@ export default function MainMenu({ save, onPlay, onGarage, onStats, onSettings, 
             <DBtn id="howtoplay" label="How To Play" icon="📖" onClick={onHowToPlay} />
             <DBtn id="stats"    label="Statistics" icon="📊" onClick={onStats} />
             <DBtn id="settings" label="Settings"   icon="⚙️" onClick={onSettings} />
+            {embedded && <DBtn id="exit" label="Back to games" icon="↩️" onClick={exitToPlatform} />}
           </div>
         </div>
 

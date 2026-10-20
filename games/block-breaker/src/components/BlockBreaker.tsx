@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { HandTracker } from "./HandTracker";
 import { DwellCursor, HandProvider } from "@/lib/hand-context";
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 type Screen = "howto" | "menu" | "playing" | "paused" | "gameover";
 type Difficulty = "easy" | "medium" | "hard";
 
@@ -380,6 +384,11 @@ function BlockBreakerGame() {
               <button data-dwell="" onClick={() => setScreen("howto")} className="btn-arcade-accent">
                 ? HOW TO PLAY
               </button>
+              {embedded && (
+                <button data-dwell="" onClick={exitToPlatform} className="btn-arcade-accent">
+                  ← BACK TO GAMES
+                </button>
+              )}
               <div className="text-[8px] text-muted-foreground blink">INSERT COIN</div>
             </div>
           )}
