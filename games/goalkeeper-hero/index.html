@@ -966,6 +966,7 @@ function startGame(){
 function handleActivate(id){
   getAC();
   if(id==='play')             startGame();
+  else if(id==='exit')        window.parent.postMessage({type:'GAME_EXIT'},'*');
   else if(id==='howto')       gs='howto';
   else if(id==='settings')    gs='settings';
   else if(id==='leaderboard') gs='leaderboard';

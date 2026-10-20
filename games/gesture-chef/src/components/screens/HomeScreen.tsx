@@ -149,7 +149,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       color: '#CCA888', fontSize: '0.8rem', fontWeight: 600,
       zIndex: 1, textAlign: 'center', lineHeight: 1.5, margin: 0,
     }}>
-      🖱️ Mouse &nbsp;·&nbsp; 📱 Touch &nbsp;·&nbsp; 🤚 Camera gestures (coming soon)
+      🤚 Point at a button and hold your hand still to press it
     </p>
 
     {/* How to Play modal */}

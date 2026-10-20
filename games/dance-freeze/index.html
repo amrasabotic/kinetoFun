@@ -377,6 +377,8 @@ function drawMenu(){
     {id:'howto',label:'❓  HOW TO PLAY',color:'#4dc8ff',glow:'#4dc8ff'},
     {id:'leaderboard',label:'🏆  LEADERBOARD',color:'#ffe04d',glow:'#ffe04d'},
     {id:'settings',label:'⚙  SETTINGS',color:'rgba(255,255,255,.6)',glow:'transparent'},
+    // Only inside the KinetoFun platform is there somewhere to go back to.
+    ...(window.parent!==window?[{id:'exit',label:'↩  BACK TO GAMES',color:'rgba(255,255,255,.6)',glow:'transparent'}]:[]),
   ];
   mbts.forEach(b=>{
     const bh=50,bw=Math.min(W-40,300), bx=cx2-bw/2;
@@ -808,6 +810,7 @@ function startGame(){
 function handleActivate(id){
   getAC(); // ensure AudioContext started on gesture
   if(id==='play'){startGame();}
+  else if(id==='exit'){window.parent.postMessage({type:'GAME_EXIT'},'*');}
   else if(id==='howto'){gs='howto';}
   else if(id==='settings'){gs='settings';}
   else if(id==='leaderboard'){gs='leaderboard';}
