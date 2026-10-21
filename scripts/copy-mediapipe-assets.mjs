@@ -10,7 +10,7 @@
 // The hand model (public/mediapipe/models/*.task) is not in the npm package
 // and is committed alongside the code instead.
 
-import { cpSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,3 +32,14 @@ if (existsSync(join(target, "vision_wasm_internal.wasm"))) {
   cpSync(join(pkgDir, "wasm"), target, { recursive: true });
   console.log(`[mediapipe] Copied WASM ${version} to public/mediapipe/tasks-vision-${version}/wasm.`);
 }
+
+// ES bundle for games that import the library at runtime; each detection result is
+// forwarded to window.__kfTap (see public/kf-bridge.js).
+const TAP_RE = /(\w+)\.prototype\.(detectForVideo|recognizeForVideo)=\1\.prototype\.(\w+)/g;
+const bundle = readFileSync(join(pkgDir, "vision_bundle.mjs"), "utf8").replace(
+  TAP_RE,
+  (_m, cls, method, impl) =>
+    `${cls}.prototype.${method}=function(...a){const r=${cls}.prototype.${impl}.apply(this,a);globalThis.__kfTap&&globalThis.__kfTap(r);return r}`,
+);
+writeFileSync(join(root, "public", "mediapipe", `tasks-vision-${version}`, "vision_bundle.mjs"), bundle);
+console.log(`[mediapipe] Wrote hand-reporting bundle ${version}.`);

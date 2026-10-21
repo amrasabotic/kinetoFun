@@ -67,10 +67,10 @@ export function HandProvider({ children }: { children: ReactNode }) {
 
         const dynImport = new Function("u", "return import(u)") as (u: string) => Promise<any>;
         const vision: any = await dynImport(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs",
+          "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs",
         );
         const fileset = await vision.FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm",
+          "/mediapipe/tasks-vision-0.10.35/wasm",
         );
         landmarker = await vision.HandLandmarker.createFromOptions(fileset, {
           baseOptions: {

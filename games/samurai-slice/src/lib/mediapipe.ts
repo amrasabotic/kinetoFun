@@ -8,12 +8,12 @@ export async function loadHandLandmarker() {
   if (!loaderPromise) {
     loaderPromise = (async () => {
       const url =
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+        "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
       const dynImport = new Function("u", "return import(u)") as (u: string) => Promise<any>;
       const vision: any = await dynImport(url);
       const { FilesetResolver, HandLandmarker } = vision;
       const fileset = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm",
+        "/mediapipe/tasks-vision-0.10.35/wasm",
       );
       const handLandmarker = await HandLandmarker.createFromOptions(fileset, {
         baseOptions: {

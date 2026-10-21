@@ -1,4 +1,6 @@
-# KinetoFun — Architecture Decisions
+#
+**Follow-up [2026-10-21] — platform Back button.** One Back button, top-left of the play page, replaces per-game exit buttons as the way out during a round (hold the hand over it for 2 s; click on desktop). It first asks the game to step back one screen: the page posts `KF_BACK`, the game answers `KF_BACK_HANDLED` if `window.__kfBack()` returned true, and the page leaves only if no answer comes within 400 ms (the game is at its first screen). Games never call `history.back()` because the iframe shares history with the parent. Hand position reaches the page as `KF_HAND` from `/kf-bridge.js`, injected into every built page by `scripts/patch-game-builds.js`, which also wraps tasks-vision `detectForVideo`/`recognizeForVideo`; the bridge wraps the legacy `Hands` and `Pose` classes. Games that loaded tasks-vision from a CDN now import the self-hosted, patched bundle at `/mediapipe/tasks-vision-<version>/vision_bundle.mjs`, written by `scripts/copy-mediapipe-assets.mjs`. All 102 games report a hand once loaded. Known limit: the pointer assumes a mirrored full-frame camera, so games with a reach band may differ from their on-screen cursor; the 2 s hold and a 1.5 s arm delay limit accidental exits. The per-game menu buttons stay until this is checked on real hardware.
+ KinetoFun — Architecture Decisions
 
 > Permanent technical decisions. **Append-only — no decision is ever overwritten.**
 > Last updated: 2026-09-18 (ADR-064 — Instructions-first onboarding pattern for games, rolled out to all 101 games)

@@ -140,7 +140,7 @@
 
 <script type="module">
 import { HandLandmarker, FilesetResolver, DrawingUtils }
-  from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm';
+  from '/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs';
 
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
@@ -593,7 +593,7 @@ async function init() {
   loadMsg.textContent = 'Loading hand tracking model…';
   try {
     const vision = await FilesetResolver.forVisionTasks(
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      '/mediapipe/tasks-vision-0.10.35/wasm'
     );
     const handLandmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: {

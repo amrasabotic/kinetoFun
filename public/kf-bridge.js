@@ -48,24 +48,28 @@
     if (handled) window.parent.postMessage({ type: 'KF_BACK_HANDLED' }, '*');
   });
 
-  // Games on the older @mediapipe/hands package.
-  var legacy;
-  Object.defineProperty(window, 'Hands', {
-    configurable: true,
-    get: function () { return legacy; },
-    set: function (H) {
-      legacy = H;
-      try {
-        var orig = H.prototype.onResults;
-        H.prototype.onResults = function (cb) {
-          return orig.call(this, function (r) {
-            var hands = r && r.multiHandLandmarks;
-            var p = pointer(hands);
-            if (p) send(p.x, p.y, true); else send(0, 0, false);
-            return cb(r);
-          });
-        };
-      } catch (e) { /* leave the original class alone */ }
-    },
-  });
+  // Games on the older @mediapipe/hands and @mediapipe/pose packages.
+  function wrapLegacy(name, key) {
+    var legacy;
+    Object.defineProperty(window, name, {
+      configurable: true,
+      get: function () { return legacy; },
+      set: function (C) {
+        legacy = C;
+        try {
+          var orig = C.prototype.onResults;
+          C.prototype.onResults = function (cb) {
+            return orig.call(this, function (r) {
+              var lm = r && r[key];
+              var p = pointer(key === 'multiHandLandmarks' ? lm : lm && [lm]);
+              if (p) send(p.x, p.y, true); else send(0, 0, false);
+              return cb(r);
+            });
+          };
+        } catch (e) { /* leave the original class alone */ }
+      },
+    });
+  }
+  wrapLegacy('Hands', 'multiHandLandmarks');
+  wrapLegacy('Pose', 'poseLandmarks');
 })();
