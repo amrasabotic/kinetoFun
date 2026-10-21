@@ -37,6 +37,7 @@ export default function RootLayout({
           strategy="afterInteractive"
           crossOrigin="anonymous"
         />
+        <PlatformBack />
         {children}
       </body>
     </html>

@@ -691,6 +691,11 @@ export default function MouthOpenCatchGame() {
 
   const handleQuitToMenu = useCallback(() => {
     cancelAnimationFrame(animRef.current);
+    audioRef.current?.stopMusic();
+    engineRef.current = null;
+    setScreen('MENU');
+  }, []);
+
   // The platform's Back button: one screen back, and out of the game from its first screens.
   useEffect(() => {
     (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
@@ -699,11 +704,6 @@ export default function MouthOpenCatchGame() {
       return true;
     };
   }, [screen, handleQuitToMenu]);
-
-    audioRef.current?.stopMusic();
-    engineRef.current = null;
-    setScreen('MENU');
-  }, []);
 
   const handlePlayAgain = useCallback(() => { launchGame(gameMode); }, [gameMode, launchGame]);
 

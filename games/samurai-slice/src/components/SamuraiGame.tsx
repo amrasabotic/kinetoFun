@@ -358,6 +358,10 @@ export default function SamuraiGame() {
 
   const quitToMenu = useCallback(() => {
     enemyRef.current = null;
+    setEnemy(null);
+    setPhase("menu");
+  }, []);
+
   // The platform's Back button: one screen back, and out of the game from its first screens.
   useEffect(() => {
     (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
@@ -366,10 +370,6 @@ export default function SamuraiGame() {
       return true;
     };
   }, [phase, quitToMenu]);
-
-    setEnemy(null);
-    setPhase("menu");
-  }, []);
 
   const restartCurrent = useCallback(() => {
     enemyRef.current = null;
