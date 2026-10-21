@@ -55,6 +55,8 @@ const POSE_CONNECTIONS: [number, number][] = [
 const SKELETON_LANDMARKS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26];
 
 const HOLD_DURATION = 1000;
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const EMBEDDED = window.parent !== window;
 const YELLOW_DURATION = 500;
 const GRACE_PERIOD = 300;
 
@@ -137,6 +139,7 @@ export default function RedLightGreenLight() {
   const [difficulty, setDifficulty] = useState<Difficulty>(loadStats().selectedDifficulty);
   const [handRaised, setHandRaised] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
+  const [exitHover, setExitHover] = useState(false);
   const [trackingLost, setTrackingLost] = useState(false);
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -660,7 +663,7 @@ export default function RedLightGreenLight() {
     let raf: number;
     const opts: Difficulty[] = ['EASY', 'NORMAL', 'HARD'];
     const zones = [{ min: 0, max: 0.33 }, { min: 0.33, max: 0.66 }, { min: 0.66, max: 1 }];
-    let lastHover: Difficulty | null = null;
+    let lastHover: Difficulty | 'EXIT' | null = null;
 
     const check = () => {
       const lm = latestLandmarksRef.current;
@@ -670,13 +673,16 @@ export default function RedLightGreenLight() {
 
         if (wrist.visibility > 0.4) {
           const x = 1 - wrist.x;
-          let hovered: Difficulty | null = null;
-          for (let i = 0; i < zones.length; i++) {
+          let hovered: Difficulty | 'EXIT' | null = null;
+          // Every left-right position picks a difficulty, so a hand raised above the head is the way out.
+          if (EMBEDDED && wrist.y < 0.2) hovered = 'EXIT';
+          else for (let i = 0; i < zones.length; i++) {
             if (x >= zones[i].min && x < zones[i].max) { hovered = opts[i]; break; }
           }
 
           if (hovered) {
-            setDiffHover(hovered);
+            setDiffHover(hovered === 'EXIT' ? null : hovered);
+            setExitHover(hovered === 'EXIT');
             if (diffHoldStartRef.current === 0 || hovered !== lastHover) {
               diffHoldStartRef.current = performance.now();
             }
@@ -686,11 +692,13 @@ export default function RedLightGreenLight() {
             if (pct >= 1) {
               diffHoldStartRef.current = 0;
               setDiffHoldProgress(0);
-              startGame(hovered);
+              if (hovered === 'EXIT') window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+              else startGame(hovered);
               return;
             }
           } else {
             setDiffHover(null);
+            setExitHover(false);
             lastHover = null;
             diffHoldStartRef.current = 0;
             setDiffHoldProgress(0);
@@ -916,6 +924,11 @@ export default function RedLightGreenLight() {
         <div className="flex flex-col items-center justify-center h-full px-8">
           <h2 className="text-3xl font-bold mb-2">Select Difficulty</h2>
           <p className="text-gray-400 mb-12 text-sm">Move your hand over an option and hold</p>
+          {EMBEDDED && (
+            <p className={`-mt-8 mb-8 text-sm ${exitHover ? 'text-white font-bold' : 'text-gray-500'}`}>
+              🙋 Hold your hand up above your head to go back to games{exitHover ? ` ${Math.round(diffHoldProgress * 100)}%` : ''}
+            </p>
+          )}
 
           <div className="flex gap-6 sm:gap-10">
             {(['EASY', 'NORMAL', 'HARD'] as Difficulty[]).map(d => {

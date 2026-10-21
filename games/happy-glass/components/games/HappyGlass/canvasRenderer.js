@@ -42,6 +42,10 @@ const CARD_GAP = 8;
 const COLS     = 5;
 const ROWS     = 4;
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+export const EXIT_BOX = { x: 12, y: 12, w: 150, h: 40 };
+export const isEmbedded = () => typeof window !== 'undefined' && window.parent !== window;
+
 // ─── Main entry point ────────────────────────────────────────────────────────
 
 export function renderFrame(canvas, state, gesture) {
@@ -213,6 +217,24 @@ function drawLevelSelect(ctx, W, H, state, gesture) {
     const stars      = levelStars[lvl.id] ?? 0;
 
     drawLevelCard(ctx, cardX, cardY, lvl, isUnlocked, isHovered, stars, thumbsUpHeld);
+  }
+
+  if (isEmbedded()) {
+    const { x, y, w, h } = EXIT_BOX;
+    const hov = hoveredCard === 'exit';
+    ctx.save();
+    ctx.fillStyle = hov ? 'rgba(144,202,249,0.35)' : 'rgba(255,255,255,0.12)';
+    roundRectPath(ctx, x, y, w, h, 8);
+    ctx.fill();
+    ctx.strokeStyle = hov ? '#90caf9' : 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 2;
+    roundRectPath(ctx, x, y, w, h, 8);
+    ctx.stroke();
+    ctx.fillStyle = C.overlayText;
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(hov ? '👍 Back to games' : '↩ Back to games', x + w / 2, y + h / 2 + 5);
+    ctx.restore();
   }
 }
 

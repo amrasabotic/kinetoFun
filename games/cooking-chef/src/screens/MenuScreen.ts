@@ -17,6 +17,10 @@ const ITEMS = [
   { id: 'leaderboard', label: '🏆  LEADERBOARD',  sub: 'Top scores',                  col: '#ffd700' },
 ];
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const EXIT_ITEM = { id: 'exit', label: '↩  BACK TO GAMES', sub: 'Return to the KinetoFun games', col: '#ff8888' };
+const menuItems = () => (typeof window !== 'undefined' && window.parent !== window ? [...ITEMS, EXIT_ITEM] : ITEMS);
+
 let menuAnim = 0;
 export const menuDwell = new DwellSystem(1100);
 
@@ -43,14 +47,15 @@ export function drawMenu(ctx: CanvasRenderingContext2D, W: number, H: number, ha
   }
   ctx.restore();
 
+  const items = menuItems();
   const bw = Math.min(440, W * 0.5), bh2 = 65, gap = 14;
-  const totalH = ITEMS.length * (bh2 + gap) - gap;
+  const totalH = items.length * (bh2 + gap) - gap;
   const startY = H / 2 - totalH / 2 + H * 0.04;
-  const regions = ITEMS.map((item, i) => ({ id: item.id, x: W / 2 - bw / 2, y: startY + i * (bh2 + gap), w: bw, h: bh2 }));
+  const regions = items.map((item, i) => ({ id: item.id, x: W / 2 - bw / 2, y: startY + i * (bh2 + gap), w: bw, h: bh2 }));
   menuDwell.setRegions(regions);
 
   const { id: hovId, p } = menuDwell.progress();
-  ITEMS.forEach((item, i) => {
+  items.forEach((item, i) => {
     const r = regions[i];
     const isHov = hovId === item.id;
     ctx.save();
@@ -80,6 +85,7 @@ function handleMenuActivate(id: string, dispatch: Dispatch<GameAction>, dailySeq
     case 'howto':   dispatch({ type: 'NAVIGATE', screen: 'howto' }); break;
     case 'settings':dispatch({ type: 'NAVIGATE', screen: 'settings' }); break;
     case 'leaderboard': dispatch({ type: 'NAVIGATE', screen: 'leaderboard' }); break;
+    case 'exit':    window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); break;
     default: break;
   }
 }

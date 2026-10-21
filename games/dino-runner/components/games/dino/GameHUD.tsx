@@ -129,6 +129,11 @@ function StartScreen({
               ✋ OPEN PALM OR CLICK TO START
             </p>
           )}
+          {isReady && window.parent !== window && (
+            <p className="text-xs tracking-widest text-gray-500" style={{ fontFamily: '"Courier New", monospace' }}>
+              ✊ HOLD A FIST TO GO BACK TO GAMES
+            </p>
+          )}
           <button
             onClick={onStart}
             style={{ fontFamily: '"Courier New", monospace' }}

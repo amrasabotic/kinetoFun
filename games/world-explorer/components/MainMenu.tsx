@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { DwellButton } from '@/components/HowToPlay';
 
@@ -15,9 +15,14 @@ interface MainMenuProps {
 
 const GLOBE_EMOJIS = ['🌍', '🌎', '🌏'];
 
+// Only inside the KinetoFun platform is there somewhere to go back to (false while prerendering).
+const noSubscribe = () => () => {};
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 export default function MainMenu({ gestureHint, cursorX, cursorY, handPresent, onHowTo }: MainMenuProps) {
   const { highScores } = useGameStore();
   const [globeIdx, setGlobeIdx] = useState(0);
+  const embedded = useSyncExternalStore(noSubscribe, () => window.parent !== window, () => false);
 
   useEffect(() => {
     const t = setInterval(() => setGlobeIdx((i) => (i + 1) % 3), 1000);
@@ -56,6 +61,18 @@ export default function MainMenu({ gestureHint, cursorX, cursorY, handPresent, o
       >
         ❓ How to Play
       </DwellButton>
+
+      {embedded && (
+        <DwellButton
+          cursorX={cursorX}
+          cursorY={cursorY}
+          handPresent={handPresent}
+          onDone={exitToPlatform}
+          className="-mt-6 mb-10 px-10 py-3 rounded-2xl bg-white/10 border border-white/30 text-xl font-bold"
+        >
+          ↩️ Back to games
+        </DwellButton>
+      )}
 
       {/* High scores */}
       <div className="flex gap-8 mb-10">

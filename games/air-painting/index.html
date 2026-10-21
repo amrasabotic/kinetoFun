@@ -210,6 +210,8 @@ function getPaletteItems() {
   COLORS.forEach((c, i) => items.push({ type:'color', index:i, cx:PAL_X, cy:startY + i*SWATCH_GAP, value:c }));
   const sizeStartY = startY + COLORS.length * SWATCH_GAP + SIZE_Y_EXTRA;
   SIZES.forEach((s, i) => items.push({ type:'size', index:i, cx:PAL_X, cy:sizeStartY + i*SWATCH_GAP, value:s }));
+  // Only inside the KinetoFun platform is there somewhere to go back to.
+  if (window.parent !== window) items.push({ type:'exit', index:0, cx:uiCanvas.width - 50, cy:110, value:0 });
   return items;
 }
 
@@ -237,7 +239,8 @@ function drawPalette(fingerX, fingerY) {
       if (!hoverTarget || hoverTarget.key !== key) {
         hoverTarget = { key, item }; hoverStart = now; hoverProgress = 0;
       } else {
-        hoverProgress = Math.min(1, (now - hoverStart) / HOVER_MS);
+        // Leaving needs a deliberate hold; a quick pass while drawing must not end the game.
+        hoverProgress = Math.min(1, (now - hoverStart) / (item.type === 'exit' ? 1500 : HOVER_MS));
         if (hoverProgress >= 1) { selectItem(item); hoverTarget = null; hoverStart = null; hoverProgress = 0; }
       }
     } else if (hoverTarget && hoverTarget.key === key) {
@@ -253,6 +256,14 @@ function drawPalette(fingerX, fingerY) {
       uctx.lineWidth = isSelected ? 2.5 : 1;
       if (isSelected) { uctx.shadowColor = item.value; uctx.shadowBlur = 12; }
       uctx.stroke();
+    } else if (item.type === 'exit') {
+      uctx.beginPath(); uctx.arc(item.cx, item.cy, r, 0, Math.PI*2);
+      uctx.fillStyle = 'rgba(26,26,38,0.85)'; uctx.fill();
+      uctx.strokeStyle = 'rgba(255,255,255,0.35)'; uctx.lineWidth = 1; uctx.stroke();
+      uctx.font = 'bold 16px sans-serif'; uctx.textAlign = 'center'; uctx.textBaseline = 'middle';
+      uctx.fillStyle = '#fff'; uctx.fillText('↩', item.cx, item.cy);
+      uctx.font = 'bold 8px Space Mono, monospace'; uctx.textBaseline = 'alphabetic';
+      uctx.fillStyle = 'rgba(106,106,138,0.9)'; uctx.fillText('EXIT', item.cx, item.cy + SWATCH_R + 12);
     } else {
       uctx.beginPath(); uctx.arc(item.cx, item.cy, r, 0, Math.PI*2);
       uctx.fillStyle = isSelected ? 'rgba(124,92,252,0.35)' : 'rgba(26,26,38,0.85)'; uctx.fill();
@@ -280,6 +291,11 @@ function drawPalette(fingerX, fingerY) {
 }
 
 function selectItem(item) {
+  if (item.type === 'exit') {
+    // A finished drawing still counts as a play; an empty canvas just leaves.
+    if (strokeCount > 0) reportScore(); else window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+    return;
+  }
   if (item.type === 'color') {
     currentColor = item.value;
     document.getElementById('info-color').textContent = 'Color: ' + item.value;

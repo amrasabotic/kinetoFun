@@ -2,6 +2,10 @@ import { Play, Settings, Trophy, Zap, Clock, Sparkles, Calendar, Hand, HelpCircl
 import { Theme, GameMode } from '../../data/types';
 import { GestureButton } from '../GestureUI';
 
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const embedded = window.parent !== window;
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 interface MainMenuProps {
   theme: Theme;
   onStartCampaign: () => void;
@@ -148,6 +152,15 @@ export default function MainMenu({
           <Settings className="w-4 h-4" />
           Settings
         </GestureButton>
+        {embedded && (
+          <GestureButton
+            onActivate={exitToPlatform}
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm backdrop-blur-md"
+            style={{ background: 'rgba(255,255,255,0.08)', color: theme.textColor }}
+          >
+            ↩ Back to games
+          </GestureButton>
+          )}
       </div>
 
       {/* Gesture hint */}

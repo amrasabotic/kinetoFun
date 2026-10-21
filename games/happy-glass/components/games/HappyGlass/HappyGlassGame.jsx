@@ -5,7 +5,7 @@ import { useHandTracking }    from './useHandTracking';
 import { useGameLoop }        from './useGameLoop';
 import { PhysicsWorld }       from './physicsEngine';
 import { createGestureState, processLandmarks } from './gestureController';
-import { renderFrame, calcStars }               from './canvasRenderer';
+import { renderFrame, calcStars, EXIT_BOX, isEmbedded } from './canvasRenderer';
 import { LEVELS, TOTAL_LEVELS }                 from './levels';
 import styles from './styles.module.css';
 
@@ -271,9 +271,12 @@ export default function HappyGlassGame() {
           }
         }
       }
+      if (isEmbedded() && cx >= EXIT_BOX.x && cx <= EXIT_BOX.x + EXIT_BOX.w && cy >= EXIT_BOX.y && cy <= EXIT_BOX.y + EXIT_BOX.h) hovered = 'exit';
       gs.hoveredCard = hovered;
 
-      if (thumbsUpFired && hovered > 0 && hovered <= gs.highestUnlocked) {
+      if (thumbsUpFired && hovered === 'exit') {
+        window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+      } else if (thumbsUpFired && hovered > 0 && hovered <= gs.highestUnlocked) {
         initBuild(hovered - 1);
       }
 

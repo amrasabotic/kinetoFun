@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMediaPipe } from '../../hooks/useMediaPipe';
 import { useDwellNav } from '../../hooks/useDwellNav';
@@ -19,8 +19,14 @@ const BUTTON_H = 72;
 // resting there cannot skip the instructions or press a menu button unread.
 const ARM_DELAY_MS = 1500;
 
+// Only inside the KinetoFun platform is there somewhere to go back to (false while prerendering).
+const noSubscribe = () => () => {};
+const useEmbedded = () => useSyncExternalStore(noSubscribe, () => window.parent !== window, () => false);
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+
 export default function HomePage() {
   const router = useRouter();
+  const embedded = useEmbedded();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [handPositions, setHandPositions] = useState<HandPosition[]>([]);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -86,7 +92,7 @@ export default function HomePage() {
     updateRects();
     window.addEventListener('resize', updateRects);
     return () => window.removeEventListener('resize', updateRects);
-  }, []);
+  }, [embedded]);
 
   const handleHandResults = useCallback(
     (landmarks: HandLandmark[][], handedness: Array<{ label: string; score: number; index: number }>) => {
@@ -114,6 +120,7 @@ export default function HomePage() {
       if (id === 'characters') router.push('/characters');
       if (id === 'challenges') router.push('/challenges');
       if (id === 'settings') router.push('/settings');
+      if (id === 'exit') exitToPlatform();
     },
     enabled: !howTo && menuArmed,
   });
@@ -217,6 +224,18 @@ export default function HomePage() {
               icon="⚙"
             />
           </div>
+          {embedded && (
+            <div data-dwell-id="exit">
+              <DwellButton
+                label="BACK TO GAMES"
+                isHovered={hoveredId === 'exit'}
+                dwellProgress={hoveredId === 'exit' ? dwellProgress : 0}
+                onActivate={exitToPlatform}
+                variant="secondary"
+                icon="↩"
+              />
+            </div>
+          )}
         </div>
 
         <p className="text-gray-600 text-sm">Hover over buttons with your hand to select</p>

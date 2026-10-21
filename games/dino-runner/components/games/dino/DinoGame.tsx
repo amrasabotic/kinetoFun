@@ -108,6 +108,13 @@ export default function DinoGame() {
     else handleRestart();
   }, [gestureState, phase, isReady, handleStart, handleRestart]);
 
+  // On the start screen a fist means nothing, so holding one goes back to the KinetoFun platform.
+  useEffect(() => {
+    if (window.parent === window || phase !== 'idle' || !isReady || gestureState !== 'duck') return;
+    const t = setTimeout(() => window.parent.postMessage({ type: 'GAME_EXIT' }, '*'), 1500);
+    return () => clearTimeout(t);
+  }, [phase, isReady, gestureState]);
+
   // ── Game loop (runs at ~60 fps while phase === 'running') ─────────────────
   const gameLoop = useCallback(() => {
     const state = gameStateRef.current;

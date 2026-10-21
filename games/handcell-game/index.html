@@ -126,6 +126,7 @@ body { background:#0a0a14; overflow:hidden; font-family:'Segoe UI',sans-serif; c
     <div class="gcard"><div class="em">🖐️</div><div class="lbl">Open Palm — Split</div></div>
   </div>
   <div id="waitMsg">Show your hand to start…</div>
+  <div class="sub" id="exitHint" hidden>🤏 Pinch and hold to go back to games</div>
 </div>
 
 <div id="deathScreen">
@@ -152,6 +153,10 @@ const gesturePill  = document.getElementById('gesturePill');
 const overlay      = document.getElementById('overlay');
 const waitMsg      = document.getElementById('waitMsg');
 const deathScreen  = document.getElementById('deathScreen');
+// Only inside the KinetoFun platform is there somewhere to go back to.
+const EMBEDDED = window.parent !== window;
+document.getElementById('exitHint').hidden = !EMBEDDED;
+let exitFrames = 0;
 
 gameCanvas.width  = window.innerWidth;
 gameCanvas.height = window.innerHeight;
@@ -283,7 +288,14 @@ function runDetection() {
       gesturePill.style.color = g==='pinch'?'#ffe066': g==='open'?'#ff7eb3':'#a8d8ff';
 
       // auto-start: hand visible for 20 frames
-      if (gameState==='menu') {
+      // A pinch on the start screen holds off the auto-start and, kept up, goes back to the platform.
+      if (gameState==='menu' && EMBEDDED && g==='pinch') {
+        handSeenFrames = 0;
+        exitFrames++;
+        waitMsg.textContent = `🤏 Going back to games… ${Math.round(Math.min(exitFrames/45,1)*100)}%`;
+        if (exitFrames === 45) window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+      } else if (gameState==='menu') {
+        exitFrames = 0;
         handSeenFrames++;
         if (handSeenFrames >= 20) {
           waitMsg.textContent = '✅ Hand detected — starting!';

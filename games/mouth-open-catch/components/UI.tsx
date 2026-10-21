@@ -1,7 +1,11 @@
 'use client';
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useSyncExternalStore } from 'react';
 import type { GameMode } from './GameEngine';
 import type { GameStats, Achievement, DailyChallenge } from './StorageManager';
+
+// Only inside the KinetoFun platform is there somewhere to go back to (false while prerendering).
+const noSubscribe = () => () => {};
+const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
 
 // ─── Dwell Button ─────────────────────────────────────────────────────────────
 
@@ -114,6 +118,7 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onPlay, onHowToPlay, onHighScores, onAchievements, onSettings, onCharacters, highScore, dwellX, dwellY, cameraReady }: MainMenuProps) {
+  const embedded = useSyncExternalStore(noSubscribe, () => window.parent !== window, () => false);
   const btn = (label: string, color: string, action: () => void, icon: string) => (
     <DwellButton onClick={action} dwellX={dwellX} dwellY={dwellY}
       className="w-full text-2xl py-4 px-8 rounded-2xl text-white font-bold mb-3 fade-in"
@@ -185,6 +190,7 @@ export function MainMenu({ onPlay, onHowToPlay, onHighScores, onAchievements, on
             ['Achieve', onAchievements, '🎖️'],
             ['How To', onHowToPlay, '❓'],
             ['Settings', onSettings, '⚙️'],
+            ...(embedded ? [['Exit', exitToPlatform, '↩️']] : []),
           ] as [string, () => void, string][]).map(([label, action, icon]) => (
             <DwellButton key={label} onClick={action}
               dwellX={dwellX} dwellY={dwellY}

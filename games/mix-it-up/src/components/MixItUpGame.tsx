@@ -258,6 +258,27 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
     if (p >= 1) { introHoverStart.current = null; setIntroProgress(0); setPhase("play"); }
   }, [hand, phase]);
 
+  // Only inside the KinetoFun platform is there somewhere to go back to.
+  const embedded = typeof window !== "undefined" && window.parent !== window;
+  const exitBtnRef = useRef<HTMLDivElement>(null);
+  const exitHoverStart = useRef<number | null>(null);
+  const [exitProgress, setExitProgress] = useState(0);
+  useEffect(() => {
+    if (phase !== "intro" || !embedded) return;
+    const r = exitBtnRef.current?.getBoundingClientRect();
+    const px = hand.x * window.innerWidth, py = hand.y * window.innerHeight;
+    const over = !!r && hand.visible && px >= r.left && px <= r.right && py >= r.top && py <= r.bottom;
+    if (!over || performance.now() < introArmedAt.current) {
+      exitHoverStart.current = null;
+      setExitProgress(0);
+      return;
+    }
+    if (exitHoverStart.current === null) exitHoverStart.current = performance.now();
+    const p = Math.min(1, (performance.now() - exitHoverStart.current) / 1200);
+    setExitProgress(p);
+    if (p >= 1) { exitHoverStart.current = null; window.parent.postMessage({ type: "GAME_EXIT" }, "*"); }
+  }, [hand, phase, embedded]);
+
   // Confirm by hovering the MIX button for 3 seconds.
   const hoverStartRef = useRef<number | null>(null);
   useEffect(() => {
@@ -418,6 +439,16 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
             <span className="relative z-10">LET'S MIX! 🚀</span>
             <span className="absolute left-0 bottom-0 w-full bg-white/40 pointer-events-none" style={{ height: `${introProgress * 100}%` }} />
           </div>
+          {embedded && (
+            <div
+              ref={exitBtnRef}
+              className="relative overflow-hidden text-xl font-bold cartoon-stroke text-white px-8 py-3 rounded-3xl border-4 border-[var(--border)] shadow-[0_6px_0_var(--border)]"
+              style={{ background: "linear-gradient(180deg,#7e8fff,#4a5bd6)" }}
+            >
+              <span className="relative z-10">↩ BACK TO GAMES</span>
+              <span className="absolute left-0 bottom-0 w-full bg-white/40 pointer-events-none" style={{ height: `${exitProgress * 100}%` }} />
+            </div>
+          )}
           <p className="text-lg font-semibold text-white">
             {status || "Hold your hand over the button to start"}
           </p>
