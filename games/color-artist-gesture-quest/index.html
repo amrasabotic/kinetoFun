@@ -1891,6 +1891,23 @@ const Game = (() => {
 
   // ── GestureUI action registry ─────────────────────────────
   function _registerGestureUIActions() {
+    // The platform's Back button: one screen up (level, then worlds, then menu); from the menu, leave.
+    window.__kfBack = () => {
+      const active = document.querySelector('.screen.active');
+      const id = active ? active.id : '';
+      if (id === 'menu-screen') return false;
+      if (id === 'world-screen') {
+        UI.showScreen('menu-screen'); GestureUI.setScreen('menu-screen'); UI.updateMenuMeta();
+      } else if (id === 'level-screen') {
+        UI.showScreen('world-screen'); UI.buildWorldGrid(_onWorldSelect); GestureUI.setScreen('world-screen');
+      } else {
+        stopTimer(); state.phase = 'menu';
+        UI.showGame(false); UI.showScreen('level-screen');
+        UI.buildLevelList(state.worldIdx, startLevel); GestureUI.setScreen('level-screen');
+      }
+      return true;
+    };
+
     GestureUI.register({
       // Main menu
       goMenu: () => {

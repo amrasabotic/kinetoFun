@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { GameScreen, GameMode, LevelData, PlayerProgress, GameSettings, Theme } from './data/types';
 import { levels } from './data/levels';
 import { themes } from './data/themes';
@@ -27,6 +27,15 @@ function AppContent() {
   const [showComplete, setShowComplete] = useState<{ score: number; stars: number } | null>(null);
 
   const currentTheme: Theme = themes.find((t) => t.id === progress.selectedTheme) ?? themes[0];
+
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'tutorial' || screen === 'menu') return false;
+      setScreen('menu');
+      return true;
+    };
+  }, [screen]);
 
   // Open palm gesture -> navigate back from menus
   useGestureEvent('openPalm', useCallback(() => {

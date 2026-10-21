@@ -34,6 +34,15 @@ export default function App() {
 
   useEffect(() => { setVolumes(musicVolume, sfxVolume); }, [musicVolume, sfxVolume]);
 
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'how-to-play' || screen === 'main-menu' || screen === 'calibration') return false;
+      setScreen('main-menu');
+      return true;
+    };
+  }, [screen]);
+
   useEffect(() => {
     if (screen === 'how-to-play' || screen === 'main-menu' || screen === 'settings') startMusic();
     else stopMusic();

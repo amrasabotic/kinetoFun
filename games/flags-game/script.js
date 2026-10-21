@@ -626,3 +626,10 @@ initCursor();
 document.getElementById('exit-card').hidden = window.parent === window;
 showScreen('home');
 initMediaPipe();
+
+// The platform's Back button: from a round or the arcade list to the home screen; from home, leave.
+window.__kfBack = () => {
+  if (app.screen === 'home') return false;
+  showHome();
+  return true;
+};

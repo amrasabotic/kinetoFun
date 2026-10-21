@@ -17,6 +17,7 @@ import { syncAchievements } from "@/services/achievements.service";
 import { RewardToasts, type RewardToast } from "@/components/rewards/RewardToasts";
 import { playRewardChime } from "@/lib/rewards/chime";
 import { useTvMode } from "@/features/tv/tv-mode";
+import { GameBackButton } from "@/components/games/GameBackButton";
 
 /** How long the end-of-game reward card waits before leaving on its own. */
 const REWARD_CARD_MS = 15000;
@@ -196,6 +197,28 @@ function GameLaunchContent() {
     router.push(backHref);
   }, [phase, collectAchievements, endSessionOnce, router, backHref]);
 
+  // Back steps out of a round one screen at a time: the game is asked first and answers
+  // when it stepped back; a game on its start screen (or one that cannot) means leave.
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const backAnswerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestBack = useCallback(() => {
+    if (backAnswerRef.current) return;
+    frameRef.current?.contentWindow?.postMessage({ type: "KF_BACK" }, window.location.origin);
+    backAnswerRef.current = setTimeout(() => {
+      backAnswerRef.current = null;
+      void leaveGame();
+    }, 400);
+  }, [leaveGame]);
+  useEffect(() => {
+    const onAnswer = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.data?.type !== "KF_BACK_HANDLED") return;
+      if (backAnswerRef.current) clearTimeout(backAnswerRef.current);
+      backAnswerRef.current = null;
+    };
+    window.addEventListener("message", onAnswer);
+    return () => window.removeEventListener("message", onAnswer);
+  }, []);
+
   // On a TV nobody can operate this screen, so a locked world goes back by itself.
   useEffect(() => {
     if (!tv || lockedCost === null) return;
@@ -349,23 +372,15 @@ function GameLaunchContent() {
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
-      {/* Slim top bar */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
-        <div className="flex items-center gap-2 pointer-events-auto">
-          {/* Mouse-only, so hidden on a TV; games there leave via GAME_EXIT. */}
-          {!tv && (
-            <button
-              onClick={leaveGame}
-              className="rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-            >
-              ← Exit
-            </button>
-          )}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold text-primary">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-            {game.title}
-          </span>
-        </div>
+      {/* Same place and look as the Back button on the game pages. */}
+      <div className="absolute left-4 top-4 z-20">
+        <GameBackButton onLeave={requestBack} large={tv} />
+      </div>
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-3 pointer-events-none">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold text-primary">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+          {game.title}
+        </span>
         <p className="font-mono text-xs tabular-nums text-white/40">{mins}:{secs}</p>
       </div>
 
@@ -374,6 +389,7 @@ function GameLaunchContent() {
         src={entry.indexPath}
         onGameComplete={handleGameComplete}
         onExit={leaveGame}
+        frameRef={frameRef}
         onAchievementUnlocked={(id) => { collectAchievements([id]); }}
         fullscreen
       />

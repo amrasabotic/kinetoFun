@@ -25,6 +25,15 @@ export default function App() {
   );
 
   const { screen, save, pendingMode, pendingDifficulty, pendingArena } = store;
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'menu') return false;
+      store.setScreen('menu');
+      return true;
+    };
+  }, [screen, store]);
+
 
   const handleGameEnd = useCallback((coins: number, won: boolean) => {
     store.addCoins(coins);

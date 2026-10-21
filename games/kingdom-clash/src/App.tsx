@@ -10,6 +10,15 @@ type Screen = "menu" | "levelSelect" | "howToPlay" | "game";
 
 function AppContent() {
   const [screen, setScreen]             = useState<Screen>("howToPlay");
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'menu' || screen === 'howToPlay') return false;
+      setScreen('menu');
+      return true;
+    };
+  }, [screen]);
+
   const [currentLevel, setCurrentLevel] = useState(1);
   const { cursor, isPinching }          = useHand();
 

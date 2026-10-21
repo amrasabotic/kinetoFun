@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import LandingScreen from './LandingScreen';
 import HowToPlayScreen from './HowToPlayScreen';
 import OrderScreen from './OrderScreen';
@@ -20,6 +20,15 @@ function getRandomOrder(): PizzaOrder {
 
 export default function App() {
   const [screen, setScreen] = useState<GameScreen | 'howtoplay'>('howtoplay');
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'landing' || screen === 'howtoplay') return false;
+      setScreen('landing');
+      return true;
+    };
+  }, [screen]);
+
   const [currentOrder, setCurrentOrder] = useState<PizzaOrder>(() => getRandomOrder());
 
   const [finalScore, setFinalScore] = useState<number>(0);

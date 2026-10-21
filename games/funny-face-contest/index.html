@@ -664,6 +664,17 @@ function processExpression() {
   }
 }
 
+const startOverlayHtml = screenOverlay.innerHTML;
+// The platform's Back button: out of a round or its result to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (!gameRunning && !document.getElementById('final-score-display')) return false;
+  clearInterval(timerInterval);
+  gameRunning = false; currentTarget = null; holdProgress = 0;
+  screenOverlay.innerHTML = startOverlayHtml;
+  screenOverlay.classList.remove('hidden');
+  return true;
+};
+
 function startGame() {
   score = 0; timeLeft = 30; level = 1; comboCount = 0; matchHoldTime = 0;
   scoreEl.textContent = 'Score: 0';

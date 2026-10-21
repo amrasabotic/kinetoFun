@@ -19,9 +19,9 @@ export interface HandTracker {
 }
 
 const MODEL_URL =
-  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+  "/mediapipe/models/hand_landmarker-float16-v1.task";
 const WASM_BASE =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
+  "/mediapipe/tasks-vision-0.10.35/wasm";
 
 const PINCH_ON_THRESHOLD = 0.055; // normalized distance between thumb & index tips
 const PINCH_OFF_THRESHOLD = 0.085;

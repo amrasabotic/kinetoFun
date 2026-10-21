@@ -311,6 +311,13 @@ const SELS = {
   victory:  document.getElementById('victory'),
 };
 
+// The platform's Back button: out of a duel or result to the intro; from there, leave.
+window.__kfBack = () => {
+  if (gs.screen !== 'game' && gs.screen !== 'victory' && gs.screen !== 'gameover') return false;
+  showScreen('intro');
+  return true;
+};
+
 function showScreen(name) {
   gs.screen = name;
   btnArmedAt = performance.now() + DWELL_ARM_MS;
@@ -634,7 +641,7 @@ async function init(){
     );
     landmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions:{
-        modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        modelAssetPath:'/mediapipe/models/hand_landmarker-float16-v1.task',
         delegate:'GPU'
       },
       runningMode:'VIDEO',

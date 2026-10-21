@@ -329,6 +329,12 @@ window.addEventListener('resize', ()=>{ setSize(); if(state==='playing') startGa
 // ─────────────────────────────────────────────
 // SCREENS
 // ─────────────────────────────────────────────
+// The platform's Back button: out of a level, result or level list to the menu; from the menu or intro, leave.
+window.__kfBack=()=>{
+  if(state==='playing'||state==='result'||state==='level'){show('menuScreen');return true;}
+  return false;
+};
+
 function show(id){
   hoverArmedAt = Date.now() + ARM_MS;
   ['howScreen','menuScreen','levelScreen','resultScreen'].forEach(s=>document.getElementById(s).classList.add('hidden'));

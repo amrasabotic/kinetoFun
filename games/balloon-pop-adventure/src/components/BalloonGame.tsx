@@ -149,6 +149,16 @@ export function BalloonGame() {
   const currentHighScore = currentConfig
     ? (highScores[currentConfig.mode]?.score ?? null)
     : null;
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (showHowToPlay) return false;
+      if (gamePhase !== 'menu' || showCountdown) { handleQuitToMenu(); return true; }
+      if (showModeSelect || showSettings) { setShowModeSelect(false); setShowSettings(false); return true; }
+      return false;
+    };
+  }, [gamePhase, showCountdown, showModeSelect, showSettings, handleQuitToMenu]);
+
 
   // ── Cursor overlay canvas + dwell-click system ────────────────────────
   // This canvas sits on top of ALL UI layers with pointer-events: none,

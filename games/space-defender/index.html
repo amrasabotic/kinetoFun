@@ -724,6 +724,17 @@ function setupMediaPipe(){
 const startBtn   = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
 
+// The platform's Back button: out of a run or game-over to the start screen; from there, leave.
+window.__kfBack=()=>{
+  const over=document.getElementById('game-over-screen');
+  if(!state.running&&!over.classList.contains('visible'))return false;
+  state.running=false;
+  over.classList.remove('visible');
+  document.getElementById('game-container').classList.remove('visible');
+  document.getElementById('start-screen').classList.add('visible');
+  return true;
+};
+
 initDwellBtn(startBtn, ()=>{
   document.getElementById('start-screen').classList.remove('visible');
   document.getElementById('game-container').classList.add('visible');

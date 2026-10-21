@@ -624,6 +624,15 @@ function checkPointAction() {
   }
 }
 
+// The platform's Back button: from a round or its result to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (state !== 'playing' && state !== 'gameover') return false;
+  state = 'start';
+  pointHoverFrames = 0;
+  showScreen('start-screen');
+  return true;
+};
+
 // ─── Game logic ───────────────────────────────────────────────────
 function startGame() {
   score = 0; lives = 3; level = 1;

@@ -23,6 +23,16 @@ export default function DinoGame() {
   const [phase, setPhase] = useState<GamePhase>('idle');
   const [displayScore, setDisplayScore] = useState(0);
   const [displayHighScore, setDisplayHighScore] = useState(0);
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (phase === 'idle') return false;
+      gameStateRef.current = createInitialState(getHighScore());
+      setPhase('idle');
+      return true;
+    };
+  }, [phase]);
+
 
   // ── Stable refs (mutations don't trigger renders) ────────────────────────
   const gameStateRef = useRef<GameState>(createInitialState(0));

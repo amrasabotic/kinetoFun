@@ -486,6 +486,12 @@ function drawGameOver(){
 }
 
 /* ── START GAME ── */
+// The platform's Back button: out of a race to the menu; from there, leave.
+window.__kfBack=()=>{
+  if(gs!=='playing'&&gs!=='dead')return false;
+  gs='menu';document.getElementById('hud').style.display='none';return true;
+};
+
 function startGame(){
   const c=CARS[selCar];
   player={x:W/2, y:H*.74, w:c.w, h:c.h, alive:true, carIdx:selCar};

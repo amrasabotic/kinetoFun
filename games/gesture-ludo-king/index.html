@@ -561,6 +561,13 @@ function nextTurn() {
   setMsg(`${cap(col)}'s turn — open palm 🖐️ to roll`);
 }
 
+// The platform's Back button: out of a match to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (!state.gameStarted) return false;
+  state.gameStarted = false; state.winner = null;
+  return true;
+};
+
 function newGame() {
   state.turn=0; state.dice=null; state.rolled=false;
   state.winner=null; state.phase='roll'; state.gameStarted=true;

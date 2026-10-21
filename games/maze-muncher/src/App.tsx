@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { useMediaPipe } from './hooks/useMediaPipe';
 import CameraFeed from './components/CameraFeed';
 import GameCanvas from './components/GameCanvas';
@@ -29,6 +29,15 @@ export default function App() {
   const { handRef, status } = useMediaPipe(videoRef as React.RefObject<HTMLVideoElement>);
 
   const [screen, setScreen] = useState<Screen>('howtoplay');
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'howtoplay' || screen === 'menu') return false;
+      setScreen('menu');
+      return true;
+    };
+  }, [screen]);
+
   const [save, setSave] = useState(() => loadSave());
   const [level, setLevel] = useState(1);
   const [keepScore, setKeepScore] = useState(false);

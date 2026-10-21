@@ -160,6 +160,13 @@ async function init() {
   animId = requestAnimationFrame(loop);
 }
 
+// The platform's Back button: out of a run to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (phase !== 'calibrating' && phase !== 'playing' && phase !== 'paused' && phase !== 'over') return false;
+  phase = 'start'; raiseTimer = 0; tposeTimer = 0;
+  return true;
+};
+
 // ── game state ──
 const MONSTER_POOL = ['👾','🐉','🦇','🕷️','🤖','💀','🐊','👻','🦑','🧟'];
 

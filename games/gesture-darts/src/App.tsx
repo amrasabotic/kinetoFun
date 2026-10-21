@@ -267,6 +267,15 @@ export default function App() {
   const [screen, setScreen] = useState<{ mode: GameMode; difficulty: Difficulty; daily: boolean } | null>(null);
   // How to Play is the first screen every time the game loads.
   const [showHowTo, setShowHowTo] = useState(true);
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (!screen) return false;
+      setScreen(null);
+      return true;
+    };
+  }, [screen]);
+
   const gesture = useGesture();
   const cursorNorm = gesture.isHovering ? { x: gesture.cursorX, y: gesture.cursorY } : null;
 

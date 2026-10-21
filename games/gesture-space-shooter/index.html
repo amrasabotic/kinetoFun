@@ -404,6 +404,13 @@ function showMainMenu() {
   overlay.appendChild(wrap);
 }
 
+// The platform's Back button: out of a run to level select, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (state === STATE.PLAYING || state === STATE.DEAD || state === STATE.WIN) { showLevelSelect(); return true; }
+  if (state === STATE.LEVEL_SELECT || state === STATE.HOWTO) { showMainMenu(); return true; }
+  return false;
+};
+
 function showHowTo() {
   state = STATE.HOWTO;
   clearOverlay();

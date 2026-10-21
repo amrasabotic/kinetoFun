@@ -58,6 +58,15 @@ export default function App() {
     setScreen('results');
   };
 
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'landing' || screen === 'tutorial') return false;
+      setScreen('landing');
+      return true;
+    };
+  }, [screen]);
+
   if (screen === 'game') {
     return (
       <GameScreen key={`${modeId}-${runKey}`} mode={mode} skin={skin} settings={settings}

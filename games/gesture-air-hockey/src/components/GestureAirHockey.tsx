@@ -38,6 +38,15 @@ export default function GestureAirHockey() {
   // How To Play is the first thing every player sees when the game loads.
   const [screen, setScreen] = useState<Screen>("howto");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'menu' || screen === 'howto') return false;
+      setScreen('menu');
+      return true;
+    };
+  }, [screen]);
+
   // During a rally the mallet is the pointer, so the cursor only shows over
   // the match when it is paused or finished.
   const [matchOverlay, setMatchOverlay] = useState(false);

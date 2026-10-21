@@ -797,6 +797,12 @@ function nextRound(){
   if(round>totalRounds){window.parent.postMessage({ type: 'GAME_COMPLETE', score: players[0]?.score ?? 0 }, '*');gs='results';addToLeaderboard(players.map(p=>({name:p.name,score:p.score,mode:numPlayers+'P'})));return;}
   startCountdown();
 }
+// The platform's Back button: out of a round or a side screen to the menu; from the menu or intro, leave.
+window.__kfBack=()=>{
+  if(gs==='menu'||gs==='howto')return false;
+  gs='menu';dwellId=null;return true;
+};
+
 function startGame(){
   buildPlayers(numPlayers);
   round=0;totalRounds=settings.rounds;

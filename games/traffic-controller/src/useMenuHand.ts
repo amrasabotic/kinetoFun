@@ -29,11 +29,11 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
   useEffect(() => {
     let cancelled = false;
     async function init() {
-      const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
+      const vision = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
       if (cancelled) return;
       const lm = await HandLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+          modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task',
           delegate: 'GPU',
         },
         runningMode: 'VIDEO', numHands: 1,

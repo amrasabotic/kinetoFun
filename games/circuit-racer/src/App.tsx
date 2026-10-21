@@ -23,6 +23,15 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>(() =>
     localStorage.getItem(CALIBRATED_KEY) ? 'how-to-play' : 'calibration'
   );
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'calibration' || screen === 'how-to-play' || screen === 'main-menu') return false;
+      setScreen('main-menu');
+      return true;
+    };
+  }, [screen]);
+
   const [selectedCourse, setSelectedCourse] = useState<string>('c1');
 
   const musicVolume = useSettingsStore((s) => s.musicVolume);

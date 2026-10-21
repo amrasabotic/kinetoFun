@@ -305,6 +305,11 @@ document.querySelectorAll('.gbtn').forEach(b=>b.addEventListener('click',()=>{
 
 function show(id){document.getElementById(id).classList.remove('hidden');}
 function hide(id){document.getElementById(id).classList.add('hidden');}
+// The platform's Back button: from a round (or its result) to the start screen; from there, leave.
+window.__kfBack=()=>{
+  if(!alive&&!document.getElementById('scStart').classList.contains('hidden'))return false;
+  alive=false;hide('scOver');show('scStart');return true;
+};
 
 grid=Array.from({length:GR},()=>Array(GC).fill(null));drawBoard();
 

@@ -529,6 +529,13 @@ async function initRecognizer() {
 }
 
 // ── Screen management ─────────────────────────────────────────────────────────
+// The platform's Back button: out of a match or results to setup; from setup or the intro, leave.
+window.__kfBack = () => {
+  if (currentScreen !== 'game' && currentScreen !== 'results') return false;
+  showScreen('setup');
+  return true;
+};
+
 function showScreen(name) {
   currentScreen = name;
   screenArmedAt = performance.now() + SCREEN_ARM_MS;

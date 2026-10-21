@@ -863,6 +863,12 @@ function mainMenuItems(){
   return items;
 }
 
+// The platform's Back button: out of a level or result to the menu; from the menu or splash, leave.
+window.__kfBack=()=>{
+  if(gameState==='menu'||gameState==='splash'||gameState==='loading')return false;
+  handleAction('menu');return true;
+};
+
 function handleAction(id){
   if(id==='exit'){
     window.parent.postMessage({type:'GAME_EXIT'},'*');

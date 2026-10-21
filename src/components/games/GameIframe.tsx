@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 /** Typed events a game can send to the parent app via postMessage. */
 export type GameEvent =
@@ -23,6 +23,8 @@ interface GameIframeProps {
   onAchievementUnlocked?: (id: string) => void;
   /** Called when the game sends a GAME_EXIT event */
   onExit?: () => void;
+  /** Lets the page message the game (for example to ask it to step back). */
+  frameRef?: RefObject<HTMLIFrameElement | null>;
 }
 
 export default function GameIframe({
@@ -32,8 +34,10 @@ export default function GameIframe({
   onXpEarned,
   onAchievementUnlocked,
   onExit,
+  frameRef,
 }: GameIframeProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const ownRef = useRef<HTMLIFrameElement>(null);
+  const iframeRef = frameRef ?? ownRef;
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {

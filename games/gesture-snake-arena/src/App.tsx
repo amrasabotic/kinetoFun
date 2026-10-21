@@ -21,6 +21,15 @@ export default function App() {
 
   const screen         = useGameStore(s => s.screen);
   const setScreen      = useGameStore(s => s.setScreen);
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'menu') return false;
+      setScreen('menu');
+      return true;
+    };
+  }, [screen, setScreen]);
+
   const save           = useGameStore(s => s.save);
   const updateSettings = useGameStore(s => s.updateSettings);
   const addCoins       = useGameStore(s => s.addCoins);

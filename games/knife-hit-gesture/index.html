@@ -225,6 +225,11 @@ function startGame(){
 function pauseGame(){if(!alive||gameOver||won)return;paused=true;show('pauseOverlay');setStatus('Paused');}
 function resumeGame(){paused=false;hide('pauseOverlay');setStatus('Playing');}
 function goMenu(){alive=false;paused=false;gameOver=false;won=false;hideAllScreens();show('scStart');setStatus('Ready');}
+// The platform's Back button: from a round to the start screen; from there, leave.
+window.__kfBack=()=>{
+  if(!$('scStart').classList.contains('hidden'))return false;
+  goMenu();return true;
+};
 
 function doAction(a){
   if(a==='start'||a==='restart') startGame();

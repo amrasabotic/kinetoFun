@@ -11,6 +11,15 @@ import type { GameAction } from '@/types';
 export function GameRoot() {
   const [state, dispatch] = useGameReducer();
   const { sequence: dailySeq } = useDailyChallenge();
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (['loading', 'calibrate', 'howto', 'menu'].includes(state.screen)) return false;
+      dispatch({ type: 'NAVIGATE', screen: 'menu' });
+      return true;
+    };
+  }, [state.screen, dispatch]);
+
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>

@@ -76,6 +76,15 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
   const [beaker, setBeaker] = useState<Ingredient[]>([]);
   // How to Play is shown first every time the lab opens.
   const [phase, setPhase] = useState<Phase>("intro");
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (phase === 'intro') return false;
+      setPhase('intro');
+      return true;
+    };
+  }, [phase]);
+
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [status, setStatus] = useState<string>("Loading hand tracking…");
   const [hoverProgress, setHoverProgress] = useState(0);
@@ -159,13 +168,13 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
         setStatus("Loading hand tracking model…");
 
         const vision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
+          "/mediapipe/tasks-vision-0.10.35/wasm"
         );
         const mkLandmarker = (delegate: "GPU" | "CPU") =>
           HandLandmarker.createFromOptions(vision, {
             baseOptions: {
               modelAssetPath:
-                "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                "/mediapipe/models/hand_landmarker-float16-v1.task",
               delegate,
             },
             runningMode: "VIDEO",

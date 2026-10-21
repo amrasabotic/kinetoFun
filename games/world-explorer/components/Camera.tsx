@@ -10,7 +10,7 @@ interface CameraProps {
 
 const WASM_PATH = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
 const MODEL_PATH =
-  'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+  '/mediapipe/models/hand_landmarker-float16-v1.task';
 
 export default function Camera({ onGestureUpdate, showLandmarks = true }: CameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);

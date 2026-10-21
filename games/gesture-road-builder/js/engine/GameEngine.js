@@ -28,6 +28,13 @@ GRB.GameEngine = class {
     this.ctx    = this.canvas.getContext('2d');
     this.state  = STATE.LOADING;
 
+    // The platform's Back button: to the main menu from anywhere else; from the menu or tutorial, leave.
+    window.__kfBack = () => {
+      if (this.state === STATE.MAIN_MENU || this.state === STATE.TUTORIAL || this.state === STATE.LOADING) return false;
+      this._goToMainMenu();
+      return true;
+    };
+
     // Sub-systems (set in init)
     this.save  = null; this.physics  = null; this.drawing = null;
     this.vehicle = null; this.level  = null; this.endless = null;

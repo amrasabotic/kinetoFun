@@ -65,6 +65,15 @@ export default function App() {
 
   useEffect(() => { setVolumes(musicVolume, sfxVolume); }, [musicVolume, sfxVolume]);
 
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'calibration' || screen === 'howto' || screen === 'main-menu') return false;
+      setScreen('main-menu');
+      return true;
+    };
+  }, [screen]);
+
   useEffect(() => {
     if (screen === 'main-menu' || screen === 'world-tour-map' || screen === 'country-select' || screen === 'practice-select' || screen === 'gallery' || screen === 'howto' || screen === 'settings') {
       startMusic();

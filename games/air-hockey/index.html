@@ -216,6 +216,14 @@ function updateButtons(dt) {
 }
 
 // ── Game flow ────────────────────────────────────────────────────────────────
+// The platform's Back button: out of a match to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (state !== 'countdown' && state !== 'playing' && state !== 'gameover') return false;
+  clearInterval(timerInterval); clearInterval(countdownTimer);
+  state = 'menu'; setupMenuButtons();
+  return true;
+};
+
 function beginCountdown() {
   buttons = [];
   clearInterval(timerInterval);

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import './globals.css';
+import { PlatformBack } from '../components/PlatformBack';
 
 export const metadata: Metadata = {
   title: 'Gesture Runner — KinetoFun',

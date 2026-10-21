@@ -1129,6 +1129,14 @@ function restartGame() {
   startGame();
 }
 
+// The platform's Back button: out of a round or result to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (state.screen !== 'game' && state.screen !== 'result') return false;
+  clearInterval(state.timerInterval); clearInterval(state.autoAdvanceTimer);
+  showScreen('start');
+  return true;
+};
+
 function flashBtn(id) {
   const btn = document.getElementById(id);
   if (!btn) return;

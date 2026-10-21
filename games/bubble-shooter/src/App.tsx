@@ -81,13 +81,13 @@ function useMenuGesture(videoRef: React.RefObject<HTMLVideoElement>): MenuGestur
 
     async function init() {
       const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+        '/mediapipe/tasks-vision-0.10.35/wasm'
       );
       if (cancelled) return;
       const hlm = await HandLandmarker.createFromOptions(vision, {
         baseOptions: {
           modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            '/mediapipe/models/hand_landmarker-float16-v1.task',
           delegate: 'GPU',
         },
         runningMode: 'VIDEO',
@@ -474,6 +474,15 @@ export default function App() {
     setScreen('landing');
   }, []);
 
+
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'landing' || screen === 'howto') return false;
+      setScreen('landing');
+      return true;
+    };
+  }, [screen]);
 
   if (screen === 'landing') {
     return <LandingScreen onStart={handleStart} onHowTo={handleHowTo} videoRef={menuVideoRef} />;

@@ -330,6 +330,13 @@ function startGame(){
 
 function restartGame(){ startGame(); }
 
+// The platform's Back button: out of a round to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (S.phase === 'start') return false;
+  S.phase = 'start'; S.dwellFrames = 0; S.dwellTarget = null;
+  return true;
+};
+
 function shoot(){
   if(S.phase !== 'aiming') return;
   S.phase = 'shooting';

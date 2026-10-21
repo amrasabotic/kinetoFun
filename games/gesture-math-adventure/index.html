@@ -494,6 +494,12 @@ function drawDifficulty(dt){
 }
 
 // ── GAME FLOW ─────────────────────────────────────────────────────────────────
+// The platform's Back button: out of a round to difficulty select; from there, leave.
+window.__kfBack=()=>{
+  if(gs!=='countdown'&&gs!=='play'&&gs!=='results')return false;
+  gs='difficulty';selectedDiff=null;clearBtns();dwellId=null;return true;
+};
+
 function startGame(){
   score=0;streak=0;sessionBestStreak=0;qIndex=0;
   gs='countdown';cdVal=3;cdTimer=4;

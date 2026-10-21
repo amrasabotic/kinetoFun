@@ -594,6 +594,13 @@ function showScreen(name) {
   if (name === 'game')    $('hud').classList.remove('hidden');
 }
 
+// The platform's Back button: from a round, result or level list to the menu; from the menu or intro, leave.
+window.__kfBack = () => {
+  if (STATE.screen === 'menu' || STATE.screen === 'howto' || STATE.screen === 'loading') return false;
+  showScreen('menu');
+  return true;
+};
+
 // ─────────────────────────────────────────────
 //  HAND TRACKING
 // ─────────────────────────────────────────────

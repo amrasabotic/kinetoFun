@@ -43,6 +43,8 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-21] Games use the self-hosted MediaPipe files (ADR-067).** 55 games load `hand_landmarker-float16-v1.task` from the platform; 49 also load tasks-vision 0.10.35 WASM from it, with the dependency pinned to exactly 0.10.35 so a reinstall cannot drift from the hosted WASM. Older tasks-vision versions and the legacy hands/pose/face_mesh packages still load from jsDelivr.
+
 - **[2026-10-21] TV mode, Milestone C batch 6 (ADR-067).** The last 11 games got a hand exit (100 of 102). Next.js games read "embedded" with `useSyncExternalStore` (false while prerendering) so static export still works. Mirror Me is left as is (auto-starts, ends with `GAME_COMPLETE`); cascade-arrows is not registered.
 
 - **[2026-10-20] TV mode, Milestone C batch 5 (ADR-067).** 17 more single-file HTML games can be left by hand (89 of 102). Notable fixes along the way: Gesture Pop's start/game-over buttons were click-only and its cursor was hidden behind the menus (now a menu cursor + hold-to-select); Hand Snake's Quit called `window.close()`; pose- or shape-only games without a cursor exit with a gesture that has no other meaning on that screen (T-pose in Monster Dodge, ✌️ in Gesture Word) or by holding the hand over a box (Connect 4, Ludo King).

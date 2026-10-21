@@ -523,6 +523,14 @@ function drawGameOverScreen(now) {
 // ════════════════════════════════════════════════════════════
 //  GAME LOGIC
 // ════════════════════════════════════════════════════════════
+// The platform's Back button: out of a round to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (screen !== 'playing' && screen !== 'gameover') return false;
+  clearInterval(timerInterval);
+  gameRunning = false; screen = 'start'; gestureButtons = [];
+  return true;
+};
+
 function startGame() {
   score = 0; scoreEl.textContent = 0;
   timeLeft = 60; timerEl.textContent = 60;

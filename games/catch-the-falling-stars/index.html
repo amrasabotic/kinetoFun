@@ -850,6 +850,17 @@ function endGame() {
   showScreen('gameOverScreen');
 }
 
+// The platform's Back button: from a round or its result to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (state !== 'playing' && state !== 'gameover') return false;
+  clearInterval(timerInterval);
+  state = 'splash';
+  document.getElementById('hud').classList.add('hidden');
+  showScreen('splashScreen');
+  resetDwell();
+  return true;
+};
+
 // ─── Gesture logic ────────────────────────────────────────────────────────────
 function countExtendedFingers(landmarks) {
   const tips = [8, 12, 16, 20];

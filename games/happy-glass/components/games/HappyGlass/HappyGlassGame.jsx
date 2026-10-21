@@ -201,6 +201,16 @@ export default function HappyGlassGame() {
     gs.thumbsUpCooldown = THUMBSUP_COOLDOWN;
   }, []);
 
+  // The platform's Back button: out of a level to level select; from there, leave.
+  useEffect(() => {
+    window.__kfBack = () => {
+      const phase = gsRef.current.phase;
+      if (phase === 'idle' || phase === 'levelSelect') return false;
+      gsRef.current = makeLevelSelectState();
+      return true;
+    };
+  }, []);
+
   // ── Physics init (once on mount) ──────────────────────────────────────────
   useEffect(() => {
     const physics = new PhysicsWorld();

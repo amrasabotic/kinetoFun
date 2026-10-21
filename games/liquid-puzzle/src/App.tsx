@@ -97,6 +97,15 @@ function AppShell({ save, setSave }: AppShellProps) {
   const handleSettingsChange = useCallback((partial: Partial<Settings>) => setSave(updateSettings(partial)), [setSave]);
   const handleResetProgress = useCallback(() => setSave(resetProgress()), [setSave]);
 
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'howto' || screen === 'menu') return false;
+      setScreen('menu');
+      return true;
+    };
+  }, [screen]);
+
   if (screen === 'game' && launch) {
     return (
       <GameScreen

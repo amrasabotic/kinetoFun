@@ -305,6 +305,17 @@ function showDraw(){
   ov.classList.remove('hidden');
 }
 
+const startOverlayHtml=document.getElementById('overlay').innerHTML;
+// The platform's Back button: out of a match to the start screen; from there, leave.
+window.__kfBack=()=>{
+  if(!started)return false;
+  started=false;openHolding=false;fistHolding=false;
+  const ov=document.getElementById('overlay');
+  ov.innerHTML=startOverlayHtml;ov.classList.remove('hidden');
+  setRing(0);
+  return true;
+};
+
 function startGame(){
   initBoard();started=true;
   document.getElementById('overlay').classList.add('hidden');

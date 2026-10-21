@@ -155,6 +155,15 @@ function detectGest(lm){
 }
 
 // ── game logic ─────────────────────────────────────────
+// The platform's Back button: out of a round or its result to the menu; from the menu or intro, leave.
+window.__kfBack=()=>{
+  if(st===ST.MENU||st===ST.LOAD)return false;
+  clearInterval(gTmr);gTmr=null;
+  moles.forEach(m=>{clearTimeout(m.timer);m.timer=null;});
+  st=ST.MENU;buildBtns();
+  return true;
+};
+
 function startGame(){
   st=ST.PLAY;
   score=0; lives=3; tLeft=GSEC;

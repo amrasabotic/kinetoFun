@@ -89,8 +89,8 @@ function parseHand(lm: Landmark[]): HandData {
   };
 }
 
-const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
+const MODEL_URL = '/mediapipe/models/hand_landmarker-float16-v1.task';
+const WASM_URL = '/mediapipe/tasks-vision-0.10.35/wasm';
 
 export function useMediaPipe(videoRef: React.RefObject<HTMLVideoElement>) {
   const handRef = useRef<HandData>({ ...EMPTY_HAND });

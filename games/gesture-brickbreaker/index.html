@@ -275,6 +275,13 @@ function resetBall() {
   aimAngle=null; aimHoldTimer=0; aimFireTriggered=false;
 }
 
+// The platform's Back button: out of a level to level select, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (gameState === 'playing' || gameState === 'win' || gameState === 'lose') { showLevelSelect(); return true; }
+  if (gameState === 'levelSelect') { showMenu(); return true; }
+  return false;
+};
+
 function startLevel(idx) {
   currentLevel=idx; score=0; lives=3;
   paddle.x=395; paddle.target=450;

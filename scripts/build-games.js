@@ -19,6 +19,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const GAMES_SRC = path.join(ROOT, 'games');
 const GAMES_OUT = path.join(ROOT, 'public', 'games');
+const { patchGame } = require('./patch-game-builds');
 
 function detectType(gameDir) {
   const pkgPath = path.join(gameDir, 'package.json');
@@ -90,6 +91,8 @@ function buildGame(name) {
       copyDir(outDir, dest);
       console.log(`  ✓ Built → public/games/${name}/out/`);
     }
+    // Lets the platform's Back button follow the player's hand during a round.
+    patchGame(name);
     return true;
   } catch (err) {
     console.error(`  ✗ Failed: ${err.message}`);

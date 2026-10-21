@@ -47,6 +47,15 @@ export default function WorldExplorer() {
   });
   const waveHandledRef = useRef(false);
   const tickIntervalRef = useRef<ReturnType<typeof setInterval>>();
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'MAIN_MENU') return false;
+      useGameStore.getState().resetGame();
+      return true;
+    };
+  }, [screen]);
+
 
   useEffect(() => {
     setIsHydrated(true);

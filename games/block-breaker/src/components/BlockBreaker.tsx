@@ -76,6 +76,15 @@ const HOW_TO_PLAY: { icon: string; title: string; text: string }[] = [
 function BlockBreakerGame() {
   // How to Play is the first screen every time the game loads.
   const [screen, setScreen] = useState<Screen>("howto");
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'howto' || screen === 'menu') return false;
+      setScreen('menu');
+      return true;
+    };
+  }, [screen]);
+
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);

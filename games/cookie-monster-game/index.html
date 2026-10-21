@@ -149,6 +149,14 @@ function burst(x, y) {
 }
 
 /* ─── Game flow ────────────────────────────────────────── */
+// The platform's Back button: out of a round to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (state !== 'playing' && state !== 'gameover') return false;
+  clearInterval(gameTimer);
+  state = 'start'; buildButtons(); armButtonsLater();
+  return true;
+};
+
 function startGame() {
   score = 0;
   timeLeft = 45;

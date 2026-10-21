@@ -587,6 +587,11 @@ function tickParticles(){
 function show(id){document.getElementById(id).classList.remove('hidden');}
 function hide(id){document.getElementById(id).classList.add('hidden');}
 function hideAll(){['scStart','scPause','scOver'].forEach(hide);}
+// The platform's Back button: from a round (or pause/result) to the start screen; from there, leave.
+window.__kfBack=()=>{
+  if(!document.getElementById('scStart').classList.contains('hidden'))return false;
+  alive=false;paused=false;clearTimeout(dropTimer);hideAll();show('scStart');return true;
+};
 
 /* ── keyboard fallback ── */
 let kbThrottle=0;

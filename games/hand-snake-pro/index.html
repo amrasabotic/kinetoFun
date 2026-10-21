@@ -700,6 +700,13 @@ function killPlayer() {
   menuItems = []; hovIdx = -1; holdFrames = 0; holdFired = false;
 }
 
+// The platform's Back button: out of a run to the menu; from the menu or intro, leave.
+window.__kfBack = () => {
+  if (STATE !== 'COUNTDOWN' && STATE !== 'PLAYING' && STATE !== 'DEAD') return false;
+  clearInterval(cdTimer); doRestart();
+  return true;
+};
+
 function doRestart() {
   document.getElementById('scorebar').style.display = 'none';
   STATE = 'MENU'; menuItems = []; hovIdx = -1; holdFrames = 0; holdFired = false;

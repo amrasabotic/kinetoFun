@@ -23,6 +23,15 @@ export default function App() {
   const [mode,   setMode]   = useState<GameMode>('freeplay');
 
 
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'landing' || screen === 'howtoplay') return false;
+      setScreen('landing');
+      return true;
+    };
+  }, [screen]);
+
   if (screen === 'landing')    return <LandingScreen  onPlay={() => setScreen('modeselect')} onHow={() => setScreen('howtoplay')} />;
   if (screen === 'howtoplay')  return <HowToPlayScreen onBack={() => setScreen('landing')} />;
   if (screen === 'modeselect') return <ModeSelectScreen onSelect={m => { setMode(m); setScreen('game'); }} onBack={() => setScreen('landing')} />;

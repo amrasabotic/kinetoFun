@@ -19,6 +19,15 @@ const router = createRouter({
   context: { queryClient },
 });
 
+// The platform's Back button: one screen back, and out of the game from its first screens.
+(window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+  const path = router.state.location.pathname;
+  const parent = path.startsWith('/play/') ? '/levels' : path === '/levels' || path === '/play' ? '/' : null;
+  if (!parent) return false;
+  void router.navigate({ to: parent });
+  return true;
+};
+
 declare module '@tanstack/react-router' {
   interface Register { router: typeof router }
 }

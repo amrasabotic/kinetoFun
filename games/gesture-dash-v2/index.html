@@ -149,6 +149,12 @@ function startGame(mapI){
 // ── buttons ──────────────────────────────────────────────────────────
 let btns=[];
 const HOV_FRAMES=54; // ~0.9s dwell to select
+// The platform's Back button: out of a run to map select, then to the menu; from the menu or intro, leave.
+window.__kfBack=()=>{
+  if(st===ST.PLAY||st===ST.WIN||st===ST.DEAD){st=ST.SEL;return true;}
+  if(st===ST.SEL){st=ST.MENU;return true;}
+  return false;
+};
 // Buttons ignore the hand for a moment after each screen change, so a hand
 // already resting where a button appears cannot skip How to Play or press
 // through several screens in a row.

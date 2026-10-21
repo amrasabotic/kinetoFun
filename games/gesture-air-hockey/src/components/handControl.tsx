@@ -75,7 +75,7 @@ export function HandProvider({ children }: { children: ReactNode }) {
         landmarker = await vision.HandLandmarker.createFromOptions(fileset, {
           baseOptions: {
             modelAssetPath:
-              "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+              "/mediapipe/models/hand_landmarker-float16-v1.task",
             delegate: "GPU",
           },
           runningMode: "VIDEO",

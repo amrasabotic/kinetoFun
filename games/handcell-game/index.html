@@ -342,6 +342,14 @@ function initPlayer(){
   player={cells:[{x:WORLD/2,y:WORLD/2,r:26,vx:0,vy:0,mt:0}],hue:210,alive:true,score:0};
 }
 
+// The platform's Back button: out of a run to the menu; from the menu, leave.
+window.__kfBack=()=>{
+  if(gameState==='menu')return false;
+  gameState='menu';
+  deathScreen.style.display='none';overlay.style.display='flex';
+  return true;
+};
+
 function startGame(){
   overlay.style.display='none';
   deathScreen.style.display='none';

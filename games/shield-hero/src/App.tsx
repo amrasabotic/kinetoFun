@@ -16,6 +16,16 @@ import { getHighScore, submitHighScore } from './services/highScoreService';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>('menu');
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (gameState === 'menu') return false;
+      setGameState('menu');
+      setIsPaused(false);
+      return true;
+    };
+  }, [gameState]);
+
   const [gameMode, setGameMode] = useState<GameMode>('endless');
   const [isPaused, setIsPaused] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);

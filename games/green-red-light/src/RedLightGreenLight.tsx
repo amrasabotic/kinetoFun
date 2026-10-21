@@ -129,6 +129,15 @@ declare global {
 
 export default function RedLightGreenLight() {
   const [phase, setPhase] = useState<GamePhase>('START');
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (phase !== 'PLAYING' && phase !== 'VICTORY' && phase !== 'ELIMINATED') return false;
+      setPhase('DIFFICULTY');
+      return true;
+    };
+  }, [phase]);
+
   const [stats, setStats] = useState<GameStats>(loadStats);
   const [lightState, setLightState] = useState<LightState>('GREEN');
   const [progress, setProgress] = useState(0);

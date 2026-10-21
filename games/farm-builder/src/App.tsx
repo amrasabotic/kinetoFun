@@ -20,6 +20,15 @@ export default function App() {
   // remembered per device, so a new player on a shared TV would otherwise
   // land on the menu without ever seeing how to play.
   const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem(CALIBRATED_KEY) ? 'how-to-play' : 'calibration'));
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'calibration' || screen === 'how-to-play' || screen === 'main-menu') return false;
+      setScreen('main-menu');
+      return true;
+    };
+  }, [screen]);
+
 
   const musicVolume = useSettingsStore((s) => s.musicVolume);
   const sfxVolume = useSettingsStore((s) => s.sfxVolume);

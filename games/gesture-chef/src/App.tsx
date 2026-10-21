@@ -18,6 +18,15 @@ export default function App() {
     currentMinigameType, settings, progress, lastSession,
     navigateTo, selectRecipe, completeMinigame, updateSettings,
   } = useGameState();
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'home') return false;
+      navigateTo('home');
+      return true;
+    };
+  }, [screen,navigateTo]);
+
 
   // Sync audio settings on mount and changes
   useEffect(() => {

@@ -1222,6 +1222,15 @@ export default function App() {
   const [screen,   setScreen]   = useState<Screen>('howtoplay');
   const [levelId,  setLevelId]  = useState(1);
   const [save,     setSave]     = useState<SaveData>(loadSave);
+  // The platform's Back button: one screen back, and out of the game from its first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'landing' || screen === 'howtoplay') return false;
+      setScreen('landing');
+      return true;
+    };
+  }, [screen]);
+
 
 
   function handleComplete(stars: number, score: number) {

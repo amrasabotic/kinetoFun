@@ -42,6 +42,15 @@ function randomSeed() {
 export default function App() {
   // How to Play opens on every load (after the one-time calibration on a new device).
   const [screen, setScreen] = useState<Screen>(() => (localStorage.getItem(CALIBRATED_KEY) ? 'how-to-play' : 'calibration'));
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'calibration' || screen === 'how-to-play' || screen === 'main-menu') return false;
+      setScreen('main-menu');
+      return true;
+    };
+  }, [screen]);
+
   const [launch, setLaunch] = useState<Launch | null>(null);
 
   const musicVolume = useSettingsStore((s) => s.musicVolume);

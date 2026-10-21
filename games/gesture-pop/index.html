@@ -1094,6 +1094,14 @@ function restartGame() {
   startGame();
 }
 
+// The platform's Back button: out of a round to the start screen; from there, leave.
+window.__kfBack = () => {
+  if (gameState === STATE.LOADING || gameState === STATE.CALIBRATING || gameState === STATE.START) return false;
+  stopTimer(); animating = false; hoverCluster = [];
+  transitionTo(STATE.START);
+  return true;
+};
+
 // ─── RESIZE ───────────────────────────────────────────────────────────────────
 function resize() {
   canvas.width = window.innerWidth;

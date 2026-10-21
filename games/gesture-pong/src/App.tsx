@@ -20,6 +20,15 @@ export default function App() {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
 
 
+  // The platform's Back button: one screen back, and out of the game from the first screens.
+  useEffect(() => {
+    (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
+      if (screen === 'landing' || screen === 'howtoplay') return false;
+      setScreen('landing');
+      return true;
+    };
+  }, [screen]);
+
   if (screen === 'game') return <GameScreen difficulty={difficulty} onQuit={() => setScreen('landing')} />;
   return (
     <>
