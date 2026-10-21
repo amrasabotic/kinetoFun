@@ -1,0 +1,12 @@
+{
+  "VideoCaptureAllowedUrls": ["__BASE_URL__"],
+  "AutoplayAllowed": true,
+  "AutoplayAllowlist": ["__BASE_URL__"],
+  "DefaultNotificationsSetting": 2,
+  "TranslateEnabled": false,
+  "PasswordManagerEnabled": false,
+  "BrowserSignin": 0,
+  "MetricsReportingEnabled": false,
+  "HomepageLocation": "__BASE_URL__/tvsetup",
+  "RestoreOnStartup": 5
+}
