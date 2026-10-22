@@ -7,7 +7,7 @@ source /etc/kinetofun.env
 unclutter -idle 0.1 -root &
 
 while true; do
-  chromium-browser \
+  chromium \
     --kiosk \
     --noerrdialogs \
     --disable-infobars \
