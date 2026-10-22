@@ -9,6 +9,7 @@ unclutter -idle 0.1 -root &
 while true; do
   chromium \
     --kiosk \
+    --password-store=basic \
     --noerrdialogs \
     --disable-infobars \
     --disable-session-crashed-bubble \
