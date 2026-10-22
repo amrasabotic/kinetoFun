@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Device file upload for a game cover. Uploads the chosen image to the
- * `game-covers` Supabase bucket via /api/admin/games/upload-cover and reports
+ * S3 via /api/admin/games/upload-cover and reports
  * the resulting public URL through `onChange`. Falls back to the gradient when
  * no image is set.
  */
