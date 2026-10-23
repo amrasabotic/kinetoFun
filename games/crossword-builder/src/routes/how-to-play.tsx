@@ -20,32 +20,32 @@ function HowToPlay() {
     { n: 6, title: "Progress through 20 levels", body: "Each level unlocks the next. Words get longer and crosswords grow as you climb." },
   ];
   return (
-    <main className="min-h-screen px-6 pt-12 pb-36">
-      <div className="mx-auto max-w-3xl">
+    <main className="min-h-screen px-6 py-8">
+      {/* All steps on one screen, since a TV player cannot scroll. */}
+      <div className="mx-auto max-w-6xl">
         <Link to="/" data-dwell="" className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
           ← Back
         </Link>
-        <h1 className="mt-4 font-display text-6xl font-bold">How to Play</h1>
-        <p className="mt-4 text-lg text-foreground/70">
+        <h1 className="mt-3 font-display text-5xl font-bold">How to Play</h1>
+        <p className="mt-2 text-lg text-foreground/70">
           Crossword Builder is controlled with your hand. No mouse, no keyboard — just gestures.
         </p>
 
-        <ol className="mt-10 space-y-5">
+        <ol className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {steps.map((s) => (
-            <li key={s.n} className="flex gap-5 rounded-3xl bg-card p-6 shadow-tile">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary font-display text-2xl font-bold text-primary-foreground">
+            <li key={s.n} className="flex gap-4 rounded-3xl bg-card p-5 shadow-tile">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary font-display text-2xl font-bold text-primary-foreground">
                 {s.n}
               </div>
               <div>
-                <h3 className="font-display text-2xl font-semibold">{s.title}</h3>
+                <h3 className="font-display text-xl font-semibold">{s.title}</h3>
                 <p className="mt-1 text-foreground/70">{s.body}</p>
               </div>
             </li>
           ))}
         </ol>
 
-        {/* Fixed so it is reachable by hand without scrolling the page. */}
-        <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center gap-4 bg-background/85 py-5 backdrop-blur">
+        <div className="mt-6 flex justify-center">
           <Link to="/levels" data-dwell="" className="rounded-3xl bg-primary px-10 py-4 font-display text-2xl font-bold text-primary-foreground shadow-pop">
             Start playing
           </Link>

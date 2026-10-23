@@ -61,7 +61,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'crossword-builder':     { folder: 'crossword-builder',     indexPath: '/games/crossword-builder/index.html', tvScale: 1.5 },
   'gesture-air-hockey':    { folder: 'gesture-air-hockey',    indexPath: '/games/gesture-air-hockey/index.html' },
   'mix-it-up':             { folder: 'mix-it-up',             indexPath: '/games/mix-it-up/index.html', tvScale: 1.75 },
-  'neon-flow':             { folder: 'neon-flow',             indexPath: '/games/neon-flow/index.html', tvScale: 1.5 },
+  'neon-flow':             { folder: 'neon-flow',             indexPath: '/games/neon-flow/index.html', tvScale: 1.75 },
   'samurai-slice':         { folder: 'samurai-slice',         indexPath: '/games/samurai-slice/index.html', tvScale: 1.5 },
   'target-master':         { folder: 'target-master',         indexPath: '/games/target-master/index.html', tvScale: 1.5 },
   'word-adventure':        { folder: 'word-adventure',        indexPath: '/games/word-adventure/index.html', tvScale: 1.75 },

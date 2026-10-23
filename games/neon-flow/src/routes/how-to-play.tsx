@@ -16,18 +16,19 @@ export const Route = createFileRoute("/how-to-play")({
 
 function HowTo() {
   return (
-    <main className="min-h-screen px-4 pt-10 pb-32 max-w-2xl mx-auto">
-      <Button asChild variant="ghost" size="sm" className="mb-6">
+    <main className="min-h-screen px-4 py-6 max-w-6xl mx-auto">
+      {/* All steps on one screen, since a TV player cannot scroll. */}
+      <Button asChild variant="ghost" size="sm" className="mb-3">
         <Link to="/" data-dwell=""><ArrowLeft className="size-4" /> Home</Link>
       </Button>
 
       <h1 className="text-4xl font-display font-black neon-glow-cyan">HOW TO PLAY</h1>
-      <p className="mt-4 text-muted-foreground">
+      <p className="mt-2 text-muted-foreground">
         Connect every pair of glowing dots with a single neon path. When you're done,
         every cell on the board must be filled — no empty squares allowed.
       </p>
 
-      <ol className="mt-8 space-y-5">
+      <ol className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Step n={1} title="Track your hand">
           <p>
             Allow camera access when asked. A glowing cursor follows your index finger —
@@ -56,27 +57,25 @@ function HowTo() {
           </p>
         </Step>
         <Step n={5} title="Earn a star">
-          <p className="flex items-center gap-2">
-            <Star className="size-4 text-[color:var(--star)]" fill="currentColor" />
+          <p>
+            <Star className="mr-1 inline size-4 align-[-2px] text-[color:var(--star)]" fill="currentColor" />
             Match the <b>minimum move count</b> shown on the HUD (one move = one pinch + release)
             to earn a glowing star for the level.
           </p>
         </Step>
+        <li className="panel p-5 flex items-center gap-4">
+          <div className="flex gap-2 shrink-0">
+            <Hand className="size-6 text-[color:var(--neon-cyan)]" />
+            <MousePointer2 className="size-6 text-[color:var(--neon-pink)]" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Hand tracking runs locally in your browser using MediaPipe — your camera stream never
+            leaves your device.
+          </p>
+        </li>
       </ol>
 
-      <div className="mt-10 panel p-5 flex items-center gap-4">
-        <div className="flex gap-2">
-          <Hand className="size-6 text-[color:var(--neon-cyan)]" />
-          <MousePointer2 className="size-6 text-[color:var(--neon-pink)]" />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Hand tracking runs locally in your browser using MediaPipe — your camera stream never
-          leaves your device.
-        </p>
-      </div>
-
-      {/* Fixed so it is reachable by hand without scrolling the page. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center bg-background/85 py-4 backdrop-blur">
+      <div className="mt-5 flex justify-center">
         <Button asChild variant="hero" size="lg">
           <Link to="/play" data-dwell="">Start playing</Link>
         </Button>
