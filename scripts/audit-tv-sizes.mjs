@@ -16,11 +16,11 @@ const args = process.argv.slice(2);
 const flag = (name, fallback) => args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 const asJson = args.includes("--json");
 const only = new Set(args.filter((a) => !a.startsWith("--")));
-// Must match VIRTUAL_WIDTH in src/features/tv/use-tv-game-scale.ts.
-const VIEW_W = 1280;
-const VIEW_H = 720;
-const scale = Number(flag("scale", "1.5"));
-const outDir = flag("out", join(tmpdir(), "kf-tv-sizes"));
+// The Pi outputs 1080p; the game gets the screen divided by the scale (DEFAULT_TV_SCALE in use-tv-game-scale.ts is 2).
+const scale = Number(flag("scale", "2"));
+const VIEW_W = Math.round(1920 / scale);
+const VIEW_H = Math.round(1080 / scale);
+const outDir = flag("out", join(tmpdir(), `kf-tv-sizes-${scale}`));
 const settleMs = Number(flag("wait", "6000"));
 
 // On-screen pixels at the TV; roughly what stays readable and holdable from a sofa on a 1080p set.
@@ -123,7 +123,12 @@ const MEASURE = `(() => {
     .map(visible).filter(Boolean).map((r) => Math.min(r.width, r.height));
   const canvas = [...document.querySelectorAll("canvas")].map(visible).filter(Boolean)
     .reduce((best, r) => Math.max(best, (Math.min(r.right, W) - Math.max(r.left, 0)) * (Math.min(r.bottom, H) - Math.max(r.top, 0))), 0);
-  return { chars, smallChars, minFont: chars ? minFont : null, targets: targets.length,
+  // Anything the player needs that ends up past the screen edge or behind a scrollbar.
+  const doc = document.scrollingElement || document.documentElement;
+  const scrolls = doc.scrollHeight > H + 4 || doc.scrollWidth > W + 4;
+  const clipped = [...document.querySelectorAll("button, a[href], [role=button], [data-focusable], [data-dwell], h1, h2, h3, p")]
+    .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && (r.bottom > H + 2 || r.right > W + 2); }).length;
+  return { scrolls, clipped, chars, smallChars, minFont: chars ? minFont : null, targets: targets.length,
     smallTargets: targets.filter((s) => s < ${MIN_TARGET_PX / scale}).length,
     minTarget: targets.length ? Math.min(...targets) : null, canvasCover: canvas / (W * H) };
 })()`;
@@ -150,6 +155,7 @@ async function auditGame(port, base, game) {
 
 function verdict(r) {
   if (r.error) return "error";
+  if (r.scrolls || r.clipped > 0) return "overflow";
   const textShare = r.chars ? r.smallChars / r.chars : 0;
   if (textShare > 0.3 || r.smallTargets > 0) return "fix";
   if (textShare > 0) return "check";
@@ -177,15 +183,15 @@ const tv = (css) => (css == null ? "-" : `${Math.round(css * scale)}px`);
 if (asJson) {
   console.log(JSON.stringify({ scale, minTextPx: MIN_TEXT_PX, minTargetPx: MIN_TARGET_PX, results }, null, 2));
 } else {
-  const order = { fix: 0, error: 1, check: 2, ok: 3 };
+  const order = { overflow: 0, fix: 1, error: 2, check: 3, ok: 4 };
   results.sort((a, b) => order[a.verdict] - order[b.verdict] || a.id.localeCompare(b.id));
-  console.log(`\nScale ${scale} (on-screen sizes at 1080p). Text under ${MIN_TEXT_PX}px, targets under ${MIN_TARGET_PX}px.`);
-  console.log("verdict  game                             smallest text  small text  smallest target  small targets  canvas");
+  console.log(`\nScale ${scale}: game viewport ${VIEW_W}x${VIEW_H}, sizes as seen on a 1080p screen. Text under ${MIN_TEXT_PX}px, targets under ${MIN_TARGET_PX}px.`);
+  console.log("verdict  game                             smallest text  small text  smallest target  small targets  canvas  off-screen");
   for (const r of results) {
     if (r.error) { console.log(`error    ${r.id.padEnd(32)} ${r.error}`); continue; }
     const share = r.chars ? `${Math.round((100 * r.smallChars) / r.chars)}%` : "-";
-    console.log(`${r.verdict.padEnd(8)} ${r.id.padEnd(32)} ${tv(r.minFont).padEnd(14)} ${share.padEnd(11)} ${tv(r.minTarget).padEnd(16)} ${`${r.smallTargets}/${r.targets}`.padEnd(14)} ${Math.round(r.canvasCover * 100)}%`);
+    console.log(`${r.verdict.padEnd(8)} ${r.id.padEnd(32)} ${tv(r.minFont).padEnd(14)} ${share.padEnd(11)} ${tv(r.minTarget).padEnd(16)} ${`${r.smallTargets}/${r.targets}`.padEnd(14)} ${`${Math.round(r.canvasCover * 100)}%`.padEnd(7)} ${r.scrolls ? "scrolls " : ""}${r.clipped || ""}`);
   }
   const count = (v) => results.filter((r) => r.verdict === v).length;
-  console.log(`\nfix ${count("fix")}, check ${count("check")}, ok ${count("ok")}, error ${count("error")}. Screenshots: ${outDir}`);
+  console.log(`\noverflow ${count("overflow")}, fix ${count("fix")}, check ${count("check")}, ok ${count("ok")}, error ${count("error")}. Screenshots: ${outDir}`);
 }

@@ -74,7 +74,7 @@ function GameLaunchContent() {
   const entry = getGameEntry(params.id);
   // A TV returns to its own game screen, which it can operate by hand.
   const tv = useTvMode();
-  const tvScale = useTvGameScale(tv);
+  const tvScale = useTvGameScale(tv, entry?.tvScale);
   const backHref = tv ? `/tvsetup/games/${params.id}` : `/games/${params.id}`;
 
   const [phase, setPhase] = useState<Phase>("loading");
