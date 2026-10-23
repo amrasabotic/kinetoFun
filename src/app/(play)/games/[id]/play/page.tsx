@@ -17,6 +17,7 @@ import { syncAchievements } from "@/services/achievements.service";
 import { RewardToasts, type RewardToast } from "@/components/rewards/RewardToasts";
 import { playRewardChime } from "@/lib/rewards/chime";
 import { useTvMode } from "@/features/tv/tv-mode";
+import { useTvGameScale } from "@/features/tv/use-tv-game-scale";
 import { GameBackButton } from "@/components/games/GameBackButton";
 
 /** How long the end-of-game reward card waits before leaving on its own. */
@@ -73,6 +74,7 @@ function GameLaunchContent() {
   const entry = getGameEntry(params.id);
   // A TV returns to its own game screen, which it can operate by hand.
   const tv = useTvMode();
+  const tvScale = useTvGameScale(tv);
   const backHref = tv ? `/tvsetup/games/${params.id}` : `/games/${params.id}`;
 
   const [phase, setPhase] = useState<Phase>("loading");
@@ -392,6 +394,7 @@ function GameLaunchContent() {
         frameRef={frameRef}
         onAchievementUnlocked={(id) => { collectAchievements([id]); }}
         fullscreen
+        scale={tvScale}
       />
       <RewardToasts queue={toasts} onDismiss={dismissToast} />
     </div>

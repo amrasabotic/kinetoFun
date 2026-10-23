@@ -43,6 +43,7 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-23] TV mode: games enlarged to fit the TV (ADR-067).** In TV mode the play page renders the game iframe at a 1280-px-wide viewport and scales it up with a CSS transform (`features/tv/use-tv-game-scale.ts`, `GameIframe` `scale` prop), so every game is about 1.5× larger on a 1080p TV without game changes; `?tvscale=` overrides the factor. Desktop is unchanged. `scripts/audit-tv-sizes.mjs` opens each registered game in headless Chrome at that viewport and reports text under 24 px and hand targets under 96 px as seen on the TV, with a screenshot per game.
 - **[2026-10-21] Games use the self-hosted MediaPipe files (ADR-067).** 55 games load `hand_landmarker-float16-v1.task` from the platform; 49 also load tasks-vision 0.10.35 WASM from it, with the dependency pinned to exactly 0.10.35 so a reinstall cannot drift from the hosted WASM. Older tasks-vision versions and the legacy hands/pose/face_mesh packages still load from jsDelivr.
 
 - **[2026-10-21] TV mode, Milestone C batch 6 (ADR-067).** The last 11 games got a hand exit (100 of 102). Next.js games read "embedded" with `useSyncExternalStore` (false while prerendering) so static export still works. Mirror Me is left as is (auto-starts, ends with `GAME_COMPLETE`); cascade-arrows is not registered.

@@ -37,6 +37,16 @@ touch "$AUTOSTART"
 grep -q kinetofun-kiosk "$AUTOSTART" || echo '/usr/local/bin/kinetofun-kiosk &' >> "$AUTOSTART"
 chown "$KIOSK_USER:$KIOSK_USER" "$AUTOSTART"
 
+# Run every TV at 1080p, even 4K sets: the TV upscales, and the Pi draws a quarter of the pixels.
+CMDLINE=/boot/firmware/cmdline.txt
+if [[ -f "$CMDLINE" ]]; then
+  for port in HDMI-A-1 HDMI-A-2; do
+    grep -q "video=$port:" "$CMDLINE" || sed -i "1 s/\$/ video=$port:1920x1080@60/" "$CMDLINE"
+  done
+else
+  echo "Set 1080p output manually: $CMDLINE not found." >&2
+fi
+
 # Log the kiosk user in without a password prompt and keep the screen on.
 raspi-config nonint do_boot_behaviour B4 || echo "Set desktop autologin manually in raspi-config." >&2
 raspi-config nonint do_blanking 1 || echo "Disable screen blanking manually in raspi-config." >&2

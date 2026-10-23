@@ -25,6 +25,8 @@ interface GameIframeProps {
   onExit?: () => void;
   /** Lets the page message the game (for example to ask it to step back). */
   frameRef?: RefObject<HTMLIFrameElement | null>;
+  /** Fullscreen only: render the game this many times smaller, then enlarge it to fill the screen. */
+  scale?: number;
 }
 
 export default function GameIframe({
@@ -35,6 +37,7 @@ export default function GameIframe({
   onAchievementUnlocked,
   onExit,
   frameRef,
+  scale = 1,
 }: GameIframeProps) {
   const ownRef = useRef<HTMLIFrameElement>(null);
   const iframeRef = frameRef ?? ownRef;
@@ -61,6 +64,23 @@ export default function GameIframe({
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [onGameComplete, onXpEarned, onAchievementUnlocked, onExit]);
+
+  if (fullscreen && scale > 1) {
+    // The game sees a laptop-sized viewport, so vh units, canvases and pointer maths stay consistent.
+    const size = `${100 / scale}%`;
+    return (
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <iframe
+          ref={iframeRef}
+          src={src}
+          allow="camera; microphone; autoplay; fullscreen"
+          className="absolute left-0 top-0 border-0"
+          style={{ width: size, height: size, transform: `scale(${scale})`, transformOrigin: "0 0" }}
+          title="Game"
+        />
+      </div>
+    );
+  }
 
   return (
     <iframe
