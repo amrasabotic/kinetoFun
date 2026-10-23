@@ -156,7 +156,11 @@
     .ctrl-row:last-child { margin-bottom:0; }
     .ctrl-icon { font-size:18px; width:24px; text-align:center; }
     /* Short screens (a TV) have no room beside the content; How to Play covers the same gestures. */
-    @media (max-height: 760px) { #ctrl-guide { display: none; } }
+    @media (max-height: 760px) {
+      #ctrl-guide { display: none; }
+      #video, #hand-canvas { width: 140px; height: 105px; }
+      #gesture-chip { bottom: 130px; }
+    }
 
     /* ── Screens ──────────────────────────────────── */
     .screen {

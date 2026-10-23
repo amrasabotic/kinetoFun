@@ -106,6 +106,13 @@
   .gesture-icon { font-size: 1.8rem; flex-shrink: 0; }
   .gesture-label { font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
   .gesture-label strong { display: block; color: var(--text); font-size: 0.88rem; margin-bottom: 2px; }
+  /* Short screens (a TV): three cards per row so the start screen fits without scrolling. */
+  @media (max-height: 760px) {
+    #screen-start { gap: 18px; padding: 20px; }
+    .start-sub { max-width: 700px; }
+    .gesture-hint-grid { grid-template-columns: repeat(3, 1fr); max-width: 900px; }
+    .cta-ring { width: 72px; height: 72px; font-size: 2rem; }
+  }
 
   .start-cta {
     display: flex;

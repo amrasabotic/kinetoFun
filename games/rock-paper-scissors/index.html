@@ -237,6 +237,15 @@
       text-align: center; font-family: 'Space Mono', monospace;
     }
     .status-bar span { color: var(--accent); }
+    /* Short screens (a TV): the round must fit without scrolling; How to Play already lists the gestures. */
+    @media (max-height: 760px) {
+      body { padding: 12px 16px; gap: 10px; }
+      header p, .instructions { display: none; }
+      .game-panel { gap: 10px; }
+      .vs-display { padding: 12px; }
+      .choice-emoji { font-size: 2.4rem; }
+      .play-btn { padding: 14px; }
+    }
   </style>
 </head>
 <body>

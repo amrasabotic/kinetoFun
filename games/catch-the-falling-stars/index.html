@@ -229,6 +229,17 @@
   .inst-title { font-size: 13px; letter-spacing: 2px; color: #c8a0ff; text-transform: uppercase; margin-bottom: 4px; font-weight: 700; }
   .inst-desc { font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.45; }
 
+  /* Short screens (a TV): one-line title and wider cards so the start screen fits without scrolling. */
+  @media (max-height: 760px) {
+    #splashScreen { gap: 12px; }
+    #splashScreen h1 { font-size: 34px; }
+    #splashScreen h1 br { display: none; }
+    #splashScreen h1 span::before { content: "\00a0"; }
+    .instructions { grid-template-columns: repeat(2, minmax(0, 420px)); gap: 12px; margin: 0; }
+    .inst-card { padding: 12px 16px; }
+    #splashScreen .dwell-btn { padding: 12px 40px; }
+  }
+
   /* Hover-and-hold button: games run on TVs with no mouse, so screens are
      dismissed by holding the hand cursor over a button until it fills. */
   .dwell-btn {
