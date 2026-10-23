@@ -49,6 +49,29 @@
 
   if (window.parent === window) return;
 
+  // Same origin as the platform, so the TV flag set by /tvsetup is readable before any game code runs.
+  var tvLite = false;
+  try { tvLite = window.localStorage.getItem('kf_tv_mode') === '1'; } catch (e) { /* storage blocked: full quality */ }
+
+  if (tvLite) {
+    // Canvas glows are among the slowest things a Raspberry Pi can draw, and most games add one to every sprite.
+    try {
+      var proto = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
+      var blur = proto && Object.getOwnPropertyDescriptor(proto, 'shadowBlur');
+      if (blur && blur.set) {
+        Object.defineProperty(proto, 'shadowBlur', {
+          configurable: true,
+          get: function () { return 0; },
+          set: function () { blur.set.call(this, 0); },
+        });
+      }
+    } catch (e) { /* keep glows */ }
+    // Blurring whatever animates behind a panel is redone every frame.
+    var lite = document.createElement('style');
+    lite.textContent = '*,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}';
+    document.documentElement.appendChild(lite);
+  }
+
   window.addEventListener('message', function (e) {
     if (e.source === window.parent && e.data && e.data.type === 'KF_TV_TEXT') window.__kfTvText(e.data.minFont);
   });
