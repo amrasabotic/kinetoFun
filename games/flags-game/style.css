@@ -481,3 +481,6 @@ body { font-family: var(--font-main); color: var(--text-primary); }
   .gameover-stats    { flex-direction: column; align-items: center; }
   #stage-progress-wrap { flex-wrap: wrap; justify-content: center; top: 62px; }
 }
+
+/* Debug aid only; on a short screen (a TV) it just takes space a hand might hit. */
+@media (max-height: 760px) { #debug-toggle { display: none; } }

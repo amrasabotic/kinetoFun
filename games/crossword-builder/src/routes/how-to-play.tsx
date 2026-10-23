@@ -23,7 +23,7 @@ function HowToPlay() {
     <main className="min-h-screen px-6 py-8">
       {/* All steps on one screen, since a TV player cannot scroll. */}
       <div className="mx-auto max-w-6xl">
-        <Link to="/" data-dwell="" className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+        <Link to="/" data-dwell="" className="[@media(max-height:760px)]:inline-block [@media(max-height:760px)]:py-3 [@media(max-height:760px)]:pr-6 [@media(max-height:760px)]:text-lg text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
           ← Back
         </Link>
         <h1 className="mt-3 font-display text-5xl font-bold">How to Play</h1>

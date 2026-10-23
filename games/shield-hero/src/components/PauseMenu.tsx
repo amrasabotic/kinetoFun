@@ -53,7 +53,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
         <button
           data-dwell=""
           onClick={onToggleSound}
-          className="p-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors mt-4"
+          className="p-3 [@media(max-height:760px)]:p-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors mt-4"
         >
           {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
         </button>

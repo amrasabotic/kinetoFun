@@ -12,7 +12,7 @@ export default function HowToPlayScreen({ onBack, onPlay }: HowToPlayScreenProps
       <div className="flex items-center justify-between px-6 py-3 border-b border-orange-200 bg-white/60 backdrop-blur-sm shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-gray-600 hover:text-red-600 font-bold text-sm transition-colors"
+          className="flex items-center gap-1.5 text-gray-600 hover:text-red-600 font-bold text-sm transition-colors [@media(max-height:760px)]:text-lg [@media(max-height:760px)]:px-4 [@media(max-height:760px)]:py-3"
         >
           <ArrowLeft className="w-4 h-4" />
           Back

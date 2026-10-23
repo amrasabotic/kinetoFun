@@ -74,7 +74,7 @@ export default function HowToPlay({ onBack }: Props) {
       <div className="flex gap-1.5 px-6 py-2">
         {SLIDES.map((_, i) => (
           <button key={i}
-            className="flex-1 h-1.5 rounded-full transition-all"
+            className="flex-1 h-1.5 rounded-full transition-all [@media(max-height:760px)]:h-8 [@media(max-height:760px)]:py-[13px] [@media(max-height:760px)]:bg-clip-content"
             style={{ background: i === slide ? '#7C3AED' : 'rgba(255,255,255,0.15)' }}
             onClick={() => { playClick(); setSlide(i); }}
           />

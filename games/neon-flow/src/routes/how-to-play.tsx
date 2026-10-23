@@ -18,7 +18,7 @@ function HowTo() {
   return (
     <main className="min-h-screen px-4 py-6 max-w-6xl mx-auto">
       {/* All steps on one screen, since a TV player cannot scroll. */}
-      <Button asChild variant="ghost" size="sm" className="mb-3">
+      <Button asChild variant="ghost" size="sm" className="mb-3 [@media(max-height:760px)]:mb-0 [@media(max-height:760px)]:h-11 [@media(max-height:760px)]:px-5 [@media(max-height:760px)]:text-base">
         <Link to="/" data-dwell=""><ArrowLeft className="size-4" /> Home</Link>
       </Button>
 

@@ -7,7 +7,7 @@ export default function Credits({ onBack }: Props) {
     <div className="w-full h-full flex flex-col items-center justify-center"
          style={{ background: 'radial-gradient(ellipse at 50% 50%, #0d0028 0%, #0a0014 70%)' }}>
 
-      <button onClick={onBack} className="absolute top-6 left-6 text-purple-300 hover:text-white transition-colors text-2xl">←</button>
+      <button onClick={onBack} className="absolute top-6 left-6 text-purple-300 hover:text-white transition-colors text-2xl [@media(max-height:760px)]:px-4 [@media(max-height:760px)]:py-2 [@media(max-height:760px)]:text-4xl">←</button>
 
       <motion.div className="flex flex-col items-center gap-6 text-center px-8 max-w-lg"
         initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
