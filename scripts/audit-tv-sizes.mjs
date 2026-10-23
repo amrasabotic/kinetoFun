@@ -1,5 +1,5 @@
 // Opens each registered game the way a TV shows it and reports text and buttons too small to read or hold.
-// Usage: node scripts/audit-tv-sizes.mjs [--scale=1.5] [--out=dir] [--json] [name ...]
+// Usage: node scripts/audit-tv-sizes.mjs [--scale=2] [--raw-text] [--out=dir] [--json] [name ...]
 // Needs built games in public/games/ and a local Chrome (or set CHROME_PATH).
 
 import { spawn } from "node:child_process";
@@ -15,6 +15,8 @@ const publicDir = join(root, "public");
 const args = process.argv.slice(2);
 const flag = (name, fallback) => args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 const asJson = args.includes("--json");
+// --raw-text measures games as built, without the bridge's minimum text size.
+const rawText = args.includes("--raw-text");
 const only = new Set(args.filter((a) => !a.startsWith("--")));
 // The Pi outputs 1080p; the game gets the screen divided by the scale (DEFAULT_TV_SCALE in use-tv-game-scale.ts is 2).
 const scale = Number(flag("scale", "2"));
@@ -25,7 +27,9 @@ const settleMs = Number(flag("wait", "6000"));
 
 // On-screen pixels at the TV; roughly what stays readable and holdable from a sofa on a 1080p set.
 const MIN_TEXT_PX = 24;
+// A hand target passes with a 96x96 area, or a wide shape at least 40px tall.
 const MIN_TARGET_PX = 96;
+const MIN_TARGET_SIDE_PX = 40;
 
 const registry = readFileSync(join(root, "src", "games", "registry.ts"), "utf8");
 const games = [...registry.matchAll(/'([^']+)':\s*\{\s*folder:\s*'[^']+',\s*indexPath:\s*'([^']+)'/g)]
@@ -119,8 +123,12 @@ const MEASURE = `(() => {
     minFont = Math.min(minFont, size);
     if (size < ${MIN_TEXT_PX / scale}) smallChars += text.length;
   }
-  const targets = [...document.querySelectorAll("button, a[href], [role=button], [data-focusable], [data-dwell], [onclick]")]
-    .map(visible).filter(Boolean).map((r) => Math.min(r.width, r.height));
+  const targetEls = [...document.querySelectorAll("button, a[href], [role=button], [data-focusable], [data-dwell], [onclick]")]
+    .map((el) => ({ el, r: visible(el) })).filter((t) => t.r);
+  const tooSmall = (r) => Math.min(r.width, r.height) < ${MIN_TARGET_SIDE_PX / scale} || r.width * r.height < ${(MIN_TARGET_PX / scale) ** 2};
+  const targets = targetEls.map((t) => Math.min(t.r.width, t.r.height));
+  const smallList = targetEls.filter((t) => tooSmall(t.r))
+    .map((t) => \`<\${t.el.tagName.toLowerCase()}\${t.el.id ? "#" + t.el.id : ""}\${typeof t.el.className === "string" && t.el.className ? "." + t.el.className.trim().split(/\\s+/).join(".") : ""}> "\${(t.el.textContent || "").trim().slice(0, 30)}" \${Math.round(t.r.width)}x\${Math.round(t.r.height)}\`);
   const canvas = [...document.querySelectorAll("canvas")].map(visible).filter(Boolean)
     .reduce((best, r) => Math.max(best, (Math.min(r.right, W) - Math.max(r.left, 0)) * (Math.min(r.bottom, H) - Math.max(r.top, 0))), 0);
   // Anything the player needs that ends up past the screen edge or behind a scrollbar.
@@ -129,8 +137,8 @@ const MEASURE = `(() => {
   const clipped = [...document.querySelectorAll("button, a[href], [role=button], [data-focusable], [data-dwell], h1, h2, h3, p")]
     .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && (r.bottom > H + 2 || r.right > W + 2); }).length;
   return { scrolls, clipped, chars, smallChars, minFont: chars ? minFont : null, targets: targets.length,
-    smallTargets: targets.filter((s) => s < ${MIN_TARGET_PX / scale}).length,
-    minTarget: targets.length ? Math.min(...targets) : null, canvasCover: canvas / (W * H) };
+    smallTargets: smallList.length,
+    minTarget: targets.length ? Math.min(...targets) : null, smallList, canvasCover: canvas / (W * H) };
 })()`;
 
 async function auditGame(port, base, game) {
@@ -141,6 +149,12 @@ async function auditGame(port, base, game) {
     await page.send("Page.enable");
     await page.send("Page.navigate", { url: base + game.path });
     await new Promise((r) => setTimeout(r, settleMs));
+    if (!rawText) {
+      // What the play page asks of kf-bridge.js on a TV.
+      await page.send("Runtime.evaluate", { expression: `window.__kfTvText && window.__kfTvText(${Math.round(MIN_TEXT_PX / scale)})` });
+      // Longer than the bridge's own 500 ms wait, so text added since is raised too.
+      await new Promise((r) => setTimeout(r, 800));
+    }
     const { result } = await page.send("Runtime.evaluate", { expression: MEASURE, returnByValue: true });
     const shot = await page.send("Page.captureScreenshot", { format: "png" });
     writeFileSync(join(outDir, `${game.id}.png`), Buffer.from(shot.data, "base64"));
@@ -185,7 +199,7 @@ if (asJson) {
 } else {
   const order = { overflow: 0, fix: 1, error: 2, check: 3, ok: 4 };
   results.sort((a, b) => order[a.verdict] - order[b.verdict] || a.id.localeCompare(b.id));
-  console.log(`\nScale ${scale}: game viewport ${VIEW_W}x${VIEW_H}, sizes as seen on a 1080p screen. Text under ${MIN_TEXT_PX}px, targets under ${MIN_TARGET_PX}px.`);
+  console.log(`\nScale ${scale}: game viewport ${VIEW_W}x${VIEW_H}, sizes as seen on a 1080p screen. Text under ${MIN_TEXT_PX}px, targets under ${MIN_TARGET_PX}x${MIN_TARGET_PX}px or ${MIN_TARGET_SIDE_PX}px tall.`);
   console.log("verdict  game                             smallest text  small text  smallest target  small targets  canvas  off-screen");
   for (const r of results) {
     if (r.error) { console.log(`error    ${r.id.padEnd(32)} ${r.error}`); continue; }

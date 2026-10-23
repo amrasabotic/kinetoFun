@@ -10,6 +10,9 @@ export type GameEvent =
   // Player chose to leave (e.g. "Back to games"), with no final score.
   | { type: "GAME_EXIT" };
 
+// Smallest text that reads from a sofa on a 1080p TV; the bridge in each game raises anything smaller.
+const TV_MIN_TEXT_PX = 24;
+
 interface GameIframeProps {
   /** URL to the game's index.html under /public/games/ */
   src: string;
@@ -65,7 +68,23 @@ export default function GameIframe({
     return () => window.removeEventListener("message", handleMessage);
   }, [onGameComplete, onXpEarned, onAchievementUnlocked, onExit]);
 
-  if (fullscreen && scale > 1) {
+  const enlarged = fullscreen && scale > 1;
+
+  useEffect(() => {
+    const frame = iframeRef.current;
+    if (!enlarged || !frame) return;
+    function sendMinFont() {
+      // 24px on a 1080p screen, expressed in the game's own (smaller) pixels.
+      const screen = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const minFont = Math.round((TV_MIN_TEXT_PX * screen) / scale);
+      frame?.contentWindow?.postMessage({ type: "KF_TV_TEXT", minFont }, window.location.origin);
+    }
+    sendMinFont();
+    frame.addEventListener("load", sendMinFont);
+    return () => frame.removeEventListener("load", sendMinFont);
+  }, [enlarged, scale, iframeRef]);
+
+  if (enlarged) {
     // The game sees a laptop-sized viewport, so vh units, canvases and pointer maths stay consistent.
     const size = `${100 / scale}%`;
     return (

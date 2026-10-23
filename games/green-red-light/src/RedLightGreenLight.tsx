@@ -795,21 +795,21 @@ export default function RedLightGreenLight() {
           <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-64 h-64 bg-red-500/10 rounded-full blur-3xl" />
 
           <div className="relative z-10 text-center max-w-2xl">
-            <div className="flex justify-center gap-4 mb-8">
+            <div className="flex justify-center gap-4 mb-8 [@media(max-height:760px)]:mb-3">
               <div className="w-6 h-6 rounded-full bg-red-500 shadow-lg shadow-red-500/50" />
               <div className="w-6 h-6 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50" />
               <div className="w-6 h-6 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50" />
             </div>
 
-            <h1 className="text-6xl sm:text-7xl font-black tracking-tight mb-3">
+            <h1 className="text-6xl sm:text-7xl font-black tracking-tight mb-3 [@media(max-height:760px)]:text-5xl">
               <span className="text-red-500">RED LIGHT</span>
               <span className="text-gray-500 mx-3">,</span>
               <span className="text-emerald-400">GREEN LIGHT</span>
             </h1>
 
-            <p className="text-xl text-gray-400 mb-10 font-light">Freeze when the light turns red.</p>
+            <p className="text-xl text-gray-400 mb-10 [@media(max-height:760px)]:mb-4 font-light">Freeze when the light turns red.</p>
 
-            <div className="backdrop-blur-md bg-white/5 rounded-2xl border border-white/10 p-6 mb-10 text-left space-y-2">
+            <div className="backdrop-blur-md bg-white/5 rounded-2xl border border-white/10 p-6 mb-10 [@media(max-height:760px)]:p-4 [@media(max-height:760px)]:mb-4 text-left space-y-2">
               <p className="text-gray-300 text-sm flex items-start gap-3">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
                 Move only during Green Light.
@@ -824,7 +824,7 @@ export default function RedLightGreenLight() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-12">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-12 [@media(max-height:760px)]:mb-5">
               {[
                 { label: 'High Score', value: stats.highScore.toLocaleString() },
                 { label: 'Wins', value: stats.wins },
@@ -874,7 +874,7 @@ export default function RedLightGreenLight() {
             </div>
           </div>
 
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-gray-600 text-xs tracking-widest uppercase">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-gray-600 text-xs tracking-widest uppercase [@media(max-height:760px)]:hidden">
             KinetoFun
           </div>
         </div>

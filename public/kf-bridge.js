@@ -2,7 +2,56 @@
 // "Back to games" button can be pressed by hand during a round.
 // Position is normalised (0-1) in screen space: x is mirrored like the camera preview.
 (function () {
+  // On a TV the platform sends the smallest readable font size; smaller text is raised to it.
+  var minFont = 0;
+  var raised = [];
+  var pending = false;
+
+  function raiseText() {
+    pending = false;
+    // Undo earlier raises first so text a game has since enlarged keeps its own size.
+    for (var i = 0; i < raised.length; i++) raised[i].style.removeProperty('font-size');
+    raised = [];
+    if (!minFont || !document.body) return;
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    var seen = new Set();
+    for (var t = walker.nextNode(); t; t = walker.nextNode()) {
+      var el = t.parentElement;
+      if (!el || seen.has(el) || !t.textContent.trim()) continue;
+      seen.add(el);
+      if (parseFloat(getComputedStyle(el).fontSize) < minFont) raised.push(el);
+    }
+    for (var j = 0; j < raised.length; j++) raised[j].style.setProperty('font-size', minFont + 'px', 'important');
+  }
+
+  function scheduleRaise() {
+    if (pending || !minFont) return;
+    pending = true;
+    // At most twice a second; the Pi has little time to spare during a round.
+    setTimeout(raiseText, 500);
+  }
+
+  window.__kfTvText = function (px) {
+    minFont = px > 0 ? px : 0;
+    if (minFont && !document.getElementById('kf-tv-style')) {
+      // Nothing can scroll by hand on a TV, so a scrollbar only takes space.
+      var style = document.createElement('style');
+      style.id = 'kf-tv-style';
+      style.textContent = '*{scrollbar-width:none!important}*::-webkit-scrollbar{display:none!important}';
+      document.head.appendChild(style);
+    }
+    raiseText();
+    if (!window.__kfTvObserver && document.body) {
+      window.__kfTvObserver = new MutationObserver(scheduleRaise);
+      window.__kfTvObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
+  };
+
   if (window.parent === window) return;
+
+  window.addEventListener('message', function (e) {
+    if (e.source === window.parent && e.data && e.data.type === 'KF_TV_TEXT') window.__kfTvText(e.data.minFont);
+  });
 
   var INDEX_TIP = 8;
   var lastSent = 0;
