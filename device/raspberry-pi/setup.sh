@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USER_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
 
 apt-get update
-apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes
+apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes swaybg
 
 # Managed policy: camera allowed for our origin, so no permission prompt ever appears.
 install -d /etc/chromium/policies/managed
@@ -31,10 +31,13 @@ ENV
 # Start on login of the desktop session (labwc on Bookworm), restarted by the launcher loop.
 install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$USER_HOME/.config/labwc"
 AUTOSTART="$USER_HOME/.config/labwc/autostart"
-# A user autostart file replaces the system one, so start from the system defaults.
-[[ -f "$AUTOSTART" || ! -f /etc/xdg/labwc/autostart ]] || cp /etc/xdg/labwc/autostart "$AUTOSTART"
-touch "$AUTOSTART"
-grep -q kinetofun-kiosk "$AUTOSTART" || echo '/usr/local/bin/kinetofun-kiosk &' >> "$AUTOSTART"
+install -m 0644 "$HERE/background.png" /usr/share/kinetofun-background.png
+# User autostart replaces the system one; drop the desktop and taskbar so only the logo shows before Chromium.
+{
+  [[ -f /etc/xdg/labwc/autostart ]] && grep -vE 'pcmanfm|wf-panel' /etc/xdg/labwc/autostart
+  echo 'swaybg -c ffffff -i /usr/share/kinetofun-background.png -m fill &'
+  echo '/usr/local/bin/kinetofun-kiosk &'
+} > "$AUTOSTART"
 chown "$KIOSK_USER:$KIOSK_USER" "$AUTOSTART"
 
 # Run every TV at 1080p, even 4K sets: the TV upscales, and the Pi draws a quarter of the pixels.
