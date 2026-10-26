@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import { playRewardChime } from "@/lib/rewards/chime";
 import { useTvMode } from "@/features/tv/tv-mode";
 import { useTvGameScale } from "@/features/tv/use-tv-game-scale";
 import { GameBackButton } from "@/components/games/GameBackButton";
+import { HandInputProvider } from "@/features/hand-input/HandInputProvider";
 
 /** How long the end-of-game reward card waits before leaving on its own. */
 const REWARD_CARD_MS = 15000;
@@ -333,7 +334,10 @@ function GameLaunchContent() {
   }
 
   if (phase === "done") {
+    // The game reported the hand until now; once it closes, the score screen needs its own camera.
+    const Hands = tv ? HandInputProvider : Fragment;
     return (
+      <Hands>
       <FullScreenOverlay>
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 border border-primary/40 mb-4">
           <span className="text-3xl">✓</span>
@@ -366,6 +370,7 @@ function GameLaunchContent() {
           <p className="mt-2 text-sm text-white/50">Returning to game page…</p>
         )}
       </FullScreenOverlay>
+      </Hands>
     );
   }
 

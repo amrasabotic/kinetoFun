@@ -1,7 +1,5 @@
 /** How-to-play screen with animated gesture illustrations. */
-import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useMenuHand } from '../../hooks/useMediaPipe';
 import { playUiClick } from '../../game/audio/audioSystem';
 
 interface Props { onBack: () => void; }
@@ -46,45 +44,13 @@ const TIPS = [
   { icon: '🌍', text: 'The world changes theme every 1200m — six environments in total.' },
 ];
 
-const DWELL_MS = 900;
-// The button ignores the hand for a moment after the screen appears, so a
-// hand already raised in front of the camera cannot skip the instructions.
-const ARM_MS = 1500;
-
 export default function HowToPlay({ onBack }: Props) {
-  // This is the first screen on a TV with no mouse, so the hand must be able
-  // to leave it: hold the pointer over the button until the bar fills.
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hand = useMenuHand(videoRef as React.RefObject<HTMLVideoElement>);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const shownAt = useRef(performance.now());
-  const since = useRef<number | null>(null);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const el = btnRef.current;
-    if (!el) return;
-    const now = performance.now();
-    const r = el.getBoundingClientRect();
-    const x = hand.x * window.innerWidth;
-    const y = hand.y * window.innerHeight;
-    const over = hand.detected && now - shownAt.current >= ARM_MS &&
-      x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-    if (!over) { since.current = null; setProgress(0); return; }
-    if (since.current === null) since.current = now;
-    const p = Math.min((now - since.current) / DWELL_MS, 1);
-    setProgress(p);
-    if (p >= 1) { since.current = null; playUiClick(); onBack(); }
-  }, [hand, onBack]);
-
   return (
     <div
-      className="h-screen w-full flex flex-col items-center justify-center overflow-hidden px-8 py-6 gap-5 relative"
+      className="h-screen w-full overflow-y-auto relative"
       style={{ background: 'linear-gradient(160deg,#0b0e1a,#1a1040)' }}
     >
-      <video ref={videoRef as React.RefObject<HTMLVideoElement>}
-        className="absolute opacity-0 pointer-events-none w-1 h-1" muted playsInline />
-
+      <div className="min-h-full flex flex-col items-center justify-center px-8 py-6 gap-5">
       <h2 className="text-5xl font-black text-white">How To Play</h2>
 
       <div className="w-full max-w-6xl grid grid-cols-4 gap-4">
@@ -125,7 +91,6 @@ export default function HowToPlay({ onBack }: Props) {
 
       <div className="relative overflow-hidden rounded-2xl">
         <button
-          ref={btnRef}
           onClick={() => { playUiClick(); onBack(); }}
           className="px-16 py-4 rounded-2xl text-white text-xl font-black"
           style={{
@@ -136,11 +101,9 @@ export default function HowToPlay({ onBack }: Props) {
         >
           ▶ Let's Play
         </button>
-        <div className="absolute bottom-0 left-0 h-1.5 bg-white pointer-events-none" style={{ width: `${progress * 100}%` }} />
       </div>
-      <p className="text-white/50 text-sm -mt-2">
-        {hand.detected ? 'Hold your hand over the button' : 'Show your hand to the camera · sit about 60 cm away'}
-      </p>
+      <p className="text-white/50 text-sm -mt-2">Hold your hand over the button</p>
+      </div>
     </div>
   );
 }

@@ -72,9 +72,8 @@ export default function App() {
   // ── Check if game canvas should be visible ─────────────────────────────────
   const showCanvas = screen === 'playing' || screen === 'game-over';
 
-  // The main menu and How to Play run their own hand-pressed buttons; every
-  // other screen with buttons uses the shared hand cursor.
-  const cursorScreens = ['garage', 'settings', 'statistics', 'game-over'];
+  // The main menu runs its own hand-pressed buttons; every other screen with buttons uses the shared hand cursor.
+  const cursorScreens = ['garage', 'settings', 'statistics', 'game-over', 'howtoplay'];
   const getHandPoint = () => {
     const h = handRef.current;
     return h.detected ? { x: h.palmX, y: h.palmY } : null;
