@@ -50,6 +50,8 @@ ExecStart=
 ExecStart=-/usr/bin/plymouth quit --retain-splash
 UNIT
 systemctl daemon-reload
+# The tty1 console login clears the screen to black between the boot logo and the desktop; SSH still works.
+systemctl mask getty@tty1.service
 chown "$KIOSK_USER:$KIOSK_USER" "$AUTOSTART"
 
 # Run every TV at 1080p, even 4K sets: the TV upscales, and the Pi draws a quarter of the pixels.

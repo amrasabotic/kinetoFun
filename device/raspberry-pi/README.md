@@ -32,6 +32,7 @@ A second argument overrides the site, for example `https://staging.example.com`.
 | `~/.config/labwc/autostart` | Starts the launcher with the desktop session |
 | `/etc/xdg/labwc/autostart` | Logo background started first; desktop icons and taskbar lines commented out (uncomment them to get the normal desktop back) |
 | `/etc/systemd/system/plymouth-quit.service.d/retain-splash.conf` | Keeps the boot logo on screen until the desktop session draws |
+| `getty@tty1.service` | Masked, so no text console login blanks the screen during boot; use SSH, or `sudo systemctl unmask getty@tty1` to restore it |
 | `/usr/share/kinetofun-background.png` | White screen with the logo, shown until Chromium opens; regenerate `background.png` when the logo changes |
 | `/boot/firmware/cmdline.txt` | Both HDMI ports forced to 1920×1080 at 60 Hz, so every TV (4K included) behaves the same; boot text hidden |
 | `/boot/firmware/config.txt` | Rainbow boot screen turned off |
