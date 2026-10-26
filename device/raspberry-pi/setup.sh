@@ -32,9 +32,13 @@ ENV
 install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$USER_HOME/.config/labwc"
 AUTOSTART="$USER_HOME/.config/labwc/autostart"
 install -m 0644 "$HERE/background.png" /usr/share/kinetofun-background.png
-# User autostart replaces the system one; drop the desktop and taskbar so only the logo shows before Chromium.
+# The Pi session runs labwc with -m, so system and user autostart files both run.
+SYS_AUTOSTART=/etc/xdg/labwc/autostart
+if [[ -f "$SYS_AUTOSTART" ]]; then
+  # Desktop and taskbar off so only the logo shows before Chromium.
+  sed -i -E 's@^([^#].*(pcmanfm|wf-panel).*)$@# \1@' "$SYS_AUTOSTART"
+fi
 {
-  [[ -f /etc/xdg/labwc/autostart ]] && grep -vE 'pcmanfm|wf-panel' /etc/xdg/labwc/autostart
   echo 'swaybg -c ffffff -i /usr/share/kinetofun-background.png -m fill &'
   echo '/usr/local/bin/kinetofun-kiosk &'
 } > "$AUTOSTART"
