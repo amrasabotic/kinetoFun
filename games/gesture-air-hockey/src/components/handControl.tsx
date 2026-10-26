@@ -87,15 +87,15 @@ export function HandProvider({ children }: { children: ReactNode }) {
         if (stopped) return;
         setReady(true);
 
-        let lastTs = -1;
+        let lastFrame = -1;
         const loop = () => {
           if (stopped) return;
           const v = videoRef.current;
           if (v && v.readyState >= 2 && landmarker) {
-            const ts = performance.now();
-            if (ts !== lastTs) {
-              lastTs = ts;
-              const res = landmarker.detectForVideo(v, ts);
+            // Only new camera frames: re-running the model on the same frame starves a Pi.
+            if (v.currentTime !== lastFrame) {
+              lastFrame = v.currentTime;
+              const res = landmarker.detectForVideo(v, performance.now());
               const h = hand.current;
               if (res?.landmarks?.length) {
                 const lms = res.landmarks[0];
