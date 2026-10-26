@@ -16,6 +16,10 @@ while true; do
     --disable-features=Translate \
     --autoplay-policy=no-user-gesture-required \
     --ozone-platform=wayland \
+    --disable-component-update \
+    --disable-default-apps \
+    --disable-sync \
+    --no-first-run \
     "$KF_URL"
   sleep 3
 done
