@@ -37,11 +37,19 @@ SYS_AUTOSTART=/etc/xdg/labwc/autostart
 if [[ -f "$SYS_AUTOSTART" ]]; then
   # Desktop and taskbar off so only the logo shows before Chromium.
   sed -i -E 's@^([^#].*(pcmanfm|wf-panel).*)$@# \1@' "$SYS_AUTOSTART"
+  # Logo background first: the system file runs before ours and its other entries can be slow.
+  grep -q kinetofun-background "$SYS_AUTOSTART" || sed -i '1i swaybg -c ffffff -i /usr/share/kinetofun-background.png -m fill &' "$SYS_AUTOSTART"
 fi
-{
-  echo 'swaybg -c ffffff -i /usr/share/kinetofun-background.png -m fill &'
-  echo '/usr/local/bin/kinetofun-kiosk &'
-} > "$AUTOSTART"
+echo '/usr/local/bin/kinetofun-kiosk &' > "$AUTOSTART"
+
+# Leave the boot logo on screen when the splash quits, instead of a black frame until the desktop draws.
+install -d /etc/systemd/system/plymouth-quit.service.d
+cat > /etc/systemd/system/plymouth-quit.service.d/retain-splash.conf <<UNIT
+[Service]
+ExecStart=
+ExecStart=-/usr/bin/plymouth quit --retain-splash
+UNIT
+systemctl daemon-reload
 chown "$KIOSK_USER:$KIOSK_USER" "$AUTOSTART"
 
 # Run every TV at 1080p, even 4K sets: the TV upscales, and the Pi draws a quarter of the pixels.
