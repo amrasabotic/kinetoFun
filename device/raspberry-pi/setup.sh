@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USER_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
 
 apt-get update
-apt-get install -y chromium unclutter v4l-utils
+apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes
 
 # Managed policy: camera allowed for our origin, so no permission prompt ever appears.
 install -d /etc/chromium/policies/managed
@@ -43,9 +43,24 @@ if [[ -f "$CMDLINE" ]]; then
   for port in HDMI-A-1 HDMI-A-2; do
     grep -q "video=$port:" "$CMDLINE" || sed -i "1 s/\$/ video=$port:1920x1080@60/" "$CMDLINE"
   done
+  # Show only the KinetoFun boot logo: no boot text, Linux logo or blinking cursor.
+  for opt in quiet splash loglevel=3 logo.nologo vt.global_cursor_default=0; do
+    grep -qw "$opt" "$CMDLINE" || sed -i "1 s/\$/ $opt/" "$CMDLINE"
+  done
 else
   echo "Set 1080p output manually: $CMDLINE not found." >&2
 fi
+
+# Skip the firmware's rainbow test screen.
+CONFIG=/boot/firmware/config.txt
+if [[ -f "$CONFIG" ]]; then
+  grep -q "^disable_splash=" "$CONFIG" || echo "disable_splash=1" >> "$CONFIG"
+fi
+
+THEME_DIR=/usr/share/plymouth/themes/kinetofun
+install -d "$THEME_DIR"
+install -m 0644 "$HERE/plymouth/kinetofun.plymouth" "$HERE/plymouth/kinetofun.script" "$HERE/plymouth/logo.png" "$THEME_DIR/"
+plymouth-set-default-theme -R kinetofun
 
 # Log the kiosk user in without a password prompt and keep the screen on.
 raspi-config nonint do_boot_behaviour B4 || echo "Set desktop autologin manually in raspi-config." >&2

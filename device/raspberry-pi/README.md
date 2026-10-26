@@ -30,7 +30,9 @@ A second argument overrides the site, for example `https://staging.example.com`.
 | `/etc/kinetofun.env` | The page the kiosk opens, including the device key |
 | `/usr/local/bin/kinetofun-kiosk` | Launcher that restarts Chromium if it exits or crashes |
 | `~/.config/labwc/autostart` | Starts the launcher with the desktop session |
-| `/boot/firmware/cmdline.txt` | Both HDMI ports forced to 1920×1080 at 60 Hz, so every TV (4K included) behaves the same |
+| `/boot/firmware/cmdline.txt` | Both HDMI ports forced to 1920×1080 at 60 Hz, so every TV (4K included) behaves the same; boot text hidden |
+| `/boot/firmware/config.txt` | Rainbow boot screen turned off |
+| `/usr/share/plymouth/themes/kinetofun` | Boot splash showing the KinetoFun logo; copy `public/logo.png` to `plymouth/logo.png` when the logo changes |
 
 ## Checking a unit
 

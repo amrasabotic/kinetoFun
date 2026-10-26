@@ -1,0 +1,10 @@
+# Logo matches its own white background, so the screen is white edge to edge.
+Window.SetBackgroundTopColor(1, 1, 1);
+Window.SetBackgroundBottomColor(1, 1, 1);
+
+image = Image("logo.png");
+width = Window.GetWidth() * 0.45;
+logo = image.Scale(width, width * image.GetHeight() / image.GetWidth());
+sprite = Sprite(logo);
+sprite.SetX(Window.GetX() + (Window.GetWidth() - logo.GetWidth()) / 2);
+sprite.SetY(Window.GetY() + (Window.GetHeight() - logo.GetHeight()) / 2);
