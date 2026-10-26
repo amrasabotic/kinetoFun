@@ -30,6 +30,7 @@ A second argument overrides the site, for example `https://staging.example.com`.
 | `/etc/kinetofun.env` | The page the kiosk opens, including the device key |
 | `/usr/local/bin/kinetofun-kiosk` | Launcher that restarts Chromium if it exits or crashes |
 | `~/.config/labwc/autostart` | Starts the launcher with the desktop session |
+| `~/.config/kanshi/config` | Desktop forced to 1920×1080 at 60 Hz to match the boot screen |
 | `/etc/xdg/labwc/autostart` | Logo background started first; desktop icons and taskbar lines commented out (uncomment them to get the normal desktop back) |
 | `/etc/systemd/system/plymouth-quit.service.d/retain-splash.conf` | Keeps the boot logo on screen until the desktop session draws |
 | `getty@tty1.service` | Masked, so no text console login blanks the screen during boot; use SSH, or `sudo systemctl unmask getty@tty1` to restore it |

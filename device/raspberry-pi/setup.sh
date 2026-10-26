@@ -42,6 +42,11 @@ if [[ -f "$SYS_AUTOSTART" ]]; then
 fi
 echo '/usr/local/bin/kinetofun-kiosk &' > "$AUTOSTART"
 
+# The desktop ignores the kernel video= setting and picks the TV's preferred mode (4K at 30 Hz on 4K sets).
+install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$USER_HOME/.config/kanshi"
+printf 'profile {\n  output * mode 1920x1080@60Hz\n}\n' > "$USER_HOME/.config/kanshi/config"
+chown "$KIOSK_USER:$KIOSK_USER" "$USER_HOME/.config/kanshi/config"
+
 # Leave the boot logo on screen when the splash quits, instead of a black frame until the desktop draws.
 install -d /etc/systemd/system/plymouth-quit.service.d
 cat > /etc/systemd/system/plymouth-quit.service.d/retain-splash.conf <<UNIT
