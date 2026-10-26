@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USER_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
 
 apt-get update
-apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes swaybg
+apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes swaybg fonts-noto-color-emoji
 
 # Managed policy: camera allowed for our origin, so no permission prompt ever appears.
 install -d /etc/chromium/policies/managed
