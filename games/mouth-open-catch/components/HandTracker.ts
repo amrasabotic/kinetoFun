@@ -15,6 +15,8 @@ const INDEX_TIP = 8;
 
 const SMOOTHING = 0.25;
 const TARGET_FPS = 30;
+// While the face drives play, the hand is only needed to reach the platform's Back button.
+const BACKGROUND_FPS = 8;
 
 export class HandTracker {
   private landmarker: HandLandmarker | null = null;
@@ -26,6 +28,7 @@ export class HandTracker {
   private smoothY = 0.5;
   private onData: ((data: HandCursorData) => void) | null = null;
   private initialized = false;
+  private fps = TARGET_FPS;
 
   async init(
     videoEl: HTMLVideoElement,
@@ -50,6 +53,11 @@ export class HandTracker {
     this.loop();
   }
 
+  /** Full rate for menus, a low rate while the face tracker drives gameplay. */
+  setBackground(background: boolean): void {
+    this.fps = background ? BACKGROUND_FPS : TARGET_FPS;
+  }
+
   stopProcessing(): void {
     this.running = false;
     cancelAnimationFrame(this.animId);
@@ -62,7 +70,7 @@ export class HandTracker {
     this.animId = requestAnimationFrame(() => this.loop());
 
     const now = performance.now();
-    if (now - this.lastFrame < 1000 / TARGET_FPS) return;
+    if (now - this.lastFrame < 1000 / this.fps) return;
     this.lastFrame = now;
 
     const video = this.videoEl!;

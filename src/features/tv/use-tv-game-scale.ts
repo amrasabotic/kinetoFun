@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 // Games were built for laptop screens; on a 1080p TV they are enlarged by this much unless the registry says otherwise.
-export const DEFAULT_TV_SCALE = 2;
+export const DEFAULT_TV_SCALE = 1.5;
 
 function screenFactor(): number {
   // Relative to 1080p, by whichever side runs out first, so a screen that isn't 16:9 never crops the game.

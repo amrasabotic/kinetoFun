@@ -87,6 +87,8 @@ const DWELL_MS = 900;
 // Buttons ignore the hand for a moment after a screen or overlay appears, so a
 // hand already resting where a button is drawn cannot press it by accident.
 const ARM_MS = 1500;
+// A hold survives the cursor slipping off, or the hand being missed, for this long (jittery tracking on a TV box).
+const GRACE_MS = 250;
 
 /**
  * Hand cursor plus hover-to-press for every element marked `data-dwell`.
@@ -104,6 +106,7 @@ function DwellCursor() {
     let target: HTMLElement | null = null;
     let start = 0;
     let armedAt = performance.now() + ARM_MS;
+    let lastOnTarget = 0;
 
     const release = () => {
       target?.style.setProperty("--dwell", "0");
@@ -130,7 +133,7 @@ function DwellCursor() {
       const { point, pinch } = latest.current;
       if (!point) {
         dot.style.opacity = "0";
-        release();
+        if (target && performance.now() - lastOnTarget > GRACE_MS) release();
         return;
       }
       const x = point.x * window.innerWidth;
@@ -140,10 +143,15 @@ function DwellCursor() {
 
       const now = performance.now();
       const hit = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-dwell]") ?? null;
-      if (hit !== target) {
+      if (hit === target) {
+        lastOnTarget = now;
+      } else if (target && now - lastOnTarget <= GRACE_MS) {
+        return;
+      } else {
         release();
         target = hit;
         start = now;
+        lastOnTarget = now;
       }
       if (!target) return;
       // A pinch means the player is drawing, never pressing a button.

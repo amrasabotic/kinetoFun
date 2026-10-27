@@ -104,6 +104,8 @@
 
   // Called by the patched tasks-vision builds (see scripts/patch-game-builds.js).
   window.__kfTap = function (result) {
+    // Face results (faceLandmarks) say nothing about a hand; letting them through would hide the cursor.
+    if (result && !('landmarks' in result)) return;
     try {
       var p = pointer(result && result.landmarks);
       if (p) send(p.x, p.y, true);

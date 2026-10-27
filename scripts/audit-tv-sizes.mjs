@@ -1,5 +1,5 @@
 // Opens each registered game the way a TV shows it and reports text and buttons too small to read or hold.
-// Usage: node scripts/audit-tv-sizes.mjs [--scale=2] [--raw-text] [--out=dir] [--json] [name ...]
+// Usage: node scripts/audit-tv-sizes.mjs [--scale=1.5] [--raw-text] [--out=dir] [--json] [name ...]
 // Needs built games in public/games/ and a local Chrome (or set CHROME_PATH).
 
 import { spawn } from "node:child_process";
@@ -18,8 +18,8 @@ const asJson = args.includes("--json");
 // --raw-text measures games as built, without the bridge's minimum text size.
 const rawText = args.includes("--raw-text");
 const only = new Set(args.filter((a) => !a.startsWith("--")));
-// The Pi outputs 1080p; the game gets the screen divided by the scale (DEFAULT_TV_SCALE in use-tv-game-scale.ts is 2).
-const scale = Number(flag("scale", "2"));
+// The Pi outputs 1080p; the game gets the screen divided by the scale (DEFAULT_TV_SCALE in use-tv-game-scale.ts is 1.5).
+const scale = Number(flag("scale", "1.5"));
 const VIEW_W = Math.round(1920 / scale);
 const VIEW_H = Math.round(1080 / scale);
 const outDir = flag("out", join(tmpdir(), `kf-tv-sizes-${scale}`));

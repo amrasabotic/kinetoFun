@@ -56,12 +56,15 @@ export async function startHandTracking(
   let rafId = 0;
   let stopped = false;
   let lastTs = -1;
+  let lastFrameTime = -1;
 
   const loop = () => {
     if (stopped) return;
     const ts = performance.now();
-    if (video.readyState >= 2 && ts !== lastTs) {
+    // Only new camera frames; re-detecting the same frame just steals time from drawing on a slow device.
+    if (video.readyState >= 2 && ts !== lastTs && video.currentTime !== lastFrameTime) {
       lastTs = ts;
+      lastFrameTime = video.currentTime;
       try {
         const res = landmarker.detectForVideo(video, ts);
         if (res.landmarks?.[0]) {

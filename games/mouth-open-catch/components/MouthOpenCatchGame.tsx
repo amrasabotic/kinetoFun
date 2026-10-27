@@ -538,12 +538,14 @@ export default function MouthOpenCatchGame() {
     if (!face || !hand) return;
 
     if (needsFaceInput(screen)) {
-      // Gameplay / calibration: face on, hand off
-      hand.stopProcessing();
+      // Gameplay / calibration: face drives play; hand kept at a low rate so Back can still be held
+      hand.setBackground(true);
+      hand.startProcessing();
       face.resumeDetection();
     } else {
       // All UI screens: hand on, face suspended
       face.suspendDetection();
+      hand.setBackground(false);
       hand.startProcessing();
     }
   }, [screen]);
