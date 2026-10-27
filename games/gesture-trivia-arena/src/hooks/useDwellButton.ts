@@ -13,6 +13,8 @@ export function useDwellButton(holdMs: number, onActivate: () => void, armMs = 1
   const sinceRef = useRef(0);
   const wasOverRef = useRef(false);
   const firedRef = useRef(false);
+  // When the cursor was last over the button; a hold survives slips shorter than 250 ms.
+  const lastOverRef = useRef(0);
   // Ignore the hand for a moment after the button appears, so a hand already
   // resting on it cannot skip How to Play or press through screens.
   const armedAtRef = useRef(performance.now() + armMs);
@@ -28,7 +30,10 @@ export function useDwellButton(holdMs: number, onActivate: () => void, armMs = 1
         const py = gesture.cursorY * window.innerHeight;
         const now = performance.now();
         const isOver = now >= armedAtRef.current && px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
-        if (isOver) {
+        if (isOver) lastOverRef.current = now;
+        if (!isOver && wasOverRef.current && now - lastOverRef.current <= 250) {
+          // brief slip: keep the hold going
+        } else if (isOver) {
           if (!wasOverRef.current) {
             sinceRef.current = now;
             firedRef.current = false;
@@ -42,8 +47,8 @@ export function useDwellButton(holdMs: number, onActivate: () => void, armMs = 1
         } else {
           setProgress(0);
         }
-        wasOverRef.current = isOver;
-      } else {
+        if (isOver || now - lastOverRef.current > 250) wasOverRef.current = isOver;
+      } else if (!(wasOverRef.current && performance.now() - lastOverRef.current <= 250)) {
         wasOverRef.current = false;
         setProgress(0);
       }

@@ -12,6 +12,8 @@ const DWELL_MS = 900;
 // Buttons ignore the hand for a moment after they appear, so a hand already
 // resting where a button is drawn cannot press it by accident.
 const ARM_MS = 1500;
+// A hold survives the hand slipping off, or one missed tracking frame, for this long.
+const GRACE_MS = 250;
 const RING_R = 20;
 const RING_LEN = 2 * Math.PI * RING_R;
 
@@ -31,6 +33,7 @@ export const HandCursor: React.FC<HandCursorProps> = ({ getPosition, visible }) 
     let raf = 0;
     let target: Element | null = null;
     let start = 0;
+    let lastOnTarget = 0;
     let armedAt = performance.now() + ARM_MS;
 
     // Re-arm whenever new pressable elements appear (a new screen or overlay).
@@ -55,6 +58,7 @@ export const HandCursor: React.FC<HandCursorProps> = ({ getPosition, visible }) 
       const root = rootRef.current;
       if (!root) return;
       const pos = getPosition();
+      if (!pos.detected && visibleRef.current && target && performance.now() - lastOnTarget <= GRACE_MS) return;
       if (!pos.detected || !visibleRef.current) {
         root.style.opacity = '0';
         target = null;
@@ -68,9 +72,14 @@ export const HandCursor: React.FC<HandCursorProps> = ({ getPosition, visible }) 
 
       const now = performance.now();
       const hit = document.elementFromPoint(x, y)?.closest('[data-dwell]') ?? null;
-      if (hit !== target) {
+      if (hit === target) {
+        lastOnTarget = now;
+      } else if (target && now - lastOnTarget <= GRACE_MS) {
+        return;
+      } else {
         target = hit;
         start = now;
+        lastOnTarget = now;
       }
       if (!target || now < armedAt || (target as HTMLButtonElement).disabled) {
         start = now;

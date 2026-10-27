@@ -53,7 +53,7 @@ export default function Cosmetics({ save, onSelectPaddle, onSelectBall, onSelect
 
       {/* Header */}
       <div className="flex items-center gap-4 p-6 pb-2">
-        <button onClick={onBack} className="text-purple-300 hover:text-white transition-colors text-2xl [@media(max-height:760px)]:px-4 [@media(max-height:760px)]:py-2 [@media(max-height:760px)]:text-4xl">←</button>
+        <button onClick={onBack} className="text-purple-300 hover:text-white transition-colors text-2xl [@media(max-height:760px)]:px-6 [@media(max-height:760px)]:py-4 [@media(max-height:760px)]:text-4xl">←</button>
         <h2 className="text-3xl font-black text-white flex-1">Cosmetics</h2>
         <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.3)' }}>
           <span className="text-xl">🪙</span>

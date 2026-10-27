@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
+// A hold survives the hand slipping off, or one missed tracking frame, for this long.
+const GRACE_MS = 250;
+
 /**
  * Tracks how long `isHovering` has been continuously true, animated at 60fps
  * independent of the (slower, noisier) hand-tracking frame rate.
@@ -14,10 +17,12 @@ export function useDwellProgress(isHovering: boolean, dwellMs: number, onComplet
 
   useEffect(() => {
     if (!isHovering) {
-      startRef.current = null;
-      firedRef.current = false;
-      setProgress(0);
-      return;
+      const t = window.setTimeout(() => {
+        startRef.current = null;
+        firedRef.current = false;
+        setProgress(0);
+      }, GRACE_MS);
+      return () => window.clearTimeout(t);
     }
     let raf = 0;
     const tick = () => {

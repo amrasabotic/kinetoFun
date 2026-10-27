@@ -21,7 +21,7 @@ export default function HowToPlay({ onBack }: Props) {
          style={{ background: 'radial-gradient(ellipse at 50% 50%, #1a003a 0%, #0a0014 70%)' }}>
 
       <div className="flex items-center gap-4 absolute top-6 left-6">
-        <button onClick={onBack} className="text-purple-300 hover:text-white transition-colors text-2xl [@media(max-height:760px)]:px-4 [@media(max-height:760px)]:py-2 [@media(max-height:760px)]:text-4xl">←</button>
+        <button onClick={onBack} className="text-purple-300 hover:text-white transition-colors text-2xl [@media(max-height:760px)]:px-6 [@media(max-height:760px)]:py-4 [@media(max-height:760px)]:text-4xl">←</button>
         <h2 className="text-2xl font-black text-white">How To Play</h2>
       </div>
 
@@ -31,7 +31,7 @@ export default function HowToPlay({ onBack }: Props) {
         <div className="flex gap-2">
           {STEPS.map((_, i) => (
             <button key={i} onClick={() => setCurrent(i)}
-              className={`w-3 h-3 [@media(max-height:760px)]:w-12 [@media(max-height:760px)]:h-12 [@media(max-height:760px)]:p-[18px] [@media(max-height:760px)]:bg-clip-content rounded-full transition-all ${i === current ? 'bg-purple-400 scale-125' : i < current ? 'bg-purple-600' : 'bg-gray-700'}`} />
+              className={`w-3 h-3 [@media(max-height:760px)]:w-16 [@media(max-height:760px)]:h-16 [@media(max-height:760px)]:p-[26px] [@media(max-height:760px)]:bg-clip-content rounded-full transition-all ${i === current ? 'bg-purple-400 scale-125' : i < current ? 'bg-purple-600' : 'bg-gray-700'}`} />
           ))}
         </div>
 

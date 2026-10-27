@@ -15,7 +15,7 @@ export default function HowToPlay({ cursor, onBack }: Props) {
         <DwellButton
           cursor={cursor}
           onActivate={onBack}
-          className="px-3 py-1.5 rounded text-sm border overflow-hidden"
+          className="px-3 py-1.5 [@media(max-height:760px)]:px-6 [@media(max-height:760px)]:py-3 [@media(max-height:760px)]:text-lg rounded text-sm border overflow-hidden"
           style={{ borderColor: "#333", color: "#888", background: "rgba(0,0,0,0.4)" }}
         >
           ← Back

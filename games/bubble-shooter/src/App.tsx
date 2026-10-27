@@ -250,7 +250,7 @@ function HowToScreen({
           <GestureBtn
             dwellId="back" activeId={activeId} dwellProgress={dwellProgress}
             onClick={onBack}
-            className="px-6 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold"
+            className="px-6 py-2 [@media(max-height:760px)]:px-8 [@media(max-height:760px)]:py-4 [@media(max-height:760px)]:text-lg rounded-xl bg-slate-700 hover:bg-slate-600 font-bold"
           >
             Back
           </GestureBtn>

@@ -38,7 +38,7 @@ export default function GameModes({ pendingMode, pendingDifficulty, pendingArena
 
       {/* Header */}
       <div className="flex items-center gap-4 p-6 pb-2">
-        <button onClick={onBack} className="text-purple-300 hover:text-white transition-colors text-2xl [@media(max-height:760px)]:px-4 [@media(max-height:760px)]:py-2 [@media(max-height:760px)]:text-4xl">←</button>
+        <button onClick={onBack} className="text-purple-300 hover:text-white transition-colors text-2xl [@media(max-height:760px)]:px-6 [@media(max-height:760px)]:py-4 [@media(max-height:760px)]:text-4xl">←</button>
         <h2 className="text-3xl font-black text-white">Game Modes</h2>
       </div>
 

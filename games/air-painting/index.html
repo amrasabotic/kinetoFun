@@ -62,6 +62,8 @@
   /* Gallery */
   #gallery-btn{position:absolute;top:16px;left:16px;z-index:50;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 13px;font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;}
   #gallery-btn:hover{border-color:var(--accent);background:rgba(124,92,252,.15);}
+  /* Short screens (a TV): a bigger hold target for the hand. */
+  @media (max-height:760px){#gallery-btn{padding:14px 20px;font-size:16px;}}
   #gallery-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);}
   #gallery-overlay.open{display:flex;}
   #gallery-modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:26px;width:min(90vw,700px);max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:16px;}

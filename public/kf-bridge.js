@@ -102,15 +102,37 @@
     return null;
   }
 
+  // With hand and body trackers both running, body results would make the cursor jump to the wrist.
+  var lastHandAt = -Infinity;
+
+  function report(points, isHand) {
+    var now = performance.now();
+    if (isHand) lastHandAt = now;
+    else if (now - lastHandAt < 1000) return;
+    var p = pointer(points);
+    if (p) send(p.x, p.y, true); else send(0, 0, false);
+  }
+
   // Called by the patched tasks-vision builds (see scripts/patch-game-builds.js).
   window.__kfTap = function (result) {
     // Face results (faceLandmarks) say nothing about a hand; letting them through would hide the cursor.
-    if (result && !('landmarks' in result)) return;
+    if (!result || !('landmarks' in result)) return;
     try {
-      var p = pointer(result && result.landmarks);
-      if (p) send(p.x, p.y, true);
-      else send(0, 0, false);
+      report(result.landmarks, 'handedness' in result || 'handednesses' in result || 'gestures' in result);
     } catch (e) { /* never let reporting break a game */ }
+  };
+
+  // Many games detect on every screen refresh; on a TV, an already analysed camera frame returns its result.
+  window.__kfDetect = function (inst, args, run) {
+    var src = args[0];
+    var hasCallback = false;
+    for (var i = 0; i < args.length; i++) if (typeof args[i] === 'function') hasCallback = true;
+    if (!tvLite || hasCallback || !src || typeof src.currentTime !== 'number') return run();
+    var c = inst.__kfFrame;
+    if (c && c.src === src && c.time === src.currentTime) return c.result;
+    var r = run();
+    inst.__kfFrame = { src: src, time: src.currentTime, result: r };
+    return r;
   };
 
   // The platform's Back button asks the game to step back one screen. A game answers by
@@ -134,9 +156,11 @@
           var orig = C.prototype.onResults;
           C.prototype.onResults = function (cb) {
             return orig.call(this, function (r) {
-              var lm = r && r[key];
-              var p = pointer(key === 'multiHandLandmarks' ? lm : lm && [lm]);
-              if (p) send(p.x, p.y, true); else send(0, 0, false);
+              try {
+                var lm = r && r[key];
+                var isHand = key === 'multiHandLandmarks';
+                report(isHand ? lm : lm && [lm], isHand);
+              } catch (e) { /* never let reporting break a game */ }
               return cb(r);
             });
           };

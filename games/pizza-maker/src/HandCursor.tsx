@@ -19,6 +19,8 @@ const DWELL_MS = 900;
 // the same place on the next one.
 const ARM_MS = 1500;
 const COOLDOWN_MS = 1000;
+// A hold survives the hand slipping off, or one missed tracking frame, for this long.
+const GRACE_MS = 250;
 const SMOOTHING = 0.3;
 // Holding the cursor near the top or bottom edge scrolls long screens.
 const SCROLL_EDGE = 0.12;
@@ -41,6 +43,7 @@ export default function HandCursor({ getPoint, enabled = true }: {
     let y = 0.5;
     let target: HTMLButtonElement | null = null;
     let since = 0;
+    let lastOnTarget = 0;
     let blockedUntil = performance.now() + ARM_MS;
     let lastPressed: HTMLButtonElement | null = null;
     let wasEnabled = enabledRef.current;
@@ -62,6 +65,7 @@ export default function HandCursor({ getPoint, enabled = true }: {
       if (!cursor) return;
 
       const hasButtons = document.querySelector('button:not([disabled])') !== null;
+      if (!hand && target && hasButtons && performance.now() - lastOnTarget <= GRACE_MS) return;
       if (!hand || !hasButtons) {
         cursor.style.opacity = '0';
         target = null;
@@ -88,9 +92,14 @@ export default function HandCursor({ getPoint, enabled = true }: {
         setRing(0);
         return;
       }
-      if (button !== target) {
+      if (button === target) {
+        lastOnTarget = now;
+      } else if (target && now - lastOnTarget <= GRACE_MS) {
+        return;
+      } else {
         target = button;
         since = now;
+        lastOnTarget = now;
       }
       const progress = Math.min((now - since) / DWELL_MS, 1);
       setRing(progress);

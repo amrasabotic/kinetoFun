@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Makes built games report the player's hand position to the platform.
 // - Adds /kf-bridge.js to each built HTML entry page.
-// - Wraps tasks-vision's detectForVideo/recognizeForVideo so each result reaches window.__kfTap.
+// - Wraps tasks-vision's detectForVideo/recognizeForVideo through window.__kfDetect and window.__kfTap.
 // Idempotent: safe to run again. build-games.js runs it after every build.
 
 const fs = require('fs');
@@ -12,7 +12,8 @@ const BRIDGE_TAG = '<script src="/kf-bridge.js"></script>';
 const SKIP = new Set(['node_modules']);
 
 // The library registers its public methods as `X.prototype.detectForVideo=X.prototype.G`.
-const TAP_RE = /(\w+)\.prototype\.(detectForVideo|recognizeForVideo)=\1\.prototype\.(\w+)/g;
+const TAP_RE = /(\w+)\.prototype\.(detectForVideo|recognizeForVideo)=\1\.prototype\.(\w+)(?![\w(])/g;
+const OLD_TAP_RE = /(\w+)\.prototype\.(detectForVideo|recognizeForVideo)=function\(\.\.\.a\)\{const r=\1\.prototype\.(\w+)\.apply\(this,a\);globalThis\.__kfTap&&globalThis\.__kfTap\(r\);return r\}/g;
 
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -36,11 +37,16 @@ function patchGame(name) {
     } else if (/\.m?js$/.test(file)) {
       const s = fs.readFileSync(file, 'utf8');
       if (!s.includes('.prototype.detectForVideo=') && !s.includes('.prototype.recognizeForVideo=')) continue;
-      if (s.includes('__kfTap')) continue;
-      const out = s.replace(TAP_RE, (_m, cls, method, impl) => {
+      if (s.includes('__kfDetect')) continue;
+      const wrap = (cls, method, impl) => {
         taps++;
-        return `${cls}.prototype.${method}=function(...a){const r=${cls}.prototype.${impl}.apply(this,a);globalThis.__kfTap&&globalThis.__kfTap(r);return r}`;
-      });
+        const run = `()=>${cls}.prototype.${impl}.apply(this,a)`;
+        return `${cls}.prototype.${method}=function(...a){const r=globalThis.__kfDetect?globalThis.__kfDetect(this,a,${run}):${cls}.prototype.${impl}.apply(this,a);globalThis.__kfTap&&globalThis.__kfTap(r);return r}`;
+      };
+      // Builds patched before __kfDetect existed carry the older wrapper; upgrade it in place.
+      const out = s
+        .replace(OLD_TAP_RE, (_m, cls, method, impl) => wrap(cls, method, impl))
+        .replace(TAP_RE, (_m, cls, method, impl) => wrap(cls, method, impl));
       fs.writeFileSync(file, out);
     }
   }
