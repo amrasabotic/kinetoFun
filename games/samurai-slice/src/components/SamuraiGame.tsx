@@ -58,18 +58,21 @@ function difficultyForLevel(level: number) {
   const tier = Math.min(5, 1 + Math.floor((level - 1) / 2));
   const seqLen = Math.min(6, 1 + Math.floor((level - 1) / 2));
   const approach = Math.max(2.2, 6 - (level - 1) * 0.4);
-  // 3s between spawns at easy levels, ramping down to 2s as it gets harder
-  const gap = Math.max(2000, 3000 - (level - 1) * 100);
-  return { tier, seqLen, approach, gap };
+  // 1.6s between spawns at easy levels, down to 0.8s as it gets harder
+  const gap = Math.max(800, 1600 - (level - 1) * 50);
+  // From level 3 a second enemy sometimes marches in behind the first
+  const pairChance = level >= 3 ? Math.min(0.5, 0.2 + (level - 3) * 0.03) : 0;
+  return { tier, seqLen, approach, gap, pairChance };
 }
 
 function difficultyForEndless(killed: number) {
   const tier = Math.min(5, 1 + Math.floor(killed / 6));
   const seqLen = Math.min(6, 1 + Math.floor(killed / 5));
   const approach = Math.max(2.0, 6.5 - killed * 0.12);
-  // start at 3s between spawns, tighten to 2s as kills pile up
-  const gap = Math.max(2000, 3000 - killed * 40);
-  return { tier, seqLen, approach, gap };
+  // start at 1.6s between spawns, tighten to 0.8s as kills pile up
+  const gap = Math.max(800, 1600 - killed * 30);
+  const pairChance = killed >= 4 ? Math.min(0.5, 0.15 + (killed - 4) * 0.02) : 0;
+  return { tier, seqLen, approach, gap, pairChance };
 }
 
 export default function SamuraiGame() {
@@ -99,6 +102,9 @@ export default function SamuraiGame() {
   const [bgScroll, setBgScroll] = useState(0);
   const [health, setHealth] = useState(3);
   const [enemy, setEnemy] = useState<Enemy | null>(null);
+  // Queued second enemy: follows the front one and steps up once it falls
+  const [backEnemy, setBackEnemy] = useState<Enemy | null>(null);
+  const [heroAction, setHeroAction] = useState<{ kind: HeroAction; n: number } | null>(null);
   const [liveGesture, setLiveGesture] = useState<Gesture | null>(null);
   const [slashKey, setSlashKey] = useState(0);
   const [shakeKey, setShakeKey] = useState(0);
@@ -107,6 +113,7 @@ export default function SamuraiGame() {
   const enemyIdRef = useRef(1);
   const nextEnemyAtRef = useRef(0);
   const enemyRef = useRef<Enemy | null>(null);
+  const backRef = useRef<Enemy | null>(null);
   const phaseRef = useRef<Phase>("menu");
   const modeRef = useRef<Mode>("endless");
   const levelRef = useRef(1);
@@ -125,6 +132,7 @@ export default function SamuraiGame() {
     if (!e) return;
     if (e.step + 1 >= e.sequence.length) {
       setSlashKey((k) => k + 1);
+      setHeroAction((a) => ({ kind: "kill", n: (a?.n ?? 0) + 1 }));
       setScore((s) => s + e.tier * 100);
       setTotalKilled((n) => n + 1);
       enemyRef.current = null;
@@ -140,10 +148,13 @@ export default function SamuraiGame() {
             saveMaxUnlocked(nm);
             return nm;
           });
+          backRef.current = null;
+          setBackEnemy(null);
           setPhase("levelComplete");
         }
       }
     } else {
+      setHeroAction((a) => ({ kind: "strike", n: (a?.n ?? 0) + 1 }));
       const next = { ...e, step: e.step + 1 };
       enemyRef.current = next;
       setEnemy(next);
@@ -153,11 +164,16 @@ export default function SamuraiGame() {
 
   const failChallenge = useCallback(() => {
     setShakeKey((k) => k + 1);
+    setHeroAction((a) => ({ kind: "hurt", n: (a?.n ?? 0) + 1 }));
     enemyRef.current = null;
     setEnemy(null);
     setHealth((h) => {
       const next = h - 1;
-      if (next <= 0) setPhase("gameover");
+      if (next <= 0) {
+        backRef.current = null;
+        setBackEnemy(null);
+        setPhase("gameover");
+      }
       return next;
     });
     gestureHoldRef.current = { g: null, count: 0 };
@@ -251,23 +267,39 @@ export default function SamuraiGame() {
 
       setBgScroll((d) => d + dt * (enemyRef.current ? 4 : 14));
 
+      // A queued enemy steps up as soon as the front one falls, keeping its place on the road
+      if (!enemyRef.current && backRef.current) {
+        const b = backRef.current;
+        backRef.current = null;
+        setBackEnemy(null);
+        b.spawnTime = t - (1 - b.approach) * b.approachDuration * 1000;
+        enemyRef.current = b;
+        setEnemy(b);
+      }
+
       // Spawn enemy if none and timer elapsed
       if (!enemyRef.current && t >= nextEnemyAtRef.current) {
         const diff = modeRef.current === "level"
           ? difficultyForLevel(levelRef.current)
           : difficultyForEndless(totalKilledRef.current);
-        const e: Enemy = {
+        const make = (spawnTime: number): Enemy => ({
           id: enemyIdRef.current++,
           approach: 1,
           approachDuration: diff.approach,
-          spawnTime: t,
+          spawnTime,
           sequence: randomSequence(diff.seqLen),
           step: 0,
           tier: diff.tier,
           kind: ENEMY_KINDS[Math.floor(Math.random() * ENEMY_KINDS.length)],
-        };
+        });
+        const e = make(t);
         enemyRef.current = e;
         setEnemy(e);
+        if (Math.random() < diff.pairChance) {
+          const b = make(t + 900);
+          backRef.current = b;
+          setBackEnemy(b);
+        }
       }
 
       // Advance current enemy approach
@@ -276,6 +308,12 @@ export default function SamuraiGame() {
         const elapsed = (t - cur.spawnTime) / 1000;
         const newApproach = Math.max(0, 1 - elapsed / cur.approachDuration);
         cur.approach = newApproach;
+        // The queued enemy follows but always stays a step behind the front one
+        const back = backRef.current;
+        if (back) {
+          const own = 1 - (t - back.spawnTime) / 1000 / back.approachDuration;
+          back.approach = Math.min(1, Math.max(own, newApproach + 0.25));
+        }
         if (newApproach <= 0) {
           failChallenge();
           const diff = modeRef.current === "level"
@@ -332,6 +370,8 @@ export default function SamuraiGame() {
       totalKilledRef.current = 0;
       enemyRef.current = null;
       setEnemy(null);
+      backRef.current = null;
+      setBackEnemy(null);
       nextEnemyAtRef.current = performance.now() + 1800;
       setPhase("playing");
     } catch (err: any) {
@@ -352,6 +392,8 @@ export default function SamuraiGame() {
     setHealth(3);
     enemyRef.current = null;
     setEnemy(null);
+    backRef.current = null;
+    setBackEnemy(null);
     nextEnemyAtRef.current = performance.now() + 1500;
     setPhase("playing");
   }, []);
@@ -359,6 +401,8 @@ export default function SamuraiGame() {
   const quitToMenu = useCallback(() => {
     enemyRef.current = null;
     setEnemy(null);
+    backRef.current = null;
+    setBackEnemy(null);
     setPhase("menu");
   }, []);
 
@@ -374,6 +418,8 @@ export default function SamuraiGame() {
   const restartCurrent = useCallback(() => {
     enemyRef.current = null;
     setEnemy(null);
+    backRef.current = null;
+    setBackEnemy(null);
     setScore(0);
     setHealth(3);
     setKilledThisLevel(0);
@@ -402,7 +448,13 @@ export default function SamuraiGame() {
       <HandCursor getPoint={getHandPoint} enabled={phase !== "playing" && phase !== "loading"} />
       <ParallaxBg distance={bgScroll} slowed={!!enemy && approach < 0.6} />
 
-      <Stage enemy={enemy} approach={approach} />
+      <Stage
+        enemy={enemy}
+        backEnemy={backEnemy}
+        approach={approach}
+        running={phase === "playing" && !enemy}
+        heroAction={heroAction}
+      />
 
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-6 py-5">
@@ -636,7 +688,7 @@ function HowToScreen({ onBack }: { onBack: () => void }) {
       <div className="mt-8 max-w-2xl space-y-4 text-left text-sm text-foreground/90">
         <p>
           <span className="font-blade uppercase text-accent">1. Stand your ground.</span>{" "}
-          You are the samurai — you do not move. Enemies emerge from the horizon and march toward you.
+          You are the samurai. Enemies emerge from the horizon and march toward you — sometimes two in a row. Defeat the one in front first; the next steps up right away.
         </p>
         <p>
           <span className="font-blade uppercase text-accent">2. Read the strike.</span>{" "}
@@ -775,27 +827,73 @@ function ParallaxBg({ distance, slowed }: { distance: number; slowed: boolean })
   );
 }
 
-function Stage({ enemy, approach }: { enemy: Enemy | null; approach: number }) {
+type HeroAction = "strike" | "kill" | "hurt";
+const HERO_ACTION_CLASS: Record<HeroAction, string> = {
+  strike: "animate-hero-strike",
+  kill: "animate-hero-lunge",
+  hurt: "animate-hero-hurt",
+};
+
+function Stage({
+  enemy,
+  backEnemy,
+  approach,
+  running,
+  heroAction,
+}: {
+  enemy: Enemy | null;
+  backEnemy: Enemy | null;
+  approach: number;
+  running: boolean;
+  heroAction: { kind: HeroAction; n: number } | null;
+}) {
   return (
     <div className="absolute inset-x-0 bottom-0 z-10 h-1/2">
-      {/* samurai — stationary */}
+      {/* samurai: runs between fights, strikes on each correct gesture */}
       <div className="absolute bottom-[22%] left-[18%] h-56 w-32">
-        <SamuraiSvg />
+        <div
+          key={heroAction ? `${heroAction.kind}-${heroAction.n}` : "idle"}
+          className={`h-full w-full ${heroAction ? HERO_ACTION_CLASS[heroAction.kind] : ""}`}
+        >
+          <div className={`h-full w-full ${running ? "animate-hero-run" : "animate-hero-ready"}`}>
+            <SamuraiSvg />
+          </div>
+        </div>
       </div>
 
-      {enemy && (
-        <div
-          key={enemy.id}
-          className="absolute bottom-[22%] h-56 w-32"
-          style={{
-            right: `${18 + (1 - approach) * 42}%`,
-            transform: `scale(${0.55 + (1 - approach) * 0.55})`,
-            transformOrigin: "bottom center",
-          }}
-        >
-          <EnemySvg tier={enemy.tier} kind={enemy.kind} />
-        </div>
+      {backEnemy && (
+        <EnemyOnRoad key={backEnemy.id} enemy={backEnemy} approach={backEnemy.approach} queued />
       )}
+      {enemy && <EnemyOnRoad key={enemy.id} enemy={enemy} approach={approach} />}
+    </div>
+  );
+}
+
+function EnemyOnRoad({
+  enemy,
+  approach,
+  queued = false,
+}: {
+  enemy: Enemy;
+  approach: number;
+  queued?: boolean;
+}) {
+  return (
+    <div
+      className={`absolute bottom-[22%] h-56 w-32 ${queued ? "opacity-70" : ""}`}
+      style={{
+        right: `${18 + (1 - approach) * 42}%`,
+        transform: `scale(${0.55 + (1 - approach) * 0.55})`,
+        transformOrigin: "bottom center",
+      }}
+    >
+      {/* recoils each time one of its gestures is landed */}
+      <div
+        key={enemy.step}
+        className={`h-full w-full ${enemy.step > 0 ? "animate-enemy-hit" : ""}`}
+      >
+        <EnemySvg tier={enemy.tier} kind={enemy.kind} />
+      </div>
     </div>
   );
 }

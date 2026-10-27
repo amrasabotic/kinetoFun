@@ -177,4 +177,39 @@
     100% { transform: scale(1.6); opacity: 0; }
   }
   .animate-pulse-ring { animation: pulse-ring 1.2s ease-out infinite; }
+  @keyframes hero-run {
+    0%,100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+  }
+  .animate-hero-run { animation: hero-run 0.45s ease-in-out infinite; transform-origin: bottom center; }
+  @keyframes hero-ready {
+    0%,100% { transform: scaleY(1); }
+    50% { transform: scaleY(1.02); }
+  }
+  .animate-hero-ready { animation: hero-ready 2s ease-in-out infinite; transform-origin: bottom center; }
+  @keyframes hero-strike {
+    0% { transform: translateX(0) rotate(0); }
+    35% { transform: translateX(28px) rotate(8deg); }
+    100% { transform: translateX(0) rotate(0); }
+  }
+  .animate-hero-strike { animation: hero-strike 0.3s ease-out; transform-origin: bottom center; }
+  @keyframes hero-lunge {
+    0% { transform: translateX(0) rotate(0); }
+    30% { transform: translateX(160%) rotate(12deg); }
+    60% { transform: translateX(160%) rotate(-6deg); }
+    100% { transform: translateX(0) rotate(0); }
+  }
+  .animate-hero-lunge { animation: hero-lunge 0.55s ease-in-out; transform-origin: bottom center; }
+  @keyframes hero-hurt {
+    0% { transform: translateX(0) rotate(0); }
+    30% { transform: translateX(-24px) rotate(-10deg); }
+    100% { transform: translateX(0) rotate(0); }
+  }
+  .animate-hero-hurt { animation: hero-hurt 0.4s ease-out; transform-origin: bottom center; }
+  @keyframes enemy-hit {
+    0% { transform: translateX(0) rotate(0); filter: brightness(1); }
+    30% { transform: translateX(18px) rotate(6deg); filter: brightness(1.8); }
+    100% { transform: translateX(0) rotate(0); filter: brightness(1); }
+  }
+  .animate-enemy-hit { animation: enemy-hit 0.3s ease-out; transform-origin: bottom center; }
 }
