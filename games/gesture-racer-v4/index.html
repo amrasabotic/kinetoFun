@@ -151,7 +151,8 @@ function setupMediaPipe(){
   const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`});
   hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:0.6,minTrackingConfidence:0.5});
   hands.onResults(onHandResults);
-  const cam=new Camera(vidEl,{onFrame:async()=>{await hands.send({image:vidEl});},width:320,height:240});
+  // 640x480 so a hand a few metres from a TV is still big enough to detect.
+  const cam=new Camera(vidEl,{onFrame:async()=>{await hands.send({image:vidEl});},width:640,height:480});
   cam.start()
     .then(()=>document.getElementById('loading').style.display='none')
     .catch(e=>{

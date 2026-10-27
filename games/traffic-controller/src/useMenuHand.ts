@@ -3,6 +3,9 @@ import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 export interface MenuHandData { detected: boolean; x: number; y: number; }
 
+// Each menu screen mounts this hook; loading the model once avoids seconds without a cursor on every screen change.
+let sharedLandmarker: Promise<HandLandmarker> | null = null;
+
 export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHandData {
   const [hand, setHand] = useState<MenuHandData>({ detected: false, x: 0.5, y: 0.5 });
   const landmarkerRef = useRef<HandLandmarker | null>(null);
@@ -29,15 +32,16 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
   useEffect(() => {
     let cancelled = false;
     async function init() {
-      const vision = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
-      if (cancelled) return;
-      const lm = await HandLandmarker.createFromOptions(vision, {
+      sharedLandmarker ??= FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm')
+        .then((vision) => HandLandmarker.createFromOptions(vision, {
         baseOptions: {
           modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task',
           delegate: 'GPU',
         },
         runningMode: 'VIDEO', numHands: 1,
-      });
+      }))
+        .catch((err) => { sharedLandmarker = null; throw err; });
+      const lm = await sharedLandmarker;
       if (cancelled) return;
       landmarkerRef.current = lm;
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
@@ -52,7 +56,6 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
       cancelAnimationFrame(rafRef.current);
       const video = videoRef.current;
       if (video?.srcObject) (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-      landmarkerRef.current?.close();
     };
   }, [detect, videoRef]);
 

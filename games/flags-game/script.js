@@ -596,7 +596,8 @@ function initMediaPipe() {
 
   const camera = new Camera(videoEl, {
     onFrame: async () => { await hands.send({ image: videoEl }); },
-    width: 320, height: 240,
+    // 640x480 so a hand a few metres from a TV is still big enough to detect.
+    width: 640, height: 480,
   });
 
   camera.start()

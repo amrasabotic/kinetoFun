@@ -887,7 +887,8 @@ async function initMediaPipe(){
   hands.onResults(onHandResults);
   camera = new Camera(video, {
     onFrame: async()=>{ await hands.send({image:video}); },
-    width:320, height:240
+    // 640x480 so a hand a few metres from a TV is still big enough to detect.
+    width:640, height:480
   });
   try {
     await camera.start();

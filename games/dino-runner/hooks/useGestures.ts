@@ -119,7 +119,8 @@ export function useGestures(enabled: boolean): GesturesOutput {
 
         console.log('[useGestures] Requesting camera...');
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
+          // 640x480 so a hand a few metres from a TV is still big enough to detect.
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
           audio: false,
         });
         if (cancelled) {

@@ -52,7 +52,8 @@ export function HandProvider({ children }: { children: ReactNode }) {
       try {
         const hl = await getHandLandmarker();
         media = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240, facingMode: "user" },
+          // 640x480 so a hand a few metres from a TV is still big enough to detect.
+          video: { width: 640, height: 480, facingMode: "user" },
           audio: false,
         });
         if (cancelled) { media.getTracks().forEach((t) => t.stop()); return; }

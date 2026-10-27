@@ -878,7 +878,8 @@ function onResults(res) {
 
 async function boot() {
   try {
-    vidEl.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' } });
+    // 640x480 so a hand a few metres from a TV is still big enough to detect.
+    vidEl.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
     stEl.textContent = 'Camera ready — loading model…';
   } catch (e) {
     stEl.textContent = '⚠ Camera denied — use keyboard';
@@ -888,7 +889,7 @@ async function boot() {
     const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
     hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.62, minTrackingConfidence: 0.55 });
     hands.onResults(onResults);
-    const cam = new Camera(vidEl, { onFrame: async () => { await hands.send({ image: vidEl }); }, width: 320, height: 240 });
+    const cam = new Camera(vidEl, { onFrame: async () => { await hands.send({ image: vidEl }); }, width: 640, height: 480 });
     await cam.start();
     stEl.textContent = '✓ Hand tracking active';
     setTimeout(() => { stEl.textContent = ''; }, 3000);

@@ -33,13 +33,12 @@ if (existsSync(join(target, "vision_wasm_internal.wasm"))) {
   console.log(`[mediapipe] Copied WASM ${version} to public/mediapipe/tasks-vision-${version}/wasm.`);
 }
 
-// ES bundle for games that import the library at runtime; each detection result is
-// forwarded to window.__kfTap (see public/kf-bridge.js).
+// ES bundle for games that import the library at runtime, wrapped like patch-game-builds.js does.
 const TAP_RE = /(\w+)\.prototype\.(detectForVideo|recognizeForVideo)=\1\.prototype\.(\w+)/g;
 const bundle = readFileSync(join(pkgDir, "vision_bundle.mjs"), "utf8").replace(
   TAP_RE,
   (_m, cls, method, impl) =>
-    `${cls}.prototype.${method}=function(...a){const r=${cls}.prototype.${impl}.apply(this,a);globalThis.__kfTap&&globalThis.__kfTap(r);return r}`,
+    `${cls}.prototype.${method}=function(...a){const r=globalThis.__kfDetect?globalThis.__kfDetect(this,a,()=>${cls}.prototype.${impl}.apply(this,a)):${cls}.prototype.${impl}.apply(this,a);globalThis.__kfTap&&globalThis.__kfTap(r);return r}`,
 );
 writeFileSync(join(root, "public", "mediapipe", `tasks-vision-${version}`, "vision_bundle.mjs"), bundle);
 console.log(`[mediapipe] Wrote hand-reporting bundle ${version}.`);

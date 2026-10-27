@@ -460,12 +460,13 @@ function setTrack(on,msg){
 
 async function initMP(){
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'}});
+    // 640x480 so a hand a few metres from a TV is still big enough to detect.
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
     video.srcObject=stream;
     const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
     hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.72,minTrackingConfidence:.65});
     hands.onResults(onResults);
-    const camera=new Camera(video,{onFrame:async()=>{await hands.send({image:video});},width:320,height:240});
+    const camera=new Camera(video,{onFrame:async()=>{await hands.send({image:video});},width:640,height:480});
     camera.start();
     setTrack(false,'Camera ready');
   }catch(err){

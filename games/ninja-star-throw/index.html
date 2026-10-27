@@ -1176,7 +1176,8 @@ function drawLandmarks(lm) {
 // ─────────────────────────────────────────────
 async function startCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { width:320, height:240, facingMode:'user' } });
+    // 640x480 so a hand a few metres from a TV is still big enough to detect.
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480, facingMode:'user' } });
     video.srcObject = stream;
     await new Promise(r => video.onloadedmetadata = r);
     video.play();

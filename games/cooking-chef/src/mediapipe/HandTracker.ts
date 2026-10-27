@@ -88,7 +88,8 @@ export class HandTracker {
 
     const cam = new w.Camera(vid, {
       onFrame: async () => { if (this.running) await hands.send({ image: vid }); },
-      width: 320, height: 240,
+      // 640x480 so a hand a few metres from a TV is still big enough to detect.
+      width: 640, height: 480,
     });
     await cam.start();
     this.cameraInstance = cam;
