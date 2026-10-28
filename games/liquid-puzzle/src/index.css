@@ -497,10 +497,12 @@ html, body, #root {
 /* How to Play cards */
 .lp-howto {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 360px));
+  /* Three columns keep every card and the Let's Play button on one TV screen. */
+  grid-template-columns: repeat(3, minmax(0, 340px));
   gap: 12px;
   margin-bottom: 8px;
 }
+.lp-howto ~ .lp-menu-btn { flex-shrink: 0; }
 .lp-howto__card {
   display: flex;
   gap: 14px;

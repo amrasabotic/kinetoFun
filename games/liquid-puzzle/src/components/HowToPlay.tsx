@@ -4,14 +4,12 @@ import { Cursor } from './Cursor';
 import type { GestureState } from '../types';
 
 const STEPS: { icon: string; title: string; desc: string }[] = [
-  { icon: '🧪', title: 'The goal', desc: 'Sort the liquids so every tube holds a single colour. Empty tubes are fine.' },
-  { icon: '🤏', title: 'Pour', desc: 'Pinch a tube to pick it up, move it over another tube and open your fingers to pour.' },
-  { icon: '🎨', title: 'Pouring rule', desc: 'You can only pour onto the same colour, or into an empty tube, and only while there is room.' },
-  { icon: '👍', title: 'Undo', desc: 'Give a thumbs-up to take back your last pour.' },
-  { icon: '✌️', title: 'Hint', desc: 'Show a victory sign to see a good next move.' },
-  { icon: '🖐️', title: 'Pause', desc: 'Hold an open palm still for 2 seconds to open the pause menu.' },
+  { icon: '🧪', title: 'The goal', desc: 'Sort the liquids so each tube holds one colour.' },
+  { icon: '🤏', title: 'Pour', desc: 'Pinch a tube, move it over another and open your fingers.' },
+  { icon: '🎨', title: 'Rule', desc: 'Pour only onto the same colour or into an empty tube.' },
+  { icon: '👍', title: 'Undo and hint', desc: 'Thumbs-up undoes a pour; a victory sign ✌️ shows a hint.' },
+  { icon: '🖐️', title: 'Pause', desc: 'Hold an open palm still for 2 seconds.' },
   { icon: '⭐', title: 'Stars', desc: 'Fewer pours, hints and undos earn more stars.' },
-  { icon: '👉', title: 'Menus', desc: 'Point at a button and hold your hand still until it fills to press it.' },
 ];
 
 /** Shown first every time the game loads (after calibration), and reopened from the main menu. */

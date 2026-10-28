@@ -264,10 +264,11 @@ let nextBallTimer=1.5;
 let ballId=0;
 
 function getDiff(){
-  if(level<=3)  return {spd:H*0.0030,curveMax:0,      interval:2.8,baseR:20,fakeChance:0};
-  if(level<=7)  return {spd:H*0.0045,curveMax:H*0.001,interval:2.2,baseR:18,fakeChance:0};
-  if(level<=12) return {spd:H*0.0065,curveMax:H*0.003,interval:1.6,baseR:16,fakeChance:0.20};
-  return               {spd:H*0.0095,curveMax:H*0.005,interval:1.1,baseR:13,fakeChance:0.38};
+  // Speeds are per 1/60 s; raised after TV testing found the early levels too slow to be exciting.
+  if(level<=3)  return {spd:H*0.0042,curveMax:0,      interval:2.3,baseR:20,fakeChance:0};
+  if(level<=7)  return {spd:H*0.0060,curveMax:H*0.001,interval:1.9,baseR:18,fakeChance:0};
+  if(level<=12) return {spd:H*0.0085,curveMax:H*0.003,interval:1.4,baseR:16,fakeChance:0.20};
+  return               {spd:H*0.0115,curveMax:H*0.005,interval:1.0,baseR:13,fakeChance:0.38};
 }
 
 function spawnBall(){
@@ -314,8 +315,9 @@ function updateBalls(dt){
     }
 
     b.vx+=b.curve*dt*60;
-    b.x+=b.vx;
-    b.y+=b.vy;
+    // Scaled by frame time so a slower device (the Pi) does not slow the ball down.
+    b.x+=b.vx*dt*60;
+    b.y+=b.vy*dt*60;
     b.rot+=b.rotSpd;
 
     // Scale radius to simulate depth (small far, large near)

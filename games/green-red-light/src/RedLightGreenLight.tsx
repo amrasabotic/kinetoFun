@@ -59,6 +59,16 @@ const HOLD_DURATION = 1000;
 const EMBEDDED = window.parent !== window;
 const YELLOW_DURATION = 500;
 const GRACE_PERIOD = 300;
+// Body motion is the average movement of these points per pose frame, in shoulder widths.
+const MOTION_POINTS = [0, 11, 12, 13, 14, 15, 16, 23, 24];
+// On green, progress only grows while the player moves; at this much motion it grows at full speed.
+const MOVE_FULL = 0.04;
+const GREEN_PROGRESS_PER_SEC = 5;
+// Moving on red costs points, progress and a life instead of ending the round at once.
+const RED_MOTION: Record<Difficulty, number> = { EASY: 0.035, NORMAL: 0.028, HARD: 0.022 };
+const RED_PENALTY_POINTS = 200;
+const RED_PENALTY_PROGRESS = 15;
+const START_LIVES = 3;
 
 function loadStats(): GameStats {
   try {
@@ -171,6 +181,12 @@ export default function RedLightGreenLight() {
   const phaseRef = useRef(phase);
   const lightRef = useRef(lightState);
   const progressRef = useRef(progress);
+  const motionRef = useRef(0);
+  const prevPoseRef = useRef<PosePoint[] | null>(null);
+  const [lives, setLives] = useState(START_LIVES);
+  const livesRef = useRef(START_LIVES);
+  const [penaltyMsg, setPenaltyMsg] = useState<string | null>(null);
+  const penalisedThisRedRef = useRef(false);
   const scoreRef = useRef(score);
   const comboRef = useRef(combo);
   const survivalRef = useRef(survivalTime);
@@ -307,6 +323,20 @@ export default function RedLightGreenLight() {
     const landmarks: PosePoint[] = results.poseLandmarks;
     latestLandmarksRef.current = landmarks;
 
+    const prev = prevPoseRef.current;
+    prevPoseRef.current = landmarks;
+    const sw = Math.hypot(landmarks[11].x - landmarks[12].x, landmarks[11].y - landmarks[12].y) || 0.1;
+    if (prev) {
+      let sum = 0, n = 0;
+      for (const i of MOTION_POINTS) {
+        if (landmarks[i].visibility < 0.3 || prev[i].visibility < 0.3) continue;
+        sum += Math.hypot(landmarks[i].x - prev[i].x, landmarks[i].y - prev[i].y);
+        n++;
+      }
+      const m = n ? sum / n / sw : 0;
+      motionRef.current += (m - motionRef.current) * 0.35;
+    }
+
     const avgVis = (landmarks[11].visibility + landmarks[12].visibility) / 2;
     if (avgVis < 0.5) {
       setTrackingLost(true);
@@ -433,6 +463,7 @@ export default function RedLightGreenLight() {
           audioRef.current.red();
 
           graceRef.current = true;
+          penalisedThisRedRef.current = false;
           setTimeout(() => {
             if (phaseRef.current === 'PLAYING' && lightRef.current === 'RED') {
               graceRef.current = false;
@@ -543,7 +574,7 @@ export default function RedLightGreenLight() {
 
       if (lm) {
         if (light === 'GREEN') {
-          const baseInc = (dt / 1000) * 1.5;
+          const baseInc = (dt / 1000) * GREEN_PROGRESS_PER_SEC;
           let stepBonus = 0;
 
           const leftKnee = lm[25];
@@ -564,26 +595,45 @@ export default function RedLightGreenLight() {
             prevKneeRef.current = { leftY: leftKnee.y, rightY: rightKnee.y };
           }
 
-          const newProg = Math.min(100, progressRef.current + baseInc + stepBonus);
+          const moveFactor = Math.min(1, motionRef.current / MOVE_FULL);
+          const newProg = Math.min(100, progressRef.current + baseInc * moveFactor + stepBonus);
           setProgress(newProg);
           progressRef.current = newProg;
 
           if (newProg >= 100) { handleVictory(); return; }
         }
 
-        if (light === 'RED' && !graceRef.current && baselineRef.current) {
-          const avgVis = (lm[11].visibility + lm[12].visibility) / 2;
-          if (avgVis >= 0.5) {
-            const sw = Math.sqrt((lm[11].x - lm[12].x) ** 2 + (lm[11].y - lm[12].y) ** 2);
+        if (light === 'RED' && !graceRef.current && !penalisedThisRedRef.current) {
+          let moved = motionRef.current > RED_MOTION[difficultyRef.current];
+          // Drifting slowly away from where the player froze counts too.
+          if (!moved && baselineRef.current && (lm[11].visibility + lm[12].visibility) / 2 >= 0.5) {
+            const sw = Math.hypot(lm[11].x - lm[12].x, lm[11].y - lm[12].y);
             const threshold = DIFFICULTY_CONFIGS[difficultyRef.current].threshold * sw;
-            const ld = Math.sqrt((lm[11].x - baselineRef.current.left.x) ** 2 + (lm[11].y - baselineRef.current.left.y) ** 2);
-            const rd = Math.sqrt((lm[12].x - baselineRef.current.right.x) ** 2 + (lm[12].y - baselineRef.current.right.y) ** 2);
-            if (ld > threshold || rd > threshold) { handleElimination(); return; }
+            const ld = Math.hypot(lm[11].x - baselineRef.current.left.x, lm[11].y - baselineRef.current.left.y);
+            const rd = Math.hypot(lm[12].x - baselineRef.current.right.x, lm[12].y - baselineRef.current.right.y);
+            moved = ld > threshold || rd > threshold;
+          }
+          if (moved) {
+            penalisedThisRedRef.current = true;
+            scoreRef.current = Math.max(0, scoreRef.current - RED_PENALTY_POINTS);
+            setScore(scoreRef.current);
+            progressRef.current = Math.max(0, progressRef.current - RED_PENALTY_PROGRESS);
+            setProgress(progressRef.current);
+            comboRef.current = 0;
+            setCombo(0);
+            livesRef.current -= 1;
+            setLives(livesRef.current);
+            if (livesRef.current <= 0) { handleElimination(); return; }
+            audioRef.current.eliminated();
+            setShowElimFlash(true);
+            setTimeout(() => setShowElimFlash(false), 400);
+            setPenaltyMsg(`You moved! −${RED_PENALTY_POINTS}`);
+            setTimeout(() => setPenaltyMsg(null), 1500);
           }
         }
       }
 
-      const timeScore = Math.floor(dt / 100);
+      const timeScore = light === 'GREEN' && motionRef.current > MOVE_FULL / 2 ? Math.floor(dt / 100) : 0;
       if (timeScore > 0) { scoreRef.current += timeScore; setScore(scoreRef.current); }
 
       gameLoopRef.current = requestAnimationFrame(loop);
@@ -598,6 +648,9 @@ export default function RedLightGreenLight() {
     setProgress(0); progressRef.current = 0;
     setScore(0); scoreRef.current = 0;
     setCombo(0); comboRef.current = 0;
+    setLives(START_LIVES); livesRef.current = START_LIVES;
+    penalisedThisRedRef.current = false;
+    setPenaltyMsg(null);
     setSurvivalTime(0); survivalRef.current = 0;
     setLightState('GREEN'); lightRef.current = 'GREEN';
     setNewHighScore(false);
@@ -767,6 +820,11 @@ export default function RedLightGreenLight() {
   return (
     <div className={`fixed inset-0 bg-gradient-to-br ${bgGradient} text-white overflow-hidden transition-colors duration-500`}>
       {showElimFlash && <div className="fixed inset-0 bg-red-600 z-50 animate-pulse pointer-events-none" />}
+      {penaltyMsg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="rounded-3xl bg-black/70 px-10 py-6 text-5xl font-black text-red-400">{penaltyMsg}</div>
+        </div>
+      )}
 
       {/* Always-mounted video for MediaPipe -- positioned offscreen, NOT display:none */}
       <video
@@ -812,11 +870,11 @@ export default function RedLightGreenLight() {
             <div className="backdrop-blur-md bg-white/5 rounded-2xl border border-white/10 p-6 mb-10 [@media(max-height:760px)]:p-4 [@media(max-height:760px)]:mb-4 text-left space-y-2">
               <p className="text-gray-300 text-sm flex items-start gap-3">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-                Move only during Green Light.
+                Green Light: move (march or wave your arms) to walk to the finish.
               </p>
               <p className="text-gray-300 text-sm flex items-start gap-3">
                 <span className="inline-block w-2 h-2 rounded-full bg-red-400 mt-1.5 shrink-0" />
-                Freeze during Red Light.
+                Red Light: freeze! Moving costs 200 points and one of your 3 lives.
               </p>
               <p className="text-gray-300 text-sm flex items-start gap-3">
                 <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mt-1.5 shrink-0" />
@@ -1089,6 +1147,10 @@ export default function RedLightGreenLight() {
               <span className="text-xs text-gray-500 uppercase mr-2">Score</span>
               <span className="font-mono font-bold text-sm text-emerald-400">{score.toLocaleString()}</span>
             </div>
+            <div className="backdrop-blur-md bg-white/5 rounded-xl border border-white/10 px-4 py-2">
+              <span className="text-xs text-gray-500 uppercase mr-2">Lives</span>
+              <span className="font-bold text-sm">{'❤️'.repeat(Math.max(0, lives))}</span>
+            </div>
           </div>
         </div>
       )}
@@ -1150,7 +1212,7 @@ export default function RedLightGreenLight() {
             <div className="text-7xl mb-6">{'\uD83D\uDED1'}</div>
 
             <h1 className="text-5xl sm:text-6xl font-black mb-2 text-red-500">ELIMINATED!</h1>
-            <p className="text-gray-400 mb-8 text-lg">You moved during Red Light.</p>
+            <p className="text-gray-400 mb-8 text-lg">You moved during Red Light three times.</p>
 
             <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-12">
               {[

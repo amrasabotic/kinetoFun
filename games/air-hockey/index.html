@@ -85,6 +85,11 @@ const GOAL_W     = H * 0.34;
 const FRICTION   = 0.988;
 const GAME_SECS  = 120;
 const HOLD_MS    = 500;   // 0.5 second hover to activate
+// Computer opponent: top speed in px per frame, low enough that a quick player can score past it.
+const AI_SPEED   = 6.5;
+
+// One player plays the left paddle with either hand; the computer plays the right.
+let vsComputer = false;
 
 // ── State ───────────────────────────────────────────────────────────────────
 let state     = 'menu';  // menu | countdown | playing | gameover
@@ -149,10 +154,11 @@ function onResults(results) {
   }
 
   results.multiHandLandmarks.forEach((lm, i) => {
+    if (vsComputer && i > 0) return;
     // MediaPipe labels are from camera POV (mirrored), so:
     // label "Right" = user's LEFT hand (since we mirror)
     const label = results.multiHandedness[i].label;
-    const side  = label === 'Right' ? 'left' : 'right';
+    const side  = vsComputer ? 'left' : (label === 'Right' ? 'left' : 'right');
     const fist  = isFist(lm);
     const palm  = palmCenter(lm);
     const tip   = indexTip(lm);
@@ -175,7 +181,8 @@ function makeButton(label, sublabel, x, y, w, h, color, action) {
 
 function setupMenuButtons() {
   buttons = [
-    makeButton('START GAME', 'hover to select', W/2-110, H*0.62, 220, 56, '#00f5ff', beginCountdown)
+    makeButton('1 PLAYER', 'vs computer', W/2-250, H*0.62, 230, 64, '#00f5ff', () => { vsComputer = true; beginCountdown(); }),
+    makeButton('2 PLAYERS', 'left vs right hand', W/2+20, H*0.62, 230, 64, '#bf00ff', () => { vsComputer = false; beginCountdown(); })
   ];
   // Only inside the KinetoFun platform is there somewhere to go back to.
   if (window.parent !== window) {
@@ -185,7 +192,8 @@ function setupMenuButtons() {
 
 function setupGameoverButtons() {
   buttons = [
-    makeButton('PLAY AGAIN', 'hover to select', W/2-110, H*0.65, 220, 56, '#bf00ff', beginCountdown)
+    makeButton('PLAY AGAIN', 'hover to select', W/2-250, H*0.65, 230, 64, '#bf00ff', beginCountdown),
+    makeButton('MENU', 'choose players', W/2+20, H*0.65, 230, 64, '#00f5ff', () => { state = 'menu'; setupMenuButtons(); })
   ];
 }
 
@@ -300,7 +308,28 @@ function updatePaddles() {
   });
 
   if (!seen.left)  { paddles.left.visible  = false; paddles.left.vx  = 0; paddles.left.vy  = 0; }
+  if (vsComputer) { updateComputer(); return; }
   if (!seen.right) { paddles.right.visible = false; paddles.right.vx = 0; paddles.right.vy = 0; }
+}
+
+// Chases the puck on its own half, coming at it from the right so it hits towards the player; otherwise guards its goal.
+function updateComputer() {
+  const p = paddles.right;
+  p.visible = true;
+  p.fist = false;
+  let tx, ty;
+  if (state !== 'playing') { tx = W * 0.82; ty = H / 2; }
+  else if (puck.x > W / 2 - PADDLE_R) { tx = puck.x + PADDLE_R * 0.5; ty = puck.y; }
+  else { tx = W * 0.86; ty = H / 2 + (puck.y - H / 2) * 0.6; }
+  const dx = tx - p.x, dy = ty - p.y;
+  const d = Math.hypot(dx, dy);
+  const step = Math.min(d, AI_SPEED);
+  const prevX = p.x, prevY = p.y;
+  if (d > 0.01) { p.x += dx / d * step; p.y += dy / d * step; }
+  p.x = Math.max(W / 2 + PADDLE_R, Math.min(W - PADDLE_R, p.x));
+  p.y = Math.max(PADDLE_R, Math.min(H - PADDLE_R, p.y));
+  p.vx = p.x - prevX;
+  p.vy = p.y - prevY;
 }
 
 function updatePuck() {
@@ -502,7 +531,7 @@ function drawMenuOverlay() {
   // Instruction
   ctx.font = `${Math.round(W*0.013)}px Courier New`;
   ctx.fillStyle = '#ffffff33'; ctx.textAlign='center';
-  ctx.fillText('Point your index finger at the button below and hold for 0.5s', W/2, H*0.55);
+  ctx.fillText('Hold your fingertip on a button: 1 player against the computer, or 2 players', W/2, H*0.55);
 
   ctx.restore();
 }
@@ -527,8 +556,8 @@ function drawGameoverOverlay() {
   ctx.save();
   ctx.fillStyle = 'rgba(8,8,18,0.88)'; ctx.fillRect(0,0,W,H);
 
-  const winner = scoreL > scoreR ? { txt:'Left Hand Wins! 🏆', color:'#00f5ff' }
-               : scoreR > scoreL ? { txt:'Right Hand Wins! 🏆', color:'#bf00ff' }
+  const winner = scoreL > scoreR ? { txt: vsComputer ? 'You Win! 🏆' : 'Left Hand Wins! 🏆', color:'#00f5ff' }
+               : scoreR > scoreL ? { txt: vsComputer ? 'Computer Wins! 🤖' : 'Right Hand Wins! 🏆', color:'#bf00ff' }
                :                   { txt:"It's a Draw! 🤝",      color:'#ffffff' };
 
   ctx.textAlign = 'center';
