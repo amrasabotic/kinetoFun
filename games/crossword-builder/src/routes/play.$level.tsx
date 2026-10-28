@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LEVELS, buildGrid, WORD_COLORS, type BuiltGrid } from "@/lib/levels";
 import { markCompleted } from "@/lib/progress";
+import { addLevelScore, leaveGame } from "@/lib/session-score";
 import { HAND_CONNECTIONS, type HandLandmark } from "@/lib/use-hand-tracking";
 import { useHand } from "@/lib/hand-context";
 
@@ -200,11 +201,13 @@ function GameSurface({ levelDef, onExit, onNext }: { levelDef: typeof LEVELS[num
   }, [pinching, cursor.x, cursor.y]);
 
   useEffect(() => {
-    if (won) {
-      markCompleted(grid.level.id);
-      window.parent.postMessage({ type: 'GAME_COMPLETE', score: grid.level.words.length * 100 }, '*');
-    }
-  }, [won, grid.level.id]);
+    if (!won) return;
+    markCompleted(grid.level.id);
+    addLevelScore(grid.level.words.length * 100);
+    // Only the last level ends the session; earlier ones carry on to the next level.
+    if (grid.level.id === LEVELS.length) leaveGame();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [won]);
 
   // For each letter A-Z, list the word indexes that still need it at an empty/wrong cell.
   const letterNeeds = useMemo(() => {
@@ -552,7 +555,17 @@ function Cursor({ x, y, pinching, drag }: { x: number; y: number; pinching: bool
   );
 }
 
+// Long enough to enjoy the win; a TV player should not have to press anything to keep playing.
+const AUTO_NEXT_MS = 5000;
+
 function WinOverlay({ level, isLast, onNext, onMenu }: { level: number; isLast: boolean; onNext: () => void; onMenu: () => void }) {
+  const nextRef = useRef(onNext);
+  nextRef.current = onNext;
+  useEffect(() => {
+    if (isLast) return;
+    const t = setTimeout(() => nextRef.current(), AUTO_NEXT_MS);
+    return () => clearTimeout(t);
+  }, [isLast]);
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -569,8 +582,18 @@ function WinOverlay({ level, isLast, onNext, onMenu }: { level: number; isLast: 
         <p className="text-5xl">🎉</p>
         <h2 className="mt-4 font-display text-5xl font-bold">Level {level} solved!</h2>
         <p className="mt-2 text-foreground/70">
-          {isLast ? "You finished every puzzle. Word wizard status: confirmed." : "Next level unlocked."}
+          {isLast ? "You finished every puzzle. Word wizard status: confirmed." : "Next level starts in a moment…"}
         </p>
+        {!isLast && (
+          <div className="mx-auto mt-4 h-2 w-64 overflow-hidden rounded-full bg-muted">
+            <motion.div
+              className="h-full bg-primary"
+              initial={{ width: "0%" }}
+              animate={{ width: "100%" }}
+              transition={{ duration: AUTO_NEXT_MS / 1000, ease: "linear" }}
+            />
+          </div>
+        )}
         <div className="mt-8 flex justify-center gap-3">
           <button data-dwell="" onClick={onMenu} className="rounded-2xl bg-muted px-6 py-3 font-display font-bold">
             Level Map

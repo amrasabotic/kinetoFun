@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { leaveGame } from "@/lib/session-score";
 
 // Only inside the KinetoFun platform is there somewhere to go back to.
 const embedded = window.parent !== window;
-const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -70,7 +70,7 @@ function Home() {
               <button
                 type="button"
                 data-dwell=""
-                onClick={exitToPlatform}
+                onClick={leaveGame}
                 className="rounded-3xl bg-card px-10 py-5 font-display text-2xl font-bold text-foreground shadow-tile transition-transform hover:-translate-y-1"
               >
                 Back to games

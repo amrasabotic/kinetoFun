@@ -5,6 +5,7 @@ import { themes } from './data/themes';
 import { loadProgress, saveProgress, loadSettings, saveSettings } from './systems/SaveSystem';
 import { generateRandomLevel, generateDailyChallenge } from './systems/LevelGenerator';
 import { achievements } from './data/achievements';
+import { addLevelScore, hasSessionScore, leaveGame } from './systems/SessionScore';
 import { GestureProvider, useGestureEvent } from './systems/GestureManager';
 import VirtualCursor from './components/VirtualCursor';
 import HandLostOverlay from './components/HandLostOverlay';
@@ -31,7 +32,12 @@ function AppContent() {
   // The platform's Back button: one screen back, and out of the game from the first screens.
   useEffect(() => {
     (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
-      if (screen === 'tutorial' || screen === 'menu') return false;
+      if (screen === 'tutorial' || screen === 'menu') {
+        // Leaving with solved levels reports their points instead of a plain exit.
+        if (!hasSessionScore()) return false;
+        leaveGame();
+        return true;
+      }
       setScreen('menu');
       return true;
     };
@@ -128,9 +134,8 @@ function AppContent() {
     updateProgress(newProgress);
     setShowComplete({ score, stars });
 
-    try {
-      window.parent?.postMessage({ type: 'GAME_COMPLETE', score }, '*');
-    } catch { /* cross-origin */ }
+    // Reported when the player leaves, so finishing a level carries on to the next one.
+    addLevelScore(score);
   }, [currentLevel, progress, updateProgress]);
 
   const handleNextLevel = useCallback(() => {

@@ -27,9 +27,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 #gameCol{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;}
 #gameTitle{font-family:'Fredoka One',cursive;font-size:24px;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px;margin-top:4px;}
 #boardWrap{position:relative;}
-#gameCanvas{display:block;border-radius:10px;border:2px solid var(--border);}
+/* The board takes whatever height the tray leaves, so it fits any screen. */
+#gameCanvas{display:block;border-radius:10px;border:2px solid var(--border);height:min(calc(100vh - 230px),560px);width:auto;}
 #trayWrap{display:flex;gap:8px;justify-content:center;margin-top:6px;}
-.tslot{width:90px;height:90px;background:var(--panel);border:1.5px dashed #2a3a5c;border-radius:10px;position:relative;display:flex;align-items:center;justify-content:center;transition:border-color .15s,background .15s;cursor:pointer;}
+.tslot{width:120px;height:120px;background:var(--panel);border:1.5px dashed #2a3a5c;border-radius:10px;position:relative;display:flex;align-items:center;justify-content:center;transition:border-color .15s,background .15s;cursor:pointer;}
 .tslot.selected{border-color:var(--cyan);border-style:solid;background:#0d1f30;}
 .tslot.hovered{border-color:var(--green);border-style:solid;}
 .tslot canvas{pointer-events:none;display:block;}
@@ -49,8 +50,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .gbtn.hover{border-color:var(--accent);color:#fff;}
 .gbtn.fired{background:rgba(124,58,237,.5);}
 .hidden{display:none!important;}
-#cursor{position:fixed;width:24px;height:24px;border-radius:50%;border:2.5px solid var(--cyan);background:rgba(6,182,212,.15);pointer-events:none;transform:translate(-50%,-50%);z-index:9999;display:none;}
-#cursor.grab{width:14px;height:14px;background:rgba(124,58,237,.6);border-color:var(--accent);}
+#cursor{position:fixed;width:44px;height:44px;border-radius:50%;border:4px solid #fff;background:rgba(6,182,212,.35);pointer-events:none;transform:translate(-50%,-50%);z-index:9999;display:none;}
+#cursor.grab{border-color:var(--accent);}
 #comboPop{position:absolute;top:28%;left:50%;transform:translateX(-50%);font-family:'Fredoka One',cursive;font-size:20px;color:#fbbf24;pointer-events:none;opacity:0;z-index:30;white-space:nowrap;}
 </style>
 </head>
@@ -66,10 +67,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
     <div id="gestureBadge">👋 Waiting for camera…</div>
     <div class="legend">
       <div class="ltitle">✋ Gesture Guide</div>
-      <div class="leg"><span class="ico">☝️</span><div><strong>Point (1 finger)</strong> — hover over a piece tray slot and hold 1s to select it</div></div>
-      <div class="leg"><span class="ico">✌️</span><div><strong>Two fingers up</strong> — grab & drag selected piece over the grid</div></div>
-      <div class="leg"><span class="ico">✊</span><div><strong>Fist or Open palm</strong> — drop piece at highlighted position</div></div>
-      <div class="leg"><span class="ico">👆</span><div><strong>On menu buttons</strong> — point + hold 1.5s to press</div></div>
+      <div class="leg"><span class="ico">🖐</span><div><strong>Move your hand</strong> — the circle follows it</div></div>
+      <div class="leg"><span class="ico">⏳</span><div><strong>Hold on a piece</strong> below the board to pick it up</div></div>
+      <div class="leg"><span class="ico">🎯</span><div><strong>Hold still on the board</strong> to put it down</div></div>
+      <div class="leg"><span class="ico">↩️</span><div><strong>Hold on the piece again</strong> to put it back</div></div>
     </div>
   </div>
 
@@ -83,7 +84,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
         <p class="sub">Select pieces from the tray and place them on the grid. Fill complete rows or columns to clear them!</p>
         <div class="gbtn" id="btn-start" data-action="start"><div class="bar" id="bar-btn-start"></div><span class="lbl">▶ START GAME</span></div>
         <div class="gbtn hidden" id="btn-exit" data-action="exit"><div class="bar" id="bar-btn-exit"></div><span class="lbl">↩ BACK TO GAMES</span></div>
-        <p class="sub" style="font-size:10px;margin-top:4px;">Point finger at button and hold 1s — or click it</p>
+        <p class="sub" style="font-size:10px;margin-top:4px;">Hold your hand on a button to press it</p>
       </div>
       <div class="screen hidden" id="scOver">
         <h2>GAME OVER</h2>
@@ -93,9 +94,9 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
       </div>
     </div>
     <div id="trayWrap">
-      <div class="tslot" id="ts0"><canvas id="tc0" width="82" height="82"></canvas><div class="dring" id="dr0"></div></div>
-      <div class="tslot" id="ts1"><canvas id="tc1" width="82" height="82"></canvas><div class="dring" id="dr1"></div></div>
-      <div class="tslot" id="ts2"><canvas id="tc2" width="82" height="82"></canvas><div class="dring" id="dr2"></div></div>
+      <div class="tslot" id="ts0"><canvas id="tc0" width="110" height="110"></canvas><div class="dring" id="dr0"></div></div>
+      <div class="tslot" id="ts1"><canvas id="tc1" width="110" height="110"></canvas><div class="dring" id="dr1"></div></div>
+      <div class="tslot" id="ts2"><canvas id="tc2" width="110" height="110"></canvas><div class="dring" id="dr2"></div></div>
     </div>
   </div>
 
@@ -113,7 +114,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 // ════════════════════════════
 //   BLOCK BLAST GAME ENGINE
 // ════════════════════════════
-const GC = 9, GR = 9, CS = 38;
+const GC = 9, GR = 9, CS = 56;
 const gc = document.getElementById('gameCanvas');
 const gctx = gc.getContext('2d');
 gc.width = GC * CS; gc.height = GR * CS;
@@ -206,7 +207,7 @@ function drawTray(){
     document.getElementById('ts'+i).className='tslot'+(selIdx===i?' selected':'');
     const p=tray[i]; if(!p)continue;
     const rows=p.shape.length,cols=Math.max(...p.shape.map(r=>r.length));
-    const cs=Math.min(Math.floor((Math.min(W,H)-8)/Math.max(rows,cols)),22);
+    const cs=Math.min(Math.floor((Math.min(W,H)-8)/Math.max(rows,cols)),28);
     const ox=Math.floor((W-cols*cs)/2),oy=Math.floor((H-rows*cs)/2);
     p.shape.forEach((row,r)=>row.forEach((v,c)=>{
       if(!v)return; cell(ctx,ox+c*cs,oy+r*cs,p.color,cs,selIdx===i?1:.72);
@@ -388,29 +389,13 @@ function trayAt(x,y){
 let smX=null,smY=null;
 const SM=0.38;
 function sm(cur,prev){return prev===null?cur:prev*(1-SM)+cur*SM;}
-
-// ── classifier ──
-function dist2(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
-function fingerUp(lm,tip,pip,mcp){return lm[tip].y<lm[pip].y&&lm[pip].y<lm[mcp].y;}
-
-function classify(lm,vw,vh){
-  const idx=fingerUp(lm,8,6,5);
-  const mid=fingerUp(lm,12,10,9);
-  const ring=fingerUp(lm,16,14,13);
-  const pink=fingerUp(lm,20,18,17);
-  const thumb=lm[4].y<lm[2].y-0.035;
-  const ext=[idx,mid,ring,pink].filter(Boolean).length;
-  const pinchD=dist2(lm[4],lm[8]);
-
-  if(ext>=3)return{g:'open_palm'};
-  if(ext===0&&!thumb)return{g:'fist'};
-  if(idx&&mid&&!ring&&!pink)return{g:'two_fingers'};
-  if(ext===1&&idx){
-    return{g:'point',fx:(1-lm[8].x)*vw,fy:lm[8].y*vh,pinch:pinchD<0.065};
-  }
-  return{g:'other'};
+// The middle of the camera frame covers the whole page, so every edge is reachable from a sofa.
+const REACH=0.15;
+function toPage(p){
+  const nx=Math.min(1,Math.max(0,(1-p.x-REACH)/(1-2*REACH)));
+  const ny=Math.min(1,Math.max(0,(p.y-REACH)/(1-2*REACH)));
+  return{x:nx*window.innerWidth,y:ny*window.innerHeight};
 }
-
 // ── skeleton ──
 function skeleton(lm){
   const W=hCanvas.width,H=hCanvas.height;
@@ -418,95 +403,72 @@ function skeleton(lm){
   const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
   hctx.strokeStyle='rgba(124,58,237,.65)';hctx.lineWidth=2;
   for(const[a,b]of CONN){const p1=pt(a),p2=pt(b);hctx.beginPath();hctx.moveTo(p1.x,p1.y);hctx.lineTo(p2.x,p2.y);hctx.stroke();}
-  for(let i=0;i<21;i++){
-    const p=pt(i),r=i===4||i===8?9:i===0?5:3;
-    const col=i===4?'#f97316':i===8?'#06b6d4':i===0?'#7c3aed':'rgba(200,160,255,.8)';
-    hctx.beginPath();hctx.arc(p.x,p.y,r,0,Math.PI*2);
-    hctx.fillStyle=col;hctx.shadowColor=col;hctx.shadowBlur=10;hctx.fill();hctx.shadowBlur=0;
-  }
 }
-
-// ── fire-guard: prevent same gesture firing twice in quick succession ──
-const GUARD={};
-function canFire(key,ms){const n=Date.now();if(!GUARD[key]||n-GUARD[key]>ms){GUARD[key]=n;return true;}return false;}
-
-let lastG='';
-
+// A held piece lands when the hand stays on one spot of the board this long.
+const DROP_MS=900;
+let dropCell='',dropStart=0;
+function setCursorProgress(p){
+  cursor.style.background=p>0
+    ?`conic-gradient(rgba(34,197,94,.85) ${p*360}deg, rgba(6,182,212,.25) 0deg)`
+    :'';
+}
 function onHandResults(res){
   hctx.clearRect(0,0,hCanvas.width,hCanvas.height);
-
   if(!res.multiHandLandmarks||res.multiHandLandmarks.length===0){
     badge.innerHTML='👋 Show your hand…';badge.classList.remove('lit');
     cursor.style.display='none';processBtnDwell(null);processTrayDwell(-1);
+    smX=smY=null;dropCell='';
+    if(window.__kfPointer)window.__kfPointer(null);
+    return;
+  }
+  const lm=res.multiHandLandmarks[0];
+  skeleton(lm);
+  // The middle knuckle stays put whatever shape the hand makes, so the cursor does not jump.
+  const p=toPage(lm[9]);
+  smX=sm(p.x,smX);smY=sm(p.y,smY);
+  if(window.__kfPointer)window.__kfPointer(smX/window.innerWidth,smY/window.innerHeight);
+  cursor.style.display='block';
+  cursor.className=dragPiece?'grab':'';
+  cursor.style.left=smX+'px';cursor.style.top=smY+'px';
+  badge.classList.add('lit');
+
+  const uiBtn=btnAt(smX,smY);
+  const ti=uiBtn?-1:trayAt(smX,smY);
+  processBtnDwell(uiBtn);
+  processTrayDwell(ti);
+
+  if(!dragPiece||!alive||uiBtn||ti>=0){
+    if(dragGX>=0&&dragPiece){dragGX=-1;dragGY=-1;drawBoard();}
+    dropCell='';setCursorProgress(0);
+    badge.innerHTML=dragPiece?'🎯 Move onto the board':'⏳ Hold on a piece to pick it up';
     return;
   }
 
-  const lm=res.multiHandLandmarks[0];
-  const vw=window.innerWidth,vh=window.innerHeight;
-  skeleton(lm);
-
-  const g=classify(lm,vw,vh);
-
-  const LABELS={open_palm:'🖐 Open palm → drop!',fist:'✊ Fist → drop!',two_fingers:'✌️ Two fingers → dragging',point:'☝️ Pointing',other:'✋ Hand visible'};
-  badge.innerHTML=LABELS[g.g]||'✋';
-  badge.classList.toggle('lit',g.g!=='other');
-
-  // ── POINTING ──
-  if(g.g==='point'){
-    smX=sm(g.fx,smX);smY=sm(g.fy,smY);
-    cursor.style.display='block';cursor.className='';
-    cursor.style.left=smX+'px';cursor.style.top=smY+'px';
-
-    const uiBtn=btnAt(smX,smY);
-    if(uiBtn){
-      processBtnDwell(uiBtn);processTrayDwell(-1);
-    } else {
-      processBtnDwell(null);
-      const ti=trayAt(smX,smY);
-      processTrayDwell(ti);
-    }
-
-    // pinch-while-pointing also drags
-    if(g.pinch&&dragPiece&&alive){
-      cursor.className='grab';
-      const{gx,gy}=bXY(smX,smY);
-      const p=dragPiece,adj=clamp(p.shape,gx-Math.floor(p.shape[0].length/2),gy-Math.floor(p.shape.length/2));
-      dragGX=adj.gx;dragGY=adj.gy;drawBoard();
-    }
+  const r=gc.getBoundingClientRect();
+  const onBoard=smX>=r.left&&smX<=r.right&&smY>=r.top&&smY<=r.bottom;
+  if(!onBoard){
+    if(dragGX>=0){dragGX=-1;dragGY=-1;drawBoard();}
+    dropCell='';setCursorProgress(0);
+    badge.innerHTML='🎯 Move onto the board';
+    return;
   }
-  // ── TWO FINGERS = DRAG ──
-  else if(g.g==='two_fingers'){
-    processBtnDwell(null);processTrayDwell(-1);
-    const mx=(1-(lm[8].x+lm[12].x)/2)*vw;
-    const my=((lm[8].y+lm[12].y)/2)*vh;
-    smX=sm(mx,smX);smY=sm(my,smY);
-    cursor.style.display='block';cursor.className='grab';
-    cursor.style.left=smX+'px';cursor.style.top=smY+'px';
-
-    if(dragPiece&&alive){
-      const{gx,gy}=bXY(smX,smY);
-      const p=dragPiece,adj=clamp(p.shape,gx-Math.floor(p.shape[0].length/2),gy-Math.floor(p.shape.length/2));
-      dragGX=adj.gx;dragGY=adj.gy;drawBoard();
-    }
+  const{gx,gy}=bXY(smX,smY);
+  const pc=dragPiece,adj=clamp(pc.shape,gx-Math.floor(pc.shape[0].length/2),gy-Math.floor(pc.shape.length/2));
+  if(adj.gx!==dragGX||adj.gy!==dragGY){dragGX=adj.gx;dragGY=adj.gy;drawBoard();}
+  const key=dragGX+','+dragGY;
+  if(!canPlace(pc.shape,dragGX,dragGY)){
+    dropCell='';setCursorProgress(0);
+    badge.innerHTML='🚫 It does not fit here';
+    return;
   }
-  // ── FIST or OPEN PALM = DROP ──
-  else if((g.g==='fist'||g.g==='open_palm')&&lastG!==g.g){
-    processBtnDwell(null);processTrayDwell(-1);
-    cursor.style.display='none';
-    if(dragPiece&&alive&&dragGX>=0&&canFire('drop',600)){
-      const p=dragPiece;
-      if(canPlace(p.shape,dragGX,dragGY)){
-        doPlace(p.shape,p.color,dragGX,dragGY);afterPlace(selIdx);
-      } else {
-        selIdx=null;dragPiece=null;dragGX=-1;dragGY=-1;drawTray();drawBoard();
-      }
-    }
+  if(key!==dropCell){dropCell=key;dropStart=Date.now();}
+  const prog=Math.min(1,(Date.now()-dropStart)/DROP_MS);
+  setCursorProgress(prog);
+  badge.innerHTML='✋ Hold still to place';
+  if(prog>=1){
+    dropCell='';setCursorProgress(0);
+    doPlace(pc.shape,pc.color,dragGX,dragGY);afterPlace(selIdx);
   }
-  else if(g.g==='other'){
-    processBtnDwell(null);processTrayDwell(-1);cursor.style.display='none';
-  }
-
-  lastG=g.g;
 }
 
 // ── init camera ──

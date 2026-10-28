@@ -493,6 +493,44 @@ function triggerSuccess() {
 
 let faceMesh, handsDetector;
 
+// From a sofa a face is too small for Face Mesh, so it is shown a crop around the face, zoomed to fill the frame.
+const faceCanvas = document.createElement('canvas');
+faceCanvas.width = 640; faceCanvas.height = 480;
+const faceCtx = faceCanvas.getContext('2d');
+// While no face is found, try the whole view and then closer views of where a seated player usually is.
+const SEARCH_ZOOMS = [1, 0.6, 0.4];
+let crop = null, faceMisses = 0;
+let lastCrop = { x: 0, y: 0, w: 640, h: 480 };
+
+function cropRect() {
+  const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
+  const maxW = Math.min(vw, vh * 4 / 3);
+  let cx, cy, w;
+  if (crop) { cx = crop.cx; cy = crop.cy; w = crop.w; }
+  else { cx = vw / 2; cy = vh * 0.45; w = maxW * SEARCH_ZOOMS[Math.floor(faceMisses / 10) % SEARCH_ZOOMS.length]; }
+  w = Math.min(maxW, Math.max(200, w));
+  const h = w * 3 / 4;
+  return { x: Math.min(vw - w, Math.max(0, cx - w / 2)), y: Math.min(vh - h, Math.max(0, cy - h / 2)), w, h };
+}
+
+function followFace(lm) {
+  const r = lastCrop;
+  let minX = 1, maxX = 0, minY = 1, maxY = 0;
+  for (const p of lm) { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }
+  // Three face widths across keeps the face about the size the expression thresholds were tuned for.
+  const target = { cx: r.x + (minX + maxX) / 2 * r.w, cy: r.y + (minY + maxY) / 2 * r.h, w: (maxX - minX) * r.w * 3 };
+  if (!crop) { crop = target; return; }
+  crop.cx += (target.cx - crop.cx) * 0.3;
+  crop.cy += (target.cy - crop.cy) * 0.3;
+  crop.w += (target.w - crop.w) * 0.2;
+}
+
+function sendFace() {
+  lastCrop = cropRect();
+  faceCtx.drawImage(video, lastCrop.x, lastCrop.y, lastCrop.w, lastCrop.h, 0, 0, faceCanvas.width, faceCanvas.height);
+  return faceMesh.send({ image: faceCanvas });
+}
+
 function initMediaPipe() {
   faceMesh = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
   faceMesh.setOptions({
@@ -514,11 +552,12 @@ function initMediaPipe() {
 
   const camera = new Camera(video, {
     onFrame: async () => {
-      await faceMesh.send({ image: video });
+      await sendFace();
       await handsDetector.send({ image: video });
     },
-    width: 640,
-    height: 480,
+    // 1280x720 leaves enough detail in the zoomed face crop.
+    width: 1280,
+    height: 720,
   });
   camera.start();
 }
@@ -530,9 +569,13 @@ function onFaceResults(results) {
 
   if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
     faceLandmarks = results.multiFaceLandmarks[0];
+    faceMisses = 0;
+    followFace(faceLandmarks);
     if (gameRunning) processExpression();
   } else {
     faceLandmarks = null;
+    // A face lost for half a second means searching again from the whole view.
+    if (++faceMisses > 15) crop = null;
     if (gameRunning) detectionFeedback.textContent = '😶 No face detected';
   }
   ctx.restore();

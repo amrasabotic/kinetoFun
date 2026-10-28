@@ -4,6 +4,7 @@ import { RouterProvider, createRouter, createHashHistory } from '@tanstack/react
 import { QueryClient } from '@tanstack/react-query';
 import { routeTree } from './routeTree.gen';
 import './styles.css';
+import { hasSessionScore, leaveGame } from './lib/session-score';
 
 // How to Play is the first screen whenever the game is opened. A reload
 // inside a level keeps its route; only the landing route is redirected.
@@ -23,7 +24,12 @@ const router = createRouter({
 (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
   const path = router.state.location.pathname;
   const parent = path.startsWith('/play/') ? '/levels' : path === '/levels' || path === '/play' ? '/' : null;
-  if (!parent) return false;
+  if (!parent) {
+    // Leaving with solved levels reports their points instead of a plain exit.
+    if (!hasSessionScore()) return false;
+    leaveGame();
+    return true;
+  }
   void router.navigate({ to: parent });
   return true;
 };

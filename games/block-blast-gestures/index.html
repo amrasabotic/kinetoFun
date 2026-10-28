@@ -25,7 +25,7 @@ html,body{
 #root{
   width:100vw;height:100vh;
   display:grid;
-  grid-template-columns:1fr 344px 220px;
+  grid-template-columns:1fr auto 220px;
   align-items:center;justify-items:center;
 }
 
@@ -108,7 +108,9 @@ html,body{
 
 #boardWrap{position:relative;}
 
+/* Twenty rows fill the screen height whatever its size. */
 #gameCanvas{
+  height:calc(100vh - 70px);width:auto;
   display:block;border-radius:12px;
   border:2px solid var(--border);
   box-shadow:0 0 40px rgba(124,58,237,.12);
@@ -202,15 +204,14 @@ html,body{
 
 /* global cursor dot */
 #cursor{
-  position:fixed;width:26px;height:26px;
-  border-radius:50%;border:2.5px solid var(--cyan);
-  background:rgba(6,182,212,.18);
+  position:fixed;width:44px;height:44px;
+  border-radius:50%;border:4px solid #fff;
+  background:rgba(6,182,212,.35);
   pointer-events:none;transform:translate(-50%,-50%);
   z-index:9999;display:none;transition:width .1s,height .1s,background .1s,border-color .1s;
 }
 #cursor.active{
-  width:16px;height:16px;
-  background:rgba(124,58,237,.6);border-color:var(--accent);
+  border-color:var(--cyan);
 }
 
 .hidden{display:none!important;}
@@ -235,10 +236,10 @@ html,body{
 
     <div class="legend">
       <div class="ltitle">✋ Gesture Guide</div>
-      <div class="leg"><span class="ico">👍</span><div><strong>Thumb up, move left/right</strong> — block follows your thumb position</div></div>
-      <div class="leg"><span class="ico">🖐</span><div><strong>Open palm</strong> (3+ fingers up) — hard drop</div></div>
-      <div class="leg"><span class="ico">✊</span><div><strong>Fist</strong> (all fingers + thumb curled) — rotate</div></div>
-      <div class="leg"><span class="ico">☝️</span><div><strong>Point index finger</strong> — cursor, hold 1.5s on buttons</div></div>
+      <div class="leg"><span class="ico">↔️</span><div><strong>Move your hand left or right</strong> — the block follows</div></div>
+      <div class="leg"><span class="ico">✊</span><div><strong>Make a fist</strong> — rotate the block</div></div>
+      <div class="leg"><span class="ico">⬇️</span><div><strong>Lower your hand</strong> — the block falls faster</div></div>
+      <div class="leg"><span class="ico">⏳</span><div><strong>Hold on a button</strong> to press it</div></div>
     </div>
   </div>
 
@@ -251,7 +252,7 @@ html,body{
       <!-- START -->
       <div class="screen" id="scStart">
         <h2>BLOCK BLAST</h2>
-        <p class="sub">Fully gesture-controlled.<br>Point your finger at a button and hold it for 1.5 seconds to activate.</p>
+        <p class="sub">Fully gesture-controlled.<br>Hold your hand on a button to press it.</p>
         <div class="gbtn" id="btn-start" data-action="start">
           <div class="bar" id="bar-btn-start"></div>
           <span class="lbl">▶ &nbsp;START GAME</span>
@@ -688,116 +689,37 @@ function btnAtPoint(vx,vy){
   return null;
 }
 
-// ── gesture classifier ──
-
-// ─────────────────────────────────────────
-//  GESTURE CLASSIFIER  (clean rewrite)
-// ─────────────────────────────────────────
-//
-//  MediaPipe landmark indices used:
-//   0  = wrist
-//   2  = thumb CMC (base)
-//   3  = thumb MCP
-//   4  = thumb tip
-//   5  = index MCP    6  = index PIP    8  = index tip
-//   9  = middle MCP  10  = middle PIP  12  = middle tip
-//  13  = ring MCP    14  = ring PIP    16  = ring tip
-//  17  = pinky MCP   18  = pinky PIP   20  = pinky tip
-//
-//  Finger "extended" = tip is ABOVE its PIP which is ABOVE its MCP (smaller y)
-//  Thumb  "up"       = tip is above its MCP in y AND further from wrist than MCP
-//
-//  GESTURES:
-//   open_palm  → 3+ fingers extended              → hard drop
-//   fist       → 0 fingers AND thumb curled       → rotate block
-//   point      → only index extended              → cursor / UI
-//   thumb_move → everything else                  → block follows thumb tip X
-
-function isFingerUp(lm, tip, pip, mcp){
-  return lm[tip].y < lm[pip].y && lm[pip].y < lm[mcp].y;
+// From a sofa only two hand shapes are told apart reliably: a fist, and anything else.
+function isFist(lm){
+  const curled=(tip,pip)=>lm[tip].y>lm[pip].y;
+  return curled(8,6)&&curled(12,10)&&curled(16,14)&&curled(20,18);
 }
 
-function isThumbUp(lm){
-  // thumb tip clearly above its MCP joint (y smaller = higher on screen)
-  return lm[4].y < lm[2].y - 0.04;
+// The middle of the camera frame covers the whole page, so every edge is reachable.
+const REACH=0.15;
+function toPage(p){
+  const nx=Math.min(1,Math.max(0,(1-p.x-REACH)/(1-2*REACH)));
+  const ny=Math.min(1,Math.max(0,(p.y-REACH)/(1-2*REACH)));
+  return{x:nx,y:ny};
 }
 
-function classify(lm, vw, vh){
-  const idx  = isFingerUp(lm, 8,  6,  5);
-  const mid  = isFingerUp(lm, 12, 10, 9);
-  const ring = isFingerUp(lm, 16, 14, 13);
-  const pink = isFingerUp(lm, 20, 18, 17);
-  const extN = [idx, mid, ring, pink].filter(Boolean).length;
-  const thumbUp = isThumbUp(lm);
+let smX=null, smY=null;
+const SMOOTH=0.4;
+let wasFist=false;
+// Below this share of the screen height the block falls fast.
+const SOFT_DROP_Y=0.78;
 
-  // Open palm: 3+ fingers up  → drop
-  if(extN >= 3) return { g: 'open_palm' };
-
-  // Point: only index up → cursor
-  if(extN === 1 && idx) {
-    return { g: 'point', fx: (1 - lm[8].x) * vw, fy: lm[8].y * vh };
-  }
-
-  // TRUE fist: ALL fingers curled AND thumb curled (tip NOT above MCP)
-  if(extN === 0 && !thumbUp) return { g: 'fist' };
-
-  // Everything else (including thumb-up) → thumb_move
-  // Block column is driven by thumb tip X position
-  return { g: 'thumb_move' };
-}
-
-// Thumb tip X → block column (direct mapping, mirrored)
-// We smooth with a small running average to reduce jitter
-let thumbXSmoothed = null;
-let lastMappedCol  = -1;
-const THUMB_SMOOTH = 0.35; // lower = more smoothing, higher = more responsive
-
-// ── draw hand skeleton ──
 function drawHand(lm){
   const W=hCanvas.width, H=hCanvas.height;
-  // hCanvas has CSS scaleX(-1), so we draw in raw coords and the CSS mirror handles display
   const pt=i=>({x:lm[i].x*W, y:lm[i].y*H});
-
-  const CONN=[
-    [0,1],[1,2],[2,3],[3,4],
-    [0,5],[5,6],[6,7],[7,8],
-    [5,9],[9,10],[10,11],[11,12],
-    [9,13],[13,14],[14,15],[15,16],
-    [13,17],[17,18],[18,19],[19,20],
-    [0,17]
-  ];
-
+  const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
   hctx.strokeStyle='rgba(124,58,237,.7)'; hctx.lineWidth=2;
   for(const[a,b] of CONN){
     const p1=pt(a),p2=pt(b);
     hctx.beginPath();hctx.moveTo(p1.x,p1.y);hctx.lineTo(p2.x,p2.y);hctx.stroke();
   }
-
-  for(let i=0;i<21;i++){
-    const p=pt(i);
-    hctx.beginPath();
-    // thumb tip=4 (orange, big), thumb base=2 (yellow), index tip=8 (cyan), wrist=0 (purple)
-    const r = i===4?10 : i===2?7 : i===0?6 : 4;
-    hctx.arc(p.x,p.y,r,0,Math.PI*2);
-    const col = i===4?'#f97316' : i===2?'#eab308' : i===8?'#06b6d4' : i===0?'#7c3aed':'rgba(180,140,255,.85)';
-    hctx.fillStyle=col;
-    hctx.shadowColor=col; hctx.shadowBlur=12;
-    hctx.fill(); hctx.shadowBlur=0;
-  }
-
-  // Arrow showing thumb direction (tip→base vector, mirrored for display)
-  const tip=pt(4), base=pt(2);
-  const arrowMidX=(tip.x+base.x)/2, arrowMidY=(tip.y+base.y)/2;
-  hctx.beginPath();
-  hctx.moveTo(base.x,base.y); hctx.lineTo(tip.x,tip.y);
-  hctx.strokeStyle='rgba(249,115,22,.9)'; hctx.lineWidth=3; hctx.stroke();
-
-  // ring around thumb tip
-  hctx.beginPath(); hctx.arc(tip.x,tip.y,14,0,Math.PI*2);
-  hctx.strokeStyle='rgba(249,115,22,.7)'; hctx.lineWidth=2; hctx.stroke();
 }
 
-// ── main hand results callback ──
 function onHandResults(res){
   hctx.clearRect(0,0,hCanvas.width,hCanvas.height);
 
@@ -806,78 +728,63 @@ function onHandResults(res){
     badge.classList.remove('lit');
     cursor.style.display='none';
     processDwell(null);
+    smX=smY=null; wasFist=false;
+    if(window.__kfPointer) window.__kfPointer(null);
     return;
   }
 
   const lm=res.multiHandLandmarks[0];
   drawHand(lm);
+  // The middle knuckle barely moves when the hand closes, so a fist does not shift the block.
+  const p=toPage(lm[9]);
+  smX=smX===null?p.x:smX+(p.x-smX)*SMOOTH;
+  smY=smY===null?p.y:smY+(p.y-smY)*SMOOTH;
+  const vx=smX*window.innerWidth, vy=smY*window.innerHeight;
+  if(window.__kfPointer) window.__kfPointer(smX,smY);
 
-  const vw=window.innerWidth, vh=window.innerHeight;
-  const g=classify(lm,vw,vh);
+  cursor.style.display='block';
+  cursor.style.left=vx+'px';
+  cursor.style.top=vy+'px';
+  processDwell(btnAtPoint(vx,vy));
 
-  // Badge label
-  const LABELS={
-    open_palm:  '🖐&nbsp; Open Palm → Hard Drop!',
-    fist:       '✊&nbsp; Fist → Rotate block!',
-    point:      '☝️&nbsp; Pointing — aim at a button',
-    thumb_move: '👍&nbsp; Thumb seen — move it left/right!',
-  };
-  badge.innerHTML=LABELS[g.g]||'✋';
-  badge.classList.toggle('lit',g.g!=='idle');
+  const fist=isFist(lm);
+  const fistStarted=fist&&!wasFist;
+  wasFist=fist;
+  cursor.classList.toggle('active',fist);
+  badge.classList.add('lit');
 
-  // ── CURSOR & DWELL ──
-  if(g.g==='point'){
-    cursor.style.display='block';
-    cursor.classList.remove('active');
-    cursor.style.left=g.fx+'px';
-    cursor.style.top =g.fy+'px';
-    processDwell(btnAtPoint(g.fx,g.fy));
-  } else {
-    cursor.style.display='none';
-    processDwell(null);
-  }
-
-  // ── GAME GESTURES ──
-  if(!alive || paused){
-    thumbXSmoothed = null; lastMappedCol = -1; return;
-  }
-
-  if(g.g === 'open_palm' && canFire('drop', 900)){
-    while(!overlaps(activePiece, ax, ay+1)) ay++;
-    lockPiece(); clearTimeout(dropTimer);
-    thumbXSmoothed = null; lastMappedCol = -1; return;
-  }
-
-  if(g.g === 'fist' && canFire('rotate', 500)){
-    const r = rotateCW(activePiece);
-    if(!overlaps(r, ax, ay)) activePiece = r;
+  if(!alive||paused){
+    badge.innerHTML='⏳&nbsp; Hold your hand on a button';
     return;
   }
 
-  // ── THUMB TIP X → BLOCK COLUMN (direct mapping) ──
-  // lm[4] = thumb tip.  Raw x: 0=cam-left, 1=cam-right.
-  // Display is mirrored, so flip: displayX = 1 - rawX
-  // Map displayX [0.05 .. 0.95] → board column [0 .. COLS-pieceWidth]
-  const rawThumbX = lm[4].x;
-  const flipped   = 1 - rawThumbX;  // mirror for display
-  const norm      = Math.max(0, Math.min(1, (flipped - 0.05) / 0.90));
+  if(fistStarted&&canFire('rotate',350)){
+    const r=rotateCW(activePiece);
+    if(!overlaps(r,ax,ay)) activePiece=r;
+    else if(!overlaps(r,ax-1,ay)){activePiece=r;ax--;}
+    else if(!overlaps(r,ax+1,ay)){activePiece=r;ax++;}
+  }
 
-  // Smooth to remove jitter
-  if(thumbXSmoothed === null) thumbXSmoothed = norm;
-  else thumbXSmoothed = thumbXSmoothed * (1 - THUMB_SMOOTH) + norm * THUMB_SMOOTH;
+  const soft=smY>SOFT_DROP_Y;
+  if(soft&&canFire('soft',70)){
+    if(!overlaps(activePiece,ax,ay+1)) ay++;
+    else{lockPiece();resetDropTimer();}
+  }
 
-  const pieceW    = Math.max(...activePiece.map(c => c[0])) + 1;
-  const targetCol = Math.round(thumbXSmoothed * (COLS - pieceW));
-  const clampCol  = Math.max(0, Math.min(COLS - pieceW, targetCol));
+  badge.innerHTML=fist?'✊&nbsp; Rotate!':soft?'⬇️&nbsp; Falling fast':'↔️&nbsp; Move left or right';
 
-  if(clampCol !== lastMappedCol){
-    const dir   = clampCol > ax ? 1 : -1;
-    const steps = Math.min(Math.abs(clampCol - ax), 2); // max 2 steps/frame
-    for(let i = 0; i < steps; i++){
-      if(!overlaps(activePiece, ax + dir, ay)) ax += dir;
+  // The block sits under the cursor, at most two steps a frame so it slides rather than jumps.
+  const pieceW=Math.max(...activePiece.map(c=>c[0]))+1;
+  const br=gc.getBoundingClientRect();
+  const under=(vx-br.left)/(br.width/COLS)-pieceW/2;
+  const targetCol=Math.max(0,Math.min(COLS-pieceW,Math.round(under)));
+  if(targetCol!==ax){
+    const dir=targetCol>ax?1:-1;
+    const steps=Math.min(Math.abs(targetCol-ax),2);
+    for(let i=0;i<steps;i++){
+      if(!overlaps(activePiece,ax+dir,ay)) ax+=dir;
       else break;
     }
-    lastMappedCol = ax;
   }
 }
 

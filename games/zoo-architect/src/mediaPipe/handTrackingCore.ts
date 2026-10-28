@@ -27,10 +27,12 @@ function classify(lm: NormalizedLandmark[], mirror: boolean): { cursorX: number;
   const avgTipDist = tips.reduce((s, t) => s + Math.hypot(t.x - palmX, t.y - palmY), 0) / tips.length;
   const spread = avgTipDist / handScale;
 
+  // The middle of the camera frame covers the whole screen, so the edges are reachable from a sofa.
+  const reach = (v: number) => Math.min(1, Math.max(0, (v - 0.12) / 0.76));
   const rawX = lm[8].x;
   return {
-    cursorX: mirror ? 1 - rawX : rawX,
-    cursorY: lm[8].y,
+    cursorX: reach(mirror ? 1 - rawX : rawX),
+    cursorY: reach(lm[8].y),
     indexZ: lm[8].z,
     isPalmOpen: spread > 1.15,
     isFist: spread < 0.55,
@@ -100,6 +102,7 @@ export function startHandTracking(opts: StartOptions): () => void {
           sx = sx + (c.cursorX - sx) * a;
           sy = sy + (c.cursorY - sy) * a;
           const confidence = res.handednesses?.[0]?.[0]?.score ?? 0.8;
+          (window as unknown as { __kfPointer?: (x: number | null, y?: number) => void }).__kfPointer?.(sx, sy);
           opts.onFrame({
             detected: true,
             confidence,
@@ -111,6 +114,7 @@ export function startHandTracking(opts: StartOptions): () => void {
             isPinching: c.isPinching,
           });
         } else {
+          (window as unknown as { __kfPointer?: (x: number | null) => void }).__kfPointer?.(null);
           opts.onFrame({ ...EMPTY_FRAME, cursorX: sx, cursorY: sy });
         }
       }

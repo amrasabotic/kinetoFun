@@ -104,9 +104,17 @@
 
   // With hand and body trackers both running, body results would make the cursor jump to the wrist.
   var lastHandAt = -Infinity;
+  var ownPointerAt = -Infinity;
+
+  // A game that maps the hand to its own cursor reports it here (0-1 of its viewport), so Back fills where that cursor is drawn.
+  window.__kfPointer = function (x, y) {
+    ownPointerAt = performance.now();
+    if (typeof x === 'number' && typeof y === 'number') send(x, y, true); else send(0, 0, false);
+  };
 
   function report(points, isHand) {
     var now = performance.now();
+    if (now - ownPointerAt < 500) return;
     if (isHand) lastHandAt = now;
     else if (now - lastHandAt < 1000) return;
     var p = pointer(points);

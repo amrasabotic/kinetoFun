@@ -22,6 +22,9 @@ const COOLDOWN_MS = 1000;
 // A hold survives the hand slipping off, or one missed tracking frame, for this long.
 const GRACE_MS = 250;
 const SMOOTHING = 0.3;
+// The middle of the camera frame covers the whole screen, so corners are reachable from a sofa.
+const REACH = 0.12;
+const reach = (v: number) => Math.min(1, Math.max(0, (v - REACH) / (1 - 2 * REACH)));
 // Holding the cursor near the top or bottom edge scrolls long screens.
 const SCROLL_EDGE = 0.12;
 const SCROLL_SPEED = 9;
@@ -61,13 +64,29 @@ export default function HandCursor({ getPoint, enabled = true }: {
       // Re-arm whenever the cursor comes back, e.g. when a game-over screen opens.
       if (on && !wasEnabled) blockedUntil = performance.now() + ARM_MS;
       wasEnabled = on;
-      const hand = on ? getPointRef.current() : null;
+      const raw = getPointRef.current();
+      const hand = raw && { x: reach(raw.x), y: reach(raw.y) };
       if (!cursor) return;
+      const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
+
+      // In play the hand steers the game, so the cursor is only shown faintly to find the platform's Back button.
+      if (!on) {
+        target = null;
+        setRing(0);
+        if (!hand) { cursor.style.opacity = '0'; kf.__kfPointer?.(null); return; }
+        x += (hand.x - x) * SMOOTHING;
+        y += (hand.y - y) * SMOOTHING;
+        kf.__kfPointer?.(x, y);
+        cursor.style.opacity = '0.4';
+        cursor.style.transform = `translate(${x * window.innerWidth - 26}px, ${y * window.innerHeight - 26}px)`;
+        return;
+      }
 
       const hasButtons = document.querySelector('button:not([disabled])') !== null;
       if (!hand && target && hasButtons && performance.now() - lastOnTarget <= GRACE_MS) return;
       if (!hand || !hasButtons) {
         cursor.style.opacity = '0';
+        kf.__kfPointer?.(null);
         target = null;
         setRing(0);
         return;
@@ -75,6 +94,7 @@ export default function HandCursor({ getPoint, enabled = true }: {
 
       x += (hand.x - x) * SMOOTHING;
       y += (hand.y - y) * SMOOTHING;
+      kf.__kfPointer?.(x, y);
       const px = x * window.innerWidth;
       const py = y * window.innerHeight;
       cursor.style.opacity = '1';

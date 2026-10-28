@@ -27,11 +27,17 @@ const DEFAULT_SAVE: ZooSaveData = {
   achievements: [],
 };
 
+/** An animal is happy when its favourite decoration stands in the same zone. */
+function isHappy(placed: PlacedItem, placedItems: PlacedItem[]): boolean {
+  const likes = itemById(placed.itemId)?.likes;
+  return !!likes && placedItems.some((p) => p.zoneId === placed.zoneId && p.itemId === likes);
+}
+
 function totalAppealScore(placedItems: PlacedItem[]): number {
   let total = 0;
   for (const p of placedItems) {
     const item = itemById(p.itemId);
-    if (item) total += item.appealValue;
+    if (item) total += item.appealValue * (isHappy(p, placedItems) ? 2 : 1);
   }
   return total;
 }
@@ -41,6 +47,7 @@ interface ZooState extends ZooSaveData {
   unlockItem: (itemId: string) => boolean;
   unlockZone: (zoneId: string) => boolean;
   collectTickets: () => number;
+  earnTickets: (amount: number) => void;
   resetProgress: () => void;
 }
 
@@ -112,6 +119,18 @@ export const useZooStore = create<ZooState>()(
         return accrued;
       },
 
+      earnTickets: (amount) => {
+        const state = get();
+        const newState: ZooSaveData = {
+          ...state,
+          tickets: state.tickets + amount,
+          totalTicketsEarned: state.totalTicketsEarned + amount,
+        };
+        const newAchievements = computeNewAchievements(state.achievements, newState);
+        newState.achievements = [...state.achievements, ...newAchievements];
+        set(newState);
+      },
+
       resetProgress: () => set(DEFAULT_SAVE),
     }),
     { name: 'zoo-architect-progress' },
@@ -133,4 +152,4 @@ function computeNewAchievements(existing: string[], state: ZooSaveData): string[
   return out;
 }
 
-export { totalAppealScore };
+export { totalAppealScore, isHappy };

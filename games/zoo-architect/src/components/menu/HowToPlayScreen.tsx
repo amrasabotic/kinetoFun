@@ -3,12 +3,12 @@ import { motion } from 'framer-motion';
 import HoverButton from '../common/HoverButton';
 
 const STEPS: { icon: string; title: string; desc: string }[] = [
-  { icon: '☝️', title: 'Point with one finger', desc: 'Raise your hand to the camera. The dot on screen follows your index fingertip.' },
-  { icon: '🤏', title: 'Pinch to grab', desc: 'Touch your thumb and index fingertip together to pick something up. Move it, then open your fingers to drop it.' },
-  { icon: '🦁', title: 'Place animals', desc: 'Pinch an animal or decoration from the shop and drop it in the habitat.' },
-  { icon: '✨', title: 'Raise appeal', desc: 'Every item makes your zoo more appealing. More appeal brings more visitors, and they buy tickets over time.' },
-  { icon: '🎟️', title: 'Collect tickets', desc: 'Hover "Collect Tickets" to add the visitors\' tickets to your total.' },
-  { icon: '🔓', title: 'Unlock more', desc: 'Hover a locked item or a locked zone to unlock it with tickets. There is no way to lose!' },
+  { icon: '✋', title: 'Move your hand', desc: 'Raise your hand to the camera. The dot on screen follows your fingertip.' },
+  { icon: '🦁', title: 'Pick up and place', desc: 'Hold your hand on an animal or decoration below to pick it up, then hold still in the habitat to put it there.' },
+  { icon: '🍎', title: 'Feed your animals', desc: 'Hold your hand on an animal to feed it. It jumps for joy and gives you tickets, then rests for a while.' },
+  { icon: '❤️', title: 'Favourite things', desc: 'Every animal has a favourite decoration. Place it in the same habitat and the animal is happy: double appeal!' },
+  { icon: '🎟️', title: 'Collect tickets', desc: 'More appeal brings more visitors, who buy tickets. Hold "Collect Tickets" to add them to your total.' },
+  { icon: '🔓', title: 'Unlock more', desc: 'Hold on a locked item or zone to unlock it with tickets. There is no way to lose!' },
 ];
 
 // The confirm button ignores the hand for a moment so a player whose finger is
@@ -59,7 +59,7 @@ export default function HowToPlayScreen({ onDone, doneLabel }: { onDone: () => v
       >
         {doneLabel}
       </HoverButton>
-      <p className="mt-3 text-sm text-white/50">Hold your fingertip on the button to continue</p>
+      <p className="mt-3 text-base text-white/60">Hold your hand on the button to continue</p>
     </div>
   );
 }

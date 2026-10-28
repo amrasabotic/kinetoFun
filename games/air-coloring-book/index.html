@@ -49,40 +49,45 @@
   #main { display:flex; flex:1; overflow:hidden; }
 
   /* LEFT PANEL */
+  /* Both panels split their height into rows so every button fits on screen; nothing can scroll by hand. */
   #animal-panel {
-    width:110px; background:var(--panel); border-right:2px solid #2a2a4a;
-    overflow-y:auto; padding:8px 5px; display:flex; flex-direction:column;
-    gap:5px; flex-shrink:0;
+    width:190px; background:var(--panel); border-right:2px solid #2a2a4a;
+    padding:8px; display:grid; grid-template-columns:1fr 1fr;
+    grid-template-rows:repeat(6,minmax(0,1fr)); gap:6px; flex-shrink:0;
   }
   #animal-panel::-webkit-scrollbar{width:3px;}
   #animal-panel::-webkit-scrollbar-thumb{background:#3a3a6a;border-radius:3px;}
 
   .animal-btn {
     background:var(--card); border:2px solid transparent; border-radius:10px;
-    padding:6px 3px; cursor:pointer; display:flex; flex-direction:column;
-    align-items:center; gap:2px; color:var(--text); font-size:0.65rem;
-    font-weight:700; text-align:center; position:relative; overflow:hidden;
+    padding:4px 2px; cursor:pointer; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:2px; color:var(--text); font-size:15px;
+    font-weight:700; text-align:center; position:relative; overflow:hidden; min-height:0;
     transition:border-color 0.15s;
   }
-  .animal-btn .emoji { font-size:1.6rem; }
+  .animal-btn .emoji { font-size:2rem; line-height:1; }
   .animal-btn.active { border-color:var(--accent); background:#2e1a3a; }
   .animal-btn.hovering { border-color:var(--accent2); }
 
   /* hover fill ring inside button */
   .animal-btn .hover-ring {
-    position:absolute; bottom:0; left:0; height:3px; width:0%;
+    position:absolute; bottom:0; left:0; height:6px; width:0%;
     background:var(--accent2); border-radius:0 0 8px 8px;
     transition:none;
   }
 
   /* CANVAS AREA */
-  #canvas-area { flex:1; position:relative; overflow:hidden; }
+  #canvas-area {
+    flex:1; position:relative; overflow:hidden;
+    background:radial-gradient(circle at center, #120c28 0%, #08060f 100%);
+  }
 
-  #drawing-canvas, #outline-canvas, #cursor-canvas {
+  #drawing-canvas, #outline-canvas {
     position:absolute; top:0; left:0; width:100%; height:100%;
   }
   #outline-canvas  { pointer-events:none; }
-  #cursor-canvas   { pointer-events:none; z-index:10; }
+  /* Covers the whole page so the cursor stays visible over the side panels. */
+  #cursor-canvas   { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:100; }
 
   /* WEBCAM */
   #video-wrap {
@@ -90,47 +95,55 @@
     overflow:hidden; border:2px solid var(--accent2); z-index:15;
     box-shadow:0 0 18px rgba(192,132,252,0.4);
   }
-  #webcam { width:150px; height:112px; object-fit:cover; transform:scaleX(-1); display:block; }
+  #webcam { width:120px; height:90px; object-fit:cover; transform:scaleX(-1); display:block; }
 
   /* RIGHT PANEL */
   #tool-panel {
-    width:108px; background:var(--panel); border-left:2px solid #2a2a4a;
-    display:flex; flex-direction:column; gap:5px; padding:8px 5px;
-    overflow-y:auto; flex-shrink:0;
+    width:200px; background:var(--panel); border-left:2px solid #2a2a4a;
+    display:flex; flex-direction:column; gap:6px; padding:8px;
+    flex-shrink:0;
+  }
+  #color-swatches {
+    flex:4; min-height:0; display:grid; grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(4,minmax(0,1fr)); gap:6px;
+  }
+  #tool-btns {
+    flex:3; min-height:0; display:grid; grid-template-columns:1fr 1fr;
+    grid-auto-rows:minmax(0,1fr); gap:6px;
   }
   #tool-panel::-webkit-scrollbar{width:3px;}
   #tool-panel::-webkit-scrollbar-thumb{background:#3a3a6a;border-radius:3px;}
 
   .tool-label {
-    font-size:0.6rem; color:var(--text-muted); text-transform:uppercase;
+    font-size:14px; color:var(--text-muted); text-transform:uppercase;
     letter-spacing:0.08em; padding:0 3px; font-weight:700; flex-shrink:0;
   }
 
   .color-swatch {
-    width:100%; height:34px; border-radius:8px; cursor:pointer;
-    border:3px solid transparent; flex-shrink:0; position:relative; overflow:hidden;
+    min-height:0; border-radius:8px; cursor:pointer;
+    border:4px solid transparent; position:relative; overflow:hidden;
     transition:border-color 0.15s;
   }
   .color-swatch.active { border-color:white; }
   .color-swatch.hovering { border-color:var(--accent2); }
   .color-swatch .hover-ring {
-    position:absolute; bottom:0; left:0; height:3px; width:0%;
+    position:absolute; bottom:0; left:0; height:6px; width:0%;
     background:rgba(255,255,255,0.8); border-radius:0;
   }
 
   .tool-btn {
     background:var(--card); border:2px solid transparent; border-radius:8px;
-    padding:7px 3px; cursor:pointer; display:flex; flex-direction:column;
-    align-items:center; gap:2px; font-size:0.65rem; font-weight:700;
-    color:var(--text); position:relative; overflow:hidden; flex-shrink:0;
+    padding:2px; cursor:pointer; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:2px; font-size:15px; font-weight:700;
+    color:var(--text); position:relative; overflow:hidden; min-height:0;
     transition:border-color 0.15s;
   }
-  .tool-btn .icon { font-size:1.3rem; }
+  .tool-btn .icon { font-size:1.6rem; line-height:1; }
   .tool-btn[hidden] { display:none; }
   .tool-btn.active { border-color:var(--accent); background:#2e1a2a; }
   .tool-btn.hovering { border-color:var(--accent2); }
   .tool-btn .hover-ring {
-    position:absolute; bottom:0; left:0; height:3px; width:0%;
+    position:absolute; bottom:0; left:0; height:6px; width:0%;
     background:var(--accent2); border-radius:0;
   }
 
@@ -212,8 +225,7 @@
   <div id="canvas-area">
     <canvas id="drawing-canvas"></canvas>
     <canvas id="outline-canvas"></canvas>
-    <canvas id="cursor-canvas"></canvas>
-    <div id="gesture-hint">☝️ Point = Draw · ✌️ Peace = Hover panels · 👊 Fist = Clear · 🖐 Open = Next</div>
+    <div id="gesture-hint">☝️ Point to colour · 🖐 Open hand to move and pick</div>
     <div id="progress-bar-wrap">
       <span style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap">Coverage</span>
       <div id="progress-bar"><div id="progress-fill"></div></div>
@@ -231,6 +243,7 @@
     <div class="tool-label">Colors</div>
     <div id="color-swatches"></div>
     <div class="tool-label" style="margin-top:4px">Tools</div>
+    <div id="tool-btns">
     <div class="tool-btn active" id="btn-draw" data-action="tool:draw">
       <span class="icon">✏️</span>Draw
       <div class="hover-ring"></div>
@@ -251,8 +264,11 @@
       <span class="icon">↩️</span>Exit
       <div class="hover-ring"></div>
     </div>
+    </div>
   </div>
 </div>
+
+<canvas id="cursor-canvas"></canvas>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -494,7 +510,8 @@ let progressTimer = null;
 let dwellEl = null;        // element currently being hovered
 let dwellStart = 0;        // when hover started
 let dwellAnimFrame = null;
-const DWELL_MS = 300;      // 0.3 seconds
+// Long enough that sweeping across a panel never switches the picture by accident.
+const DWELL_MS = 900;
 
 const drawingCanvas = document.getElementById('drawing-canvas');
 const outlineCanvas = document.getElementById('outline-canvas');
@@ -509,7 +526,8 @@ const cCtx = cursorCanvas.getContext('2d');
 function resizeCanvases() {
   const area = document.getElementById('canvas-area');
   const w = area.clientWidth, h = area.clientHeight;
-  [drawingCanvas, outlineCanvas, cursorCanvas].forEach(c => { c.width=w; c.height=h; });
+  [drawingCanvas, outlineCanvas].forEach(c => { c.width=w; c.height=h; });
+  cursorCanvas.width = window.innerWidth; cursorCanvas.height = window.innerHeight;
   renderOutline();
 }
 window.addEventListener('resize', resizeCanvases);
@@ -520,14 +538,8 @@ window.addEventListener('resize', resizeCanvases);
 // ═══════════════════════════════════════════════
 function renderOutline() {
   const w = outlineCanvas.width, h = outlineCanvas.height;
+  // Outlines only: this layer sits above the paint, so any fill here would dim the colours.
   oCtx.clearRect(0, 0, w, h);
-
-  // dark backdrop (DOES NOT use fillRect over everything — only subtle vignette)
-  const grd = oCtx.createRadialGradient(w/2,h/2,40,w/2,h/2,Math.max(w,h)*.72);
-  grd.addColorStop(0,'rgba(18,12,40,0.88)');
-  grd.addColorStop(1,'rgba(8,6,18,0.96)');
-  oCtx.fillStyle = grd;
-  oCtx.fillRect(0,0,w,h);
 
   const a = ANIMALS[currentAnimalIdx];
   const s = Math.min(w, h) * 0.36;
@@ -647,12 +659,16 @@ function drawCursor(x, y, active, hoverPct) {
   cCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
   if(x < 0) return;
 
-  const r = active ? 16 : 11;
-  const col = active ? currentColor : 'rgba(255,255,255,0.65)';
+  const r = active ? 18 : 16;
+  const col = active ? currentColor : '#ffffff';
+  if(!active){
+    cCtx.beginPath(); cCtx.arc(x,y,r,0,Math.PI*2);
+    cCtx.fillStyle = 'rgba(192,132,252,0.35)'; cCtx.fill();
+  }
 
   // outer ring
   cCtx.beginPath(); cCtx.arc(x,y,r,0,Math.PI*2);
-  cCtx.strokeStyle = col; cCtx.lineWidth = active ? 3.5 : 2;
+  cCtx.strokeStyle = col; cCtx.lineWidth = 4;
   cCtx.stroke();
 
   // inner dot
@@ -664,8 +680,8 @@ function drawCursor(x, y, active, hoverPct) {
   // dwell arc (fills clockwise)
   if(hoverPct > 0 && hoverPct < 1){
     cCtx.beginPath();
-    cCtx.arc(x, y, r+5, -Math.PI/2, -Math.PI/2 + Math.PI*2*hoverPct);
-    cCtx.strokeStyle = '#c084fc'; cCtx.lineWidth = 3;
+    cCtx.arc(x, y, r+8, -Math.PI/2, -Math.PI/2 + Math.PI*2*hoverPct);
+    cCtx.strokeStyle = '#c084fc'; cCtx.lineWidth = 6;
     cCtx.stroke();
   }
 }
@@ -694,7 +710,7 @@ function fireHoverAction(el) {
   // animal button
   if(el.classList.contains('animal-btn')){
     const idx = [...document.querySelectorAll('.animal-btn')].indexOf(el);
-    if(idx >= 0) switchAnimal(idx);
+    if(idx >= 0 && idx !== currentAnimalIdx) switchAnimal(idx);
     return;
   }
   // color swatch
@@ -712,8 +728,12 @@ function fireHoverAction(el) {
 }
 
 // Called every frame with the finger tip position in PAGE coords
+let firedEl = null;
 function processDwell(pageX, pageY) {
   const el = getHoverableAt(pageX, pageY);
+  // A button fires once per visit; the hand has to leave it before it can fire again.
+  if(el !== firedEl) firedEl = null;
+  if(el && el === firedEl) return 0;
 
   if(!el){
     // left all elements
@@ -746,6 +766,7 @@ function processDwell(pageX, pageY) {
   if(pct >= 1){
     fireHoverAction(el);
     dwellEl = null;
+    firedEl = el;
   }
   return pct;
 }
@@ -801,16 +822,24 @@ let gestureBuffer = [];
 const SMOOTH = 5;
 let lastGesture = 'none';
 
-// Translate raw MediaPipe [0..1] to page coordinates for cursor + hover
+// The middle of the camera frame covers the whole page, so the side panels and corners are reachable.
+const REACH = 0.12;
+let smoothX = -1, smoothY = -1;
 function landmarkToPage(lm) {
-  const area = document.getElementById('canvas-area');
-  const rect = area.getBoundingClientRect();
-  // mirror X
-  const cx = (1 - lm.x) * rect.width  + rect.left;
-  const cy =        lm.y  * rect.height + rect.top;
-  return { cx, cy, // canvas-area relative (for drawing canvas):
-           dx: (1-lm.x)*drawingCanvas.width,
-           dy: lm.y*drawingCanvas.height };
+  const nx = Math.min(1, Math.max(0, (1 - lm.x - REACH) / (1 - 2*REACH)));
+  const ny = Math.min(1, Math.max(0, (lm.y - REACH) / (1 - 2*REACH)));
+  const tx = nx * window.innerWidth, ty = ny * window.innerHeight;
+  if(smoothX < 0){ smoothX = tx; smoothY = ty; }
+  smoothX += (tx - smoothX) * 0.45; smoothY += (ty - smoothY) * 0.45;
+  const rect = drawingCanvas.getBoundingClientRect();
+  return { cx: smoothX, cy: smoothY, dx: smoothX - rect.left, dy: smoothY - rect.top };
+}
+
+function clearDwell(){
+  if(!dwellEl) return;
+  dwellEl.classList.remove('hovering');
+  const r = dwellEl.querySelector('.hover-ring'); if(r) r.style.width='0%';
+  dwellEl = null;
 }
 
 function onHandResults(results){
@@ -818,7 +847,10 @@ function onHandResults(results){
     (results.multiHandLandmarks && results.multiHandLandmarks.length) ? 'Detected ✓' : 'Searching…';
 
   if(!results.multiHandLandmarks || !results.multiHandLandmarks.length){
-    handDetected=false; stopDrawing(); drawCursor(-1,-1,false,0); return;
+    handDetected=false; stopDrawing(); clearDwell(); drawCursor(-1,-1,false,0);
+    smoothX = smoothY = -1;
+    if(window.__kfPointer) window.__kfPointer(null);
+    return;
   }
   handDetected = true;
   const lms = results.multiHandLandmarks[0];
@@ -829,52 +861,23 @@ function onHandResults(results){
     ? gestureBuffer[gestureBuffer.length-1] : lastGesture;
 
   const {cx:pageX, cy:pageY, dx, dy} = landmarkToPage(lms[8]);
+  if(window.__kfPointer) window.__kfPointer(pageX / window.innerWidth, pageY / window.innerHeight);
   const hint = document.getElementById('gesture-hint');
+  const overCanvas = dx >= 0 && dy >= 0 && dx <= drawingCanvas.width && dy <= drawingCanvas.height;
+  const hoverEl = getHoverableAt(pageX, pageY);
 
-  // If pointing → draw on canvas; peace → hover UI panels
-  if(stable === 'point'){
-    // are we over a side panel?
-    const hoverEl = getHoverableAt(pageX, pageY);
-    if(hoverEl){
-      // hovering over a button/swatch — show dwell, don't draw
-      stopDrawing();
-      const pct = processDwell(pageX, pageY);
-      drawCursor(dx, dy, false, pct);
-      hint.textContent = '☝️ Hold to select…';
-    } else {
-      // clear any dwell
-      if(dwellEl){ dwellEl.classList.remove('hovering'); const r=dwellEl.querySelector('.hover-ring');if(r)r.style.width='0%'; dwellEl=null; }
-      isDrawing=true;
-      drawStroke(dx, dy);
-      drawCursor(dx, dy, true, 0);
-      hint.textContent = '☝️ Drawing…';
-    }
-  } else if(stable === 'thumbsup'){
-    const hoverEl = getHoverableAt(pageX, pageY);
-    if(hoverEl){
-      stopDrawing();
-      const pct = processDwell(pageX, pageY);
-      drawCursor(dx, dy, false, pct);
-    } else {
-      if(dwellEl){ dwellEl.classList.remove('hovering'); const r=dwellEl.querySelector('.hover-ring');if(r)r.style.width='0%'; dwellEl=null; }
-      setTool('erase');
-      isDrawing=true;
-      drawStroke(dx, dy);
-      drawCursor(dx, dy, true, 0);
-      hint.textContent = '👍 Erasing…';
-    }
+  // Pointing over the picture paints; any other hand only moves the cursor and holds buttons.
+  if(stable === 'point' && !hoverEl && overCanvas){
+    clearDwell();
+    isDrawing=true;
+    drawStroke(dx, dy);
+    drawCursor(pageX, pageY, true, 0);
+    hint.textContent = currentTool === 'erase' ? '☝️ Erasing…' : '☝️ Colouring…';
   } else {
-    if(dwellEl){ dwellEl.classList.remove('hovering'); const r=dwellEl.querySelector('.hover-ring');if(r)r.style.width='0%'; dwellEl=null; }
     stopDrawing();
-    drawCursor(dx, dy, false, 0);
-    if(stable==='peace' && stable!==lastGesture)    { hint.textContent='✌️ Pen lifted'; }
-    if(stable==='fist'  && stable!==lastGesture)    { clearCanvas(); hint.textContent='👊 Cleared!'; }
-    if(stable==='open'  && stable!==lastGesture)    { nextAnimal();  hint.textContent='🖐 Next animal!'; }
-    // peace: also allow hovering by pointing index to panel
-    if(stable==='peace'){
-      const pct2 = processDwell(pageX, pageY);
-      drawCursor(dx, dy, false, pct2);
-    }
+    const pct = hoverEl ? processDwell(pageX, pageY) : (clearDwell(), 0);
+    drawCursor(pageX, pageY, false, pct);
+    hint.textContent = hoverEl ? '🖐 Hold still to pick…' : '☝️ Point to colour · 🖐 Open hand to move and pick';
   }
   lastGesture = stable;
 }

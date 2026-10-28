@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useLayoutEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/how-to-play")({
   head: () => ({
@@ -11,6 +12,19 @@ export const Route = createFileRoute("/how-to-play")({
 });
 
 function HowToPlay() {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    // A TV player cannot scroll, so on a short screen the whole page shrinks to fit instead.
+    const fit = () => setScale(Math.min(1, (window.innerHeight - 64) / box.offsetHeight));
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(box);
+    window.addEventListener("resize", fit);
+    return () => { observer.disconnect(); window.removeEventListener("resize", fit); };
+  }, []);
   const steps = [
     { n: 1, title: "Enable your camera", body: "Allow webcam access when asked so the game can see your hand. Point at a button and hold your hand still until it fills to press it." },
     { n: 2, title: "Move the cursor", body: "Point your index finger at the screen. A glowing cursor follows your fingertip in real time." },
@@ -20,9 +34,9 @@ function HowToPlay() {
     { n: 6, title: "Progress through 20 levels", body: "Each level unlocks the next. Words get longer and crosswords grow as you climb." },
   ];
   return (
-    <main className="min-h-screen px-6 py-8">
+    <main className="h-screen overflow-hidden px-6 py-8">
       {/* All steps on one screen, since a TV player cannot scroll. */}
-      <div className="mx-auto max-w-6xl">
+      <div ref={boxRef} className="mx-auto max-w-6xl" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
         <Link to="/" data-dwell="" className="[@media(max-height:760px)]:inline-block [@media(max-height:760px)]:py-3 [@media(max-height:760px)]:pr-6 [@media(max-height:760px)]:text-lg text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
           ← Back
         </Link>

@@ -5,7 +5,8 @@
  * only go up, there's no [0,1] ceiling to this like a growth fraction).
  */
 
-export const TICKET_RATE_PER_APPEAL_PER_SEC = 0.02;
+// A first animal (appeal 8) earns about one ticket every three seconds, so new items come within a visit.
+export const TICKET_RATE_PER_APPEAL_PER_SEC = 0.04;
 
 export function computeAccruedTickets(
   lastCollectedAt: number,

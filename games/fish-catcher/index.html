@@ -254,7 +254,7 @@
         Catch the fish under your net!
       </div>
       <div class="inst-card">
-        <span class="icon">🦈🪼</span>
+        <span class="icon">🦈</span>
         <strong>Avoid dangers</strong>
         Sharks & jellyfish cost you a life
       </div>
@@ -280,15 +280,16 @@
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────
+// Drawn as shapes, not emoji, so they show on devices without a colour emoji font.
 const FISH_TYPES = [
-  { emoji:'🐠', pts:10, speed:1.6, size:38 },
-  { emoji:'🐡', pts:15, speed:1.2, size:40 },
-  { emoji:'🐟', pts:8,  speed:2.0, size:36 },
-  { emoji:'🦐', pts:20, speed:2.5, size:30 },
+  { kind:'fish',   color:'#ff8a3d', stripe:'#ffffff', pts:10, speed:1.6, size:56 },
+  { kind:'puffer', color:'#ffd23f', stripe:'#e0a800', pts:15, speed:1.2, size:58 },
+  { kind:'fish',   color:'#4fc3f7', stripe:'#0277bd', pts:8,  speed:2.0, size:52 },
+  { kind:'shrimp', color:'#ff6f91', stripe:'#ffc2d1', pts:20, speed:2.5, size:46 },
 ];
 const DANGER_TYPES = [
-  { emoji:'🦈', pts:-20, speed:2.4, size:52 },
-  { emoji:'🪼', pts:-15, speed:1.3, size:44 },
+  { kind:'shark', color:'#90a4ae', stripe:'#eceff1', pts:-20, speed:2.4, size:84 },
+  { kind:'jelly', color:'#d17bff', stripe:'#f3d1ff', pts:-15, speed:1.3, size:62 },
 ];
 
 // ─── State ────────────────────────────────────────────────────────
@@ -297,6 +298,7 @@ let score = 0, lives = 3, level = 1, bestScore = 0;
 let entities = [];
 let netPos = { x: -200, y: -200 };
 let gesture = 'none'; // none | point | open | fist
+let handSeen = false;
 let prevGesture = 'none';
 let catchFlash = 0;
 let particles = [];
@@ -386,6 +388,7 @@ hands.onResults(results => {
     netPos.y = raw.y * canvas.height;
 
     gesture = detectGesture(lm);
+    handSeen = true;
 
     // Update finger cursor (use index tip always)
     const fc = document.getElementById('finger-cursor');
@@ -394,6 +397,7 @@ hands.onResults(results => {
     fc.style.display = 'block';
   } else {
     gesture = 'none';
+    handSeen = false;
     document.getElementById('finger-cursor').style.display = 'none';
   }
 });
@@ -553,13 +557,63 @@ function drawNet(x, y, isActive) {
 }
 
 function drawEntity(e) {
+  const s = e.size;
   ctx.save();
-  ctx.font = `${e.size}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  // Flip emoji if moving left
-  if (e.vx < 0) { ctx.scale(-1, 1); ctx.fillText(e.emoji, -e.x, e.y); }
-  else           { ctx.fillText(e.emoji, e.x, e.y); }
+  ctx.translate(e.x, e.y);
+  // Every creature is drawn facing right, then flipped when it swims left.
+  if (e.vx < 0) ctx.scale(-1, 1);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  if (e.kind === 'jelly') {
+    ctx.fillStyle = e.color;
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.45, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = e.stripe; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    for (let i = -2; i <= 2; i++) {
+      const wave = Math.sin(frameCount * 0.12 + i) * 6;
+      ctx.beginPath(); ctx.moveTo(i * s * 0.16, 0);
+      ctx.quadraticCurveTo(i * s * 0.16 + wave, s * 0.3, i * s * 0.16, s * 0.6); ctx.stroke();
+    }
+  } else if (e.kind === 'shrimp') {
+    ctx.fillStyle = e.color;
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.4, Math.PI * 0.15, Math.PI * 1.25); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = e.stripe; ctx.lineWidth = 3;
+    for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.arc(0, 0, s * 0.1 * i, Math.PI * 0.3, Math.PI * 1.1); ctx.stroke(); }
+    ctx.strokeStyle = e.color; ctx.beginPath(); ctx.moveTo(s * 0.3, -s * 0.15); ctx.lineTo(s * 0.6, -s * 0.45); ctx.stroke();
+  } else {
+    const long = e.kind === 'shark' ? 0.62 : 0.42;
+    const tall = e.kind === 'puffer' ? 0.4 : e.kind === 'shark' ? 0.2 : 0.27;
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    ctx.moveTo(-s * long * 0.9, 0); ctx.lineTo(-s * (long + 0.28), -s * 0.24); ctx.lineTo(-s * (long + 0.28), s * 0.24);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (e.kind === 'shark') {
+      ctx.beginPath(); ctx.moveTo(-s * 0.05, -s * tall * 0.9); ctx.lineTo(s * 0.12, -s * 0.48); ctx.lineTo(s * 0.2, -s * tall * 0.9); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.ellipse(0, 0, s * long, s * tall, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = e.stripe;
+    if (e.kind === 'shark') {
+      ctx.beginPath(); ctx.ellipse(s * 0.05, s * tall * 0.45, s * long * 0.8, s * tall * 0.45, 0, 0, Math.PI); ctx.fill();
+      ctx.strokeStyle = '#37474f'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(s * 0.32, s * 0.05); ctx.lineTo(s * 0.5, s * 0.06); ctx.stroke();
+    } else if (e.kind === 'puffer') {
+      ctx.strokeStyle = e.stripe; ctx.lineWidth = 3;
+      for (let a = 0; a < 12; a++) {
+        const ang = (a / 12) * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(Math.cos(ang) * s * 0.38, Math.sin(ang) * s * 0.38);
+        ctx.lineTo(Math.cos(ang) * s * 0.5, Math.sin(ang) * s * 0.5); ctx.stroke();
+      }
+    } else {
+      ctx.fillRect(-s * 0.08, -s * tall, s * 0.08, s * tall * 2);
+    }
+  }
+  if (e.kind !== 'jelly' && e.kind !== 'shrimp') {
+    const ex = e.kind === 'shark' ? s * 0.42 : s * 0.22;
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex, -s * 0.06, s * 0.08, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(ex + s * 0.02, -s * 0.06, s * 0.045, 0, Math.PI * 2); ctx.fill();
+  } else if (e.kind === 'jelly') {
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(-s * 0.12, -s * 0.15, s * 0.04, 0, Math.PI * 2); ctx.arc(s * 0.12, -s * 0.15, s * 0.04, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -736,9 +790,7 @@ function loop() {
     entities.forEach(e => drawEntity(e));
 
     const isActive = gesture === 'fist';
-    if (gesture === 'open' || gesture === 'fist') {
-      drawNet(netPos.x, netPos.y, isActive);
-    }
+    if (handSeen) drawNet(netPos.x, netPos.y, isActive);
 
     drawParticles();
     drawFlash();

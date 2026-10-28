@@ -1,10 +1,10 @@
 import { Play, Settings, Trophy, Zap, Clock, Sparkles, Calendar, Hand, HelpCircle } from 'lucide-react';
 import { Theme, GameMode } from '../../data/types';
 import { GestureButton } from '../GestureUI';
+import { leaveGame } from '../../systems/SessionScore';
 
 // Only inside the KinetoFun platform is there somewhere to go back to.
 const embedded = window.parent !== window;
-const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
 
 interface MainMenuProps {
   theme: Theme;
@@ -154,7 +154,7 @@ export default function MainMenu({
         </GestureButton>
         {embedded && (
           <GestureButton
-            onActivate={exitToPlatform}
+            onActivate={leaveGame}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-sm backdrop-blur-md"
             style={{ background: 'rgba(255,255,255,0.08)', color: theme.textColor }}
           >

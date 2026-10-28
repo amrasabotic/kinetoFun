@@ -36,6 +36,9 @@ export function useHand(): HandContextValue {
 }
 
 const CURSOR_ALPHA = 0.45;
+// The middle of the camera frame covers the whole screen, so corners are reachable from a sofa.
+const REACH = 0.12;
+const reach = (v: number) => Math.min(1, Math.max(0, (v - REACH) / (1 - 2 * REACH)));
 
 export function HandProvider({ children }: { children: ReactNode }) {
   const sample = useRef<HandSample>({ landmarks: null, palmX: null, tipX: null, tipY: null });
@@ -77,8 +80,8 @@ export function HandProvider({ children }: { children: ReactNode }) {
           if (pts) {
             s.landmarks = pts;
             s.palmX = 1 - pts[9].x;
-            const tx = 1 - pts[8].x;
-            const ty = pts[8].y;
+            const tx = reach(1 - pts[8].x);
+            const ty = reach(pts[8].y);
             s.tipX = s.tipX == null ? tx : s.tipX + (tx - s.tipX) * CURSOR_ALPHA;
             s.tipY = s.tipY == null ? ty : s.tipY + (ty - s.tipY) * CURSOR_ALPHA;
           } else {
@@ -161,15 +164,19 @@ export function DwellCursor({ visible }: { visible: boolean }) {
       const dot = dotRef.current;
       if (!dot) return;
       const { tipX, tipY } = sample.current;
+      const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
       if (tipX == null || tipY == null) {
         dot.style.opacity = "0";
+        kf.__kfPointer?.(null);
         release();
         return;
       }
+      kf.__kfPointer?.(tipX, tipY);
       const x = tipX * window.innerWidth;
       const y = tipY * window.innerHeight;
       dot.style.transform = `translate(${x}px, ${y}px)`;
-      dot.style.opacity = visibleRef.current ? "1" : "0";
+      // Faded rather than hidden in play, so the player can find the platform's Back button.
+      dot.style.opacity = visibleRef.current ? "1" : "0.45";
 
       const now = performance.now();
       const hit = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-dwell]") ?? null;
