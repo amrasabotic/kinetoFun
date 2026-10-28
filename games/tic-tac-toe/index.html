@@ -280,7 +280,9 @@
   #howto.hidden { display: none; }
   #howto h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; letter-spacing: 0.02em; }
   #howto h1 span { color: var(--accent); }
-  .howto-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 360px)); gap: 14px; }
+  .howto-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 340px)); gap: 12px; }
+  /* Buttons never shrink: a tall card list used to squash them and cut their text. */
+  .howto-btns { display: flex; gap: 18px; flex-shrink: 0; flex-wrap: wrap; justify-content: center; }
   .howto-card {
     display: flex; gap: 14px; align-items: flex-start;
     background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
@@ -289,26 +291,24 @@
   .howto-card .ic { font-size: 30px; line-height: 1; }
   .howto-card .t { font-weight: 700; font-size: 17px; margin-bottom: 4px; }
   .howto-card .d { font-size: 14px; line-height: 1.45; color: rgba(232,232,240,0.75); }
-  #howto-btn {
+  .hbtn {
+    flex-shrink: 0; white-space: nowrap;
     position: relative; overflow: hidden;
     font-family: inherit; font-size: 1.3rem; font-weight: 700;
     color: var(--text); background: rgba(124,111,255,0.15);
     border: 2px solid var(--accent); border-radius: 999px;
     padding: 16px 48px; cursor: pointer;
   }
-  #howto-btn .fill {
+  .hbtn .fill {
     position: absolute; inset: 0; width: 0%;
     background: rgba(124,111,255,0.45); pointer-events: none;
   }
-  #howto-btn span { position: relative; }
-  #howto-btn.disarmed { opacity: 0.45; }
-  #exit-btn { position: relative; overflow: hidden; font-family: inherit; font-size: 1.1rem; font-weight: 700; color: var(--text); background: rgba(124,111,255,0.08); border: 2px solid rgba(124,111,255,0.5); border-radius: 999px; padding: 12px 40px; cursor: pointer; }
-  #exit-btn[hidden] { display: none; }
-  #exit-btn .fill { position: absolute; inset: 0; width: 0%; background: rgba(124,111,255,0.45); pointer-events: none; }
-  #exit-btn span { position: relative; }
-  #exit-btn.disarmed { opacity: 0.45; }
-  #result-exit { margin-top: 10px; padding: 10px 18px; border: 2px solid rgba(124,111,255,0.5); border-radius: 12px; font-size: 0.8rem; }
-  #result-exit.over { border-color: var(--accent); background: rgba(124,111,255,0.2); }
+  .hbtn span { position: relative; }
+  .hbtn.disarmed { opacity: 0.45; }
+  .hbtn[hidden] { display: none; }
+  #exit-btn { background: rgba(124,111,255,0.08); border-color: rgba(124,111,255,0.5); }
+  #result-again, #result-exit { margin-top: 10px; padding: 10px 18px; border: 2px solid rgba(124,111,255,0.5); border-radius: 12px; font-size: 0.8rem; }
+  #result-again.over, #result-exit.over { border-color: var(--accent); background: rgba(124,111,255,0.2); }
   .howto-note { font-size: 14px; color: var(--muted); }
 
   #loading {
@@ -334,16 +334,19 @@
 <div id="howto">
   <h1>How to <span>Play</span></h1>
   <div class="howto-grid">
-    <div class="howto-card"><div class="ic">☝️</div><div><div class="t">Point</div><div class="d">Raise your hand to the camera. The circle on screen follows your index fingertip.</div></div></div>
-    <div class="howto-card"><div class="ic">🤏</div><div><div class="t">Pinch &amp; hold to place</div><div class="d">Over an empty square, pinch your thumb and index finger together and hold for about a second.</div></div></div>
-    <div class="howto-card"><div class="ic">❌⭕</div><div><div class="t">Take turns</div><div class="d">Two players share the camera. X goes first, then O — pass your turn after each move.</div></div></div>
-    <div class="howto-card"><div class="ic">🏆</div><div><div class="t">Win</div><div class="d">Get three in a row — across, down or diagonal. A full board with no line is a draw.</div></div></div>
-    <div class="howto-card"><div class="ic">🔁</div><div><div class="t">Next round</div><div class="d">After a game ends, open your hand, then pinch and hold anywhere to play again.</div></div></div>
+    <div class="howto-card"><div class="ic">✋</div><div><div class="t">Move your hand</div><div class="d">Raise your hand to the camera. The circle on screen follows your fingertip.</div></div></div>
+    <div class="howto-card"><div class="ic">⏳</div><div><div class="t">Hold to place</div><div class="d">Rest the circle on an empty square until its ring fills (a pinch works too).</div></div></div>
+    <div class="howto-card"><div class="ic">🤖</div><div><div class="t">1 or 2 players</div><div class="d">Play X against the computer, or take turns with a friend: X first, then O.</div></div></div>
+    <div class="howto-card"><div class="ic">🏆</div><div><div class="t">Win</div><div class="d">Get three in a row — across, down or diagonal. A full board is a draw.</div></div></div>
+    <div class="howto-card"><div class="ic">🔁</div><div><div class="t">Next round</div><div class="d">After a game, hold on "Play again" to start a new one.</div></div></div>
     <div class="howto-card"><div class="ic">📊</div><div><div class="t">Score</div><div class="d">Wins for X and O are counted at the top of the screen.</div></div></div>
   </div>
-  <button id="howto-btn" class="disarmed"><div class="fill"></div><span>Let's Play</span></button>
-  <button id="exit-btn" class="disarmed" hidden><div class="fill"></div><span>Back to games</span></button>
-  <div class="howto-note">Point at the button, then pinch and hold to start</div>
+  <div class="howto-btns">
+    <button id="play1" class="hbtn disarmed"><div class="fill"></div><span>🤖 1 Player</span></button>
+    <button id="play2" class="hbtn disarmed"><div class="fill"></div><span>👥 2 Players</span></button>
+    <button id="exit-btn" class="hbtn disarmed" hidden><div class="fill"></div><span>Back to games</span></button>
+  </div>
+  <div class="howto-note">Hold your hand on a button to choose</div>
 </div>
 
 <!-- Loading -->
@@ -396,12 +399,12 @@
     <div id="board"></div>
     <div id="result-overlay">
       <div class="result-text" id="result-text"></div>
-      <div class="result-sub">Open your hand, then pinch &amp; hold to play again</div>
-      <div id="result-exit" hidden>🤏 Pinch &amp; hold here to go back to games</div>
+      <div id="result-again">↺ Hold here to play again</div>
+      <div id="result-exit" hidden>↩ Hold here to go back to games</div>
     </div>
   </div>
 
-  <div class="hint">☝️ Point to aim &nbsp;·&nbsp; 🤏 Pinch &amp; hold to place</div>
+  <div class="hint">✋ Move your hand &nbsp;·&nbsp; ⏳ Hold on a square to place</div>
 </div>
 
 <!-- Camera PIP -->
@@ -422,7 +425,10 @@
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
 const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-const PINCH_HOLD  = 900;   // ms hold to place
+const PINCH_HOLD  = 900;   // ms hold to place with a pinch
+// From a sofa a pinch is often missed, so resting the hand on a target also works, a little slower.
+const REST_HOLD   = 1300;
+const AI_DELAY    = 700;
 const PINCH_THRESH = 0.07; // normalised distance
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -438,7 +444,11 @@ let needRelease = false;
 const HOWTO_ARM_MS = 1500;
 let howtoOpen = true;
 const howtoArmedAt = performance.now() + HOWTO_ARM_MS;
-setTimeout(() => ['howto-btn', 'exit-btn'].forEach(id => document.getElementById(id).classList.remove('disarmed')), HOWTO_ARM_MS);
+const HOWTO_BTNS = ['play1', 'play2', 'exit-btn'];
+setTimeout(() => HOWTO_BTNS.forEach(id => document.getElementById(id).classList.remove('disarmed')), HOWTO_ARM_MS);
+// One player plays X; the computer answers as O.
+let vsComputer = false;
+let aiTimer = null;
 // Only inside the KinetoFun platform is there somewhere to go back to.
 const EMBEDDED = window.parent !== window;
 document.getElementById('exit-btn').hidden = !EMBEDDED;
@@ -446,12 +456,25 @@ document.getElementById('result-exit').hidden = !EMBEDDED;
 const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
 const isOver = (el, x, y) => { const r = el.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
 let pinchTarget = null;
-function closeHowto() {
+function closeHowto(players) {
+  vsComputer = players === 1;
+  document.querySelectorAll('.pill-label')[1].textContent = vsComputer ? 'Computer' : 'Player';
   howtoOpen = false;
+  resetGame();
   needRelease = true;
   document.getElementById('howto').classList.add('hidden');
 }
-document.getElementById('howto-btn').addEventListener('click', closeHowto);
+document.getElementById('play1').addEventListener('click', () => closeHowto(1));
+document.getElementById('play2').addEventListener('click', () => closeHowto(2));
+document.getElementById('exit-btn').addEventListener('click', exitToPlatform);
+// The platform's Back button: from a game back to choosing players; from there, leave.
+window.__kfBack = () => {
+  if (howtoOpen) return false;
+  howtoOpen = true;
+  if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
+  document.getElementById('howto').classList.remove('hidden');
+  return true;
+};
 let scores      = {X:0, O:0};
 let hoveredCell = -1;
 let pinchHeld   = false;
@@ -497,6 +520,7 @@ function checkWin(b, p) { return WINS.find(w => w.every(i => b[i]===p)) || null;
 function isDraw(b)       { return b.every(v => v !== null); }
 
 function resetGame() {
+  if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
   board = Array(9).fill(null);
   gameOver = false; hoveredCell = -1; pinchHeld = false;
   currentTurn = 'X';
@@ -549,7 +573,20 @@ function placeMove(idx) {
   } else {
     currentTurn = currentTurn==='X' ? 'O' : 'X';
     updateUI();
+    if (vsComputer && currentTurn === 'O') aiTimer = setTimeout(() => { aiTimer = null; if (!gameOver) placeMove(aiMove()); }, AI_DELAY);
   }
+}
+
+// Wins when it can, usually blocks, and prefers centre and corners with some randomness so it can be beaten.
+function aiMove() {
+  const free = board.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+  const winning = p => free.find(i => { board[i] = p; const w = checkWin(board, p); board[i] = null; return !!w; });
+  const win = winning('O'); if (win !== undefined) return win;
+  const block = winning('X'); if (block !== undefined && Math.random() < 0.85) return block;
+  if (board[4] === null && Math.random() < 0.7) return 4;
+  const corners = [0, 2, 6, 8].filter(i => board[i] === null);
+  const pool = corners.length && Math.random() < 0.6 ? corners : free;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function updateHover(idx) {
@@ -630,69 +667,61 @@ hands.onResults(results => {
   screenCur.style.top     = sy + 'px';
   screenCur.classList.toggle('pinch', isPinching);
 
-  if (!isPinching) needRelease = false;
+  if (window.__kfPointer) window.__kfPointer(normX, normY);
+  handleHand(sx, sy, isPinching);
+});
 
+// A target is pressed by resting on it (or pinching, which is quicker); after a press the hand must leave it first.
+let holdTarget = null, holdSince = 0, pressedTarget = null;
+function holdOn(target, isPinching) {
+  if (target !== pressedTarget) pressedTarget = null;
+  if (!target || target === pressedTarget) { holdTarget = null; return 0; }
+  if (target !== holdTarget) { holdTarget = target; holdSince = Date.now(); }
+  const p = Math.min(1, (Date.now() - holdSince) / (isPinching ? PINCH_HOLD : REST_HOLD));
+  if (p >= 1) { pressedTarget = target; holdTarget = null; }
+  return p;
+}
+
+function handleHand(sx, sy, isPinching) {
   if (howtoOpen) {
-    const targets = ['howto-btn', 'exit-btn'].map(id => document.getElementById(id)).filter(b => !b.hidden);
-    const hit = targets.find(b => isOver(b, sx, sy)) || null;
-    targets.forEach(b => { if (b !== hit) b.querySelector('.fill').style.width = '0%'; });
-    if (hit && isPinching && !needRelease && performance.now() >= howtoArmedAt) {
-      if (!pinchHeld || pinchTarget !== hit) { pinchHeld = true; pinchStart = Date.now(); pinchTarget = hit; }
-      const fill = hit.querySelector('.fill');
-      const pct = Math.min((Date.now() - pinchStart) / PINCH_HOLD, 1);
-      fill.style.width = (pct * 100) + '%';
-      if (pct >= 1) {
-        pinchHeld = false; pinchStart = 0; fill.style.width = '0%';
-        if (hit.id === 'exit-btn') exitToPlatform(); else closeHowto();
-      }
-    } else {
-      if (isPinching && performance.now() < howtoArmedAt) needRelease = true;
-      pinchHeld = false; pinchStart = 0;
-      targets.forEach(b => { b.querySelector('.fill').style.width = '0%'; });
+    const targets = HOWTO_BTNS.map(id => document.getElementById(id)).filter(b => !b.hidden);
+    const armed = performance.now() >= howtoArmedAt;
+    const hit = armed ? targets.find(b => isOver(b, sx, sy)) || null : null;
+    const p = holdOn(hit, isPinching);
+    targets.forEach(b => { b.querySelector('.fill').style.width = (b === hit ? p * 100 : 0) + '%'; });
+    if (hit && p >= 1) {
+      if (hit.id === 'exit-btn') exitToPlatform(); else closeHowto(hit.id === 'play1' ? 1 : 2);
     }
     return;
   }
 
-  // Which cell is the finger over?
-  const cellIdx = getCellUnderPoint(sx, sy);
-  updateHover(cellIdx);
-
-  // Pinch logic
-  if (isPinching && !needRelease) {
-    if (!pinchHeld) {
-      pinchHeld = true;
-      pinchStart = Date.now();
-    }
-    const held = Date.now() - pinchStart;
-
-    if (gameOver) {
-      const resultExit = document.getElementById('result-exit');
-      const onExit = !resultExit.hidden && isOver(resultExit, sx, sy);
-      resultExit.classList.toggle('over', onExit);
-      if (held > 700) { if (onExit) exitToPlatform(); else resetGame(); needRelease = true; }
-      return;
-    }
-
-    if (cellIdx >= 0 && !board[cellIdx]) {
-      const pct = Math.min(held / PINCH_HOLD, 1);
-      const circ = document.getElementById(`prog-${cellIdx}`);
-      if (circ) {
-        circ.style.stroke = currentTurn==='X' ? 'var(--x)' : 'var(--o)';
-        circ.style.strokeDashoffset = 100 - pct * 100;
-        circ.style.opacity = 1;
-      }
-      if (held >= PINCH_HOLD) {
-        placeMove(cellIdx);
-        needRelease = true;
-        pinchHeld = false; pinchStart = 0;
-        cellEls.forEach((_,i) => resetRing(i));
-      }
-    }
-  } else {
-    if (pinchHeld) cellEls.forEach((_,i) => resetRing(i));
-    pinchHeld = false; pinchStart = 0;
+  if (gameOver) {
+    updateHover(-1);
+    const again = document.getElementById('result-again');
+    const resultExit = document.getElementById('result-exit');
+    const hit = isOver(again, sx, sy) ? again : (!resultExit.hidden && isOver(resultExit, sx, sy) ? resultExit : null);
+    again.classList.toggle('over', hit === again);
+    resultExit.classList.toggle('over', hit === resultExit);
+    if (holdOn(hit, isPinching) >= 1) { if (hit === resultExit) exitToPlatform(); else resetGame(); }
+    return;
   }
-});
+
+  // While the computer thinks, the board is not the player's.
+  const myTurn = !(vsComputer && currentTurn === 'O');
+  const cellIdx = myTurn ? getCellUnderPoint(sx, sy) : -1;
+  updateHover(cellIdx);
+  const free = cellIdx >= 0 && !board[cellIdx] ? cellIdx : -1;
+  const p = holdOn(free >= 0 ? cellEls[free] : null, isPinching);
+  cellEls.forEach((_, i) => { if (i !== free) resetRing(i); });
+  if (free < 0) return;
+  const circ = document.getElementById(`prog-${free}`);
+  if (circ) {
+    circ.style.stroke = currentTurn==='X' ? 'var(--x)' : 'var(--o)';
+    circ.style.strokeDashoffset = 100 - p * 100;
+    circ.style.opacity = p > 0 ? 1 : 0;
+  }
+  if (p >= 1) { placeMove(free); resetRing(free); }
+}
 
 // ── Start camera ──────────────────────────────────────────────────────────
 async function startCamera() {

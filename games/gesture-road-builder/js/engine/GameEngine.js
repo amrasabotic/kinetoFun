@@ -311,7 +311,7 @@ GRB.GameEngine = class {
       [GRB.GESTURES.PINCH]:       ['🤏', 'Drawing…'],
       [GRB.GESTURES.THUMBS_UP]:   ['👍', progress > 0 ? 'Hold to Start!' : 'Thumbs Up!'],
       [GRB.GESTURES.V_SIGN]:      ['✌️', progress > 0.4 ? 'Undo Road…' : 'V Sign – Hold 0.7s'],
-      [GRB.GESTURES.OPEN_PALM]:   ['🙌', progress > 0.6 ? 'Clearing All…' : 'Open Palm – Hold 1.5s'],
+      [GRB.GESTURES.OPEN_PALM]:   ['🙌', progress > 0.6 ? 'Clearing All…' : 'Open Palm – Hold 3s'],
       [GRB.GESTURES.PALM_HIGH]:   ['🖐️', 'Hold to Clear All'],
       [GRB.GESTURES.CLOSED_FIST]: ['✊', 'Hold to Pause/Resume'],
     };

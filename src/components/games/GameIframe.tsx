@@ -54,7 +54,8 @@ export default function GameIframe({
       if (!data || typeof data.type !== "string") return;
 
       if (data.type === "GAME_COMPLETE" && onGameComplete) {
-        onGameComplete(typeof data.score === "number" ? data.score : 0);
+        // Scores are stored as whole numbers; some games report distances or times with decimals.
+        onGameComplete(typeof data.score === "number" && Number.isFinite(data.score) ? Math.max(0, Math.round(data.score)) : 0);
       } else if (data.type === "XP_EARNED" && onXpEarned) {
         onXpEarned(typeof data.amount === "number" ? data.amount : 0);
       } else if (data.type === "ACHIEVEMENT_UNLOCKED" && onAchievementUnlocked) {

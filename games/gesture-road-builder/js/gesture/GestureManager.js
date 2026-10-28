@@ -4,7 +4,7 @@ const GESTURES = {
   NONE: 'none',
   PINCH: 'pinch',
   V_SIGN: 'v_sign',         // ✌️ index + middle up → undo road (700ms)
-  OPEN_PALM: 'open_palm',   // 🙌 all fingers open → clear all (1.5s)
+  OPEN_PALM: 'open_palm',   // 🙌 all fingers open → clear all (3s)
   CLOSED_FIST: 'closed_fist',
   THUMBS_UP: 'thumbs_up',
   PALM_HIGH: 'palm_high'    // kept as fall-through alias for clear all
@@ -52,8 +52,9 @@ GRB.GestureManager = class {
     this.HOLD_DURATIONS = {
       [GESTURES.THUMBS_UP]:    1000,   // 1 s → start vehicle
       [GESTURES.V_SIGN]:        700,   // 0.7 s → undo last road
-      [GESTURES.OPEN_PALM]:    1500,   // 1.5 s → clear all roads
-      [GESTURES.PALM_HIGH]:    1500,   // 1.5 s → clear all (alias)
+      // Clearing wipes every road, so it needs a long, deliberate hold.
+      [GESTURES.OPEN_PALM]:    3000,
+      [GESTURES.PALM_HIGH]:    3000,
       [GESTURES.CLOSED_FIST]:  1000    // 1 s → pause/resume
     };
 
@@ -128,14 +129,19 @@ GRB.GestureManager = class {
     const ringExt   = this._fingerExtended(lm, 16, 15, 14);
     const pinkyExt  = this._fingerExtended(lm, 20, 19, 18);
 
-    const thumbUp  = lm[4].y < lm[3].y - 0.02;
     const allCurl  = !indexExt && !middleExt && !ringExt && !pinkyExt;
     const allOpen  = indexExt && middleExt && ringExt && pinkyExt;
+    // Thumb tip well above every other fingertip and knuckle, however the fist is turned.
+    const handSize = GRB.MathUtils.dist2(lm[0].x, lm[0].y, lm[9].x, lm[9].y);
+    const others = [5, 6, 8, 9, 10, 12, 13, 14, 16, 17, 18, 20];
+    const thumbUp = others.every(i => lm[4].y < lm[i].y - handSize * 0.25);
+
+    // Checked before the open hand: a thumbs-up must never be read as clear-all.
+    if (thumbUp && !indexExt && !middleExt) return GESTURES.THUMBS_UP;
 
     // ✌️ V sign: index + middle up, ring + pinky curled
     if (indexExt && middleExt && !ringExt && !pinkyExt) return GESTURES.V_SIGN;
 
-    if (thumbUp && allCurl) return GESTURES.THUMBS_UP;
     if (allCurl) return GESTURES.CLOSED_FIST;
 
     if (allOpen) {
@@ -148,8 +154,11 @@ GRB.GestureManager = class {
     return GESTURES.NONE;
   }
 
+  // Tip farther from the wrist than its middle joint, so it works whichever way the hand faces.
   _fingerExtended(lm, tipIdx, dipIdx, pipIdx) {
-    return lm[tipIdx].y < lm[pipIdx].y;
+    const w = lm[0];
+    const d = (p) => GRB.MathUtils.dist2(w.x, w.y, p.x, p.y);
+    return d(lm[tipIdx]) > d(lm[pipIdx]) * 1.1;
   }
 
   _emitIfNeeded(gesture, nowMs) {

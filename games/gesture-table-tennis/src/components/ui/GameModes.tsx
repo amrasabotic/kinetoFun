@@ -33,28 +33,36 @@ export default function GameModes({ pendingMode, pendingDifficulty, pendingArena
   const isTimedMode = pendingMode === 'smash' || pendingMode === 'survival' || pendingMode === 'precision' || pendingMode === 'arcade' || pendingMode === 'tournament';
 
   return (
-    <div className="w-full h-full flex flex-col overflow-y-auto"
+    // Nothing can scroll by hand on a TV, so everything, START included, fits on one screen.
+    <div className="w-full h-full flex flex-col overflow-hidden"
          style={{ background: 'radial-gradient(ellipse at 30% 60%, #1a003a 0%, #0a0014 70%)' }}>
 
       {/* Header */}
       <div className="flex items-center gap-4 p-6 pb-2">
         <button onClick={onBack} className="text-purple-300 hover:text-white transition-colors text-2xl [@media(max-height:760px)]:px-6 [@media(max-height:760px)]:py-4 [@media(max-height:760px)]:text-4xl">←</button>
         <h2 className="text-3xl font-black text-white">Game Modes</h2>
+        <motion.button
+          onClick={onPlay}
+          whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+          className="ml-auto px-12 py-4 rounded-2xl font-black text-2xl text-white shadow-lg"
+          style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow: '0 4px 30px rgba(124,58,237,0.5)' }}>
+          ▶ START
+        </motion.button>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 p-6 flex-1">
+      <div className="flex flex-row gap-6 px-6 pb-6 pt-2 flex-1 min-h-0">
 
         {/* Mode selection */}
         <div className="flex-1">
           <p className="text-purple-300 text-sm font-semibold uppercase tracking-widest mb-3">Select Mode</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {MODES.map(m => {
               const active = pendingMode === m.id;
               return (
                 <motion.button key={m.id}
                   onClick={() => onSelectMode(m.id)}
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  className="p-4 rounded-2xl text-left transition-all"
+                  className="p-3 rounded-2xl text-left transition-all"
                   style={{
                     background: active ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'rgba(255,255,255,0.06)',
                     border: `2px solid ${active ? '#a855f7' : 'rgba(255,255,255,0.1)'}`,
@@ -70,13 +78,13 @@ export default function GameModes({ pendingMode, pendingDifficulty, pendingArena
         </div>
 
         {/* Right panel: difficulty + arena */}
-        <div className="w-full lg:w-64 flex flex-col gap-6">
+        <div className="w-80 flex flex-col gap-4">
 
           {/* Difficulty (not for survival/precision/smash/tournament) */}
           {!isTimedMode && (
             <div>
               <p className="text-purple-300 text-sm font-semibold uppercase tracking-widest mb-3">AI Difficulty</p>
-              <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {DIFFICULTIES.map(d => {
                   const active = pendingDifficulty === d.id;
                   return (
@@ -119,14 +127,6 @@ export default function GameModes({ pendingMode, pendingDifficulty, pendingArena
             </div>
           </div>
 
-          {/* Play button */}
-          <motion.button
-            onClick={onPlay}
-            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-            className="w-full py-4 rounded-2xl font-black text-xl text-white shadow-lg mt-auto"
-            style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow: '0 4px 30px rgba(124,58,237,0.5)' }}>
-            ▶ START
-          </motion.button>
         </div>
       </div>
     </div>

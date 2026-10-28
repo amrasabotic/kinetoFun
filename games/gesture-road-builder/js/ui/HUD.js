@@ -153,7 +153,7 @@ GRB.HUD = class {
     const icons = {
       pinch:        { icon:'🤏', label:'Drawing…' },
       v_sign:       { icon:'✌️', label: progress > 0.4 ? 'Undo Road…' : 'V Sign – Hold 0.7s' },
-      open_palm:    { icon:'🙌', label: progress > 0.6 ? 'Clearing All…' : 'Open Palm – Hold 1.5s' },
+      open_palm:    { icon:'🙌', label: progress > 0.6 ? 'Clearing All…' : 'Open Palm – Hold 3s' },
       palm_high:    { icon:'🖐️', label:'Open Palm – Hold to Clear' },
       closed_fist:  { icon:'✊', label: progress > 0 ? 'Hold to Pause…' : 'Fist Detected' },
       thumbs_up:    { icon:'👍', label: progress > 0 ? 'Hold to Start!' : 'Thumbs Up!' }

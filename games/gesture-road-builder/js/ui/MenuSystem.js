@@ -300,7 +300,7 @@ GRB.MenuSystem = class {
       { icon: '🤏', name: 'Pinch',         hold: '',        desc: 'Pinch thumb + index and move to draw a road' },
       { icon: '👍', name: 'Thumbs Up',     hold: '1 s',     desc: 'Hold 1 second to launch the vehicle' },
       { icon: '✌️', name: 'V Sign',         hold: '0.7 s',   desc: 'Peace sign — hold 0.7s to undo last road' },
-      { icon: '🙌', name: 'Open Palm',     hold: '1.5 s',   desc: 'Open all fingers — hold 1.5s to clear all roads' },
+      { icon: '🙌', name: 'Open Palm',     hold: '3 s',     desc: 'Open all fingers — hold 3s to clear all roads' },
       { icon: '✊', name: 'Closed Fist',   hold: '1 s',     desc: 'Hold 1 second to pause or resume' },
     ];
 

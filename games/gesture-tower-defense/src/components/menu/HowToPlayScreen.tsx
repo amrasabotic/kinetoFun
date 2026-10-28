@@ -2,11 +2,11 @@ import HoverButton from '../common/HoverButton';
 
 const STEPS: { icon: string; title: string; desc: string }[] = [
   { icon: '☝️', title: 'Point', desc: 'Raise your hand to the camera. The dot on screen follows your index fingertip.' },
-  { icon: '🤏', title: 'Build towers', desc: 'Pinch a tower in the tray, move it onto the field and open your fingers to drop it there. Towers cost coins.' },
+  { icon: '🤏', title: 'Build towers', desc: 'Hold your hand on a tower in the tray (or pinch it) to pick it up, then hold still on a free spot to build it. Towers cost coins.' },
   { icon: '🏰', title: 'Three towers', desc: 'Blaster (50) fires fast, Cannon (100) hits hard with splash damage, Frost (75) slows enemies down.' },
   { icon: '▶️', title: 'Start the wave', desc: 'When your defence is ready, hold your hand on Start Wave. Defeated enemies earn more coins.' },
   { icon: '❤️', title: 'Protect the base', desc: 'Enemies that reach the end of the path damage your base. Survive every wave to win.' },
-  { icon: '🗑️', title: 'Sell', desc: 'Pinch a placed tower and drop it on the trash icon to get 60% of its cost back.' },
+  { icon: '🗑️', title: 'Sell', desc: 'Pick up a placed tower and hold it on Sell to get 60% of its cost back.' },
 ];
 
 /** Shown first every time the game loads, and reopened from the main menu. */

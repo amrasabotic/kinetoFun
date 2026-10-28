@@ -182,7 +182,7 @@ export function GameScreen({
     }
   }, []);
 
-  const { held, cursorPx } = usePinchDrag({ getGrabbables, getDropzones, onDrop: handleDrop });
+  const { held, progress, cursorPx } = usePinchDrag({ getGrabbables, getDropzones, onDrop: handleDrop });
 
   const trackingLabel = frame.detected ? 'Hand tracked' : 'Raise your hand';
   const waveLabel = `${levelLabel} — Wave ${Math.max(1, battle.waveIndex + 1)}/${totalWaves >= 999 ? '∞' : totalWaves}`;
@@ -227,6 +227,11 @@ export function GameScreen({
           className="td-dragging-chip"
           style={{ left: cursorPx.x, top: cursorPx.y, background: TOWER_DEFS[held.typeId].color }}
         />
+      )}
+      {progress > 0 && (
+        <svg className="pointer-events-none fixed z-[9999] -translate-x-1/2 -translate-y-1/2 -rotate-90" width="76" height="76" viewBox="0 0 40 40" style={{ left: cursorPx.x, top: cursorPx.y }}>
+          <circle cx="20" cy="20" r="17" fill="none" stroke="#4ADE80" strokeWidth="4" strokeLinecap="round" strokeDasharray={`${progress * 107} 107`} />
+        </svg>
       )}
 
       {paused && !battle.won && !battle.lost && (

@@ -18,6 +18,8 @@ function dist(a: NormalizedLandmark, b: NormalizedLandmark): number {
  * palm's knuckle structure barely moves regardless of finger pose, so this
  * game's tower-placement pinch never suffers the same failure.
  */
+const reach = (v: number) => Math.min(1, Math.max(0, (v - 0.12) / 0.76));
+
 function classify(lm: NormalizedLandmark[], mirror: boolean): { cursorX: number; cursorY: number; pinchDist: number } {
   const wrist = lm[0];
   const midMcp = lm[9];
@@ -27,8 +29,9 @@ function classify(lm: NormalizedLandmark[], mirror: boolean): { cursorX: number;
   const palmY = palmPts.reduce((s, p) => s + p.y, 0) / palmPts.length;
 
   return {
-    cursorX: mirror ? 1 - palmX : palmX,
-    cursorY: palmY,
+    // The middle of the camera frame covers the whole screen, so the tray and corners are reachable from a sofa.
+    cursorX: reach(mirror ? 1 - palmX : palmX),
+    cursorY: reach(palmY),
     pinchDist: dist(lm[4], lm[8]) / handScale,
   };
 }
@@ -111,9 +114,11 @@ export function startHandTracking(opts: StartOptions): () => void {
           }
 
           const confidence = res.handednesses?.[0]?.[0]?.score ?? 0.8;
+          (window as unknown as { __kfPointer?: (x: number | null, y?: number) => void }).__kfPointer?.(sx, sy);
           opts.onFrame({ detected: true, confidence, cursorX: sx, cursorY: sy, isPinching: pinching });
         } else {
           pinching = false;
+          (window as unknown as { __kfPointer?: (x: number | null) => void }).__kfPointer?.(null);
           opts.onFrame({ ...EMPTY_FRAME, cursorX: sx, cursorY: sy });
         }
       }
