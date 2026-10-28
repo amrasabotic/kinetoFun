@@ -386,19 +386,19 @@
   <div id="howto-screen" class="screen hidden">
     <div class="menu-title" style="font-size:clamp(1.8rem,4vw,3rem);margin-bottom:0.3em;">How to Play</div>
     <div class="howto-grid">
-      <div class="howto-card"><div class="ic">✊</div><div><div class="t">Aim</div><div class="d">Make a fist and move it — the spinning star on screen follows your hand.</div></div></div>
-      <div class="howto-card"><div class="ic">🖐</div><div><div class="t">Throw</div><div class="d">Open your hand to throw the star. It flies at the target nearest your aim.</div></div></div>
+      <div class="howto-card"><div class="ic">🖐</div><div><div class="t">Aim</div><div class="d">Hold up your open hand and move it — the spinning star follows.</div></div></div>
+      <div class="howto-card"><div class="ic">✊</div><div><div class="t">Throw</div><div class="d">Close your hand into a fist to throw. The star flies at the target nearest your aim.</div></div></div>
       <div class="howto-card"><div class="ic">🎯</div><div><div class="t">Hit targets</div><div class="d">Every hit scores a point. A star that misses breaks your combo.</div></div></div>
       <div class="howto-card"><div class="ic">🔥</div><div><div class="t">Combos</div><div class="d">Hit 3 or more in a row and each hit is worth double your combo count.</div></div></div>
       <div class="howto-card"><div class="ic">⏱</div><div><div class="t">Beat the clock</div><div class="d">Score as much as you can before time runs out: 60, 45 or 30 seconds depending on the level.</div></div></div>
-      <div class="howto-card"><div class="ic">☝</div><div><div class="t">Menus</div><div class="d">Point one finger at a button and hold it there until the bar fills.</div></div></div>
+      <div class="howto-card"><div class="ic">⏳</div><div><div class="t">Menus</div><div class="d">Move your hand onto a button and hold it there until the bar fills.</div></div></div>
     </div>
     <button class="gesture-btn" id="btn-howto-done" data-action="menu">
       <div class="fill-bar"></div>
       <span class="btn-icon">⚔</span>
       <span>Let's Play</span>
     </button>
-    <div class="gesture-hint">☝ hover with index finger · hold to select</div>
+    <div class="gesture-hint">✋ move your hand onto a button · hold to select</div>
     <div class="finger-cursor" id="howto-finger" style="left:-100px;top:-100px;">☝</div>
   </div>
 
@@ -406,7 +406,7 @@
   <div id="menu-screen" class="screen hidden">
     <div class="shuriken-icon">✦</div>
     <div class="menu-title">NINJA STAR</div>
-    <div class="menu-subtitle">✊ Make a fist to aim · 🖐 Open your hand to throw!</div>
+    <div class="menu-subtitle">🖐 Move your hand to aim · ✊ Close it to throw!</div>
 
     <button class="gesture-btn" id="btn-play" data-action="play">
       <div class="fill-bar"></div>
@@ -634,7 +634,7 @@ function classifyGesture(lm) {
 // ─────────────────────────────────────────────
 let dwellTarget = null;
 let dwellStart  = 0;
-const DWELL_MS  = 1500;
+const DWELL_MS  = 1100;
 // Buttons ignore the hand for a moment after each screen appears, so a hand
 // already resting on one cannot skip How to Play or press through screens.
 const DWELL_ARM_MS = 1500;
@@ -653,7 +653,8 @@ function updateMenuGesture(nx, ny, gest) {
   fingerEl.style.left = nx + 'px';
   fingerEl.style.top  = ny + 'px';
 
-  if (gest !== 'point' || performance.now() < dwellArmedAt) {
+  // Any hand but a fist moves and presses: a pointing finger is rarely recognised from a sofa.
+  if (gest === 'fist' || performance.now() < dwellArmedAt) {
     clearDwell();
     return;
   }
@@ -812,7 +813,7 @@ function loop(ts) {
   const cfg = LEVELS[STATE.level];
 
   // ── CURSOR
-  if (gesture === 'fist' || gesture === 'open') {
+  if (gesture !== 'none') {
     cursor.style.display = 'block';
     cursor.style.left = (handX * W) + 'px';
     cursor.style.top  = (handY * H) + 'px';
@@ -820,14 +821,14 @@ function loop(ts) {
     cursor.style.display = STATE.screen === 'game' ? 'none' : 'none';
   }
 
-  // ── THROW on fist→open
-  if (gesture === 'fist') {
+  // ── THROW the moment the hand closes into a fist, the shape most reliably recognised from a distance
+  if (gesture !== 'fist') {
     fistX = handX;
     fistY = handY;
-    cursorStar.style.transform = 'scale(1.3)';
   }
+  cursorStar.style.transform = gesture === 'fist' ? 'scale(1.3)' : 'scale(1)';
 
-  if (gesture === 'open' && prevGest === 'fist' && !throwing) {
+  if (gesture === 'fist' && prevGest !== 'fist' && prevGest !== 'none' && !throwing) {
     throwing = true;
     const sx = fistX * W, sy = fistY * H;
     // find nearest target as aim assist
@@ -1104,6 +1105,7 @@ hands.onResults(results => {
 
   if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
     gesture = 'none';
+    if (window.__kfPointer) window.__kfPointer(null);
     updateGestureHUD();
     return;
   }
@@ -1115,18 +1117,20 @@ hands.onResults(results => {
   const iy = lm[8].y;
 
   // For menu: use index tip
+  // The middle of the camera frame covers the whole screen, so every edge is reachable.
+  const reach = v => Math.min(1, Math.max(0, (v - 0.12) / 0.76));
   if (STATE.screen !== 'game') {
-    const nx = (1 - ix) * window.innerWidth;
-    const ny = iy * window.innerHeight;
+    const nx = reach(1 - ix) * window.innerWidth;
+    const ny = reach(iy) * window.innerHeight;
     gesture = classifyGesture(lm);
     updateMenuGesture(nx, ny, gesture);
+    if (window.__kfPointer) window.__kfPointer(nx / window.innerWidth, ny / window.innerHeight);
   } else {
-    // In game: track wrist/palm for aiming
-    const palmX = lm[0].x;
-    const palmY = lm[0].y;
-    handX = 1 - palmX;  // mirror
-    handY = palmY;
+    // The middle knuckle barely moves when the hand closes, so making a fist does not jerk the aim.
+    handX = reach(1 - lm[9].x);
+    handY = reach(lm[9].y);
     gesture = classifyGesture(lm);
+    if (window.__kfPointer) window.__kfPointer(handX, handY);
   }
 
   updateGestureHUD();
@@ -1137,8 +1141,8 @@ function updateGestureHUD() {
   const el = $('hud-gesture');
   if (!el) return;
   el.className = 'gesture-status';
-  if (gesture === 'fist')  { el.textContent = '✊ Aim';    el.classList.add('fist');  }
-  else if (gesture === 'open')  { el.textContent = '🖐 THROW!'; el.classList.add('open');  }
+  if (gesture === 'fist')  { el.textContent = '✊ THROW!'; el.classList.add('fist');  }
+  else if (gesture !== 'none')  { el.textContent = '🖐 Aim'; el.classList.add('open');  }
   else if (gesture === 'point') { el.textContent = '☝ Point';  el.classList.add('point'); }
   else                          { el.textContent = '—'; }
 }
@@ -1186,8 +1190,9 @@ async function startCamera() {
       onFrame: async () => {
         await hands.send({ image: video });
       },
-      width: 320,
-      height: 240,
+      // 640x480 so a hand a few metres from a TV is still big enough to detect.
+      width: 640,
+      height: 480,
     });
     camera.start();
     return true;
@@ -1240,9 +1245,9 @@ async function boot() {
 // ─────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.code === 'Space') {
-    // simulate fist→open throw
+    // simulate closing the hand to throw
     gesture = 'open';
-    setTimeout(() => gesture = 'none', 200);
+    setTimeout(() => { gesture = 'fist'; setTimeout(() => gesture = 'open', 150); }, 50);
   }
   if (e.code === 'Enter' && STATE.screen === 'menu') startGame();
   else if (e.code === 'Enter' && STATE.screen === 'howto') showScreen('menu');
@@ -1264,8 +1269,8 @@ document.addEventListener('mousemove', e => {
 
 document.addEventListener('click', e => {
   if (STATE.screen === 'game') {
-    gesture = 'open';
-    setTimeout(() => gesture = 'none', 150);
+    gesture = 'fist';
+    setTimeout(() => gesture = 'open', 150);
     return;
   }
   const btn = e.target.closest('.gesture-btn, .level-card');

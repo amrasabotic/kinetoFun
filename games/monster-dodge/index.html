@@ -210,27 +210,34 @@ function readGesture() {
     && Math.abs(lel.y-lsh.y)<0.07 && Math.abs(rel.y-rsh.y)<0.07
     && Math.abs(lwr.x-rwr.x)>0.65);
 
+  // From a sofa the hips barely move, so the hand steers: across picks the lane, height picks the row.
+  const sw = Math.hypot(lsh.x - rsh.x, lsh.y - rsh.y) || 0.15;
+  const shY = (lsh.y + rsh.y) / 2;
+  const hand = [lwr, rwr].filter(w => w && (w.visibility ?? 1) > 0.4).sort((a, b) => a.y - b.y)[0];
+  let lane = 1, row = 1;
+  if (hand) {
+    const hx = 1 - hand.x;
+    const mid = 1 - smx;
+    lane = hx < mid - sw * 0.9 ? 0 : hx > mid + sw * 0.9 ? 2 : 1;
+    const rel = (hand.y - shY) / sw;
+    row = rel < -0.5 ? 0 : rel > 0.9 ? 2 : 1;
+  }
+
   // calibration
   if (gs && gs.calibrating) {
     gs.calibFrames++;
     gs.calibSumHipY += hipY;
-    if (gs.calibFrames >= 45) {
+    if (gs.calibFrames >= 15) {
       gs.baseHipY = gs.calibSumHipY / gs.calibFrames;
       gs.calibrating = false;
     }
-    return { move:'calibrate', raise, tpose };
+    return { move:'calibrate', raise, tpose, lane, row };
   }
 
-  let move = 'stand';
-  if (gs && gs.baseHipY != null) {
-    const d = hipY - gs.baseHipY;
-    if (d < -0.09) move = 'jump';
-    else if (d > 0.09) move = 'duck';
-    else if (lwr&&rwr&&Math.abs(lwr.x-rwr.x)>0.55) move = 'shield';
-    else if (smx < 0.5-0.08) move = 'right';
-    else if (smx > 0.5+0.08) move = 'left';
-  }
-  return { move, raise, tpose };
+  let move = !hand ? 'none' : ['left', 'stand', 'right'][lane];
+  if (row === 0) move = 'jump'; else if (row === 2) move = 'duck';
+  if (lwr && rwr && Math.abs(lwr.x - rwr.x) > sw * 2.6) move = 'shield';
+  return { move, raise, tpose, lane, row };
 }
 
 // ── spawn / collisions ──
@@ -348,12 +355,12 @@ function drawStart() {
   ctx.font='bold 52px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillStyle='#a78bfa'; ctx.fillText('🧟 Monster Dodge', GW/2, GH*0.18);
   ctx.fillStyle='rgba(232,232,240,0.55)'; ctx.font='17px system-ui';
-  ctx.fillText('No buttons — your body is the controller', GW/2, GH*0.27);
+  ctx.fillText('No buttons — your hand is the controller', GW/2, GH*0.27);
 
   // gesture grid
   const items=[
-    ['⬅️','Lean Left','shift left'],['🏃','Stand','middle lane'],['➡️','Lean Right','shift right'],
-    ['🦅','Duck','lower body'],['🦘','Jump','rise up'],['👐','Arms Wide','shield']
+    ['⬅️','Hand Left','left lane'],['✋','Hand Middle','middle lane'],['➡️','Hand Right','right lane'],
+    ['⬆️','Hand Up','high row'],['⬇️','Hand Down','low row'],['👐','Arms Wide','shield']
   ];
   const cw=136,ch=72,cols=3,gap=10;
   const totalW=cols*cw+(cols-1)*gap;
@@ -389,9 +396,9 @@ function drawCalib() {
   ctx.fillStyle='rgba(7,7,26,0.75)'; ctx.fillRect(0,GH/2-70,GW,140);
   ctx.fillStyle='#e8e8f0'; ctx.font='bold 22px system-ui';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(`📐 Calibrating… stand still (${pct}%)`, GW/2, GH/2-16);
+  ctx.fillText(`📐 Getting ready… (${pct}%)`, GW/2, GH/2-16);
   ctx.fillStyle='rgba(232,232,240,0.5)'; ctx.font='15px system-ui';
-  ctx.fillText('Hold your normal standing pose', GW/2, GH/2+14);
+  ctx.fillText('Keep your hand up in front of you', GW/2, GH/2+14);
   const bw=300,bh=6,bx=GW/2-150,by=GH/2+42;
   ctx.fillStyle='rgba(255,255,255,0.1)'; rRect(bx,by,bw,bh,3); ctx.fill();
   ctx.fillStyle='#7c6bff'; rRect(bx,by,bw*(pct/100),bh,3); ctx.fill();
@@ -463,8 +470,8 @@ function drawOver() {
 
 // ── HUD ──
 const GLABELS = {
-  stand:'🏃 Standing',left:'⬅️ Lean Left',right:'➡️ Lean Right',
-  jump:'🦘 Jumping!',duck:'🦅 Ducking!',shield:'👐 Shield!',
+  stand:'✋ Middle',left:'⬅️ Left',right:'➡️ Right',
+  jump:'⬆️ High',duck:'⬇️ Low',shield:'👐 Shield!',
   calibrate:'📐 Calibrating…',none:'🤔 No pose'
 };
 function setHUD(on) {
@@ -501,21 +508,15 @@ function loop() {
       readGesture(); // drives calibration side-effect
       drawCalib();
       setHUD(false);
-      $g('gesture-bar').textContent = '📐 Stand still — calibrating…';
+      $g('gesture-bar').textContent = '📐 Getting ready…';
       if(gs&&!gs.calibrating){ phase='playing'; }
       break;
 
     case 'playing':
       gs.lastGesture=g.move;
-      if(g.move==='jump')       { gs.player.row=0; gs.player.lane=1; }
-      else if(g.move==='duck')  { gs.player.row=2; gs.player.lane=1; }
-      else if(g.move==='left')  { gs.player.lane=0; gs.player.row=1; }
-      else if(g.move==='right') { gs.player.lane=2; gs.player.row=1; }
-      else if(g.move==='stand') { gs.player.lane=1; gs.player.row=1; }
+      if(g.move!=='none' && g.move!=='shield') { gs.player.lane=g.lane; gs.player.row=g.row; }
+      // Arms wide is the shield, so a T-pose no longer pauses; the platform Back button leaves instead.
       if(g.move==='shield') gs.player.shield=100;
-
-      if(g.tpose) tposeTimer++; else tposeTimer=0;
-      if(tposeTimer>=TPOSE_FRAMES){ tposeTimer=0; phase='paused'; }
 
       if(gs.player.shield>0) gs.player.shield--;
       if(gs.player.invincible>0) gs.player.invincible--;

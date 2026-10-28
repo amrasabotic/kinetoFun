@@ -222,13 +222,6 @@ export class GameEngine {
       this._lastAccuracy,
     );
 
-    // Pause gesture
-    if (events.freezeGesture) {
-      this._pausedFrom = STATES.CHALLENGE;
-      this.state       = STATES.PAUSED;
-      return;
-    }
-
     // Time up
     if (elapsed >= this._challengeAllowed) {
       this._completePose(now, elapsed);
