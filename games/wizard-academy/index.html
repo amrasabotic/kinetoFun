@@ -76,6 +76,17 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
 #btn-exit { position:absolute; top:52px; left:24px; }
 .gbtn.success { background:linear-gradient(135deg,#0a4a00,#1a8800); }
 
+/* ── SPELL CARDS (in the duel) ── */
+#castbar { position:absolute; left:0; right:0; bottom:24px; display:flex; gap:24px; justify-content:center; }
+.castcard { position:relative; overflow:hidden; width:220px; padding:14px 10px; border-radius:16px; text-align:center;
+  background:rgba(20,10,45,0.85); border:2px solid rgba(155,89,245,0.6); color:#fff; }
+.castcard .ci { font-size:2.4rem; line-height:1; }
+.castcard .cn { font-size:1.2rem; font-weight:700; margin-top:4px; }
+.castcard .cs { font-size:0.95rem; color:#c8b8e8; }
+.castcard .bar { position:absolute; left:0; bottom:0; height:6px; width:0%; background:#f0c040; }
+.castcard.recharging { opacity:0.4; }
+.castcard.hover { border-color:#f0c040; }
+
 /* ── INTRO ── */
 #intro { background:radial-gradient(ellipse at 50% 40%,#1a0a40,#05030f 70%); }
 #intro h1 {
@@ -199,16 +210,16 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
     <p style="color:#8870aa;font-style:italic">Master spells. Defeat monsters.</p>
     <div class="howto-lbl">How to Play</div>
     <div class="rules">
-      <div class="rule"><div class="ic">☝️</div><div><div class="t">Draw in the air</div><div class="d">Point one finger and trace a spell shape in front of you.</div></div></div>
-      <div class="rule"><div class="ic">✋</div><div><div class="t">Start over</div><div class="d">Open your hand to wipe a shape that went wrong.</div></div></div>
-      <div class="rule"><div class="ic">👹</div><div><div class="t">Beat 5 waves</div><div class="d">Monsters hit you every 6 seconds. Defeat them all before your HP runs out.</div></div></div>
+      <div class="rule"><div class="ic">👹</div><div><div class="t">1. Monsters attack</div><div class="d">A monster hits you every 6 seconds. Defeat all 5 waves before your HP runs out.</div></div></div>
+      <div class="rule"><div class="ic">✋</div><div><div class="t">2. Cast a spell</div><div class="d">Hold your open hand on a spell card at the bottom of the screen. Each card recharges after use.</div></div></div>
+      <div class="rule"><div class="ic">☝️</div><div><div class="t">3. Or draw it</div><div class="d">Point one finger and draw the spell's shape in the air for an instant cast.</div></div></div>
     </div>
     <div class="spells">
       <div class="sc"><div class="icon">🔥</div><div class="nm">Fireball</div><div class="gs">Draw a circle ○</div><div class="fx">Deals 40 damage</div></div>
       <div class="sc"><div class="icon">🛡️</div><div class="nm">Shield</div><div class="gs">Draw a triangle △</div><div class="fx">Heals 20 HP and softens the next hit</div></div>
       <div class="sc"><div class="icon">⚡</div><div class="nm">Lightning</div><div class="gs">Draw a zigzag ∿</div><div class="fx">Deals 60 damage</div></div>
     </div>
-    <p class="hint">☝️ Point ONE finger at the button and hold 1.5s</p>
+    <p class="hint">✋ Hold your hand on the button</p>
     <button class="gbtn" id="btn-start">✦ BEGIN ✦<div class="bar" id="bar-start"></div></button>
     <button class="gbtn" id="btn-exit" hidden>↩ BACK TO GAMES<div class="bar" id="bar-exit"></div></button>
   </div>
@@ -238,6 +249,11 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
       </div>
     </div>
     <div id="monst"></div>
+    <div id="castbar">
+      <div class="castcard" id="cast-fireball" data-spell="fireball"><div class="ci">🔥</div><div class="cn">Fireball</div><div class="cs">or draw ○ · 40 damage</div><div class="bar"></div></div>
+      <div class="castcard" id="cast-shield" data-spell="shield"><div class="ci">🛡️</div><div class="cn">Shield</div><div class="cs">or draw △ · heal + block</div><div class="bar"></div></div>
+      <div class="castcard" id="cast-lightning" data-spell="lightning"><div class="ci">⚡</div><div class="cn">Lightning</div><div class="cs">or draw ∿ · 60 damage</div><div class="bar"></div></div>
+    </div>
   </div>
 
   <!-- GAMEOVER -->
@@ -245,7 +261,7 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
     <h1>💀 Defeated</h1>
     <p style="color:#8870aa;font-style:italic">The darkness wins...</p>
     <p style="color:#f0c040;font-size:1.3rem">Wave <span id="death-wave">1</span> reached</p>
-    <p class="hint">☝️ Point ONE finger at the button and hold 1.5s</p>
+    <p class="hint">✋ Hold your hand on the button</p>
     <button class="gbtn danger" id="btn-retry">↺ TRY AGAIN<div class="bar" id="bar-retry"></div></button>
   </div>
 
@@ -254,7 +270,7 @@ body { background:#05030f; color:#e8d5ff; font-family:sans-serif; overflow:hidde
     <h1>✨ Victory! ✨</h1>
     <div style="font-size:3rem">🏆</div>
     <p style="color:#8870aa;font-style:italic">You mastered the ancient arts!</p>
-    <p class="hint">☝️ Point ONE finger at the button and hold 1.5s</p>
+    <p class="hint">✋ Hold your hand on the button</p>
     <button class="gbtn success" id="btn-again">★ PLAY AGAIN ★<div class="bar" id="bar-again"></div></button>
   </div>
 </div>
@@ -534,6 +550,39 @@ function checkButtons(fingerX, fingerY) {
   });
 }
 
+// ── Spell cards ──
+// Resting the hand on a card casts it, an easier way than drawing for a player across the room.
+const CARD_HOLD_MS = 1000;
+const CARD_RECHARGE_MS = { fireball: 3000, shield: 6000, lightning: 5000 };
+const readyAt = { fireball: 0, shield: 0, lightning: 0 };
+let cardHover = null, cardSince = 0;
+
+function updateCards(x, y) {
+  const now = performance.now();
+  let over = null;
+  document.querySelectorAll('.castcard').forEach(c => {
+    const sp = c.dataset.spell;
+    c.classList.toggle('recharging', now < readyAt[sp]);
+    const r = c.getBoundingClientRect();
+    const hit = x !== null && x >= r.left - 20 && x <= r.right + 20 && y >= r.top - 20 && y <= r.bottom + 20;
+    c.classList.toggle('hover', hit);
+    if (hit) over = c;
+    if (!hit) c.querySelector('.bar').style.width = '0%';
+  });
+  if (over !== cardHover) { cardHover = over; cardSince = now; }
+  if (!over) return;
+  const sp = over.dataset.spell;
+  if (now < readyAt[sp]) { cardSince = now; over.querySelector('.bar').style.width = '0%'; return; }
+  const p = Math.min(1, (now - cardSince) / CARD_HOLD_MS);
+  over.querySelector('.bar').style.width = (p * 100) + '%';
+  if (p >= 1) {
+    readyAt[sp] = now + CARD_RECHARGE_MS[sp];
+    cardSince = now;
+    over.querySelector('.bar').style.width = '0%';
+    castSpell(sp);
+  }
+}
+
 // ── Drawing trail ──
 let drawPts = [];
 let fadeTimer = null;
@@ -603,9 +652,11 @@ function recognize(){
     if(diff>1.0) corners++;
   }
   if(corners>=2){ fire('shield'); return; }
+  showBig('✏️ Not recognised — draw a big ○, △ or ∿, or hold a spell card', '#c8b8e8');
 }
 
 function fire(spell){
+  readyAt[spell] = performance.now() + CARD_RECHARGE_MS[spell];
   cooldown=true; setTimeout(()=>cooldown=false,1500);
   castSpell(spell);
   dctx.clearRect(0,0,drawcanv.width,drawcanv.height);
@@ -673,6 +724,8 @@ function loop(now){
   catch(e){ return; }
 
   if(!result?.landmarks?.length){
+    if (window.__kfPointer) window.__kfPointer(null);
+    if (gs.screen==='game') updateCards(null, null);
     dotHand.className='dot'; // grey = no hand
     fingerInfo.textContent='fingers: 0';
     posInfo.textContent='tip: -';
@@ -686,8 +739,11 @@ function loop(now){
   const lm = result.landmarks[0];
 
   // Mirror X (MediaPipe gives 0=left, 1=right; video is CSS-mirrored so we flip)
-  const tipX = (1 - lm[8].x) * W;
-  const tipY = lm[8].y * H;
+  // The middle of the camera frame covers the whole screen, so the spell cards and corners are reachable.
+  const reach = v => Math.min(1, Math.max(0, (v - 0.12) / 0.76));
+  const tipX = reach(1 - lm[8].x) * W;
+  const tipY = reach(lm[8].y) * H;
+  if (window.__kfPointer) window.__kfPointer(tipX / W, tipY / H);
 
   // Count fingers (index=8, middle=12, ring=16, pinky=20 vs their PIPs 6,10,14,18)
   let fingers=0;
@@ -722,19 +778,19 @@ function loop(now){
   octx.fillStyle=pointing?'rgba(200,120,255,0.95)':'rgba(155,89,245,0.35)';
   octx.fill();
 
-  if(pointing){
-    if(gs.screen==='game'){
-      addPt(tipX, tipY);
-    } else {
-      // Menu screens: dwell on buttons
-      drawPts=[]; dctx.clearRect(0,0,drawcanv.width,drawcanv.height);
-      checkButtons(tipX, tipY);
-    }
+  if(gs.screen!=='game'){
+    // Menus: any hand but a fist presses by resting, as a pointing finger is hard to hold from a sofa.
+    drawPts=[]; dctx.clearRect(0,0,drawcanv.width,drawcanv.height);
+    if (fingers > 0) checkButtons(tipX, tipY);
+  } else if(pointing){
+    updateCards(null, null);
+    addPt(tipX, tipY);
   } else {
+    updateCards(tipX, tipY);
     // Hand open / not pointing → clear draw, reset dwells
     drawPts=[]; dctx.clearRect(0,0,drawcanv.width,drawcanv.height);
     Object.keys(dwellTimers).forEach(k=>delete dwellTimers[k]);
-    document.querySelectorAll('.bar').forEach(b=>b.style.width='0%');
+    document.querySelectorAll('.gbtn .bar').forEach(b=>b.style.width='0%');
   }
 }
 

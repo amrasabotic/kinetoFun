@@ -1,3 +1,4 @@
+import { hasSessionScore, leaveGame } from './lib/session-score';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider, createRouter, createHashHistory } from '@tanstack/react-router';
@@ -19,7 +20,12 @@ const router = createRouter({
 (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
   const path = router.state.location.pathname;
   const parent = path.startsWith('/play/') ? '/levels' : path === '/levels' || path === '/play' ? '/' : null;
-  if (!parent) return false;
+  if (!parent) {
+    // Leaving with solved levels reports their points instead of a plain exit.
+    if (!hasSessionScore()) return false;
+    leaveGame();
+    return true;
+  }
   void router.navigate({ to: parent });
   return true;
 };

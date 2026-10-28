@@ -64,6 +64,8 @@ function computeScore(placed: PlacedIngredient[], order: PizzaOrder): number {
   return Math.max(0, Math.min(100, Math.round((totalScore / maxScore) * 100)));
 }
 
+const BAKE_HOLD_MS = 1200;
+
 export default function BakingScreen({ order, onBake }: BakingScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -75,6 +77,8 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
     cursorX: -1, cursorY: -1, isPinching: false, isTracking: false,
   });
   const [bakeHovered, setBakeHovered] = useState(false);
+  const [bakeProgress, setBakeProgress] = useState(0);
+  const bakeHoverSince = useRef<number | null>(null);
 
   const dragRef = useRef<{ type: IngredientType; x: number; y: number } | null>(null);
   const prevPinchRef = useRef(false);
@@ -174,16 +178,30 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
     const hx = handState.cursorX * W;
     const hy = handState.cursorY * H;
 
-    // Bake button hover
+    // The cursor is in canvas pixels; buttons sit outside the canvas, so compare in page pixels.
+    const canvasRect = canvas.getBoundingClientRect();
+    const px = canvasRect.left + hx, py = canvasRect.top + hy;
+    const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
+    kf.__kfPointer?.(handState.isTracking ? px / window.innerWidth : null, py / window.innerHeight);
+
+    // Bake button: pinch on it, or rest the hand on it, which works better from a sofa.
     const bakeBtn = document.getElementById('bake-btn');
     if (bakeBtn) {
       const rect = bakeBtn.getBoundingClientRect();
-      const over = hx >= rect.left && hx <= rect.right && hy >= rect.top && hy <= rect.bottom;
+      const over = handState.isTracking && !dragRef.current &&
+        px >= rect.left - 10 && px <= rect.right + 10 && py >= rect.top - 10 && py <= rect.bottom + 10;
       setBakeHovered(over);
-      if (handState.isPinching && !prevPinchRef.current && over) {
-        onBake(placed, score);
-        prevPinchRef.current = handState.isPinching;
-        return;
+      if (!over) { bakeHoverSince.current = null; setBakeProgress(0); }
+      else {
+        bakeHoverSince.current ??= performance.now();
+        const p = Math.min(1, (performance.now() - bakeHoverSince.current) / BAKE_HOLD_MS);
+        setBakeProgress(p);
+        if (p >= 1 || (handState.isPinching && !prevPinchRef.current)) {
+          bakeHoverSince.current = null;
+          onBake(placed, score);
+          prevPinchRef.current = handState.isPinching;
+          return;
+        }
       }
     }
 
@@ -340,13 +358,14 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
         <button
           id="bake-btn"
           onClick={() => onBake(placed, score)}
-          className={`px-6 py-2.5 text-white font-black rounded-full transition-all duration-150 border-b-4 text-base ${
+          className={`relative overflow-hidden px-8 py-4 text-white font-black rounded-full transition-all duration-150 border-b-4 text-xl ${
             bakeHovered
               ? 'bg-orange-400 border-orange-600 scale-105 shadow-lg shadow-orange-500/40'
               : 'bg-orange-500 border-orange-700 hover:bg-orange-400'
           }`}
         >
-          Bake Pizza!
+          <span className="absolute inset-y-0 left-0 bg-white/35" style={{ width: `${bakeProgress * 100}%` }} />
+          <span className="relative">Bake Pizza!</span>
         </button>
       </div>
 

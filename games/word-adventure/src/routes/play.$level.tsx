@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { getLevel, LEVELS } from "@/lib/levels";
+import { addLevelScore, leaveGame } from "@/lib/session-score";
 import { generatePuzzle, lineCells, type Puzzle } from "@/lib/wordsearch";
 import { unlockLevel } from "@/lib/progress";
 import { useHandTracking } from "@/hooks/useHandTracking";
@@ -174,7 +175,10 @@ function Play() {
     };
   }, [solving]);
   useEffect(() => {
-    if (complete) window.parent.postMessage({ type: 'GAME_COMPLETE', score: found.length * 100 }, '*');
+    if (!complete) return;
+    // Reported when the player leaves, so finishing a level goes on to the next one; the last level ends the session.
+    addLevelScore(found.length * 100);
+    if (lvl && !LEVELS.some((l) => l.id === lvl.id + 1)) leaveGame();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complete]);
 

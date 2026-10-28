@@ -15,6 +15,7 @@ import QuestionCard from '@/components/QuestionCard';
 import FeedbackOverlay from '@/components/FeedbackOverlay';
 import ResultsScreen from '@/components/ResultsScreen';
 import ScoreHUD from '@/components/ScoreHUD';
+import { hasSessionScore, leaveGame } from '@/lib/session-score';
 
 interface FullGestureState extends GestureState {
   isWave: boolean;
@@ -50,7 +51,12 @@ export default function WorldExplorer() {
   // The platform's Back button: one screen back, and out of the game from its first screens.
   useEffect(() => {
     (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
-      if (screen === 'MAIN_MENU') return false;
+      if (screen === 'MAIN_MENU') {
+        // Leaving with finished rounds reports their points instead of a plain exit.
+        if (!hasSessionScore()) return false;
+        leaveGame();
+        return true;
+      }
       useGameStore.getState().resetGame();
       return true;
     };

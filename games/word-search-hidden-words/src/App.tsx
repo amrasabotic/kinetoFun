@@ -15,7 +15,10 @@ import { useGestureContext } from './mediaPipe/GestureProvider';
 
 // Only inside the KinetoFun platform is there somewhere to go back to.
 const embedded = window.parent !== window;
-const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+// Points from every puzzle solved since the game was opened; reported once, when the player leaves.
+let sessionScore = 0;
+const exitToPlatform = () =>
+  window.parent.postMessage(sessionScore > 0 ? { type: 'GAME_COMPLETE', score: sessionScore } : { type: 'GAME_EXIT' }, '*');
 
 const TIME_LIMIT_SECONDS: Record<GameMode, number | null> = {
   classic: null,
@@ -139,6 +142,17 @@ function GameScreen({
   const startRef = useRef(performance.now());
   const twoHandsCooldownRef = useRef(false);
 
+  // A new puzzle also clears the finished screen, timer and hints, so the next round starts clean.
+  const newPuzzle = useCallback(() => {
+    regenerate();
+    setFinished(false);
+    setPaused(false);
+    setElapsedSeconds(0);
+    setHintsUsed(0);
+    setHintCell(null);
+    startRef.current = performance.now();
+  }, [regenerate]);
+
   const onWordConfirmed = useCallback(
     (path: Parameters<typeof findWordMatchingPath>[0]) => {
       const match = findWordMatchingPath(path);
@@ -160,16 +174,13 @@ function GameScreen({
     const id = setInterval(() => {
       if (gestureRef.current.isTwoHandsRaised && !twoHandsCooldownRef.current) {
         twoHandsCooldownRef.current = true;
-        regenerate();
-        setElapsedSeconds(0);
-        setHintCell(null);
-        startRef.current = performance.now();
+        newPuzzle();
       } else if (!gestureRef.current.isTwoHandsRaised) {
         twoHandsCooldownRef.current = false;
       }
     }, 100);
     return () => clearInterval(id);
-  }, [gestureRef, regenerate]);
+  }, [gestureRef, newPuzzle]);
 
   useEffect(() => {
     if (paused || finished) return;
@@ -187,7 +198,8 @@ function GameScreen({
       const timeBonus = Math.max(0, 600 - elapsedSeconds);
       const hintPenalty = hintsUsed * 20;
       const score = Math.max(0, puzzle.words.length * 100 + timeBonus - hintPenalty);
-      window.parent?.postMessage({ type: 'GAME_COMPLETE', score: Math.round(score) }, '*');
+      // Saved when the player leaves, so a solved puzzle leads to the next one instead of ending the game.
+      sessionScore += Math.round(score);
     }
   }, [allFound, finished, mode, difficulty, elapsedSeconds, hintsUsed, puzzle.words.length]);
 
@@ -219,7 +231,7 @@ function GameScreen({
         elapsedSeconds={elapsedSeconds}
         timeLimitSeconds={mode === 'timed' ? timeLimit : null}
         onHint={onHint}
-        onRestart={regenerate}
+        onRestart={newPuzzle}
         onPauseToggle={() => setPaused((p) => !p)}
         onExit={onExit}
         paused={paused}
@@ -256,7 +268,7 @@ function GameScreen({
             {foundCount}/{puzzle.words.length} words found
           </p>
           <div className="wsh-menu__row">
-            <MenuButton label="Play Again" onActivate={regenerate} />
+            <MenuButton label={allFound ? 'Next Puzzle ▶' : 'Play Again'} onActivate={newPuzzle} />
             <MenuButton label="Menu" onActivate={onExit} />
           </div>
         </div>
@@ -293,7 +305,11 @@ export default function App() {
   // The platform's Back button: one screen back, and out of the game from its first screens.
   useEffect(() => {
     (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
-      if (!screen) return false;
+      if (!screen) {
+        if (!sessionScore) return false;
+        exitToPlatform();
+        return true;
+      }
       setScreen(null);
       return true;
     };

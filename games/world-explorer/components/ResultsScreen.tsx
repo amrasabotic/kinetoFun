@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { playStreak } from '@/lib/audio';
+import { addLevelScore } from '@/lib/session-score';
 
 interface ResultsScreenProps {
   gesture: string;
@@ -33,7 +34,8 @@ export default function ResultsScreen({ gesture, isWave }: ResultsScreenProps) {
   useEffect(() => {
     if (soundPlayed.current) return;
     soundPlayed.current = true;
-    window.parent.postMessage({ type: 'GAME_COMPLETE', score }, '*');
+    // Saved when the player leaves, so finishing a round leads to the next one instead of ending the game.
+    addLevelScore(score);
     setTimeout(() => playStreak(4), 300);
     setTimeout(() => setShowDetails(true), 800);
   }, [score]);
@@ -97,7 +99,7 @@ export default function ResultsScreen({ gesture, isWave }: ResultsScreenProps) {
       )}
 
       <div className="text-3xl font-bold text-white/60 animate-pulse">
-        👋 Wave to play again!
+        👋 Wave to choose your next round!
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { DwellButton } from '@/components/HowToPlay';
+import { leaveGame } from '@/lib/session-score';
 
 interface MainMenuProps {
   gestureHint: string;
@@ -17,7 +18,7 @@ const GLOBE_EMOJIS = ['🌍', '🌎', '🌏'];
 
 // Only inside the KinetoFun platform is there somewhere to go back to (false while prerendering).
 const noSubscribe = () => () => {};
-const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+const exitToPlatform = leaveGame;
 
 export default function MainMenu({ gestureHint, cursorX, cursorY, handPresent, onHowTo }: MainMenuProps) {
   const { highScores } = useGameStore();

@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { leaveGame } from "@/lib/session-score";
 
 // Only inside the KinetoFun platform is there somewhere to go back to.
 const embedded = window.parent !== window;
-const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
+const exitToPlatform = leaveGame;
 
 export const Route = createFileRoute("/")({
   head: () => ({
