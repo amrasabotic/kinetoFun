@@ -463,6 +463,16 @@ html[data-reduce-motion] * {
   100% { transform: scale(1); }
 }
 
+/* TV shop: the mystery box shakes while it opens. */
+@keyframes kf-box-shake {
+  0%, 100% { transform: rotate(0) scale(1); }
+  20% { transform: rotate(-10deg) scale(1.05); }
+  40% { transform: rotate(10deg) scale(1.1); }
+  60% { transform: rotate(-8deg) scale(1.05); }
+  80% { transform: rotate(8deg) scale(1.12); }
+}
+.kf-box-shake { animation: kf-box-shake 0.45s ease-in-out infinite; }
+
 @keyframes kf-countdown {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
