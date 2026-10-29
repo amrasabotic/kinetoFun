@@ -327,8 +327,6 @@ export default function BakingScreen({ order, level, onBake }: BakingScreenProps
     dragRef.current = null;
   }, []);
 
-  const placedTypes = new Set(placed.map((p) => p.type));
-
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: '#2d1b0e' }}>
       <video ref={videoRef} className="hidden" playsInline muted />

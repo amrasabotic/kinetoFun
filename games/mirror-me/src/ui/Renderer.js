@@ -236,16 +236,17 @@ export class Renderer {
     ctx.fillStyle = barColor;
     ctx.fillRect(0, 0, W * progress, 10);
 
-    // Score top-left
+    // Score top-right: the platform's Back button takes the top-left corner.
     const sf = clamp(W * 0.025, 14, 32);
+    const sx = W - 196;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(16, 16, 180, 82);
+    ctx.fillRect(sx, 16, 180, 82);
     ctx.fillStyle = COLORS.PRIMARY;
     ctx.font = `bold ${sf}px "Inter", sans-serif`;
     ctx.textAlign = 'left';
-    ctx.fillText(`SCORE`, 24, 38);
+    ctx.fillText(`SCORE`, sx + 8, 38);
     ctx.font = `bold ${sf * 1.7}px "Inter", sans-serif`;
-    ctx.fillText(String(score), 24, 68);
+    ctx.fillText(String(score), sx + 8, 68);
 
     // Combo
     if (combo > 0) {
@@ -253,7 +254,7 @@ export class Renderer {
       const cidx = Math.min(combo, comboColors.length - 1);
       ctx.fillStyle = comboColors[cidx] || COLORS.SECONDARY;
       ctx.font = `bold ${sf * 1.1}px "Inter", sans-serif`;
-      ctx.fillText(`x${combo} COMBO`, 24, 92);
+      ctx.fillText(`x${combo} COMBO`, sx + 8, 92);
     }
 
     // Accuracy bar — bottom center

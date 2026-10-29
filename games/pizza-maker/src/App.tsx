@@ -96,7 +96,8 @@ export default function App() {
       {screen === 'baking' && (
         <BakingScreen order={currentOrder} level={level} onBake={handleBake} />
       )}
-      {screen !== 'baking' && <MenuHandCursor />}
+      {/* Order and result screens draw their own cursor and hold buttons. */}
+      {(screen === 'landing' || screen === 'howtoplay') && <MenuHandCursor />}
       {screen === 'result' && (
         <OrderScreen
           order={currentOrder}
