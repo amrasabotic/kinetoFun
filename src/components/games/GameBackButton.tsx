@@ -13,6 +13,8 @@ const ARM_MS = 1500;
 const STALE_MS = 400;
 /** The button counts as touched a little beyond its edge, because a hand is never exact. */
 const REACH_PX = 24;
+/** A game that draws no cursor of its own gets a ring this close to the button, so the player can see where the hand points. */
+const RING_NEAR_PX = 320;
 
 /**
  * "Back to games", top left, the same look on every game. Works with a click, and
@@ -22,6 +24,7 @@ const REACH_PX = 24;
 export function GameBackButton({ onLeave, large }: { onLeave: () => void; large?: boolean }) {
   const ref = useRef<HTMLButtonElement>(null);
   const [progress, setProgress] = useState(0);
+  const [ring, setRing] = useState<{ x: number; y: number } | null>(null);
   const leaveRef = useRef(onLeave);
   useEffect(() => {
     leaveRef.current = onLeave;
@@ -32,6 +35,7 @@ export function GameBackButton({ onLeave, large }: { onLeave: () => void; large?
     let heldSince: number | null = null;
     let lastReport = 0;
     let point: { x: number; y: number } | null = null;
+    let ring = false;
     let fired = false;
 
     const onMessage = (event: MessageEvent) => {
@@ -39,6 +43,7 @@ export function GameBackButton({ onLeave, large }: { onLeave: () => void; large?
       const d = event.data as { type?: string; x?: number; y?: number; visible?: boolean };
       if (d?.type !== "KF_HAND") return;
       lastReport = performance.now();
+      ring = !!(d as { ring?: boolean }).ring;
       point = d.visible && typeof d.x === "number" && typeof d.y === "number"
         ? { x: d.x * window.innerWidth, y: d.y * window.innerHeight }
         : null;
@@ -51,6 +56,10 @@ export function GameBackButton({ onLeave, large }: { onLeave: () => void; large?
         !!r && !!point && now - lastReport < STALE_MS && now >= armedAt &&
         point.x >= r.left - REACH_PX && point.x <= r.right + REACH_PX &&
         point.y >= r.top - REACH_PX && point.y <= r.bottom + REACH_PX;
+      const near =
+        !!r && !!point && ring && now - lastReport < STALE_MS &&
+        point.x <= r.right + RING_NEAR_PX && point.y <= r.bottom + RING_NEAR_PX;
+      setRing((prev) => (near && point ? (prev?.x === point.x && prev?.y === point.y ? prev : { ...point }) : null));
       if (over) {
         heldSince ??= now;
         const p = Math.min(1, (now - heldSince) / HOLD_MS);
@@ -70,6 +79,14 @@ export function GameBackButton({ onLeave, large }: { onLeave: () => void; large?
   }, []);
 
   return (
+    <>
+    {ring && (
+      <span
+        aria-hidden
+        className="pointer-events-none fixed z-30 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white bg-white/25 shadow-[0_0_12px_rgba(0,0,0,0.6)]"
+        style={{ left: ring.x, top: ring.y }}
+      />
+    )}
     <button
       ref={ref}
       type="button"
@@ -89,5 +106,6 @@ export function GameBackButton({ onLeave, large }: { onLeave: () => void; large?
       <ArrowLeft className={cn("relative", large ? "h-7 w-7" : "h-5 w-5")} />
       <span className="relative">Back to games</span>
     </button>
+    </>
   );
 }

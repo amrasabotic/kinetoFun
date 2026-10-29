@@ -13,6 +13,7 @@ import { HUD } from './HUD';
 import { PauseMenu } from './PauseMenu';
 import { WinOverlay } from './WinOverlay';
 import { Cursor } from './Cursor';
+import { DwellButton } from './DwellButton';
 import type { PourEffectSpec } from './PourEffect';
 
 export interface WinResult {
@@ -111,7 +112,6 @@ export function GameScreen({ mode, level, seed, settings, onExit, onWin, onAdvan
   useActionGestures({
     onUndo: handleUndo,
     onHint: handleHint,
-    onPause: () => setPaused(true),
     enabled: !session.isSolved && !paused,
   });
 
@@ -172,6 +172,7 @@ export function GameScreen({ mode, level, seed, settings, onExit, onWin, onAdvan
         board={session.board}
         hoveredIndex={interaction.hoveredIndex}
         grabbedIndex={interaction.selectedIndex}
+        holdProgress={interaction.holdProgress}
         hintMove={session.activeHint}
         rejectingIndex={rejectingIndex}
         colorblindMode={settings.colorblindMode}
@@ -182,10 +183,10 @@ export function GameScreen({ mode, level, seed, settings, onExit, onWin, onAdvan
       />
 
       <div className="lp-gesture-legend">
-        <span>Pinch: grab tube, drag onto another to pour</span>
+        <span>Hold on a tube: lift it · hold on another: pour</span>
         <span>Thumbs up: undo</span>
         <span>Victory sign: hint</span>
-        <span>Open palm 2s: pause</span>
+        {gameplayEnabled && <DwellButton label="⏸ Pause" holdMs={1200} onActivate={() => setPaused(true)} />}
       </div>
 
       {!paused && !session.isSolved && <Cursor gesture={gesture} />}

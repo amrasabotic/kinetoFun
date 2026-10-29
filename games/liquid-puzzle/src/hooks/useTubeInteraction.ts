@@ -7,36 +7,44 @@ interface UseTubeInteractionOptions {
   enabled: boolean;
 }
 
+/** Holding the cursor on a tube this long picks it (or pours into it once one is picked). */
+const HOLD_MS = 800;
+/** One missed tracking frame should not restart a hold. */
+const GRACE_MS = 250;
+
 /**
- * Pinch over a tube to grab it; while still pinching, drag over a different
- * tube to pour into it — a direct drag-and-pour rather than the earlier
- * hover-hold-twice design, matching how you'd actually tip a bottle. Only
- * one pour fires per drag onto a given tube (guarded by `lastPourTargetRef`)
- * so lingering there doesn't repeat the pour every frame, but dragging back
- * off and onto it again (or onto a third tube) fires a fresh pour — closer
- * to physically redirecting the same held tube than a one-shot action.
- * Releasing the pinch drops the tube and ends the interaction.
+ * Hold on a tube to lift it, then hold on another to pour into it. Holding on the
+ * lifted tube again puts it down. A pinch completes the current hold at once.
  */
 export function useTubeInteraction({ tubeRefs, onPour, enabled }: UseTubeInteractionOptions) {
   const gestureRef = useGestureRef();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [grabbedIndex, setGrabbedIndex] = useState<number | null>(null);
+  const [holdProgress, setHoldProgress] = useState(0);
   const grabbedRef = useRef<number | null>(null);
-  const lastPourTargetRef = useRef<number | null>(null);
 
   const clearSelection = useCallback(() => {
     grabbedRef.current = null;
-    lastPourTargetRef.current = null;
     setGrabbedIndex(null);
   }, []);
 
   useEffect(() => {
     let raf = 0;
+    let holdIdx: number | null = null;
+    let holdStart = 0;
+    let lastSeen = 0;
+    // After an action the hand must leave that tube before it can act on it again.
+    let spentIdx: number | null = null;
+    let wasPinching = false;
+
     function loop() {
       if (!enabled) {
+        holdIdx = null;
+        setHoldProgress(0);
         raf = requestAnimationFrame(loop);
         return;
       }
+      const now = performance.now();
       const g = gestureRef.current;
       let idx: number | null = null;
       if (g.isHovering) {
@@ -47,7 +55,8 @@ export function useTubeInteraction({ tubeRefs, onPour, enabled }: UseTubeInterac
           const el = els[i];
           if (!el) continue;
           const r = el.getBoundingClientRect();
-          if (px >= r.left && px <= r.right && py >= r.top && py <= r.bottom) {
+          // A little slack around each tube: the cursor shakes at TV distance.
+          if (px >= r.left - 16 && px <= r.right + 16 && py >= r.top - 24 && py <= r.bottom + 24) {
             idx = i;
             break;
           }
@@ -55,26 +64,39 @@ export function useTubeInteraction({ tubeRefs, onPour, enabled }: UseTubeInterac
       }
       setHoveredIndex(idx);
 
-      if (g.isPinching) {
-        if (grabbedRef.current === null) {
-          if (idx !== null) {
-            grabbedRef.current = idx;
-            lastPourTargetRef.current = null;
-            setGrabbedIndex(idx);
+      if (idx !== null) lastSeen = now;
+      if (idx !== spentIdx && (idx !== null || now - lastSeen > GRACE_MS)) spentIdx = null;
+
+      if (idx !== null && idx !== holdIdx) {
+        holdIdx = idx;
+        holdStart = now;
+      } else if (idx === null && holdIdx !== null && now - lastSeen > GRACE_MS) {
+        holdIdx = null;
+      }
+
+      const pinchEdge = g.isPinching && !wasPinching;
+      wasPinching = g.isPinching;
+
+      if (holdIdx !== null && holdIdx !== spentIdx) {
+        const p = Math.min(1, (now - holdStart) / HOLD_MS);
+        setHoldProgress(p);
+        if (p >= 1 || (pinchEdge && idx === holdIdx)) {
+          const target = holdIdx;
+          spentIdx = target;
+          holdIdx = null;
+          setHoldProgress(0);
+          if (grabbedRef.current === null) {
+            grabbedRef.current = target;
+            setGrabbedIndex(target);
+          } else if (grabbedRef.current === target) {
+            clearSelection();
+          } else {
+            onPour(grabbedRef.current, target);
+            clearSelection();
           }
-        } else if (idx !== null && idx !== grabbedRef.current) {
-          if (idx !== lastPourTargetRef.current) {
-            lastPourTargetRef.current = idx;
-            onPour(grabbedRef.current, idx);
-          }
-        } else {
-          // Off any tube, or back over the source itself — clears the
-          // "already poured here" guard so drifting back onto the same
-          // destination fires another pour rather than staying silent.
-          lastPourTargetRef.current = null;
         }
-      } else if (grabbedRef.current !== null) {
-        clearSelection();
+      } else {
+        setHoldProgress(0);
       }
 
       raf = requestAnimationFrame(loop);
@@ -83,5 +105,5 @@ export function useTubeInteraction({ tubeRefs, onPour, enabled }: UseTubeInterac
     return () => cancelAnimationFrame(raf);
   }, [enabled, tubeRefs, gestureRef, onPour, clearSelection]);
 
-  return { hoveredIndex, selectedIndex: grabbedIndex, clearSelection };
+  return { hoveredIndex, selectedIndex: grabbedIndex, holdProgress, clearSelection };
 }

@@ -169,13 +169,15 @@ window.__kfBack = () => {
 
 // ── game state ──
 const MONSTER_POOL = ['👾','🐉','🦇','🕷️','🤖','💀','🐊','👻','🦑','🧟'];
+const POWERUPS = { life:'❤️', slow:'⏳', double:'⭐' };
 
 function initGameState() {
   gs = {
     score:0, lives:3, level:1, tick:0,
     coinsCollected:0, dodged:0,
     player:{ lane:1, row:1, shield:0, invincible:0, shakeFrames:0 },
-    monsters:[], coins:[], particles:[],
+    monsters:[], coins:[], particles:[], powerups:[],
+    combo:0, slow:0, double:0, banner:null, bannerTick:0, lastLevel:1,
     framesSinceLast:0, spawnInterval:80,
     lastGesture:'stand',
     calibrating:true, calibFrames:0, calibSumHipY:0, baseHipY:null,
@@ -191,7 +193,7 @@ function initGameState() {
 // ── gesture detection ──
 function readGesture() {
   const lm = poseResults && poseResults.poseLandmarks ? poseResults.poseLandmarks : null;
-  if (!lm) return { move:'none', raise:false, tpose:false };
+  if (!lm) { window.__kfPointer?.(null); return { move:'none', raise:false, tpose:false }; }
 
   const lsh=lm[11], rsh=lm[12], lhip=lm[23], rhip=lm[24];
   const lwr=lm[15], rwr=lm[16], lel=lm[13], rel=lm[14];
@@ -221,7 +223,10 @@ function readGesture() {
     lane = hx < mid - sw * 0.9 ? 0 : hx > mid + sw * 0.9 ? 2 : 1;
     const rel = (hand.y - shY) / sw;
     row = rel < -0.5 ? 0 : rel > 0.9 ? 2 : 1;
-  }
+    // The platform's Back button follows the same hand, stretched so an arm raised up and out reaches the corner.
+    const clamp01 = v => Math.min(1, Math.max(0, v));
+    window.__kfPointer?.(clamp01(0.5 + (hx - mid) / (sw * 3.2)), clamp01((rel + 1.6) / 3.2), true);
+  } else window.__kfPointer?.(null);
 
   // calibration
   if (gs && gs.calibrating) {
@@ -241,13 +246,29 @@ function readGesture() {
 }
 
 // ── spawn / collisions ──
+function spawnMonster(lane,row,y) {
+  // From level 3 some monsters switch lanes on the way down.
+  const hop = gs.level>=3 && Math.random()<Math.min(0.45,0.12*(gs.level-2));
+  gs.monsters.push({x:lane*LANE_W+LANE_W/2, y:y??-MON_SIZE-10, row, lane, hop, hopped:false,
+    emoji:MONSTER_POOL[Math.floor(Math.random()*MONSTER_POOL.length)], alive:true});
+}
+// A wall fills every cell of one row but one, so the player has to move to the gap.
+function spawnWall() {
+  const gap=Math.floor(Math.random()*LANES*3);
+  for(let c=0;c<LANES*3;c++){ if(c!==gap) spawnMonster(c%LANES,Math.floor(c/LANES),-MON_SIZE-10-Math.floor(c/LANES)*4); }
+  gs.monsters.forEach(m=>{ if(m.y<0) m.hop=false; });
+}
 function spawnObject() {
   const lane=Math.floor(Math.random()*LANES), row=Math.floor(Math.random()*3);
-  if (Math.random()<0.22) {
+  if (gs.level>=2 && Math.random()<0.07) {
+    const kinds=gs.lives<3?['life','slow','double']:['slow','double'];
+    gs.powerups.push({x:lane*LANE_W+LANE_W/2, y:-COIN_SIZE, row, lane, kind:kinds[Math.floor(Math.random()*kinds.length)], alive:true});
+  } else if (gs.level>=2 && Math.random()<0.08) {
+    spawnWall();
+  } else if (Math.random()<0.22) {
     gs.coins.push({x:lane*LANE_W+LANE_W/2, y:-COIN_SIZE, row, lane, alive:true});
   } else {
-    gs.monsters.push({x:lane*LANE_W+LANE_W/2, y:-MON_SIZE-10, row, lane,
-      emoji:MONSTER_POOL[Math.floor(Math.random()*MONSTER_POOL.length)], alive:true});
+    spawnMonster(lane,row);
   }
 }
 function burst(x,y,color,n) {
@@ -261,14 +282,24 @@ function checkCollisions() {
   gs.coins.forEach(c=>{
     if(!c.alive)return;
     if(c.lane===gs.player.lane&&c.row===gs.player.row&&Math.abs(c.y-py)<MON_SIZE*0.85){
-      c.alive=false; gs.score+=5; gs.coinsCollected++; burst(c.x,c.y,'#ffd166',8);
+      // Coins in a row build a combo; getting hit resets it.
+      c.alive=false; gs.combo++; const pts=5*Math.min(4,1+Math.floor(gs.combo/3))*(gs.double>0?2:1);
+      gs.score+=pts; gs.coinsCollected++; burst(c.x,c.y,'#ffd166',8);
+      if(gs.combo%3===0) showBanner(`🪙 Combo x${Math.min(4,1+Math.floor(gs.combo/3))}`);
     }
+  });
+  gs.powerups.forEach(p=>{
+    if(!p.alive||p.lane!==gs.player.lane||p.row!==gs.player.row||Math.abs(p.y-py)>=MON_SIZE*0.85) return;
+    p.alive=false; burst(p.x,p.y,'#7cf2ff',14);
+    if(p.kind==='life'){ gs.lives=Math.min(3,gs.lives+1); showBanner('❤️ Extra life!'); }
+    else if(p.kind==='slow'){ gs.slow=360; showBanner('⏳ Slow motion!'); }
+    else { gs.double=480; showBanner('⭐ Double points!'); }
   });
   if(gs.player.shield>0||gs.player.invincible>0) return;
   gs.monsters.forEach(m=>{
     if(!m.alive||m.lane!==gs.player.lane||m.row!==gs.player.row) return;
     if(Math.abs(m.y-py)<MON_SIZE*0.65){
-      m.alive=false; gs.lives--; gs.player.invincible=70; gs.player.shakeFrames=20;
+      m.alive=false; gs.lives--; gs.combo=0; gs.player.invincible=70; gs.player.shakeFrames=20;
       burst(px,py,'#ff4a6e',12);
       if(gs.lives<=0) gs.over=true;
     }
@@ -360,11 +391,12 @@ function drawStart() {
   // gesture grid
   const items=[
     ['⬅️','Hand Left','left lane'],['✋','Hand Middle','middle lane'],['➡️','Hand Right','right lane'],
-    ['⬆️','Hand Up','high row'],['⬇️','Hand Down','low row'],['👐','Arms Wide','shield']
+    ['⬆️','Hand Up','high row'],['⬇️','Hand Down','low row'],['👐','Arms Wide','shield'],
+    ['🪙','Coins','in a row = combo'],['❤️⏳⭐','Power-ups','life · slow · x2'],['🧱','Walls','find the gap']
   ];
-  const cw=136,ch=72,cols=3,gap=10;
+  const cw=136,ch=62,cols=3,gap=10;
   const totalW=cols*cw+(cols-1)*gap;
-  const ox=GW/2-totalW/2, oy=GH*0.35;
+  const ox=GW/2-totalW/2, oy=GH*0.32;
   items.forEach((it,i)=>{
     const col=i%3, row=Math.floor(i/3);
     const x=ox+col*(cw+gap), y=oy+row*(ch+gap);
@@ -410,7 +442,7 @@ function drawPlay() {
   ctx.save(); if(shake) ctx.translate(shake,shake*0.5);
   ctx.fillStyle='#07071a'; ctx.fillRect(0,0,GW,GH);
   drawGameStars(); drawLanes(); drawCamThumb();
-  const spd=3.2+gs.level*0.55;
+  const spd=(3.2+gs.level*0.55)*(gs.slow>0?0.5:1);
   gs.coins=gs.coins.filter(c=>c.alive&&c.y<GH+40);
   gs.coins.forEach(c=>{
     c.y+=spd;
@@ -420,6 +452,8 @@ function drawPlay() {
   gs.monsters=gs.monsters.filter(m=>m.alive&&m.y<GH+40);
   gs.monsters.forEach(m=>{
     m.y+=spd;
+    if(m.hop&&!m.hopped&&m.y>GH*0.12){ m.hopped=true; m.lane=m.lane===1?(Math.random()<0.5?0:2):1; }
+    m.x+=(m.lane*LANE_W+LANE_W/2-m.x)*0.12;
     const near=m.lane===gs.player.lane&&m.row===gs.player.row&&Math.abs(m.y-ROW_Y[m.row])<90;
     if(near){ctx.shadowColor='#ff4a6e';ctx.shadowBlur=16+Math.sin(gs.tick*0.3)*5;}
     ctx.font=`${MON_SIZE}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -427,8 +461,28 @@ function drawPlay() {
     ctx.shadowBlur=0;
     if(m.y>GH-10){gs.dodged++;m.alive=false;}
   });
+  gs.powerups=gs.powerups.filter(p=>p.alive&&p.y<GH+40);
+  gs.powerups.forEach(p=>{
+    p.y+=spd;
+    ctx.shadowColor='#7cf2ff'; ctx.shadowBlur=14;
+    ctx.font=`${COIN_SIZE+6}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(POWERUPS[p.kind],p.x,p.y+Math.sin(gs.tick*0.2)*4);
+    ctx.shadowBlur=0;
+  });
   drawParticles(); drawPlayer(); ctx.restore();
+  if(gs.slow>0||gs.double>0){
+    ctx.font='bold 16px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#7cf2ff';
+    ctx.fillText([gs.slow>0?`⏳ ${Math.ceil(gs.slow/60)}s`:'',gs.double>0?`⭐ x2 ${Math.ceil(gs.double/60)}s`:''].filter(Boolean).join('   '),GW/2,GH-18);
+  }
+  if(gs.banner&&gs.bannerTick>0){
+    gs.bannerTick--;
+    ctx.globalAlpha=Math.min(1,gs.bannerTick/20);
+    ctx.font='bold 40px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='#ffd166'; ctx.fillText(gs.banner,GW/2,GH*0.4);
+    ctx.globalAlpha=1;
+  }
 }
+function showBanner(text){ gs.banner=text; gs.bannerTick=90; }
 
 function drawPause() {
   drawPlay();
@@ -521,9 +575,12 @@ function loop() {
       if(gs.player.shield>0) gs.player.shield--;
       if(gs.player.invincible>0) gs.player.invincible--;
       gs.framesSinceLast++;
-      if(gs.framesSinceLast>=gs.spawnInterval){ spawnObject(); gs.framesSinceLast=0; gs.score++; }
+      if(gs.framesSinceLast>=gs.spawnInterval*(gs.slow>0?2:1)){ spawnObject(); gs.framesSinceLast=0; gs.score+=gs.double>0?2:1; }
       gs.tick++;
       gs.level=1+Math.floor(gs.score/40);
+      if(gs.level>gs.lastLevel){ gs.lastLevel=gs.level; showBanner(gs.level===3?`LEVEL ${gs.level} · monsters dodge too!`:gs.level===2?`LEVEL 2 · walls & power-ups!`:`LEVEL ${gs.level}!`); }
+      if(gs.slow>0) gs.slow--;
+      if(gs.double>0) gs.double--;
       gs.spawnInterval=Math.max(28,80-gs.level*7);
       checkCollisions();
       drawPlay();

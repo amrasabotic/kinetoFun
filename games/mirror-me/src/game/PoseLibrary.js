@@ -307,6 +307,21 @@ export const POSES = [
   },
 ];
 
+// Pose difficulties per level, easy to expert.
+const LEVEL_MIX = [
+  [1, 1, 1, 1, 1], [1, 1, 1, 2, 2], [1, 1, 2, 2, 2], [1, 2, 2, 2, 3], [2, 2, 2, 3, 3],
+  [2, 2, 3, 3, 3], [2, 3, 3, 3, 4], [3, 3, 3, 4, 4], [3, 3, 4, 4, 4], [3, 4, 4, 4, 4],
+];
+
+export function buildLevelSequence(level) {
+  const mix = LEVEL_MIX[Math.min(level, LEVEL_MIX.length) - 1];
+  const byDiff = { 1: [], 2: [], 3: [], 4: [] };
+  for (const p of POSES) byDiff[p.difficulty].push(p);
+  for (const k of Object.keys(byDiff)) byDiff[k].sort(() => Math.random() - 0.5);
+  const used = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  return mix.map((d) => byDiff[d][used[d]++ % byDiff[d].length]);
+}
+
 // Build ordered sequence: 3 easy, 3 medium, 3 hard, 3 expert (cycling)
 export function buildRoundSequence() {
   const byDiff = { 1: [], 2: [], 3: [], 4: [] };

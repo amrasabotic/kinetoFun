@@ -20,6 +20,7 @@ interface IngredientSource {
 
 interface BakingScreenProps {
   order: PizzaOrder;
+  level: number;
   onBake: (placed: PlacedIngredient[], score: number) => void;
 }
 
@@ -65,8 +66,13 @@ function computeScore(placed: PlacedIngredient[], order: PizzaOrder): number {
 }
 
 const BAKE_HOLD_MS = 1200;
+const PICK_HOLD_MS = 600;
+const DROP_HOLD_MS = 450;
+const BOWL_REACH_PX = 60;
+const REST_SLACK_PX = 28;
+const MOVE_ON_PX = 45;
 
-export default function BakingScreen({ order, onBake }: BakingScreenProps) {
+export default function BakingScreen({ order, level, onBake }: BakingScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +88,9 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
 
   const dragRef = useRef<{ type: IngredientType; x: number; y: number } | null>(null);
   const prevPinchRef = useRef(false);
+  const pickRef = useRef<{ type: IngredientType; since: number } | null>(null);
+  const restRef = useRef<{ x: number; y: number; since: number } | null>(null);
+  const placedAtRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleHandUpdate = useCallback((state: HandState) => setHandState(state), []);
   useHandTracking(videoRef as React.RefObject<HTMLVideoElement | null>, handleHandUpdate, true);
@@ -126,10 +135,20 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
         ctx.globalAlpha = 1;
       }
 
+      const now = performance.now();
+      const pick = pickRef.current;
+      if (pick) {
+        const src = INGREDIENT_SOURCES.find((s) => s.type === pick.type);
+        if (src) drawHoldRing(ctx, src.x * W, src.y * H, 44, (now - pick.since) / PICK_HOLD_MS);
+      }
+      const rest = restRef.current;
+      if (rest && dragRef.current) drawHoldRing(ctx, rest.x, rest.y, 26, (now - rest.since) / DROP_HOLD_MS);
+
       // Cursor
+      const rect = canvas.getBoundingClientRect();
       if (handState.isTracking && handState.cursorX >= 0) {
-        const hx = handState.cursorX * W;
-        const hy = handState.cursorY * H;
+        const hx = handState.cursorX * window.innerWidth - rect.left;
+        const hy = handState.cursorY * window.innerHeight - rect.top;
         ctx.beginPath();
         ctx.arc(hx, hy, handState.isPinching ? 10 : 14, 0, Math.PI * 2);
         ctx.fillStyle = handState.isPinching ? 'rgba(251,146,60,0.9)' : 'rgba(251,146,60,0.45)';
@@ -166,96 +185,87 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
     return () => window.removeEventListener('resize', resize);
   }, []);
 
-  // Hand gesture logic
+  // Hand gesture logic: hold on a bowl to pick up, sauce and cheese spread on contact, a topping drops when the hand rests on the pizza.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const now = performance.now();
     const W = canvas.width;
     const H = canvas.height;
     const cx = PIZZA_CENTER.x * W;
     const cy = PIZZA_CENTER.y * H;
     const r = PIZZA_RADIUS * Math.min(W, H);
-    const hx = handState.cursorX * W;
-    const hy = handState.cursorY * H;
-
-    // The cursor is in canvas pixels; buttons sit outside the canvas, so compare in page pixels.
+    // The cursor spans the whole page so it can reach the top bar; the canvas sits below it.
     const canvasRect = canvas.getBoundingClientRect();
-    const px = canvasRect.left + hx, py = canvasRect.top + hy;
+    const px = handState.cursorX * window.innerWidth;
+    const py = handState.cursorY * window.innerHeight;
+    const hx = px - canvasRect.left;
+    const hy = py - canvasRect.top;
     const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
-    kf.__kfPointer?.(handState.isTracking ? px / window.innerWidth : null, py / window.innerHeight);
+    kf.__kfPointer?.(handState.isTracking ? handState.cursorX : null, handState.cursorY);
+    const pinchStart = handState.isPinching && !prevPinchRef.current;
+    prevPinchRef.current = handState.isPinching;
 
-    // Bake button: pinch on it, or rest the hand on it, which works better from a sofa.
     const bakeBtn = document.getElementById('bake-btn');
     if (bakeBtn) {
       const rect = bakeBtn.getBoundingClientRect();
-      const over = handState.isTracking && !dragRef.current &&
-        px >= rect.left - 10 && px <= rect.right + 10 && py >= rect.top - 10 && py <= rect.bottom + 10;
+      const over = handState.isTracking &&
+        px >= rect.left - 16 && px <= rect.right + 16 && py >= rect.top - 16 && py <= rect.bottom + 16;
       setBakeHovered(over);
       if (!over) { bakeHoverSince.current = null; setBakeProgress(0); }
       else {
-        bakeHoverSince.current ??= performance.now();
-        const p = Math.min(1, (performance.now() - bakeHoverSince.current) / BAKE_HOLD_MS);
+        dragRef.current = null;
+        bakeHoverSince.current ??= now;
+        const p = Math.min(1, (now - bakeHoverSince.current) / BAKE_HOLD_MS);
         setBakeProgress(p);
-        if (p >= 1 || (handState.isPinching && !prevPinchRef.current)) {
+        if (p >= 1 || pinchStart) {
           bakeHoverSince.current = null;
           onBake(placed, score);
-          prevPinchRef.current = handState.isPinching;
           return;
         }
+        return;
       }
     }
 
-    if (!handState.isTracking) { prevPinchRef.current = handState.isPinching; return; }
+    if (!handState.isTracking) { pickRef.current = null; restRef.current = null; return; }
 
-    // Pick up an ingredient:
-    //   • on pinch-start while cursor is over a source bowl, OR
-    //   • already pinching with no active drag and cursor enters a source bowl
-    //   This means players can hover with two fingers already together and grab immediately.
-    const tryPickup = (handState.isPinching && !prevPinchRef.current) ||
-      (handState.isPinching && !dragRef.current);
-
-    if (tryPickup) {
-      for (const src of INGREDIENT_SOURCES) {
-        const sx = src.x * W;
-        const sy = src.y * H;
-        if (Math.sqrt((hx - sx) ** 2 + (hy - sy) ** 2) < 52) {
-          dragRef.current = { type: src.type, x: handState.cursorX, y: handState.cursorY };
-          break;
-        }
+    const bowl = INGREDIENT_SOURCES.find((src) => Math.hypot(hx - src.x * W, hy - src.y * H) < BOWL_REACH_PX);
+    if (bowl && dragRef.current?.type !== bowl.type) {
+      if (pickRef.current?.type !== bowl.type) pickRef.current = { type: bowl.type, since: now };
+      if (now - pickRef.current.since >= PICK_HOLD_MS || pinchStart) {
+        dragRef.current = { type: bowl.type, x: hx / W, y: hy / H };
+        pickRef.current = null;
+        placedAtRef.current = null;
       }
+    } else {
+      pickRef.current = null;
     }
 
-    // Update drag position while pinching
-    if (handState.isPinching && dragRef.current) {
-      dragRef.current = { ...dragRef.current, x: handState.cursorX, y: handState.cursorY };
-    }
+    const drag = dragRef.current;
+    if (!drag) { restRef.current = null; return; }
+    dragRef.current = { ...drag, x: hx / W, y: hy / H };
 
-    // Drop on pinch release
-    if (!handState.isPinching && prevPinchRef.current && dragRef.current) {
-      const drag = dragRef.current;
-      const dropX = drag.x * W;
-      const dropY = drag.y * H;
-      const distToCenter = Math.sqrt((dropX - cx) ** 2 + (dropY - cy) ** 2);
+    const onPizza = Math.hypot(hx - cx, hy - cy) < r * 0.88;
+    if (!onPizza) { restRef.current = null; return; }
 
-      if (distToCenter < r * 0.88) {
-        if (drag.type === 'sauce' || drag.type === 'cheese') {
-          setPlaced((prev) => {
-            const filtered = prev.filter((p) => p.type !== drag.type);
-            return [...filtered, { id: crypto.randomUUID(), type: drag.type, x: 0.5, y: 0.5 }];
-          });
-        } else {
-          const relX = 0.5 + (dropX - cx) / (r * 1.5);
-          const relY = 0.5 + (dropY - cy) / (r * 1.5);
-          setPlaced((prev) => [
-            ...prev,
-            { id: crypto.randomUUID(), type: drag.type, x: relX, y: relY },
-          ]);
-        }
-      }
+    if (drag.type === 'sauce' || drag.type === 'cheese') {
+      setPlaced((prev) => [...prev.filter((p) => p.type !== drag.type), { id: crypto.randomUUID(), type: drag.type, x: 0.5, y: 0.5 }]);
       dragRef.current = null;
+      return;
     }
 
-    prevPinchRef.current = handState.isPinching;
+    // After a drop the hand has to move a little before the next one, so one rest places one topping.
+    const last = placedAtRef.current;
+    if (last && Math.hypot(hx - last.x, hy - last.y) < MOVE_ON_PX) { restRef.current = null; return; }
+    placedAtRef.current = null;
+    const rest = restRef.current;
+    if (!rest || Math.hypot(hx - rest.x, hy - rest.y) > REST_SLACK_PX) {
+      restRef.current = { x: hx, y: hy, since: now };
+    } else if (now - rest.since >= DROP_HOLD_MS || pinchStart) {
+      setPlaced((prev) => [...prev, { id: crypto.randomUUID(), type: drag.type, x: 0.5 + (hx - cx) / (r * 1.5), y: 0.5 + (hy - cy) / (r * 1.5) }]);
+      placedAtRef.current = { x: hx, y: hy };
+      restRef.current = null;
+    }
   }, [handState, placed, score, onBake]);
 
   // Mouse fallback
@@ -327,6 +337,7 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
       <div className="flex items-center justify-between px-5 py-2.5 z-20 border-b border-orange-900/60"
         style={{ background: 'linear-gradient(180deg, #1a0d05 0%, #2d1b0e 100%)' }}>
         <div className="flex items-center gap-3">
+          <span className="rounded-full bg-orange-500/30 px-3 py-0.5 text-orange-100 font-black text-lg">Level {level}</span>
           <span className="text-orange-200 font-black text-lg">Baking:</span>
           <span className="text-red-400 font-black text-lg">{order.name}</span>
         </div>
@@ -410,7 +421,7 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
           <div className="mt-auto bg-amber-900/30 border border-amber-700/40 rounded-xl p-3">
             <p className="text-amber-300 text-xs font-bold mb-1">Tip</p>
             <p className="text-amber-200/70 text-xs leading-relaxed">
-              Drag ingredients from the shelf onto the pizza. Start with sauce, then cheese, then toppings!
+              Hold your hand on a bowl to pick it up. Sauce and cheese spread when you touch the pizza; rest your hand on the pizza to drop a topping.
             </p>
           </div>
         </div>
@@ -422,6 +433,17 @@ export default function BakingScreen({ order, onBake }: BakingScreenProps) {
 }
 
 // ─── Canvas drawing helpers ───────────────────────────────────────────────────
+
+function drawHoldRing(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, progress: number) {
+  const p = Math.min(1, Math.max(0, progress));
+  ctx.save();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#fb923c';
+  ctx.beginPath(); ctx.arc(x, y, radius, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
 
 function drawKitchenBackground(ctx: CanvasRenderingContext2D, W: number, H: number) {
   // Floor / counter

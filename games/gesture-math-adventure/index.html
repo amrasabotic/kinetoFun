@@ -97,7 +97,9 @@ const DIFF = {
   }
 };
 const DIFF_KEYS = ['easy','medium','hard'];
-const TOTAL_Q = 10;
+const TOTAL_Q = 6;
+const MAX_LEVEL = 10;
+const PASS_Q = 4;
 const DWELL_MS = 1000;
 
 // ── GAME STATE ────────────────────────────────────────────────────────────────
@@ -108,6 +110,10 @@ let score = 0;
 let streak = 0;
 let sessionBestStreak = 0;
 let qIndex = 0;
+let level = 1;
+let levelCorrect = 0;
+let levelUpTimer = 0;
+let allLevelsDone = false;
 let question = null;
 let timeLeft = 0;
 
@@ -131,8 +137,15 @@ function setBestStreak(d,s){ if(s>getBestStreak(d)) localStorage.setItem('gma_bs
 // ── MATH ENGINE ───────────────────────────────────────────────────────────────
 function rndInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 
+// Each level stretches the number range: level 1 is half the mode's range, level 10 well past it.
+function levelCfg(diff){
+  const base = DIFF[diff];
+  const max = Math.max(6, Math.round(base.max * (0.5 + 0.12 * (level - 1))));
+  return { ...base, max, timeLimit: Math.max(6, base.timeLimit - (level - 1) * 0.8), basePoints: base.basePoints + (level - 1) * 5 };
+}
+
 function genQuestion(diff){
-  const cfg = DIFF[diff];
+  const cfg = levelCfg(diff);
   const op = cfg.ops[Math.floor(Math.random()*cfg.ops.length)];
   let a,b,answer;
   if(op==='+'){
@@ -505,14 +518,20 @@ function drawDifficulty(dt){
 }
 
 // ── GAME FLOW ─────────────────────────────────────────────────────────────────
-// The platform's Back button: out of a round to difficulty select; from there, leave.
+// The platform's Back button: a run in progress ends and reports its score; from difficulty select, leave.
 window.__kfBack=()=>{
-  if(gs!=='countdown'&&gs!=='play'&&gs!=='results')return false;
+  if(gs!=='countdown'&&gs!=='play'&&gs!=='results'&&gs!=='levelup')return false;
+  if(gs!=='results'&&score>0){ endGame();return true; }
   gs='difficulty';selectedDiff=null;clearBtns();dwellId=null;return true;
 };
 
 function startGame(){
-  score=0;streak=0;sessionBestStreak=0;qIndex=0;
+  score=0;streak=0;sessionBestStreak=0;level=1;allLevelsDone=false;
+  startLevel();
+}
+
+function startLevel(){
+  qIndex=0;levelCorrect=0;
   gs='countdown';cdVal=3;cdTimer=4;
   question=genQuestion(confirmedDiff);
   clearBtns();dwellId=null;
@@ -521,7 +540,7 @@ function startGame(){
 
 function nextQuestion(){
   question=genQuestion(confirmedDiff);
-  timeLeft=DIFF[confirmedDiff].timeLimit;
+  timeLeft=levelCfg(confirmedDiff).timeLimit;
   ansFlashTimer=0;ansFlashIdx=-1;ansFlashOk=false;
   feedbackTimer=0;
   clearBtns();dwellId=null;
@@ -533,11 +552,12 @@ function drawCountdown(dt){
   cdTimer-=dt;
   const nv=Math.max(0,Math.ceil(cdTimer)-1);
   if(nv!==cdVal&&nv>=0){ cdVal=nv;sfxCountdownTick(); }
-  if(cdTimer<=0){ sfxGo();gs='play';timeLeft=DIFF[confirmedDiff].timeLimit; }
+  if(cdTimer<=0){ sfxGo();gs='play';timeLeft=levelCfg(confirmedDiff).timeLimit; }
 
   const cfg=DIFF[confirmedDiff];
   txt(`${cfg.emoji} ${cfg.label} MODE`,W/2,H*0.2,'bold 30px sans-serif',cfg.color);
-  txt(`${TOTAL_Q} Questions`,W/2,H*0.28,'20px sans-serif','rgba(255,255,255,0.45)');
+  txtS(`LEVEL ${level} / ${MAX_LEVEL}`,W/2,H*0.29,'bold 34px sans-serif','#ffe04d','#000',4);
+  txt(`${TOTAL_Q} questions · get ${PASS_Q} right to go on`,W/2,H*0.35,'20px sans-serif','rgba(255,255,255,0.55)');
 
   const label=cdVal>0?String(cdVal):'GO!';
   const pulse=1+(1-(cdTimer%1))*0.45;
@@ -555,7 +575,7 @@ function drawPlay(dt){
     ansFlashTimer-=dt;
     if(ansFlashTimer<=0){
       qIndex++;
-      if(qIndex>=TOTAL_Q){ endGame();return; }
+      if(qIndex>=TOTAL_Q){ endLevel();return; }
       nextQuestion();
     }
   } else {
@@ -574,7 +594,7 @@ function drawPlay(dt){
   drawBg();
   clearBtns();
 
-  const cfg=DIFF[confirmedDiff];
+  const cfg=levelCfg(confirmedDiff);
   const mult=getMult();
 
   // Timer bar
@@ -587,7 +607,7 @@ function drawPlay(dt){
 
   // Score TL
   txt(`SCORE: ${score}`,52,58,'bold 22px sans-serif','#fff','left');
-  txt(`Q ${qIndex+1} / ${TOTAL_Q}`,52,82,'15px sans-serif','rgba(255,255,255,0.45)','left');
+  txt(`LEVEL ${level}  ·  Q ${qIndex+1} / ${TOTAL_Q}  ·  ✓ ${levelCorrect}/${PASS_Q}`,52,82,'bold 15px sans-serif','rgba(255,255,255,0.6)','left');
 
   // Difficulty badge
   txt(`${cfg.emoji} ${cfg.label}`,W/2,56,'bold 18px sans-serif',cfg.color);
@@ -678,9 +698,9 @@ function submitAnswer(idx){
   ansFlashIdx=idx;ansFlashOk=ok;ansFlashTimer=1.2;
 
   if(ok){
-    streak++;
+    streak++;levelCorrect++;
     if(streak>sessionBestStreak) sessionBestStreak=streak;
-    const pts=DIFF[confirmedDiff].basePoints*getMult();
+    const pts=levelCfg(confirmedDiff).basePoints*getMult();
     score+=pts;
     sfxCorrect();
     if(getMult()>=3) sfxComboMax();
@@ -704,6 +724,33 @@ function onTimeUp(){
   ansFlashIdx=-1;ansFlashTimer=1.2;
 }
 
+// ── LEVELS ────────────────────────────────────────────────────────────────────
+function endLevel(){
+  if(levelCorrect<PASS_Q){ endGame();return; }
+  if(level>=MAX_LEVEL){ allLevelsDone=true;endGame();return; }
+  gs='levelup';levelUpTimer=4;clearBtns();dwellId=null;
+  burst(W/2,H*0.4,'#00ff88',40);sfxComboMax();
+}
+
+function drawLevelUp(dt){
+  drawBg();clearBtns();
+  levelUpTimer-=dt;
+  txtS(`LEVEL ${level} COMPLETE!`,W/2,H*0.25,'bold 64px sans-serif','#00ff88','#000',6);
+  txt(`${levelCorrect} / ${TOTAL_Q} correct  ·  Score ${score}`,W/2,H*0.36,'bold 26px sans-serif','#fff');
+  const bW=380,bH=100,bx=W/2-bW/2,bY=H*0.5;
+  regBtn('next',bx,bY,bW,bH);
+  cx.save();if(dwellId==='next')shadow('#00ff88',20);
+  card(bx,bY,bW,bH,20,`rgba(0,255,136,${dwellId==='next'?0.25:0.1})`,'#00ff88',3);
+  cx.restore();
+  txt(`▶ LEVEL ${level+1}`,W/2,bY+62,'bold 32px sans-serif','#00ff88');
+  drawDwellBar(bx,bY,bW,bH,'next');
+  txt(`Next level starts in ${Math.max(0,Math.ceil(levelUpTimer))}…`,W/2,bY+bH+44,'18px sans-serif','rgba(255,255,255,0.5)');
+  let go=levelUpTimer<=0;
+  tickDwell(()=>{ go=true; });
+  if(go){ sfxConfirm();level++;startLevel();return; }
+  drawParts();drawCursor();
+}
+
 // ── END GAME ──────────────────────────────────────────────────────────────────
 function endGame(){
   window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
@@ -725,7 +772,7 @@ function drawResults(dt){
   // Periodic celebration bursts
   if(Math.random()<0.012) burst(rnd(W*0.1,W*0.9),rnd(H*0.1,H*0.6),'#ffe04d',8);
 
-  txtS('GAME OVER!',W/2,H*0.13,'bold 66px sans-serif','#fff','#000',6);
+  txtS(allLevelsDone?'ALL 10 LEVELS DONE!':'GAME OVER!',W/2,H*0.13,'bold 66px sans-serif','#fff','#000',6);
 
   // Score card
   const cx_=W/2-300,cy_=H*0.2,cw=600,ch=300;
@@ -733,7 +780,7 @@ function drawResults(dt){
   card(cx_,cy_,cw,ch,24,'rgba(0,0,0,0.65)',cfg.color,2);
   cx.restore();
 
-  txt(`${cfg.emoji} ${cfg.label} MODE`,W/2,cy_+50,'bold 22px sans-serif',cfg.color);
+  txt(`${cfg.emoji} ${cfg.label} MODE  ·  Level ${level}`,W/2,cy_+50,'bold 22px sans-serif',cfg.color);
   txtS(String(score),W/2,cy_+150,'bold 110px sans-serif','#ffe04d','#000',6);
   txt('POINTS',W/2,cy_+180,'bold 18px sans-serif','rgba(255,255,255,0.45)');
   txt(`🔥 Best Streak: ${sessionBestStreak}`,W/2,cy_+230,'bold 21px sans-serif','#ff9800');
@@ -787,6 +834,7 @@ function loop(ts){
     case 'difficulty': drawDifficulty(dt);break;
     case 'countdown':  drawCountdown(dt);break;
     case 'play':       drawPlay(dt);break;
+    case 'levelup':    drawLevelUp(dt);break;
     case 'results':    drawResults(dt);break;
     default:
       drawBg();

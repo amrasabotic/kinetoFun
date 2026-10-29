@@ -599,7 +599,7 @@ function drawSplashScreen(){
   ctx.fillText('4 LEVELS • HAND GESTURE CONTROLLED',W/2,H/2-32);
   const guides=[
     {icon:'☝️',action:'Select',label:'1 finger · hover 0.5s'},
-    {icon:'🖐️',action:'Run',label:'Open palm'},
+    {icon:'🖐️',action:'Run',label:'Hand up · palm = fast'},
     {icon:'✊',action:'Jump',label:'Close fist'},
   ];
   const cardW=130,cardH=78,gap=14;
@@ -709,7 +709,8 @@ function updatePhysics(){
   const L=LEVELS[currentLevel];
   player.vy+=GRAVITY;if(player.vy>18)player.vy=18;
   if(isMoving){player.vx=gesture==='open_palm'?RUN_SPEED:WALK_SPEED;player.facing=1;}
-  else{player.vx*=.78;if(Math.abs(player.vx)<.15)player.vx=0;}
+  // A jump keeps its run-up speed, otherwise every jump would go straight up.
+  else if(!isJumping){player.vx*=.78;if(Math.abs(player.vx)<.15)player.vx=0;}
   if(isJumping&&player.onGround){
     player.vy=JUMP_FORCE;player.onGround=false;
     spawnParticles(player.x+13-cameraOffset,player.y+player.h,'rgba(255,255,255,0.6)',5);
@@ -815,7 +816,7 @@ function gameLoop(){
       }
     }
     const gl={fist:'✊ Jump!',open_palm:'🖐️ Running!',one_finger:'☝️ Select',none:'✋ Ready'};
-    gestureLabel.textContent=gl[gesture]||'✋ Ready';
+    gestureLabel.textContent=isMoving&&gesture!=='open_palm'?'🚶 Walking':gl[gesture]||'✋ Ready';
     gestureDetail.textContent=gesture==='open_palm'?'Speed boost':gesture==='fist'&&!player.onGround?'In air!':'';
   } else if(gameState==='levelclear'){
     drawLevelTransition();
@@ -898,10 +899,10 @@ function classifyGesture(lm){
   const t=i=>lm[i];
   const indexUp=t(8).y<t(6).y,midUp=t(12).y<t(10).y;
   const ringUp=t(16).y<t(14).y,pinkyUp=t(20).y<t(18).y;
-  const thumbOut=Math.abs(t(4).x-t(3).x)>.04;
+  // The thumb is ignored: from a TV's distance it is too small to read reliably.
   const ext=[indexUp,midUp,ringUp,pinkyUp].filter(Boolean).length;
-  if(ext===0&&!thumbOut)return'fist';
-  if(ext>=3&&thumbOut)return'open_palm';
+  if(ext===0)return'fist';
+  if(ext>=3)return'open_palm';
   if(indexUp&&!midUp&&!ringUp&&!pinkyUp)return'one_finger';
   return'none';
 }
@@ -928,7 +929,9 @@ function onResults(results){
       }
     } else splashHoldActive=false;
   }
-  if(gameState==='playing'){isMoving=ng==='open_palm';isJumping=ng==='fist';}
+  // Any hand that is not a fist walks forward; an open palm runs.
+  const handSeen=!!(results.multiHandLandmarks&&results.multiHandLandmarks.length);
+  if(gameState==='playing'){isMoving=handSeen&&ng!=='fist';isJumping=ng==='fist';}
 }
 
 /* ═══════════════════════════════════════════

@@ -26,7 +26,7 @@ export function MainMenu({ onPlay, onLevelSelect, onEndless, onDaily, onStatisti
       <AnimatedBackground />
       <div className="lp-menu">
         <h1 className="lp-menu__title">Liquid Puzzle</h1>
-        <p className="lp-menu__subtitle">Sort every color into its own tube — pinch to grab a tube, drag it over another to pour.</p>
+        <p className="lp-menu__subtitle">Sort every color into its own tube — hold on a tube to lift it, then hold on another to pour.</p>
 
         <div className="lp-menu__grid">
           <DwellButton label="Play" onActivate={onPlay} className="lp-menu-btn lp-menu-btn--primary" />

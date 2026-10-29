@@ -11,7 +11,11 @@ interface OrderScreenProps {
   showPizzaBox?: boolean;
   finalScore?: number;
   onGivePizza?: () => void;
+  level: number;
+  maxLevel: number;
 }
+
+const HOLD_MS = 1200;
 
 export default function OrderScreen({
   order,
@@ -19,6 +23,8 @@ export default function OrderScreen({
   showPizzaBox = false,
   finalScore,
   onGivePizza,
+  level,
+  maxLevel,
 }: OrderScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [handState, setHandState] = useState<HandState>({
@@ -27,6 +33,8 @@ export default function OrderScreen({
   const [acceptHovered, setAcceptHovered] = useState(false);
   const [giveHovered, setGiveHovered] = useState(false);
   const prevPinchRef = useRef(false);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const holdRef = useRef<{ id: string; since: number } | null>(null);
 
   const handleHandUpdate = useCallback((state: HandState) => setHandState(state), []);
   useHandTracking(videoRef as React.RefObject<HTMLVideoElement | null>, handleHandUpdate, true);
@@ -45,17 +53,29 @@ export default function OrderScreen({
         cursorScreenY >= r.top && cursorScreenY <= r.bottom;
     }
 
+    const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
+    kf.__kfPointer?.(handState.isTracking ? handState.cursorX : null, handState.cursorY);
+
     const overAccept = isOver(acceptBtn);
     const overGive = isOver(giveBtn);
     setAcceptHovered(overAccept);
     setGiveHovered(overGive);
 
-    // Fire only on pinch-start to avoid repeat triggers
-    if (handState.isPinching && !prevPinchRef.current) {
-      if (overAccept) onAccept();
-      if (overGive && onGivePizza) onGivePizza();
-    }
+    // Resting the hand on a button presses it; a pinch presses at once.
+    const pinchStart = handState.isPinching && !prevPinchRef.current;
     prevPinchRef.current = handState.isPinching;
+    const id = overAccept ? 'accept' : overGive ? 'give' : null;
+    if (!id) { holdRef.current = null; setHoldProgress(0); return; }
+    const now = performance.now();
+    if (holdRef.current?.id !== id) holdRef.current = { id, since: now };
+    const p = Math.min(1, (now - holdRef.current.since) / HOLD_MS);
+    setHoldProgress(p);
+    if (p >= 1 || pinchStart) {
+      holdRef.current = null;
+      setHoldProgress(0);
+      if (id === 'accept') onAccept();
+      else onGivePizza?.();
+    }
   }, [handState, cursorScreenX, cursorScreenY, onAccept, onGivePizza]);
 
   return (
@@ -90,7 +110,7 @@ export default function OrderScreen({
       {/* Menu board */}
       <div className="absolute pointer-events-none z-10" style={{ top: '5%', left: '50%', transform: 'translateX(-50%)' }}>
         <div className="bg-amber-950 border-2 border-amber-700 rounded-lg px-8 py-3 shadow-2xl whitespace-nowrap">
-          <div className="text-yellow-300 font-black text-lg tracking-widest text-center mb-1">★ PIZZA MAKER ★</div>
+          <div className="text-yellow-300 font-black text-lg tracking-widest text-center mb-1">★ PIZZA MAKER · LEVEL {level} / {maxLevel} ★</div>
           <div className="flex gap-5 justify-center">
             {['Margherita $12', 'Pepperoni $14', 'Garden $13', 'The Works $16'].map((item) => (
               <span key={item} className="text-yellow-200/70 text-xs font-medium">{item}</span>
@@ -189,28 +209,30 @@ export default function OrderScreen({
             <button
               id="order-accept-btn"
               onClick={onAccept}
-              className={`flex items-center gap-2 px-12 py-3 text-white text-xl font-black rounded-full shadow-2xl transition-all duration-150 border-b-4 ${
+              className={`relative overflow-hidden flex items-center gap-2 px-12 py-3 text-white text-xl font-black rounded-full shadow-2xl transition-all duration-150 border-b-4 ${
                 acceptHovered
                   ? 'bg-green-400 border-green-600 scale-110 shadow-green-500/40'
                   : 'bg-green-500 border-green-700'
               }`}
               style={{ boxShadow: '0 6px 24px rgba(0,0,0,0.45)' }}
             >
-              <CheckCircle className="w-6 h-6" />
-              Accept Order
+              <span className="absolute inset-y-0 left-0 bg-white/35" style={{ width: `${holdProgress * 100}%` }} />
+              <CheckCircle className="relative w-6 h-6" />
+              <span className="relative">Accept Order</span>
             </button>
           ) : (
             <button
               id="give-pizza-btn"
               onClick={onGivePizza}
-              className={`flex items-center gap-2 px-12 py-3 text-white text-xl font-black rounded-full shadow-2xl transition-all duration-150 border-b-4 ${
+              className={`relative overflow-hidden flex items-center gap-2 px-12 py-3 text-white text-xl font-black rounded-full shadow-2xl transition-all duration-150 border-b-4 ${
                 giveHovered
                   ? 'bg-red-400 border-red-600 scale-110 shadow-red-500/40'
                   : 'bg-red-500 border-red-700'
               }`}
               style={{ boxShadow: '0 6px 24px rgba(0,0,0,0.45)' }}
             >
-              Give Pizza to Customer!
+              <span className="absolute inset-y-0 left-0 bg-white/35" style={{ width: `${holdProgress * 100}%` }} />
+              <span className="relative">{level >= maxLevel ? 'Give Pizza & Finish!' : `Give Pizza · Level ${level + 1} next`}</span>
             </button>
           )}
         </div>

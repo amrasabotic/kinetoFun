@@ -80,13 +80,18 @@
   var lastSent = 0;
   var lastVisible = false;
 
-  function send(x, y, visible) {
+  function send(x, y, visible, ring) {
     var now = performance.now();
     // Reports are cheap, but there is no need for more than ~30 a second.
     if (visible === lastVisible && now - lastSent < 33) return;
     lastSent = now;
     lastVisible = visible;
-    window.parent.postMessage({ type: 'KF_HAND', x: x, y: y, visible: visible }, '*');
+    window.parent.postMessage({ type: 'KF_HAND', x: x, y: y, visible: visible, ring: !!ring }, '*');
+  }
+
+  // The camera loses a hand at its edges, so the middle of its view is stretched over the whole screen.
+  function stretch(v, lo, hi) {
+    return Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
   }
 
   function pointer(hands) {
@@ -107,9 +112,10 @@
   var ownPointerAt = -Infinity;
 
   // A game that maps the hand to its own cursor reports it here (0-1 of its viewport), so Back fills where that cursor is drawn.
-  window.__kfPointer = function (x, y) {
+  // noCursor: the game draws nothing there, so the platform shows a ring near Back instead.
+  window.__kfPointer = function (x, y, noCursor) {
     ownPointerAt = performance.now();
-    if (typeof x === 'number' && typeof y === 'number') send(x, y, true); else send(0, 0, false);
+    if (typeof x === 'number' && typeof y === 'number') send(x, y, true, noCursor); else send(0, 0, false);
   };
 
   function report(points, isHand) {
@@ -118,7 +124,7 @@
     if (isHand) lastHandAt = now;
     else if (now - lastHandAt < 1000) return;
     var p = pointer(points);
-    if (p) send(p.x, p.y, true); else send(0, 0, false);
+    if (p) send(stretch(p.x, 0.12, 0.88), stretch(p.y, 0.1, 0.75), true, true); else send(0, 0, false);
   }
 
   // Called by the patched tasks-vision builds (see scripts/patch-game-builds.js).
