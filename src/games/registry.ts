@@ -104,6 +104,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'wizard-academy':         { folder: 'wizard-academy',         indexPath: '/games/wizard-academy/index.html' },
   'pottery-studio':         { folder: 'pottery-studio',         indexPath: '/games/pottery-studio/index.html' },
   'shadow-puppets':         { folder: 'shadow-puppets',         indexPath: '/games/shadow-puppets/index.html' },
+  'prize-claw':             { folder: 'prize-claw',             indexPath: '/games/prize-claw/index.html' },
   'tic-tac-toe':            { folder: 'tic-tac-toe',            indexPath: '/games/tic-tac-toe/index.html' },
   'air-hockey':             { folder: 'air-hockey',             indexPath: '/games/air-hockey/index.html' },
   'connect-4':              { folder: 'connect-4',              indexPath: '/games/connect-4/index.html' },

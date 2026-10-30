@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prize Claw</title>
+<style>
+:root { --gold:#ffd84d; --ink:#f4f8ff; --muted:#c5d2ee; --panel:rgba(14,22,52,0.9); --line:rgba(120,190,255,0.5); }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#0a0f26; color:var(--ink); font-family:'Trebuchet MS','Segoe UI',Arial,sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#arcade { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+
+.screen { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px 40px; text-align:center; }
+.screen.on { display:flex; }
+.dim { background:rgba(8,12,32,0.8); }
+.clear { background:none; }
+
+h1 { font-size:68px; line-height:1.05; font-family:Georgia,'Times New Roman',serif; color:var(--gold); }
+h2 { font-size:42px; font-family:Georgia,'Times New Roman',serif; color:var(--gold); }
+.sub { font-size:24px; color:var(--muted); max-width:900px; }
+.small { font-size:20px; color:var(--muted); }
+.row { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; }
+
+.btn { position:relative; min-width:230px; min-height:84px; padding:14px 34px; border-radius:20px; overflow:hidden; cursor:pointer;
+  border:3px solid rgba(255,255,255,0.25); background:linear-gradient(135deg,#ff4f8b,#ff9d3d); color:#fff;
+  font:800 28px 'Trebuchet MS','Segoe UI',Arial,sans-serif; box-shadow:0 8px 24px rgba(0,0,0,0.35); }
+.btn.alt { background:rgba(255,255,255,0.08); border-color:var(--line); }
+.btn::after, .tile::after { content:''; position:absolute; left:0; bottom:0; height:9px; width:100%; background:var(--gold);
+  transform-origin:left; transform:scaleX(var(--p,0)); }
+.btn.hot, .tile.hot { border-color:var(--gold); box-shadow:0 0 0 5px rgba(255,216,77,0.35); }
+.btn[hidden] { display:none; }
+
+.steps { display:grid; grid-template-columns:repeat(3, 300px); gap:18px; }
+.step { background:var(--panel); border:2px solid var(--line); border-radius:18px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.step canvas { width:72px; height:72px; }
+.step b { font-size:22px; color:var(--gold); }
+.step span { font-size:19px; color:var(--muted); line-height:1.35; }
+
+.tiles { display:grid; grid-template-columns:repeat(5, 210px); gap:16px; }
+.tile { position:relative; overflow:hidden; height:156px; border-radius:18px; background:var(--panel); border:3px solid var(--line); cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.tile .num { font-size:30px; font-weight:800; color:var(--gold); line-height:1; }
+.tile .nm { font-size:19px; padding:0 6px; }
+.tile canvas { width:56px; height:56px; }
+.tile.locked { opacity:0.45; cursor:default; }
+.stars { display:flex; gap:4px; justify-content:center; }
+.stars svg { width:24px; height:24px; }
+.stars.big svg { width:72px; height:72px; }
+
+#hud { position:absolute; top:12px; right:12px; display:flex; flex-direction:column; gap:12px; width:196px; pointer-events:none; }
+.panel { background:var(--panel); border:2px solid var(--line); border-radius:14px; padding:8px 10px; text-align:center; }
+.lbl { font-size:18px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+.val { font-size:32px; font-weight:800; color:var(--gold); line-height:1.15; }
+.val.sm { font-size:22px; color:var(--ink); }
+#tip { position:absolute; right:12px; bottom:24px; width:196px; font-size:21px; padding:12px 16px; border-radius:16px; background:var(--panel); border:2px solid var(--line); pointer-events:none; }
+#banner { position:absolute; left:536px; top:300px; transform:translateX(-50%); font-size:38px; font-weight:800; color:var(--gold); white-space:nowrap;
+  padding:12px 30px; border-radius:20px; background:rgba(8,12,32,0.85); border:3px solid var(--gold); opacity:0; transition:opacity 0.25s; pointer-events:none; }
+#banner.show { opacity:1; }
+#intro { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:rgba(8,12,32,0.78); }
+#intro[hidden] { display:none; }
+#intro p { font-size:26px; color:var(--muted); max-width:760px; }
+
+.result { display:flex; flex-direction:column; align-items:center; gap:14px; background:var(--panel); border:3px solid var(--line); border-radius:22px; padding:26px 40px; }
+.lines { display:grid; grid-template-columns:auto auto; gap:6px 36px; font-size:24px; text-align:left; }
+.lines .v { color:var(--gold); font-weight:800; text-align:right; }
+.won { display:flex; gap:8px; }
+.won canvas { width:64px; height:64px; }
+.shelf { display:grid; grid-template-columns:repeat(7, 150px); gap:14px; }
+.slot { height:190px; border-radius:16px; background:rgba(0,0,0,0.3); border:2px solid var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+.slot canvas { width:96px; height:96px; }
+.slot b { font-size:28px; color:var(--gold); }
+.slot span { font-size:18px; color:var(--muted); }
+.slot.none { opacity:0.4; }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border-radius:14px; border:2px solid var(--line); object-fit:cover; transform:scaleX(-1); background:#000; }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:22px; padding:8px 22px; border-radius:30px; background:rgba(8,12,32,0.92);
+  border:2px solid var(--line); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.play { left:536px; top:auto; bottom:12px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; left:16px; bottom:16px; font-size:22px; font-weight:700; padding:12px 20px; border-radius:14px; background:#1b2a5a; border:2px solid var(--gold);
+  color:var(--gold); opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="arcade" width="1280" height="720"></canvas>
+
+  <section class="screen dim on" id="menu">
+    <h1>Prize Claw</h1>
+    <p class="sub">Steer the claw with your hand, close your hand to grab, and win the toys!</p>
+    <div class="steps">
+      <div class="step"><canvas width="72" height="72" data-icon="claw"></canvas><b>1. Move your hand</b><span>The claw follows your open hand left and right.</span></div>
+      <div class="step"><canvas width="72" height="72" data-icon="fist"></canvas><b>2. Close your hand</b><span>Make a fist to drop the claw and grab a toy.</span></div>
+      <div class="step"><canvas width="72" height="72" data-icon="bear"></canvas><b>3. Aim for the middle</b><span>A claw right over the middle of a toy holds on best.</span></div>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" data-dwell="play">Play</button>
+      <button type="button" class="btn alt" data-dwell="sound" id="btn-sound">Sound: On</button>
+      <button type="button" class="btn alt" data-dwell="exit" id="btn-exit" hidden>Back to games</button>
+    </div>
+    <p class="small">Rest your open hand on a button to press it.</p>
+  </section>
+
+  <section class="screen dim" id="map">
+    <h2>Choose a machine</h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="row">
+      <button type="button" class="btn alt" data-dwell="shelf">My prizes</button>
+      <button type="button" class="btn alt" data-dwell="menu">Menu</button>
+    </div>
+  </section>
+
+  <section class="screen clear" id="play">
+    <div id="hud">
+      <div class="panel"><div class="lbl" id="hd-level">Machine 1</div><div class="val sm" id="hd-name"></div></div>
+      <div class="panel"><div class="lbl">Tries left</div><div class="val" id="hd-tries">0</div></div>
+      <div class="panel"><div class="lbl" id="hd-goal-lbl">Prizes</div><div class="val" id="hd-goal">0</div></div>
+    </div>
+    <div id="tip">Close your hand to grab!</div>
+    <div id="banner"></div>
+    <div id="intro">
+      <h2 id="in-title"></h2>
+      <p id="in-text"></p>
+      <button type="button" class="btn" data-dwell="begin">Start</button>
+      <p class="small">Rest your open hand on Start.</p>
+    </div>
+  </section>
+
+  <section class="screen dim" id="result">
+    <div class="result">
+      <h2 id="rs-title"></h2>
+      <div class="stars big" id="rs-stars"></div>
+      <div class="won" id="rs-won"></div>
+      <div class="lines" id="rs-lines"></div>
+      <div class="row" id="rs-buttons"></div>
+    </div>
+  </section>
+
+  <section class="screen dim" id="shelf">
+    <h2>My prizes</h2>
+    <div class="shelf" id="slots"></div>
+    <div class="row"><button type="button" class="btn alt" data-dwell="map">Back to machines</button></div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="claw.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const C = window.Claw;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), arcade = $('arcade'), ink = $('ink'), video = $('cam');
+const actxCanvas = arcade.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+// The machine's own space sits inside the cabinet at this offset on the stage.
+const MX = 36, MY = 70;
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'prize-claw-v1';
+const N = C.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), prizes: {}, sound: true, ach: {} };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        prizes: s.prizes || {}, ach: s.ach || {} };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every machine played since the game was opened; reported once, when the player leaves or finishes the last machine.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function tone(f, dur, type = 'sine', vol = 0.12, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+const SFX = {
+  select() { tone(620, 0.12, 'triangle', 0.12); tone(930, 0.16, 'triangle', 0.1, 0, 0.08); },
+  drop() { tone(400, 0.9, 'sawtooth', 0.04, 160); },
+  grab() { tone(180, 0.12, 'square', 0.08, 120); },
+  empty() { tone(300, 0.25, 'sine', 0.08, 200); },
+  slip() { tone(500, 0.35, 'triangle', 0.1, 150); },
+  land() { tone(120, 0.1, 'sine', 0.1, 80); },
+  win() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.22, 'triangle', 0.12, 0, i * 0.08)); },
+  over() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.12, 0, i * 0.12)); },
+  out() { [392, 330, 262].forEach((f, i) => tone(f, 0.35, 'sine', 0.1, 0, i * 0.18)); },
+  badge() { [784, 988, 1319].forEach((f, i) => tone(f, 0.2, 'sine', 0.09, 0, i * 0.08)); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- prize drawing ----------
+function face(c, y, s, cheek) {
+  c.fillStyle = '#1b1530';
+  c.beginPath(); c.arc(-9 * s, y, 3.5 * s, 0, 7); c.arc(9 * s, y, 3.5 * s, 0, 7); c.fill();
+  c.strokeStyle = '#1b1530'; c.lineWidth = 2.5 * s; c.beginPath(); c.arc(0, y + 5 * s, 6 * s, 0.3, Math.PI - 0.3); c.stroke();
+  if (cheek) { c.fillStyle = 'rgba(255,120,150,0.5)'; c.beginPath(); c.arc(-15 * s, y + 6 * s, 4 * s, 0, 7); c.arc(15 * s, y + 6 * s, 4 * s, 0, 7); c.fill(); }
+}
+function drawPrize(c, kind, x, y, r, t) {
+  const s = r / 40;
+  c.save(); c.translate(x, y);
+  if (kind === 'bear') {
+    c.fillStyle = '#b07040';
+    c.beginPath(); c.arc(-28 * s, -28 * s, 13 * s, 0, 7); c.arc(28 * s, -28 * s, 13 * s, 0, 7); c.fill();
+    c.beginPath(); c.arc(0, 0, 40 * s, 0, 7); c.fill();
+    c.fillStyle = '#e8c39a'; c.beginPath(); c.ellipse(0, 12 * s, 17 * s, 13 * s, 0, 0, 7); c.fill();
+    c.fillStyle = '#1b1530'; c.beginPath(); c.ellipse(0, 6 * s, 6 * s, 4 * s, 0, 0, 7); c.fill();
+    c.beginPath(); c.arc(-13 * s, -8 * s, 4 * s, 0, 7); c.arc(13 * s, -8 * s, 4 * s, 0, 7); c.fill();
+  } else if (kind === 'duck') {
+    c.fillStyle = '#ffd23f'; c.beginPath(); c.ellipse(4 * s, 14 * s, 38 * s, 24 * s, 0, 0, 7); c.fill();
+    c.beginPath(); c.arc(-14 * s, -14 * s, 22 * s, 0, 7); c.fill();
+    c.fillStyle = '#ff8a2a'; c.beginPath(); c.moveTo(-34 * s, -12 * s); c.lineTo(-52 * s, -6 * s); c.lineTo(-34 * s, -2 * s); c.fill();
+    c.fillStyle = '#1b1530'; c.beginPath(); c.arc(-20 * s, -20 * s, 4 * s, 0, 7); c.fill();
+  } else if (kind === 'ball') {
+    c.fillStyle = '#4da3ff'; c.beginPath(); c.arc(0, 0, 40 * s, 0, 7); c.fill();
+    c.save(); c.beginPath(); c.arc(0, 0, 40 * s, 0, 7); c.clip();
+    c.fillStyle = '#ff5a7a'; c.fillRect(-40 * s, -12 * s, 80 * s, 24 * s);
+    c.fillStyle = '#fff'; c.fillRect(-40 * s, -4 * s, 80 * s, 8 * s); c.restore();
+  } else if (kind === 'robot') {
+    c.fillStyle = '#9aa8c4'; c.beginPath(); c.roundRect(-34 * s, -30 * s, 68 * s, 64 * s, 12 * s); c.fill();
+    c.strokeStyle = '#9aa8c4'; c.lineWidth = 4 * s; c.beginPath(); c.moveTo(0, -30 * s); c.lineTo(0, -44 * s); c.stroke();
+    c.fillStyle = '#ff5a7a'; c.beginPath(); c.arc(0, -46 * s, 6 * s, 0, 7); c.fill();
+    c.fillStyle = '#1b2a4a'; c.beginPath(); c.roundRect(-24 * s, -18 * s, 48 * s, 26 * s, 8 * s); c.fill();
+    c.fillStyle = '#6ff7ff'; c.beginPath(); c.arc(-10 * s, -5 * s, 5 * s, 0, 7); c.arc(10 * s, -5 * s, 5 * s, 0, 7); c.fill();
+    c.fillStyle = '#ffd84d'; c.fillRect(-12 * s, 16 * s, 24 * s, 6 * s);
+  } else if (kind === 'dino') {
+    c.fillStyle = '#4ccf6c';
+    for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo((-26 + k * 16) * s, -26 * s); c.lineTo((-18 + k * 16) * s, -44 * s); c.lineTo((-10 + k * 16) * s, -26 * s); c.fill(); }
+    c.beginPath(); c.ellipse(0, 4 * s, 40 * s, 34 * s, 0, 0, 7); c.fill();
+    c.fillStyle = '#9ff0a8'; c.beginPath(); c.ellipse(0, 16 * s, 22 * s, 18 * s, 0, 0, 7); c.fill();
+    face(c, -6 * s, s, true);
+  } else if (kind === 'star') {
+    c.fillStyle = '#ffcc3d'; c.beginPath();
+    for (let k = 0; k < 10; k++) { const rr = (k % 2 ? 18 : 42) * s, a = -Math.PI / 2 + k * Math.PI / 5; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    c.closePath(); c.fill();
+    face(c, 0, s * 0.8, true);
+  } else if (kind === 'crown') {
+    const glow = 0.5 + Math.sin(t * 5) * 0.3;
+    c.fillStyle = `rgba(255,230,120,${glow * 0.45})`; c.beginPath(); c.arc(0, 0, 54 * s, 0, 7); c.fill();
+    c.fillStyle = '#ffc928';
+    c.beginPath(); c.moveTo(-38 * s, 26 * s); c.lineTo(-40 * s, -24 * s); c.lineTo(-20 * s, -2 * s); c.lineTo(0, -34 * s); c.lineTo(20 * s, -2 * s);
+    c.lineTo(40 * s, -24 * s); c.lineTo(38 * s, 26 * s); c.closePath(); c.fill();
+    c.fillStyle = '#ff4f8b'; c.beginPath(); c.arc(0, 10 * s, 7 * s, 0, 7); c.fill();
+    c.fillStyle = '#4da3ff'; c.beginPath(); c.arc(-22 * s, 12 * s, 5 * s, 0, 7); c.arc(22 * s, 12 * s, 5 * s, 0, 7); c.fill();
+  }
+  c.restore();
+}
+function iconCanvas(cv, kind) {
+  const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+  if (kind === 'claw') { drawClaw(c, cv.width / 2, 8, cv.width * 0.45, 0.8, 0); return; }
+  if (kind === 'fist') {
+    c.fillStyle = '#ffd84d'; c.beginPath(); c.roundRect(14, 26, 44, 36, 12); c.fill();
+    for (let k = 0; k < 4; k++) { c.beginPath(); c.roundRect(16 + k * 10, 18, 10, 14, 5); c.fill(); }
+    return;
+  }
+  drawPrize(c, kind, cv.width / 2, cv.height / 2 + 2, cv.width * 0.36, 0);
+}
+
+function drawClaw(c, x, y, len, open, t) {
+  c.save(); c.translate(x, y);
+  c.strokeStyle = '#c9d4ea'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -1000); c.lineTo(0, 0); c.stroke();
+  c.fillStyle = '#e94b6b'; c.beginPath(); c.roundRect(-20, 0, 40, 22, 8); c.fill();
+  c.fillStyle = '#ffd84d'; c.beginPath(); c.arc(0, 11, 6, 0, 7); c.fill();
+  c.strokeStyle = '#d7deef'; c.lineWidth = 7; c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const side of [-1, 0, 1]) {
+    const spread = side * (0.25 + open * 0.55);
+    const ax = Math.sin(spread) * len * 0.55, ay = 22 + Math.cos(spread) * len * 0.55;
+    const tipIn = side * (open * 6 - 10);
+    c.beginPath(); c.moveTo(side * 10, 20); c.lineTo(ax, ay); c.lineTo(ax - tipIn, ay + len * 0.35); c.stroke();
+  }
+  c.restore();
+}
+
+// ---------- cabinet ----------
+const cab = document.createElement('canvas');
+cab.width = 1280; cab.height = 720;
+(function paintCabinet(c) {
+  const bgGrad = c.createLinearGradient(0, 0, 0, 720);
+  bgGrad.addColorStop(0, '#141c44'); bgGrad.addColorStop(1, '#070a1c');
+  c.fillStyle = bgGrad; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = '#e94b6b'; c.beginPath(); c.roundRect(MX - 26, 20, 1052, 680, 28); c.fill();
+  c.fillStyle = '#ff7a94'; c.fillRect(MX - 26, 20, 1052, 14);
+  const glass = c.createLinearGradient(MX, MY, MX, MY + 600);
+  glass.addColorStop(0, '#2a3f7a'); glass.addColorStop(1, '#162250');
+  c.fillStyle = glass; c.fillRect(MX, MY, 1000, 600);
+  c.fillStyle = '#c03658'; c.fillRect(MX, MY + C.M.floor, 1000, 600 - C.M.floor);
+  c.fillStyle = '#7d2a44'; c.fillRect(MX, MY + C.M.floor, 1000, 6);
+  c.fillStyle = '#0c1230'; c.fillRect(MX + 10, MY + C.M.floor - 10, C.M.wall - 20, 50);
+  c.fillStyle = '#ffd84d'; c.fillRect(MX + C.M.wall - 10, MY + 230, 10, C.M.floor - 230);
+  c.font = '800 22px Trebuchet MS, Arial, sans-serif'; c.textAlign = 'center';
+  c.fillText('PRIZE', MX + C.M.wall / 2, MY + C.M.floor + 34);
+  c.fillStyle = '#9aa8c4'; c.fillRect(MX, MY + 14, 1000, 10);
+  c.fillStyle = 'rgba(255,255,255,0.06)';
+  c.beginPath(); c.moveTo(MX + 600, MY); c.lineTo(MX + 720, MY); c.lineTo(MX + 440, MY + 600); c.lineTo(MX + 320, MY + 600); c.closePath(); c.fill();
+})(cab.getContext('2d'));
+
+const LIGHTS = 18;
+function drawLights(c, t, party) {
+  for (let i = 0; i < LIGHTS; i++) {
+    const x = MX + i * (1000 / (LIGHTS - 1)), on = party ? (Math.floor(t * 10) + i) % 2 : (Math.floor(t * 2) + i) % 3 === 0;
+    c.fillStyle = on ? '#ffd84d' : '#7d2a44';
+    c.beginPath(); c.arc(x, 44, 7, 0, 7); c.fill();
+  }
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'map', 'play', 'result', 'shelf'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  video.classList.toggle('off', name === 'play');
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = `Sound: ${progress.sound ? 'On' : 'Off'}`; }
+updateSoundLabel();
+document.querySelectorAll('canvas[data-icon]').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffd84d' : 'rgba(255,255,255,0.15)'}" stroke="${on ? '#fff3c4' : 'rgba(255,255,255,0.3)'}" stroke-width="1"/></svg>`;
+}
+const LOCK_SVG = '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="#c5d2ee"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#c5d2ee" stroke-width="2.5"/></svg>';
+
+function openMap() {
+  $('tiles').innerHTML = C.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    const icon = lv.golden ? 'crown' : lv.prizes[0][0];
+    return `<div class="tile${locked ? ' locked' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <div class="num">${i + 1}</div><canvas width="56" height="56" data-icon="${icon}"></canvas><div class="nm">${lv.name}</div>
+      ${locked ? LOCK_SVG : `<div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div>`}</div>`;
+  }).join('');
+  $('tiles').querySelectorAll('canvas').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+  show('map');
+}
+function openShelf() {
+  $('slots').innerHTML = Object.keys(C.KINDS).map((k) => {
+    const n = progress.prizes[k] || 0;
+    return `<div class="slot${n ? '' : ' none'}"><canvas width="96" height="96" data-icon="${k}"></canvas><b>${n}</b><span>${C.KINDS[k].name}</span></div>`;
+  }).join('');
+  $('slots').querySelectorAll('canvas').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+  show('shelf');
+}
+
+// ---------- achievements ----------
+const ACH = { first: 'First Prize', crown: 'Golden Crown', lucky: 'Lucky Drop', perfect: 'Every Try Counts', collector: 'Full Collection', champion: 'Claw Champion' };
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- playing ----------
+let game = null, playing = false, endAt = 0, party = 0;
+const confetti = [];
+let bannerTimer = 0;
+function banner(text, ms = 1600) {
+  const el = $('banner'); el.textContent = text; el.classList.add('show');
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+function openGame(i) {
+  game = C.createGame(i, (Math.random() * 1e9) | 0); playing = false; endAt = 0; confetti.length = 0;
+  const lv = C.LEVELS[i];
+  $('hd-level').textContent = `Machine ${i + 1}`;
+  $('hd-name').textContent = lv.name;
+  $('hd-goal-lbl').textContent = lv.golden ? 'Win the' : 'Prizes';
+  $('in-title').textContent = lv.name;
+  const extra = [lv.swing && 'The claw swings, so time your grab.', lv.belt && 'The toys ride a conveyor belt. Aim a little ahead!'].filter(Boolean).join(' ');
+  $('in-text').textContent = (lv.golden ? 'Win the Golden Crown!' : `Win ${lv.goal} ${lv.goal === 1 ? 'prize' : 'prizes'}.`) + ` You have ${lv.tries} tries. ` + extra;
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishGame() {
+  const i = game.level, r = C.result(game), lv = C.LEVELS[i];
+  sessionScore += r.score;
+  for (const k of r.won) progress.prizes[k] = (progress.prizes[k] || 0) + 1;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  if (r.won.length) unlockAch('first');
+  if (r.won.includes('crown')) unlockAch('crown');
+  if (r.met && game.tries === lv.tries - r.won.length) unlockAch('perfect');
+  if (Object.keys(C.KINDS).every((k) => progress.prizes[k])) unlockAch('collector');
+  if (progress.stars.every((s) => s === 3)) unlockAch('champion');
+  const last = i === N - 1;
+  $('rs-title').textContent = r.met ? (r.stars === 3 ? 'Jackpot!' : 'You did it!') : 'So close!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-won').innerHTML = r.won.map((k) => `<canvas width="64" height="64" data-icon="${k}"></canvas>`).join('');
+  $('rs-won').querySelectorAll('canvas').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+  $('rs-lines').innerHTML = [['Prizes won', r.won.length], ['Tries left', game.tries], ['Score', r.score]].map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const btn = (action, label, alt) => `<button type="button" class="btn${alt ? ' alt' : ''}" data-dwell="${action}">${label}</button>`;
+  $('rs-buttons').innerHTML = !last ? btn('next', 'Next machine') + btn('again', 'Play again', true) + btn('map', 'Machines', true)
+    : btn('map', 'Machines') + btn('again', 'Play again', true);
+  playing = false;
+  show('result');
+  if (last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openMap(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': show('menu'); break;
+    case 'map': openMap(); break;
+    case 'shelf': openShelf(); break;
+    case 'level': openGame(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; fistWasOpen = false; break;
+    case 'next': openGame(Math.min(N - 1, game.level + 1)); break;
+    case 'again': openGame(game.level); break;
+  }
+}
+
+// The platform's Back button: out of a machine to the machine list, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result' || screen === 'shelf') { playing = false; openMap(); return true; }
+  if (screen === 'map') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, pose: 'none', raw: 'none', rawSince: 0, reported: false };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+// A fist must hold this long to drop the claw, so a passing hand shape does not waste a try.
+const FIST_MS = 150;
+let fistWasOpen = false;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// Fingers judged by distance from the wrist, so it works whichever way the hand is turned.
+function poseOf(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  const straight = [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+  return straight === 0 ? 'fist' : straight >= 3 ? 'open' : 'other';
+}
+// The middle of the camera frame covers the whole screen, so the far ends of the machine are reachable.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+function handleLandmarks(lm, now) {
+  const tx = reach(1 - lm[9].x, 0.12, 0.88) * W, ty = reach(lm[9].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.5;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true;
+  const raw = poseOf(lm);
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (fresh || now - hand.rawSince >= (raw === 'fist' ? FIST_MS : 80)) hand.pose = raw;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.pose = 'none';
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+// ---------- mouse ----------
+let mouseX = null;
+addEventListener('pointermove', (e) => { mouseX = e.clientX; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on')) { act(el); return; }
+  if (screen === 'play' && playing && game && C.drop(game)) sfx('drop');
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && hand.pose !== 'fist' && !(screen === 'play' && playing)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHud(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000 && mouseX === null) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintplay', screen === 'play', (v) => $('hint').classList.toggle('play', v));
+  if (!game || screen !== 'play') return;
+  const lv = C.LEVELS[game.level];
+  setOnce('tries', game.tries, (v) => { $('hd-tries').textContent = v; });
+  setOnce('goal', lv.golden ? 'Crown' : `${game.won.length} / ${lv.goal}`, (v) => { $('hd-goal').textContent = v; });
+  const state = game.claw.state;
+  const tip = state !== 'aim' ? 'Here it goes...' : hand.pose === 'fist' && !fistWasOpen ? 'Open your hand to aim again' : 'Move your hand, then close it to grab!';
+  setOnce('tip', tip, (v) => { $('tip').textContent = v; });
+}
+
+// ---------- drawing ----------
+function renderArcade(now, dt) {
+  const c = actxCanvas, t = now / 1000;
+  c.drawImage(cab, 0, 0);
+  drawLights(c, t, party > 0);
+  if (game && screen === 'play') {
+    for (const p of game.prizes) if (!p.held) drawPrize(c, p.kind, MX + p.x, MY + p.y, p.r, t);
+    const cx = MX + C.clawX(game), cy = MY + game.claw.y;
+    if (game.claw.state === 'aim') {
+      c.strokeStyle = 'rgba(255,216,77,0.35)'; c.setLineDash([8, 10]); c.lineWidth = 3;
+      c.beginPath(); c.moveTo(cx, cy + 60); c.lineTo(cx, MY + C.M.floor); c.stroke(); c.setLineDash([]);
+    }
+    const held = game.claw.prize;
+    const x = game.claw.state === 'aim' || game.claw.state === 'return' ? cx : MX + game.claw.dropX;
+    if (held) drawPrize(c, held.kind, MX + held.x, MY + held.y, held.r, t);
+    drawClaw(c, x, cy, 64, game.claw.open, t);
+  }
+  for (let i = confetti.length - 1; i >= 0; i--) {
+    const q = confetti[i];
+    q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 500 * dt;
+    if (q.t > 1.4) { confetti.splice(i, 1); continue; }
+    c.globalAlpha = 1 - q.t / 1.4; c.fillStyle = q.color; c.fillRect(q.x - 4, q.y - 4, 8, 8);
+  }
+  c.globalAlpha = 1;
+  if (party > 0) party = Math.max(0, party - dt);
+}
+function celebrate() {
+  party = 1.5;
+  const colors = ['#ffd84d', '#ff4f8b', '#4da3ff', '#4ccf6c', '#fff'];
+  for (let i = 0; i < 60; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.6, v = 300 + Math.random() * 300;
+    confetti.push({ x: MX + C.M.chuteX, y: MY + C.M.floor, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, color: colors[i % colors.length] });
+  }
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present) return;
+  if (screen === 'play' && playing) {
+    c.strokeStyle = hand.pose === 'fist' ? '#ff4f8b' : '#ffd84d'; c.lineWidth = 4;
+    c.beginPath(); c.arc(hand.x, hand.y, hand.pose === 'fist' ? 14 : 22, 0, Math.PI * 2); c.stroke();
+    return;
+  }
+  c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(hand.x, hand.y, 7, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#ffffff'; c.lineWidth = 3; c.beginPath(); c.arc(hand.x, hand.y, 20, 0, Math.PI * 2); c.stroke();
+  if (dwell.el && dwell.p > 0) {
+    c.strokeStyle = '#ffd84d'; c.lineWidth = 7;
+    c.beginPath(); c.arc(hand.x, hand.y, 32, -Math.PI / 2, -Math.PI / 2 + dwell.p * Math.PI * 2); c.stroke();
+  }
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Movement scales with the real frame time, capped so a stall on a slow device cannot jump the claw.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  if (screen === 'play' && game && playing && !game.over) {
+    let targetX = game.claw.x;
+    if (hand.present) targetX = toStage(hand.x, hand.y).x - MX;
+    else if (mouseX !== null) targetX = toStage(mouseX, 0).x - MX;
+    // A drop needs an open hand first, so holding a fist does not drop again and again.
+    if (hand.present && hand.pose !== 'fist') fistWasOpen = true;
+    if (hand.present && hand.pose === 'fist' && fistWasOpen && game.claw.state === 'aim') { if (C.drop(game)) sfx('drop'); fistWasOpen = false; }
+    C.step(game, dt, targetX);
+    for (const ev of game.events) {
+      if (ev.type === 'grab') sfx('grab');
+      else if (ev.type === 'empty') { sfx('empty'); banner('Missed! Try again', 1200); }
+      else if (ev.type === 'slip') { sfx('slip'); banner('Oh no, it slipped!', 1300); }
+      else if (ev.type === 'land') sfx('land');
+      else if (ev.type === 'win') {
+        sfx('win'); celebrate();
+        banner(`You won a ${C.KINDS[ev.kind].name}!`, 1800);
+        if (ev.lucky) unlockAch('lucky');
+      } else if (ev.type === 'over') { sfx(ev.win ? 'over' : 'out'); endAt = now + 1600; }
+    }
+    game.events.length = 0;
+  }
+  if (endAt && now >= endAt) { endAt = 0; finishGame(); }
+  renderArcade(now, dt);
+  updateDwell(now);
+  updateHud(now);
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
