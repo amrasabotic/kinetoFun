@@ -14,6 +14,17 @@ import { EndScreen } from './EndScreen';
 import { SettingsPanel } from './SettingsPanel';
 import { HowToPlay } from './HowToPlay';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 // ─── Dwell-click configuration ────────────────────────────────────────────
 
 /** ms the cursor must stay within DWELL_MOVE_PX to fire a click */
@@ -167,6 +178,8 @@ export function BalloonGame() {
   // whatever DOM element is at that position.
 
   const overlayRef = useRef<HTMLCanvasElement>(null);
+  const phaseRef   = useRef(gamePhase);
+  phaseRef.current = gamePhase;
   const dwellMap   = useRef<Map<number, DwellEntry>>(new Map());
 
   useEffect(() => {
@@ -187,7 +200,15 @@ export function BalloonGame() {
 
       ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-      const cursors = cursorsRef.current ?? [];
+      // Menus use the platform's cursor for the first player; during a round every player keeps their own.
+      const menu = phaseRef.current !== 'playing' && phaseRef.current !== 'countdown';
+      kfMenu(menu);
+      const shared = menu ? kfShared : undefined;
+      let cursors = cursorsRef.current ?? [];
+      if (shared) {
+        const lead = cursors.find((c) => c.active);
+        cursors = lead ? [{ ...lead, x: shared.x * overlay.width, y: shared.y * overlay.height, active: shared.visible }] : [];
+      }
 
       for (const cursor of cursors) {
         if (!cursor.active) {
@@ -220,7 +241,14 @@ export function BalloonGame() {
           ? 0
           : Math.min(1, (now - d.startTime) / DWELL_MS);
 
-        drawCursor(ctx, cursor, now, dwellProgress);
+        if (!shared) drawCursor(ctx, cursor, now, dwellProgress);
+        else if (dwellProgress > 0.05) {
+          ctx.beginPath();
+          ctx.arc(cursor.x, cursor.y, 34, -Math.PI / 2, -Math.PI / 2 + dwellProgress * Math.PI * 2);
+          ctx.strokeStyle = '#4ade80';
+          ctx.lineWidth = 6;
+          ctx.stroke();
+        }
       }
 
       raf = requestAnimationFrame(tick);

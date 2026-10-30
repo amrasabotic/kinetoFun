@@ -1,6 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { inputManager } from '../input/InputManager';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 const DWELL_MS = 900;
 
 /**
@@ -14,6 +25,12 @@ const DWELL_MS = 900;
  */
 export function HandNavigator() {
   const cvRef = useRef<HTMLCanvasElement>(null);
+
+  // This overlay is always mounted: the platform's cursor stands in for it everywhere.
+  useEffect(() => {
+    kfMenu(true);
+    return () => kfMenu(false);
+  }, []);
 
   useEffect(() => {
     const cv = cvRef.current!;
@@ -91,6 +108,7 @@ export function HandNavigator() {
 
       // --- Draw cursor ---
       ctx.save();
+      if (kfShared) ctx.globalAlpha = 0;
 
       // Outer ring
       ctx.shadowColor = '#FF6B35';

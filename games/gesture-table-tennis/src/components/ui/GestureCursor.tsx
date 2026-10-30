@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { HandData } from '../../gestures/useMediaPipe';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 const DWELL_MS = 1200;
 const COOLDOWN_MS = 700;
 
@@ -16,9 +27,15 @@ export default function GestureCursor({ handRef }: { handRef: React.MutableRefOb
   const dwellRef = useRef({ el: null as Element | null, startMs: 0, cooldownUntil: 0 });
   const rafRef = useRef(0);
 
+  // Mounted exactly while buttons are on screen, so it switches the platform's cursor on and off.
+  useEffect(() => {
+    kfMenu(true);
+    return () => kfMenu(false);
+  }, []);
+
   useEffect(() => {
     function loop() {
-      const hand = handRef.current;
+      const hand = kfShared ? { detected: kfShared.visible, palmX: 1 - kfShared.x, palmY: kfShared.y } : handRef.current;
       const W = window.innerWidth;
       const H = window.innerHeight;
       const now = performance.now();
@@ -96,10 +113,9 @@ export default function GestureCursor({ handRef }: { handRef: React.MutableRefOb
       }}
     >
       <svg width={S} height={S} style={{ overflow: 'visible' }}>
-        {/* Soft glow halo */}
-        <circle cx={C} cy={C} r={R + 6} fill="none" stroke="rgba(168,85,247,0.18)" strokeWidth="10" />
-        {/* White base ring */}
-        <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
+        {/* With the platform cursor only the press progress is drawn here. */}
+        {!kfShared && <circle cx={C} cy={C} r={R + 6} fill="none" stroke="rgba(168,85,247,0.18)" strokeWidth="10" />}
+        {!kfShared && <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />}
         {/* Dwell progress arc */}
         {st.dwellPct > 0 && (
           <circle
@@ -113,12 +129,15 @@ export default function GestureCursor({ handRef }: { handRef: React.MutableRefOb
             transform={`rotate(-90 ${C} ${C})`}
           />
         )}
-        {/* Center dot */}
-        <circle cx={C} cy={C} r={st.hovering ? 8 : 5}
-          fill={st.hovering ? '#a855f7' : 'rgba(168,85,247,0.8)'}
-          style={{ transition: 'r 0.1s' }}
-        />
-        <circle cx={C} cy={C} r={2.5} fill="white" />
+        {!kfShared && (
+          <>
+            <circle cx={C} cy={C} r={st.hovering ? 8 : 5}
+              fill={st.hovering ? '#a855f7' : 'rgba(168,85,247,0.8)'}
+              style={{ transition: 'r 0.1s' }}
+            />
+            <circle cx={C} cy={C} r={2.5} fill="white" />
+          </>
+        )}
       </svg>
     </div>
   );

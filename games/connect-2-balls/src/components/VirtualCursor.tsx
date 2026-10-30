@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGesture } from '../systems/GestureManager';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 export default function VirtualCursor() {
   const { state, settings } = useGesture();
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; time: number }>>([]);
@@ -19,7 +30,12 @@ export default function VirtualCursor() {
     prevPinch.current = state.isPinching;
   }, [state.isPinching, state.cursor]);
 
-  if (!state.isHandDetected) return null;
+  // The game points everywhere, so the platform's cursor stands in for this one throughout.
+  useEffect(() => {
+    kfMenu(true);
+  }, []);
+
+  if (!state.isHandDetected || kfShared) return null;
 
   const size = settings.largeCursor ? 28 : 20;
 

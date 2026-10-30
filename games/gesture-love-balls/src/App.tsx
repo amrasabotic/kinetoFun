@@ -21,7 +21,7 @@ import {
 
 // On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
 type SharedCursor = { x: number; y: number; visible: boolean };
-const kfWin = window as unknown as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
 const kfShared = kfWin.__kfCursor;
 let kfMenuOn: boolean | null = null;
 function kfMenu(on: boolean) {

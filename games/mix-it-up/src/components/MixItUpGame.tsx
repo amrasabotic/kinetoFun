@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { HandLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 type Ingredient = {
   id: string;
   name: string;
@@ -122,8 +133,15 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
         const targetX = 1 - tip.x;
         const targetY = tip.y;
         const alpha = 0.45;
-        smoothed.current.x = smoothed.current.x + (targetX - smoothed.current.x) * alpha;
-        smoothed.current.y = smoothed.current.y + (targetY - smoothed.current.y) * alpha;
+        if (kfShared) {
+          // The game points everywhere, so it follows the platform's cursor throughout.
+          kfMenu(true);
+          smoothed.current.x = kfShared.x;
+          smoothed.current.y = kfShared.y;
+        } else {
+          smoothed.current.x = smoothed.current.x + (targetX - smoothed.current.x) * alpha;
+          smoothed.current.y = smoothed.current.y + (targetY - smoothed.current.y) * alpha;
+        }
         const dx = tip.x - thumb.x;
         const dy = tip.y - thumb.y;
         const dz = (tip.z ?? 0) - (thumb.z ?? 0);
@@ -488,7 +506,7 @@ export function MixItUpGame({ onExit, stream }: { onExit: () => void; stream: Me
       )}
 
       {/* Hand cursor */}
-      {hand.visible && (
+      {hand.visible && !kfShared && (
         <div
           className="pointer-events-none absolute z-[70] -translate-x-1/2 -translate-y-1/2 transition-transform"
           style={{

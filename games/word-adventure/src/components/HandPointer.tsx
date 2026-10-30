@@ -2,6 +2,17 @@ import { useEffect, useRef } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { useHandTracking } from "@/hooks/useHandTracking";
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 // The game runs on TVs with no mouse: the index fingertip moves this pointer
 // and holding it over any link or button presses it.
 const DWELL_MS = 1000;
@@ -35,13 +46,15 @@ export default function HandPointer() {
   // draws its own cursor and this pointer stands aside.
   const off = typeof document !== "undefined" && document.body.dataset.handPointer === "off";
   const active = hand.visible && !off;
+  const pos = kfShared && !off ? { x: kfShared.x * window.innerWidth, y: kfShared.y * window.innerHeight } : hand;
 
   useEffect(() => {
+    kfMenu(!off);
     const ring = ringRef.current;
     const now = performance.now();
     let hit: HTMLElement | null = null;
     if (active && !hand.pinching && now >= armedAt.current) {
-      hit = document.elementFromPoint(hand.x, hand.y)?.closest("a, button") ?? null;
+      hit = document.elementFromPoint(pos.x, pos.y)?.closest("a, button") ?? null;
     }
     if (hit !== target.current) {
       target.current = hit;
@@ -62,13 +75,14 @@ export default function HandPointer() {
         <div
           aria-hidden
           className="pointer-events-none fixed left-0 top-0 z-[100]"
-          style={{ transform: `translate(${hand.x - 32}px, ${hand.y - 32}px)` }}
+          style={{ transform: `translate(${pos.x - 32}px, ${pos.y - 32}px)` }}
         >
           <svg width="64" height="64" viewBox="0 0 64 64">
             <circle
               cx="32"
               cy="32"
               r="9"
+              opacity={kfShared ? 0 : 1}
               fill="currentColor"
               className="text-primary"
               stroke="white"
@@ -80,6 +94,7 @@ export default function HandPointer() {
               r={RING_R}
               fill="none"
               stroke="rgba(0,0,0,0.15)"
+              opacity={kfShared ? 0 : 1}
               strokeWidth="5"
             />
             <circle

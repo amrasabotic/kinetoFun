@@ -1,5 +1,10 @@
 import { inputManager } from './InputManager';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+
 /**
  * MediaPipe Hands-based gesture recognition provider.
  *
@@ -142,8 +147,9 @@ export class CameraInputProvider {
 
     const wristX = px(wrist.x);
     const wristY = py(wrist.y);
-    const indexX = px(indexTip.x);
-    const indexY = py(indexTip.y);
+    // On the platform every hand event uses the platform cursor's position, so the game reacts where that cursor is drawn.
+    const indexX = kfShared?.visible ? kfShared.x * W : px(indexTip.x);
+    const indexY = kfShared?.visible ? kfShared.y * H : py(indexTip.y);
 
     // Use normalized space for pinch (distance between fingertips within camera frame)
     const isFist = this.detectFist(lm);
