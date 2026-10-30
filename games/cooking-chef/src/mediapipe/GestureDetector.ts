@@ -1,21 +1,30 @@
 import type { HandData, NormalizedLandmark } from '@/types';
 
-export function detectPinch(lm: NormalizedLandmark[]): boolean {
-  return Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y) < 0.08;
+const dist = (a: NormalizedLandmark, b: NormalizedLandmark) => Math.hypot(a.x - b.x, a.y - b.y);
+
+// Wrist to middle knuckle, so gestures read the same close to the TV or across the room.
+export function handSize(lm: NormalizedLandmark[]): number {
+  return Math.max(dist(lm[0], lm[9]), 1e-4);
 }
 
+export function pinchRatio(lm: NormalizedLandmark[]): number {
+  return dist(lm[4], lm[8]) / handSize(lm);
+}
+
+// Hysteresis: a pinch starts when the tips nearly touch and ends only once they clearly open.
+export function detectPinch(lm: NormalizedLandmark[], wasPinching = false): boolean {
+  return pinchRatio(lm) < (wasPinching ? 0.55 : 0.4);
+}
+
+const TIPS: [number, number][] = [[8, 5], [12, 9], [16, 13], [20, 17]];
+
+// Judged by distance from the wrist, so a tilted hand still counts.
 export function detectPalm(lm: NormalizedLandmark[]): boolean {
-  let ext = 0;
-  const pairs: [number, number][] = [[8, 6], [12, 10], [16, 14], [20, 18]];
-  pairs.forEach(([t, b]) => { if (lm[t].y < lm[b].y) ext++; });
-  return ext >= 3;
+  return TIPS.filter(([t, k]) => dist(lm[t], lm[0]) > dist(lm[k], lm[0]) * 1.45).length >= 4 && pinchRatio(lm) > 0.6;
 }
 
 export function detectFist(lm: NormalizedLandmark[]): boolean {
-  let cl = 0;
-  const pairs: [number, number][] = [[8, 6], [12, 10], [16, 14], [20, 18]];
-  pairs.forEach(([t, b]) => { if (lm[t].y > lm[b].y + 0.02) cl++; });
-  return cl >= 3;
+  return TIPS.filter(([t, k]) => dist(lm[t], lm[0]) < dist(lm[k], lm[0]) * 1.15).length >= 3;
 }
 
 export function detectThumbsUp(lm: NormalizedLandmark[]): boolean {

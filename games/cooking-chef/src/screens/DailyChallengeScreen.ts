@@ -1,6 +1,6 @@
 import type { HandData, GameAction, MinigameId } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawHandCursor, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
@@ -83,7 +83,7 @@ export function drawDailyChallenge(ctx: CanvasRenderingContext2D, W: number, H: 
     nshd(ctx); ctx.restore();
   });
 
-  hands.forEach(h => drawHandCursor(ctx, h));
+  drawPointer(ctx, hands);
 }
 
 export function completeDailyChallenge(score: number): void {

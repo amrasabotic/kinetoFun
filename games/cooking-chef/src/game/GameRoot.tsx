@@ -64,6 +64,7 @@ function GameCanvas({ state, dispatch, dailySeq }: CanvasProps) {
     const H = canvas.height;
 
     tick(ctx, W, H, dt, stateRef.current, handsRef.current, dispatch, dailySeqRef.current);
+    handsRef.current.forEach(h => { h.lastPinch = h.pinch; });
 
     rafRef.current = requestAnimationFrame(loop);
   }, [dispatch]);

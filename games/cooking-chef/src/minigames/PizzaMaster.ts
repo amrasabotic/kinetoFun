@@ -1,7 +1,7 @@
 import type { MinigameModule, MinigameContext } from '@/types/minigame';
 import type { MinigameResult } from '@/types';
 import { stirValue } from '@/mediapipe/GestureDetector';
-import { drawKitchenBg, drawTimerBar, drawGestureHint, drawHandCursor, shd, nshd, rnd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawTimerBar, drawGestureHint, shd, nshd, rnd } from '@/game/drawHelpers';
 
 const TOPPINGS = ['🍅', '🧀', '🫑', '🍄', '🫒', '🥓'];
 
@@ -55,10 +55,10 @@ export const PizzaMasterModule: MinigameModule = {
       if (sauce) { score.add(50, cx2, cy, 'SAUCE ADDED! 🍅'); phase = 'toppings'; audio.place(); }
     } else if (phase === 'toppings') {
       hands.forEach(h => {
-        if (!h.visible || !h.pinch || h.lastPinch) return;
+        if (!h.visible || !h.pinch) return;
         toppings.forEach(t => {
           if (t.placed) return;
-          if (Math.hypot(h.x - t.x, h.y - t.y) < 40) {
+          if (Math.hypot(h.x - t.x, h.y - t.y) < 60) {
             t.placed = true; t.x = cx2 + rnd(-doughSize * 0.8, doughSize * 0.8); t.y = cy + rnd(-doughSize * 0.4, doughSize * 0.4);
             score.add(40, t.x, t.y, 'TOPPING! ✓'); score.addCombo(audio); audio.catch_();
             particles.burst(t.x, t.y, '#ff7c2e', 8);
@@ -105,7 +105,6 @@ export const PizzaMasterModule: MinigameModule = {
     const hints: Record<string, string> = { spin: 'Spin the dough! 🔄', sauce: 'Open palm on dough for sauce!', toppings: 'Pinch toppings and place them!', bake: 'Baking... 🔥' };
     drawGestureHint(ctx, W, hints[phase], '🍕');
     score.drawHUD(ctx, W, H);
-    hands.forEach(h => drawHandCursor(ctx, h));
     particles.draw(ctx); score.draw(ctx);
   },
 

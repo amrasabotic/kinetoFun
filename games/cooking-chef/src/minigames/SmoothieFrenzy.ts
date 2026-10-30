@@ -1,7 +1,7 @@
 import type { MinigameModule, MinigameContext } from '@/types/minigame';
 import type { MinigameResult } from '@/types';
 import { detectChopDown } from '@/mediapipe/GestureDetector';
-import { drawKitchenBg, drawTimerBar, drawGestureHint, drawHandCursor, card, shd, nshd, rnd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawTimerBar, drawGestureHint, card, shd, nshd, rnd } from '@/game/drawHelpers';
 
 const GOOD_FRUIT = ['🍓', '🍇', '🥭', '🍍', '🍌', '🍊', '🫐'];
 const BAD_FRUIT  = ['🤢', '🦠'];
@@ -87,7 +87,6 @@ export const SmoothieFrenzyModule: MinigameModule = {
     drawTimerBar(ctx, mgTime, this.duration, W / 2 - 300, H * 0.12, 600, 16);
     drawGestureHint(ctx, W, this.hint, '🥤');
     score.drawHUD(ctx, W, H);
-    hands.forEach(h => drawHandCursor(ctx, h, '#ff7c2e'));
     particles.draw(ctx); score.draw(ctx);
   },
 

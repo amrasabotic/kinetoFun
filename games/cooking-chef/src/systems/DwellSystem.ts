@@ -11,6 +11,7 @@ export class DwellSystem {
   private activeId: string | null = null;
   private startT: number = 0;
   private regions: DwellRegion[] = [];
+  private armedAt = 0;
 
   constructor(dwellMs = 1100) {
     this.dwellMs = dwellMs;
@@ -22,7 +23,7 @@ export class DwellSystem {
 
   /** Returns the id that was just activated, or null */
   tick(hand: HandData | null): string | null {
-    if (!hand || !hand.visible) { this.activeId = null; return null; }
+    if (!hand || !hand.visible || Date.now() < this.armedAt) { this.activeId = null; return null; }
     let hovered: string | null = null;
     for (const r of this.regions) {
       if (hand.x >= r.x && hand.x <= r.x + r.w && hand.y >= r.y && hand.y <= r.y + r.h) {
@@ -45,6 +46,9 @@ export class DwellSystem {
   }
 
   reset(): void { this.activeId = null; }
+
+  // A screen that opens under the hand must not press its buttons straight away.
+  arm(ms = 1500): void { this.activeId = null; this.armedAt = Date.now() + ms; }
 
   /** Draw dwell progress arc under each registered region */
   drawProgress(ctx: CanvasRenderingContext2D, accentCol = '#ff7c2e'): void {

@@ -1,6 +1,6 @@
 import type { MinigameModule, MinigameContext } from '@/types/minigame';
 import type { MinigameResult } from '@/types';
-import { drawKitchenBg, drawTimerBar, drawGestureHint, drawHandCursor, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawTimerBar, drawGestureHint, shd, nshd } from '@/game/drawHelpers';
 import { VegChopModule } from './VegChop';
 import { StirSoupModule } from './StirSoup';
 import { FlipPancakeModule } from './FlipPancake';

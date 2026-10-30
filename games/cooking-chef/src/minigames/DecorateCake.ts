@@ -1,6 +1,6 @@
 import type { MinigameModule, MinigameContext } from '@/types/minigame';
 import type { MinigameResult } from '@/types';
-import { drawKitchenBg, drawTimerBar, drawGestureHint, drawHandCursor, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawTimerBar, drawGestureHint, card, shd, nshd } from '@/game/drawHelpers';
 
 const DECO_ITEMS = [
   { emoji: '🍓', col: '#ff3355' }, { emoji: '🍫', col: '#884422' },
@@ -44,8 +44,8 @@ export const DecorateCakeModule: MinigameModule = {
           heldItem = null;
         }
       } else if (!heldItem) {
-        if (h.pinch && !h.lastPinch) {
-          palette.forEach(p => { if (Math.hypot(h.x - p.x, h.y - p.y) < 40) { heldItem = { ...p, handIdx: hi }; audio.catch_(); } });
+        if (h.pinch) {
+          palette.forEach(p => { if (Math.hypot(h.x - p.x, h.y - p.y) < 60) { heldItem = { ...p, handIdx: hi }; audio.catch_(); } });
         }
       }
     });
@@ -81,7 +81,7 @@ export const DecorateCakeModule: MinigameModule = {
     ctx.restore();
 
     palette.forEach(p => {
-      const hov = hands.some(h => h.visible && Math.hypot(h.x - p.x, h.y - p.y) < 40);
+      const hov = hands.some(h => h.visible && Math.hypot(h.x - p.x, h.y - p.y) < 60);
       card(ctx, p.x - 36, p.y - 36, 72, 72, 12, hov ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.4)', hov ? p.col : 'rgba(255,255,255,0.2)', 2);
       ctx.font = '30px system-ui'; ctx.textAlign = 'center'; ctx.fillText(p.emoji, p.x, p.y + 10);
     });
@@ -98,7 +98,6 @@ export const DecorateCakeModule: MinigameModule = {
     drawTimerBar(ctx, mgTime, this.duration, W / 2 - 300, H * 0.12, 600, 16);
     drawGestureHint(ctx, W, this.hint, '🧁');
     score.drawHUD(ctx, W, H);
-    hands.forEach(h => drawHandCursor(ctx, h, heldItem ? '#ff7c2e' : '#fff'));
     particles.draw(ctx); score.draw(ctx);
   },
 

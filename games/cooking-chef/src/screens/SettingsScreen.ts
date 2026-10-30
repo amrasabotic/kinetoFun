@@ -1,6 +1,6 @@
 import type { HandData, GameAction } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawHandCursor, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
@@ -104,5 +104,5 @@ export function drawSettings(ctx: CanvasRenderingContext2D, W: number, H: number
 
   ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,200,100,0.6)';
   ctx.fillText('👋 Hover 1 second to toggle each setting', W / 2, H * 0.96);
-  hands.forEach(h => drawHandCursor(ctx, h));
+  drawPointer(ctx, hands);
 }

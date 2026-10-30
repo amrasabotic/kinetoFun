@@ -1,6 +1,6 @@
 import type { HandData, GameAction } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawHandCursor, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { SHORT_SEQUENCE } from '@/hooks/useGameState';
@@ -107,7 +107,7 @@ export function drawPartySetup(ctx: CanvasRenderingContext2D, W: number, H: numb
   ctx.fillText('← MAIN MENU', W / 2, backR.y + 31);
   nshd(ctx); ctx.restore();
 
-  hands.forEach(h => drawHandCursor(ctx, h));
+  drawPointer(ctx, hands);
 }
 
 export function drawPartyLeaderboard(
@@ -148,5 +148,5 @@ export function drawPartyLeaderboard(
   ctx.fillText('← MAIN MENU', W / 2, backRegion[0].y + 31);
   nshd(ctx); ctx.restore();
 
-  hands.forEach(h => drawHandCursor(ctx, h));
+  drawPointer(ctx, hands);
 }

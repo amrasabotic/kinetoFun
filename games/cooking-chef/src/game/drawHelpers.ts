@@ -48,16 +48,27 @@ export function drawKitchenBg(ctx: CanvasRenderingContext2D, W: number, H: numbe
   ctx.globalAlpha = 1;
 }
 
-export function drawHandCursor(ctx: CanvasRenderingContext2D, h: HandData, _col = '#fff'): void {
+export function drawHandCursor(ctx: CanvasRenderingContext2D, h: HandData): void {
   if (!h.visible) return;
   const col = h.pinch ? '#ff7c2e' : h.palm ? '#44ff88' : '#ffffff';
-  const pulse = 0.78 + 0.22 * Math.sin(performance.now() * 0.008);
+  const r = h.pinch ? 16 : 26;
   ctx.save();
-  shd(ctx, col, 16);
-  ctx.strokeStyle = col; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.arc(h.x, h.y, 22 * pulse, 0, Math.PI * 2); ctx.stroke();
-  if (h.pinch) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(h.x, h.y, 7, 0, Math.PI * 2); ctx.fill(); }
-  nshd(ctx); ctx.restore();
+  ctx.lineWidth = 9; ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 5; ctx.strokeStyle = col;
+  ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(h.x, h.y, h.pinch ? 9 : 5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// The hand that presses buttons; menus show only this one so there is never a second cursor.
+export function leadHand(hands: HandData[]): HandData | null {
+  return hands.find(h => h.visible) ?? null;
+}
+
+export function drawPointer(ctx: CanvasRenderingContext2D, hands: HandData[]): void {
+  const h = leadHand(hands);
+  if (h) drawHandCursor(ctx, h);
 }
 
 export function drawGestureHint(ctx: CanvasRenderingContext2D, W: number, text: string, icon = '👋'): void {

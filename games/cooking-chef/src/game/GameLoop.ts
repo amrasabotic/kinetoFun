@@ -6,10 +6,11 @@ import { particleSystem } from '@/systems/ParticleSystem';
 import { scoreSystem } from '@/systems/ScoreSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
-import { drawTimerBar, drawHandCursor, shd, nshd } from './drawHelpers';
+import { drawTimerBar, drawHandCursor } from './drawHelpers';
 
 import { initCalibration, updateCalibration, drawCalibration } from '@/screens/CalibrationScreen';
-import { drawMenu } from '@/screens/MenuScreen';
+import { drawMenu, menuDwell } from '@/screens/MenuScreen';
+import { drawStartBg, drawTitle, unit, font, INK } from '@/screens/startUi';
 import { initCountdown, updateCountdown, drawCountdown } from '@/screens/CountdownScreen';
 import { initTransition, updateTransition, drawTransition } from '@/screens/TransitionScreen';
 import { initResults, updateResults, drawResults } from '@/screens/ResultsScreen';
@@ -19,7 +20,7 @@ import { updateAchievements, drawAchievements } from '@/screens/AchievementsScre
 import { initWorldMap, updateWorldMap, drawWorldMap } from '@/screens/WorldMapScreen';
 import { updateDailyChallenge, drawDailyChallenge, completeDailyChallenge } from '@/screens/DailyChallengeScreen';
 import { updatePartySetup, drawPartySetup, drawPartyLeaderboard, initPartySetup } from '@/screens/PartyModeScreen';
-import { updateHowTo, drawHowTo } from '@/screens/HowToScreen';
+import { updateHowTo, drawHowTo, howtoDwell } from '@/screens/HowToScreen';
 
 /* ── mutable per-session state ───────────────────────────── */
 let prevScreen: string = '';
@@ -92,12 +93,17 @@ function finishCurrentMinigame(
 
 /* ── loading screen ──────────────────────────────────────── */
 function drawLoading(ctx: CanvasRenderingContext2D, W: number, H: number): void {
-  ctx.fillStyle = '#1a1208'; ctx.fillRect(0, 0, W, H);
-  ctx.save(); shd(ctx, '#ff7c2e', 30);
-  ctx.font = `bold ${Math.round(H * 0.07)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#ff7c2e';
-  ctx.fillText('🍳 COOKING CHEF', W / 2, H / 2 - 30); nshd(ctx);
-  ctx.font = '20px system-ui'; ctx.fillStyle = 'rgba(255,220,150,0.7)';
-  ctx.fillText('Loading camera & gesture system…', W / 2, H / 2 + 30);
+  const u = unit(W, H);
+  drawStartBg(ctx, W, H);
+  drawTitle(ctx, W, H, H * 0.4);
+  ctx.save();
+  ctx.font = font(44 * u, 800); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK;
+  ctx.fillText('Warming up the camera…', W / 2, H * 0.56);
+  const t = performance.now() / 300;
+  for (let i = 0; i < 3; i++) {
+    ctx.globalAlpha = 0.3 + 0.7 * Math.max(0, Math.sin(t - i * 0.7));
+    ctx.fillStyle = '#e8462e'; ctx.beginPath(); ctx.arc(W / 2 + (i - 1) * 50 * u, H * 0.65, 14 * u, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -120,7 +126,8 @@ export function tick(
       case 'settings':    initSettings(); break;
       case 'world-map':   initWorldMap(); break;
       case 'party-setup': initPartySetup(); break;
-      case 'menu':        sessionMaxCombo = 0; break;
+      case 'menu':        sessionMaxCombo = 0; menuDwell.arm(); break;
+      case 'howto':       howtoDwell.arm(); break;
       default:            break;
     }
     prevScreen = screen;

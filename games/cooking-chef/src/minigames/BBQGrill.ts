@@ -1,7 +1,7 @@
 import type { MinigameModule, MinigameContext } from '@/types/minigame';
 import type { MinigameResult } from '@/types';
 import { detectSwipeLeft, detectSwipeRight } from '@/mediapipe/GestureDetector';
-import { drawKitchenBg, drawTimerBar, drawGestureHint, drawHandCursor, card, shd, nshd, rnd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawTimerBar, drawGestureHint, card, shd, nshd, rnd } from '@/game/drawHelpers';
 
 interface Meat { x: number; y: number; cook: number; maxCook: number; flipped: boolean; done: boolean; burned: boolean; emoji: string; flipAnim: number; flipVY: number; }
 
@@ -106,7 +106,6 @@ export const BBQGrillModule: MinigameModule = {
     // Palm cursor indicators
     hands.forEach(h => {
       if (!h.visible) return;
-      drawHandCursor(ctx, h, h.palm ? '#ff7c2e' : '#fff');
       if (h.palm) { ctx.save(); ctx.globalAlpha = 0.2; ctx.fillStyle = '#ff7c2e'; ctx.beginPath(); ctx.arc(h.x, h.y, 45, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
     });
 

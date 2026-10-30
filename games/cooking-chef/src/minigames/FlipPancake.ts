@@ -1,7 +1,7 @@
 import type { MinigameModule, MinigameContext } from '@/types/minigame';
 import type { MinigameResult } from '@/types';
 import { detectSwipeUp } from '@/mediapipe/GestureDetector';
-import { drawKitchenBg, drawTimerBar, drawGestureHint, drawHandCursor, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawTimerBar, drawGestureHint, shd, nshd } from '@/game/drawHelpers';
 
 interface Pan { x: number; y: number; cook: number; maxCook: number; state: 'raw' | 'cooked' | 'burned'; done: boolean; flipping: boolean; flipY: number; flipVY: number; }
 
@@ -153,7 +153,6 @@ export const FlipPancakeModule: MinigameModule = {
     drawTimerBar(ctx, mgTime, this.duration, W / 2 - 300, H * 0.12, 600, 16);
     drawGestureHint(ctx, W, this.hint, '🥞');
     score.drawHUD(ctx, W, H);
-    hands.forEach(h => drawHandCursor(ctx, h, '#ffd700'));
     particles.draw(ctx); score.draw(ctx);
 
     // Instruction overlay for first 3.5 seconds

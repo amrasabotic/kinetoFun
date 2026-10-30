@@ -1,6 +1,6 @@
 import type { HandData, GameAction, GameSession, GameMode } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawHandCursor, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
@@ -91,5 +91,5 @@ export function drawResults(ctx: CanvasRenderingContext2D, W: number, H: number,
   });
 
   particles.draw(ctx);
-  hands.forEach(h => drawHandCursor(ctx, h));
+  drawPointer(ctx, hands);
 }
