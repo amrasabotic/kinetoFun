@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pottery Studio</title>
+<style>
+:root { --gold:#ffcf70; --clay:#d08a55; --ink:#fff4e8; --muted:#e0cbb8; --panel:rgba(38,24,30,0.9); --line:rgba(255,207,112,0.45); }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#1d1318; color:var(--ink); font-family:'Trebuchet MS','Segoe UI',Arial,sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#field { position:absolute; inset:0; width:1280px; height:720px; display:none; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+
+.screen { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px 40px; text-align:center; }
+.screen.on { display:flex; }
+.backdrop { background:radial-gradient(ellipse at 50% 30%, #5a3640 0%, #2e1c24 55%, #150c10 100%); }
+.clear { background:none; }
+
+h1 { font-size:68px; line-height:1.05; font-family:Georgia,'Times New Roman',serif; color:var(--gold); }
+h2 { font-size:42px; font-family:Georgia,'Times New Roman',serif; color:var(--gold); }
+.sub { font-size:24px; color:var(--muted); max-width:900px; }
+.small { font-size:20px; color:var(--muted); }
+.row { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; }
+
+.btn { position:relative; min-width:230px; min-height:84px; padding:14px 34px; border-radius:20px; overflow:hidden; cursor:pointer;
+  border:3px solid rgba(255,255,255,0.25); background:linear-gradient(135deg,#c2622f,#e3954f); color:#fff;
+  font:800 28px 'Trebuchet MS','Segoe UI',Arial,sans-serif; box-shadow:0 8px 24px rgba(0,0,0,0.35); }
+.btn.alt { background:rgba(255,255,255,0.08); border-color:var(--line); }
+.btn::after, .tile::after, .swatch::after { content:''; position:absolute; left:0; bottom:0; height:9px; width:100%; background:var(--gold);
+  transform-origin:left; transform:scaleX(var(--p,0)); }
+.btn.hot, .tile.hot, .swatch.hot { border-color:var(--gold); box-shadow:0 0 0 5px rgba(255,207,112,0.35); }
+.btn[hidden] { display:none; }
+
+.steps { display:grid; grid-template-columns:repeat(3, 300px); gap:18px; }
+.step { background:var(--panel); border:2px solid var(--line); border-radius:18px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.step svg { width:72px; height:72px; }
+.step b { font-size:22px; color:var(--gold); }
+.step span { font-size:19px; color:var(--muted); line-height:1.35; }
+
+.tiles { display:grid; grid-template-columns:repeat(6, 175px); gap:14px; }
+.tile { position:relative; overflow:hidden; height:168px; border-radius:18px; background:var(--panel); border:3px solid var(--line); cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.tile svg.shape { width:70px; height:70px; }
+.tile .nm { font-size:19px; }
+.tile.locked { opacity:0.45; cursor:default; }
+.stars { display:flex; gap:4px; justify-content:center; }
+.stars svg { width:24px; height:24px; }
+.stars.big svg { width:64px; height:64px; }
+
+#shape-hud { position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; gap:14px; pointer-events:none; }
+.panel { background:var(--panel); border:2px solid var(--line); border-radius:14px; padding:6px 20px; min-width:200px; text-align:center; }
+.lbl { font-size:18px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+.val { font-size:30px; font-weight:800; color:var(--gold); line-height:1.1; }
+.val.sm { font-size:24px; color:var(--ink); }
+.side { position:absolute; top:300px; display:flex; flex-direction:column; gap:12px; }
+.side.left { left:40px; }
+.side.right { right:40px; }
+.side .btn { min-width:210px; }
+#intro { position:absolute; left:50%; top:110px; transform:translateX(-50%); width:640px; padding:22px 30px; border-radius:22px; background:var(--panel);
+  border:3px solid var(--line); display:flex; flex-direction:column; gap:12px; align-items:center; }
+#intro[hidden] { display:none; }
+#intro p { font-size:23px; color:var(--muted); line-height:1.35; }
+#tip { position:absolute; left:40px; bottom:24px; font-size:22px; padding:8px 20px; border-radius:30px; background:rgba(20,10,14,0.85);
+  border:2px solid var(--line); white-space:nowrap; pointer-events:none; }
+
+.paint { position:absolute; right:40px; top:60px; width:560px; display:flex; flex-direction:column; gap:14px; align-items:center; background:var(--panel);
+  border:3px solid var(--line); border-radius:22px; padding:20px; }
+.swatches { display:grid; grid-template-columns:repeat(3, 160px); gap:12px; }
+.swatch { position:relative; overflow:hidden; height:84px; border-radius:16px; border:3px solid rgba(255,255,255,0.2); cursor:pointer;
+  display:flex; align-items:flex-end; justify-content:center; padding-bottom:12px; font-size:20px; font-weight:700; color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.6); }
+.swatch.pick { outline:4px solid #fff; outline-offset:2px; }
+.pattern { background:rgba(255,255,255,0.08); }
+
+.result { position:absolute; right:60px; top:70px; width:520px; display:flex; flex-direction:column; gap:14px; align-items:center; background:var(--panel);
+  border:3px solid var(--line); border-radius:22px; padding:24px; }
+.lines { display:grid; grid-template-columns:auto auto; gap:6px 36px; font-size:24px; text-align:left; }
+.lines .v { color:var(--gold); font-weight:800; text-align:right; }
+
+.shelf { display:grid; grid-template-columns:repeat(6, 170px); gap:14px; }
+.slot { height:200px; border-radius:16px; background:rgba(0,0,0,0.3); border:2px solid var(--line); display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:8px; }
+.slot canvas { width:150px; height:150px; }
+.slot span { font-size:18px; color:var(--muted); }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border-radius:14px; border:2px solid var(--line); object-fit:cover; transform:scaleX(-1); background:#000; }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:22px; padding:8px 22px; border-radius:30px; background:rgba(20,10,14,0.9);
+  border:2px solid var(--line); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.low { top:96px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; right:16px; top:16px; font-size:22px; font-weight:700; padding:12px 20px; border-radius:14px; background:#4a2c2c; border:2px solid var(--gold);
+  color:var(--gold); opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="field" width="1280" height="720"></canvas>
+
+  <section class="screen backdrop on" id="menu">
+    <h1>Pottery Studio</h1>
+    <p class="sub">Shape spinning clay with your finger, glaze it in bright colours and fill your shelf.</p>
+    <div class="steps">
+      <div class="step" id="step-1"><b>1. Point one finger</b><span>Your fingertip is the potter's tool. Touch the spinning clay with it.</span></div>
+      <div class="step" id="step-2"><b>2. Push in or pull out</b><span>Push in to make it thinner and taller. Pull out to make it wider.</span></div>
+      <div class="step" id="step-3"><b>3. Match the outline</b><span>Fit the gold outline, then glaze and fire your pot.</span></div>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" data-dwell="play">Play</button>
+      <button type="button" class="btn alt" data-dwell="sound" id="btn-sound">Sound: On</button>
+      <button type="button" class="btn alt" data-dwell="exit" id="btn-exit" hidden>Back to games</button>
+    </div>
+    <p class="small">Rest your open hand on a button to press it.</p>
+  </section>
+
+  <section class="screen backdrop" id="map">
+    <h2>Choose a pot to make</h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="row">
+      <button type="button" class="btn" data-dwell="free">Free studio</button>
+      <button type="button" class="btn alt" data-dwell="shelf">My shelf</button>
+      <button type="button" class="btn alt" data-dwell="menu">Menu</button>
+    </div>
+  </section>
+
+  <section class="screen clear" id="shape">
+    <div id="shape-hud">
+      <div class="panel"><div class="lbl" id="sh-kicker">Lesson 1</div><div class="val sm" id="sh-name"></div></div>
+      <div class="panel" id="sh-matchbox"><div class="lbl">Match</div><div class="val" id="sh-match">0%</div></div>
+      <div class="panel" id="sh-starbox"><div class="lbl">Stars</div><div class="stars" id="sh-stars"></div></div>
+    </div>
+    <div class="side left"><button type="button" class="btn alt" data-dwell="reset">Start over</button></div>
+    <div class="side right"><button type="button" class="btn" data-dwell="done">Done</button></div>
+    <div id="intro">
+      <h2 id="in-title"></h2>
+      <p id="in-text"></p>
+      <button type="button" class="btn" data-dwell="begin">Start</button>
+      <p class="small">Rest your open hand on Start.</p>
+    </div>
+    <div id="tip">Point one finger and touch the clay</div>
+  </section>
+
+  <section class="screen clear" id="glaze">
+    <div class="paint">
+      <h2>Glaze your pot</h2>
+      <div class="swatches" id="glazes"></div>
+      <div class="swatches" id="patterns"></div>
+      <button type="button" class="btn" data-dwell="fire">Fire in the kiln</button>
+    </div>
+  </section>
+
+  <section class="screen clear" id="result">
+    <div class="result">
+      <h2 id="rs-title"></h2>
+      <div class="stars big" id="rs-stars"></div>
+      <div class="lines" id="rs-lines"></div>
+      <div class="row" id="rs-buttons"></div>
+    </div>
+  </section>
+
+  <section class="screen backdrop" id="shelf">
+    <h2>My shelf</h2>
+    <div class="shelf" id="slots"></div>
+    <div class="row"><button type="button" class="btn alt" data-dwell="map">Back to pots</button></div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="pottery.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const P = window.Pottery;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), field = $('field'), ink = $('ink'), video = $('cam');
+const fctx = field.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'pottery-studio-v1';
+const N = P.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), shelf: {}, sound: true, ach: {}, glazes: {} };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        shelf: s.shelf || {}, ach: s.ach || {}, glazes: s.glazes || {} };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every pot made since the game was opened; reported once, when the player leaves or finishes the last pot.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null, noiseBuf = null, wheel = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function noiseBuffer(a) {
+  if (!noiseBuf) {
+    noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return noiseBuf;
+}
+function tone(f, dur, type = 'sine', vol = 0.12, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+function whoosh(dur, freq, vol, freq2) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  s.buffer = noiseBuffer(a); f.type = 'lowpass'; f.frequency.setValueAtTime(freq, t);
+  if (freq2) f.frequency.exponentialRampToValueAtTime(freq2, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f).connect(g).connect(a.destination); s.start(t); s.stop(t + dur + 0.05);
+}
+// The wheel hum and the clay squish run continuously while shaping; only their volume changes.
+function wheelSound(spinning, contact) {
+  const a = progress.sound ? audio() : null;
+  if (!wheel) {
+    if (!a || !spinning) return;
+    const hum = a.createOscillator(), humGain = a.createGain();
+    hum.type = 'triangle'; hum.frequency.value = 58; humGain.gain.value = 0;
+    hum.connect(humGain).connect(a.destination); hum.start();
+    const sq = a.createBufferSource(), lp = a.createBiquadFilter(), sqGain = a.createGain();
+    sq.buffer = noiseBuffer(a); sq.loop = true; lp.type = 'lowpass'; lp.frequency.value = 500; sqGain.gain.value = 0;
+    sq.connect(lp).connect(sqGain).connect(a.destination); sq.start();
+    wheel = { humGain, sqGain, ctx: a };
+  }
+  const t = wheel.ctx.currentTime, on = spinning && progress.sound;
+  wheel.humGain.gain.setTargetAtTime(on ? 0.035 : 0, t, 0.15);
+  wheel.sqGain.gain.setTargetAtTime(on ? Math.min(0.3, contact * 0.02) : 0, t, 0.05);
+}
+const SFX = {
+  select() { tone(620, 0.12, 'triangle', 0.12); tone(930, 0.16, 'triangle', 0.1, 0, 0.08); },
+  reset() { whoosh(0.5, 900, 0.25, 200); },
+  glaze() { tone(880, 0.15, 'sine', 0.08, 1200); },
+  kiln() { whoosh(1.6, 300, 0.3, 1400); tone(90, 1.6, 'sawtooth', 0.05, 140); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.12, 0, i * 0.12)); },
+  badge() { [784, 988, 1319].forEach((f, i) => tone(f, 0.2, 'sine', 0.09, 0, i * 0.08)); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- glazes and icons ----------
+const GLAZES = [
+  { id: 'sky', name: 'Sky', color: '#4aa3df' }, { id: 'leaf', name: 'Leaf', color: '#5cb85c' }, { id: 'sunset', name: 'Sunset', color: '#f08a4b' },
+  { id: 'berry', name: 'Berry', color: '#b5487a' }, { id: 'honey', name: 'Honey', color: '#e9c046' }, { id: 'snow', name: 'Snow', color: '#eef0f2' },
+];
+const PATTERNS = [{ id: 'plain', name: 'Plain' }, { id: 'stripes', name: 'Stripes' }, { id: 'dots', name: 'Dots' }];
+const glazeColor = (id) => (GLAZES.find((g) => g.id === id) || GLAZES[0]).color;
+
+function shapeSVG(target, color, cls = 'shape') {
+  const s = 80 / Math.max(target.h, 2 * Math.max(...target.r));
+  const pts = [];
+  for (let i = 0; i < P.SLICES; i++) pts.push([50 - target.r[i] * s, 90 - ((i + 0.5) / P.SLICES) * target.h * s]);
+  const right = pts.map(([x, y]) => [100 - x, y]).reverse();
+  const d = 'M' + [[50 - target.r[0] * s, 90], ...pts, ...right, [50 + target.r[0] * s, 90]].map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L') + ' Z';
+  return `<svg class="${cls}" viewBox="0 0 100 100" aria-hidden="true"><path d="${d}" fill="${color}" stroke="rgba(255,255,255,0.6)" stroke-width="2"/></svg>`;
+}
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffcf70' : 'rgba(255,255,255,0.15)'}" stroke="${on ? '#fff3c4' : 'rgba(255,255,255,0.3)'}" stroke-width="1"/></svg>`;
+}
+const LOCK_SVG = '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="#e0cbb8"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#e0cbb8" stroke-width="2.5"/></svg>';
+const TARGETS = P.LEVELS.map((lv) => P.targetFor(lv));
+
+$('step-1').insertAdjacentHTML('afterbegin', '<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="40" y="38" width="20" height="50" rx="10" fill="#f1c9a5"/><rect x="45" y="8" width="10" height="40" rx="5" fill="#f1c9a5"/><circle cx="50" cy="12" r="6" fill="#ffcf70"/></svg>');
+$('step-2').insertAdjacentHTML('afterbegin', shapeSVG(TARGETS[4], '#d08a55'));
+$('step-3').insertAdjacentHTML('afterbegin', shapeSVG(TARGETS[3], '#4aa3df'));
+
+// ---------- achievements ----------
+const ACH = {
+  first_pot: 'First Pot', three_stars: 'Three Stars', perfect: 'Perfect Fit',
+  tower: 'Tall Tower', rainbow: 'Every Colour', master: 'Master Potter',
+};
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'map', 'shape', 'glaze', 'result', 'shelf'];
+const STUDIO = new Set(['shape', 'glaze', 'result']);
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  field.style.display = STUDIO.has(name) ? 'block' : 'none';
+  video.classList.toggle('off', STUDIO.has(name));
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+  if (name !== 'shape') wheelSound(false, 0);
+}
+
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = `Sound: ${progress.sound ? 'On' : 'Off'}`; }
+updateSoundLabel();
+
+function openMap() {
+  $('tiles').innerHTML = P.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    return `<div class="tile${locked ? ' locked' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      ${shapeSVG(TARGETS[i], locked ? '#6b5560' : '#d08a55')}<div class="nm">${lv.name}</div>
+      ${locked ? LOCK_SVG : `<div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div>`}</div>`;
+  }).join('');
+  show('map');
+}
+
+function openShelf() {
+  $('slots').innerHTML = P.LEVELS.map((lv, i) => `<div class="slot"><canvas width="150" height="150" data-slot="${i}"></canvas><span>${lv.name}</span></div>`).join('');
+  for (const cv of $('slots').querySelectorAll('canvas')) {
+    const i = Number(cv.dataset.slot), item = progress.shelf[i], c = cv.getContext('2d');
+    if (item) {
+      const pot = { r: item.r, h: item.h };
+      const s = Math.min(1, 130 / pot.h, 66 / Math.max(...pot.r));
+      drawPot(c, pot, 75, 140, s, { glaze: item.glaze, pattern: item.pattern, phase: 0.4 });
+    } else {
+      c.save(); c.translate(75, 140); c.scale(0.55, 0.55); c.translate(-75, -140);
+      c.globalAlpha = 0.25; drawOutline(c, TARGETS[i], 75, 140, 1); c.restore();
+    }
+  }
+  show('shelf');
+}
+
+// ---------- the studio ----------
+let level = 0, target = null, pot = P.createPot(), phase = 0, match = 0, glaze = 'sky', pattern = 'plain', firing = 0, shaping = false;
+const WHEEL = { x: 640, y: 610 };
+let potX = WHEEL.x;
+const crumbs = [];
+
+function startPot(i) {
+  level = i;
+  target = i === null ? null : TARGETS[i];
+  pot = P.createPot(); match = 0; potX = WHEEL.x; firing = 0; shaping = false; crumbs.length = 0;
+  $('sh-kicker').textContent = i === null ? 'Free studio' : `Pot ${i + 1} of ${N}`;
+  $('sh-name').textContent = i === null ? 'Make anything!' : P.LEVELS[i].name;
+  $('sh-matchbox').hidden = $('sh-starbox').hidden = i === null;
+  $('in-title').textContent = i === null ? 'Free studio' : `Make a ${P.LEVELS[i].name}`;
+  $('in-text').textContent = i === null
+    ? 'No outline this time. Shape any pot you like, then glaze it.'
+    : 'Shape the spinning clay to fit the gold outline. Push in to make it thinner and taller, pull out to make it wider.';
+  $('intro').hidden = false;
+  $('tip').hidden = true;
+  hud = {};
+  show('shape');
+}
+
+function updateMatch() {
+  if (!target) return;
+  match = P.match(pot, target);
+  const pct = Math.round(match * 100);
+  setOnce('match', pct, (v) => { $('sh-match').textContent = v + '%'; });
+  setOnce('stars', P.starsFor(match), (v) => { $('sh-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < v)).join(''); });
+}
+
+function openGlaze() {
+  wheelSound(false, 0);
+  shaping = false; potX = 400;
+  $('glazes').innerHTML = GLAZES.map((g) => `<div class="swatch${g.id === glaze ? ' pick' : ''}" data-dwell="glaze" data-glaze="${g.id}" style="background:${g.color};${g.id === 'snow' ? 'color:#333;text-shadow:none' : ''}">${g.name}</div>`).join('');
+  $('patterns').innerHTML = PATTERNS.map((p) => `<div class="swatch pattern${p.id === pattern ? ' pick' : ''}" data-dwell="pattern" data-pattern="${p.id}">${p.name}</div>`).join('');
+  show('glaze');
+}
+
+function fire() {
+  firing = performance.now();
+  sfx('kiln');
+  armedAt = Infinity;
+}
+
+function finishPot() {
+  firing = 0;
+  progress.glazes[glaze] = true;
+  let lines, stars = 0, score = 0;
+  if (target) {
+    const i = level, pct = Math.round(match * 100);
+    stars = P.starsFor(match); score = P.scoreFor(match);
+    sessionScore += score;
+    if (pct >= progress.best[i] || !progress.shelf[i]) {
+      progress.shelf[i] = { r: pot.r.map((r) => Math.round(r * 10) / 10), h: Math.round(pot.h * 10) / 10, glaze, pattern };
+    }
+    progress.stars[i] = Math.max(progress.stars[i], stars);
+    progress.best[i] = Math.max(progress.best[i], pct);
+    progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+    lines = [['Match', pct + '%'], ['Best', progress.best[i] + '%'], ['Score', score]];
+    if (stars === 3) unlockAch('three_stars');
+    if (pct >= 95) unlockAch('perfect');
+    if (progress.stars.every((s) => s === 3)) unlockAch('master');
+  } else {
+    lines = [['Height', Math.round(pot.h)], ['Widest', Math.round(2 * Math.max(...pot.r))]];
+  }
+  save();
+  unlockAch('first_pot');
+  if (pot.h >= 330) unlockAch('tower');
+  if (GLAZES.every((g) => progress.glazes[g.id])) unlockAch('rainbow');
+  sfx('win');
+  const last = level === N - 1;
+  $('rs-title').textContent = !target ? 'What a lovely pot!' : stars === 3 ? 'Beautiful!' : stars === 2 ? 'Great pot!' : 'Nice try!';
+  $('rs-stars').innerHTML = target ? [0, 1, 2].map((k) => starSVG(k < stars)).join('') : '';
+  $('rs-lines').innerHTML = lines.map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const btn = (action, label, alt) => `<button type="button" class="btn${alt ? ' alt' : ''}" data-dwell="${action}">${label}</button>`;
+  $('rs-buttons').innerHTML = target && !last ? btn('next', 'Next pot') + btn('again', 'Try again', true) + btn('map', 'All pots', true)
+    : btn('map', 'All pots') + btn('again', target ? 'Try again' : 'Make another', true);
+  show('result');
+  if (target && last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openMap(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': show('menu'); break;
+    case 'map': openMap(); break;
+    case 'shelf': openShelf(); break;
+    case 'free': startPot(null); break;
+    case 'level': startPot(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; $('tip').hidden = false; shaping = true; armedAt = performance.now() + ARM_MS; break;
+    case 'reset': pot = P.createPot(); crumbs.length = 0; sfx('reset'); updateMatch(); break;
+    case 'done': openGlaze(); break;
+    case 'glaze':
+      glaze = el.dataset.glaze; sfx('glaze');
+      for (const s of $('glazes').children) s.classList.toggle('pick', s.dataset.glaze === glaze);
+      break;
+    case 'pattern':
+      pattern = el.dataset.pattern; sfx('glaze');
+      for (const s of $('patterns').children) s.classList.toggle('pick', s.dataset.pattern === pattern);
+      break;
+    case 'fire': fire(); break;
+    case 'next': startPot(Math.min(N - 1, level + 1)); break;
+    case 'again': startPot(level); break;
+  }
+}
+
+// The platform's Back button: out of a pot to the pot list, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (STUDIO.has(screen) || screen === 'shelf') { firing = 0; openMap(); return true; }
+  if (screen === 'map') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, trackingReady = false, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, pose: 'none', rawPose: 'none', rawSince: 0, reported: false };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    trackingReady = true; statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// Finger extension by distance from the wrist, so it works whichever way the hand is turned.
+function poseOf(lm) {
+  const d = (a, b) => Math.hypot(lm[a].x - lm[b].x, lm[a].y - lm[b].y);
+  const ext = (tip, pip) => d(tip, 0) > d(pip, 0) * 1.1;
+  const index = ext(8, 6), others = ext(12, 10) + ext(16, 14) + ext(20, 18);
+  if (index && others === 0) return 'point';
+  if (index + others >= 3) return 'open';
+  if (index + others === 0) return 'fist';
+  return 'other';
+}
+
+// The middle of the camera frame covers the whole screen, so corners are reachable from a sofa.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (!lm) return;
+  const tx = reach(1 - lm[8].x, 0.12, 0.88) * W, ty = reach(lm[8].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.55;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true;
+  const raw = poseOf(lm);
+  if (raw !== hand.rawPose) { hand.rawPose = raw; hand.rawSince = now; }
+  if (fresh || now - hand.rawSince >= 80) hand.pose = raw;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.pose = 'none';
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+// ---------- mouse ----------
+const mouse = { down: false, x: 0, y: 0 };
+addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || e.target.closest('[data-dwell]')) return;
+  mouse.down = true; mouse.x = e.clientX; mouse.y = e.clientY;
+});
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerup', () => { mouse.down = false; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on') && performance.now() >= armedAt - ARM_MS) act(el);
+});
+
+// ---------- shaping ----------
+let contact = 0;
+function updateShaping(now, dt) {
+  contact = 0;
+  if (screen !== 'shape' || !shaping) return;
+  let tool = null;
+  if (mouse.down) tool = toStage(mouse.x, mouse.y);
+  else if (hand.present && hand.pose === 'point') tool = toStage(hand.x, hand.y);
+  if (tool) {
+    const toolY = WHEEL.y - tool.y, toolR = Math.abs(tool.x - potX);
+    contact = P.shape(pot, toolY, toolR, dt);
+    if (contact > 0.5 && crumbs.length < 120) {
+      const side = tool.x < potX ? -1 : 1;
+      crumbs.push({ x: potX + side * P.radiusAt(pot, toolY), y: tool.y, vx: side * (40 + Math.random() * 80), vy: -60 - Math.random() * 60, t: 0 });
+    }
+  }
+  P.spin(pot, dt);
+  updateMatch();
+  wheelSound(true, contact);
+}
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+// Pointing shapes the clay, so on the wheel only a resting open hand presses buttons.
+function poseCanPress() {
+  if (hand.pose === 'fist' || hand.pose === 'none') return false;
+  if (screen === 'shape' && shaping) return hand.pose !== 'point';
+  return true;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && poseCanPress()) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) {
+    const el = dwell.el;
+    resetDwell(); dwell.done = el;
+    act(el);
+  }
+}
+
+// ---------- HUD helpers ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHint(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000 && !mouse.down) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintlow', screen === 'shape', (v) => $('hint').classList.toggle('low', v));
+  if (screen === 'shape' && shaping) {
+    const tip = contact > 0 ? 'Keep going, the clay is moving!'
+      : hand.present && hand.pose !== 'point' ? 'Point one finger to touch the clay'
+      : 'Touch the side of the clay with your fingertip';
+    setOnce('tip', tip, (v) => { $('tip').textContent = v; });
+  }
+}
+
+// ---------- drawing ----------
+function hexToRgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function shade(hex, f) {
+  const [r, g, b] = hexToRgb(hex);
+  const m = (v) => Math.round(f >= 0 ? v + (255 - v) * f : v * (1 + f));
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+
+function potPath(c, p, cx, baseY, s) {
+  c.beginPath();
+  c.moveTo(cx - p.r[0] * s, baseY);
+  for (let i = 0; i < P.SLICES; i++) c.lineTo(cx - p.r[i] * s, baseY - ((i + 0.5) / P.SLICES) * p.h * s);
+  c.lineTo(cx - p.r[P.SLICES - 1] * s, baseY - p.h * s);
+  c.lineTo(cx + p.r[P.SLICES - 1] * s, baseY - p.h * s);
+  for (let i = P.SLICES - 1; i >= 0; i--) c.lineTo(cx + p.r[i] * s, baseY - ((i + 0.5) / P.SLICES) * p.h * s);
+  c.lineTo(cx + p.r[0] * s, baseY);
+  c.closePath();
+}
+
+function drawPot(c, p, cx, baseY, s, opt) {
+  const base = opt.glaze ? glazeColor(opt.glaze) : '#c98552';
+  const maxR = Math.max(...p.r) * s, top = baseY - p.h * s;
+  c.save();
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(cx, baseY + 2, p.r[0] * s * 1.1, p.r[0] * s * 0.2, 0, 0, 7); c.fill();
+  potPath(c, p, cx, baseY, s);
+  c.fillStyle = base; c.fill();
+  c.save(); c.clip();
+  if (opt.pattern === 'stripes') {
+    c.fillStyle = shade(base, opt.glaze === 'snow' ? -0.35 : 0.45);
+    for (const f of [0.22, 0.46, 0.7]) c.fillRect(cx - maxR - 2, baseY - p.h * s * f - 6 * s, maxR * 2 + 4, 12 * s);
+  } else if (opt.pattern === 'dots') {
+    c.fillStyle = shade(base, opt.glaze === 'snow' ? -0.4 : 0.55);
+    for (let row = 0; row < 6; row++) {
+      const y = (row + 0.6) / 6.2 * p.h;
+      const r = P.radiusAt(p, y) * s;
+      for (let k = 0; k < 8; k++) {
+        const a = opt.phase + k * 0.785 + row * 0.39, depth = Math.cos(a);
+        if (depth <= 0.1) continue;
+        c.beginPath(); c.ellipse(cx + r * Math.sin(a), baseY - y * s, 6 * s * depth, 6 * s, 0, 0, 7); c.fill();
+      }
+    }
+  } else if (!opt.glaze) {
+    c.strokeStyle = 'rgba(90,45,20,0.25)'; c.lineWidth = 2;
+    for (let k = 0; k < 6; k++) {
+      const a = opt.phase + k * 1.047, depth = Math.cos(a);
+      if (depth <= 0) continue;
+      c.globalAlpha = depth;
+      c.beginPath();
+      for (let i = 0; i < P.SLICES; i++) {
+        const x = cx + p.r[i] * s * Math.sin(a), y = baseY - ((i + 0.5) / P.SLICES) * p.h * s;
+        if (i) c.lineTo(x, y); else c.moveTo(x, y);
+      }
+      c.stroke();
+    }
+    c.globalAlpha = 1;
+  }
+  const light = c.createLinearGradient(cx - maxR, 0, cx + maxR, 0);
+  light.addColorStop(0, 'rgba(0,0,0,0.45)'); light.addColorStop(0.32, 'rgba(255,255,255,0.28)');
+  light.addColorStop(0.55, 'rgba(255,255,255,0)'); light.addColorStop(1, 'rgba(0,0,0,0.5)');
+  c.fillStyle = light; c.fillRect(cx - maxR - 2, top - 2, maxR * 2 + 4, p.h * s + 4);
+  if (opt.glaze) {
+    c.fillStyle = 'rgba(255,255,255,0.35)';
+    c.beginPath(); c.ellipse(cx - maxR * 0.35, baseY - p.h * s * 0.55, 5 * s, p.h * s * 0.28, 0, 0, 7); c.fill();
+  }
+  c.restore();
+  const rt = p.r[P.SLICES - 1] * s;
+  c.fillStyle = shade(base, -0.55); c.beginPath(); c.ellipse(cx, top, rt, rt * 0.22, 0, 0, 7); c.fill();
+  c.strokeStyle = shade(base, 0.25); c.lineWidth = 3; c.stroke();
+  c.restore();
+}
+
+function drawOutline(c, t, cx, baseY, s) {
+  c.save();
+  potPath(c, t, cx, baseY, s);
+  c.fillStyle = 'rgba(255,207,112,0.12)'; c.fill();
+  c.setLineDash([12, 9]); c.strokeStyle = '#ffcf70'; c.lineWidth = 4; c.stroke();
+  c.restore();
+}
+
+const bg = document.createElement('canvas');
+bg.width = 1280; bg.height = 720;
+(function paintStudio(c) {
+  const wall = c.createLinearGradient(0, 0, 0, 560);
+  wall.addColorStop(0, '#2c1c26'); wall.addColorStop(1, '#4b2f36');
+  c.fillStyle = wall; c.fillRect(0, 0, 1280, 560);
+  c.fillStyle = 'rgba(255,220,170,0.08)';
+  c.beginPath(); c.ellipse(640, 260, 520, 300, 0, 0, 7); c.fill();
+  c.fillStyle = '#5a3a2a';
+  for (const y of [170, 330]) { c.fillRect(0, y, 230, 12); c.fillRect(1050, y, 230, 12); }
+  const jars = [[40, 170, 30, 60, '#4aa3df'], [110, 170, 22, 44, '#e9c046'], [170, 170, 28, 52, '#b5487a'], [60, 330, 26, 70, '#5cb85c'],
+    [150, 330, 34, 46, '#f08a4b'], [1090, 170, 26, 58, '#eef0f2'], [1160, 170, 32, 40, '#4aa3df'], [1230, 170, 20, 62, '#f08a4b'],
+    [1100, 330, 30, 50, '#e9c046'], [1190, 330, 24, 72, '#b5487a']];
+  for (const [x, y, w, h, col] of jars) {
+    c.fillStyle = col; c.globalAlpha = 0.55;
+    c.beginPath(); c.moveTo(x - w * 0.5, y); c.quadraticCurveTo(x - w, y - h * 0.5, x - w * 0.4, y - h); c.lineTo(x + w * 0.4, y - h);
+    c.quadraticCurveTo(x + w, y - h * 0.5, x + w * 0.5, y); c.closePath(); c.fill();
+  }
+  c.globalAlpha = 1;
+  const table = c.createLinearGradient(0, 560, 0, 720);
+  table.addColorStop(0, '#7a5236'); table.addColorStop(1, '#3d2618');
+  c.fillStyle = table; c.fillRect(0, 560, 1280, 160);
+  c.fillStyle = 'rgba(0,0,0,0.15)';
+  for (let x = 0; x < 1280; x += 160) c.fillRect(x, 560, 3, 160);
+})(bg.getContext('2d'));
+
+function drawWheel(c, cx, t) {
+  c.fillStyle = '#3a3c44'; c.beginPath(); c.ellipse(cx, WHEEL.y + 26, 240, 40, 0, 0, 7); c.fill();
+  c.fillStyle = '#6f7480'; c.beginPath(); c.ellipse(cx, WHEEL.y + 8, 220, 34, 0, 0, 7); c.fill();
+  c.fillStyle = '#8c929e'; c.beginPath(); c.ellipse(cx, WHEEL.y + 4, 210, 30, 0, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.25)'; c.lineWidth = 3;
+  for (let k = 0; k < 6; k++) {
+    const a = t * 6 + k * 1.047;
+    if (Math.sin(a) < 0) continue;
+    const x = cx + Math.cos(a) * 190, y = WHEEL.y + 4 + Math.sin(a) * 26;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(cx + Math.cos(a) * 150, WHEEL.y + 4 + Math.sin(a) * 20); c.stroke();
+  }
+}
+
+function renderStudio(now, dt) {
+  const c = fctx, t = now / 1000;
+  c.drawImage(bg, 0, 0);
+  const spinning = screen === 'shape';
+  if (spinning) phase += dt * 6;
+  drawWheel(c, potX, spinning ? t : 0);
+  const glazed = screen !== 'shape';
+  drawPot(c, pot, potX, WHEEL.y, 1, { glaze: glazed ? glaze : null, pattern: glazed ? pattern : 'plain', phase });
+  if (screen === 'shape' && target) drawOutline(c, target, potX, WHEEL.y, 1);
+  for (let i = crumbs.length - 1; i >= 0; i--) {
+    const q = crumbs[i];
+    q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 500 * dt;
+    if (q.t > 0.6) { crumbs.splice(i, 1); continue; }
+    c.globalAlpha = 1 - q.t / 0.6; c.fillStyle = '#b8743f'; c.fillRect(q.x - 3, q.y - 3, 6, 6);
+  }
+  c.globalAlpha = 1;
+  if (firing) {
+    const p = Math.min(1, (now - firing) / 1800);
+    const glow = Math.sin(p * Math.PI);
+    const g = c.createRadialGradient(potX, WHEEL.y - pot.h / 2, 20, potX, WHEEL.y - pot.h / 2, 420);
+    g.addColorStop(0, `rgba(255,190,90,${0.85 * glow})`); g.addColorStop(1, `rgba(200,60,10,${0.55 * glow})`);
+    c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
+    if (p >= 1) finishPot();
+  }
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present) return;
+  const x = hand.x, y = hand.y, tool = screen === 'shape' && shaping && hand.pose === 'point';
+  c.lineWidth = 4;
+  c.strokeStyle = hand.pose === 'fist' ? 'rgba(220,210,200,0.5)' : tool ? '#ffcf70' : '#ffffff';
+  c.beginPath(); c.arc(x, y, tool ? 14 : 22, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = tool ? (contact > 0 ? '#ff9f5a' : '#ffcf70') : 'rgba(255,255,255,0.9)';
+  c.beginPath(); c.arc(x, y, tool ? 8 : 6, 0, Math.PI * 2); c.fill();
+  if (dwell.el && dwell.p > 0) {
+    c.strokeStyle = '#ffcf70'; c.lineWidth = 7;
+    c.beginPath(); c.arc(x, y, 32, -Math.PI / 2, -Math.PI / 2 + dwell.p * Math.PI * 2); c.stroke();
+  }
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Shaping scales with frame time, capped so a stall on a slow device cannot jump the clay.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  updateShaping(now, dt);
+  if (STUDIO.has(screen)) renderStudio(now, dt);
+  if (!firing) updateDwell(now);
+  updateHint(now);
+  renderInk();
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) wheelSound(false, 0); });
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
