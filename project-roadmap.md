@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-10-30 (Orchestra Conductor — ADR-073)
+> Last updated: 2026-10-30 (Weather Garden — ADR-074)
 
 ---
 
@@ -109,6 +109,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-10-30] Weather Garden (ADR-074).** Hand-made weather for a garden, 10 gardens over four seasons, with its own visual design. **Next:** apply `supabase/seed_weather_garden.sql` to the AWS RDS database, then check the fist-for-rain and swipe-for-wind gestures on the Pi.
 - [x] **[2026-10-30] Orchestra Conductor (ADR-073).** Hand-conducted animal orchestra, 10 pieces. **Next:** apply `supabase/seed_orchestra_conductor.sql` to the AWS RDS database, then check the beat detector with a live hand on the Pi (stroke size from the sofa, tracking rate).
 - [x] **[2026-10-30] Lighthouse Keeper (ADR-072).** Beam-guided boat game, 10 nights. **Next:** apply `supabase/seed_lighthouse_keeper.sql` to the AWS RDS database, then check on the Pi how steady the beam is from the sofa.
 - [x] **[2026-10-30] Prize Claw (ADR-071).** Hand-steered claw machine, 10 machines, collection. **Next:** apply `supabase/seed_prize_claw.sql` to the AWS RDS database, then try the fist-to-grab timing on the Pi.
@@ -187,5 +188,5 @@ _None active._
 
 ## Future Ideas
 
-- Next games, in this order: **Weather Garden** (open hand raised for sun, wiggling fingers for rain, sideways swipe for wind against pests; plants need different mixes to bloom across the seasons) and **Paper Plane Pilot** (flat hand tilts to bank and rises or falls to climb or dive, flying through rings to a runway).
+- Next game: **Paper Plane Pilot** (flat hand tilts to bank and rises or falls to climb or dive, flying through rings to a runway), with its own visual design (ADR-074).
 - Paywall / purchasing system
