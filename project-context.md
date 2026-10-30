@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-10-30 (Lighthouse Keeper — ADR-072)
+> Last updated: 2026-10-30 (Orchestra Conductor — ADR-073)
 >
 > ⚠️ **Migrations 0011 (favorites) and 0012 (user display settings) are written but NOT yet applied** — same DB-role limitation described below. The favorites feature and server-side settings persistence will silently no-op (empty list / setting not saved server-side) until the user runs these against AWS RDS via their DB GUI.
 >
@@ -43,6 +43,7 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-30] Orchestra Conductor (ADR-073).** New game: waving the hand conducts an animal orchestra (drums, strings, horns, flutes) that plays at the waved tempo; big waves loud, small waves soft; waving over a lit-up section brings it in. 10 pieces of traditional and public-domain tunes, all synthesised; stars from tempo, dynamics and cues, no failing. `conductor.js` (beats, tunes, scoring) is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_orchestra_conductor.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Lighthouse Keeper (ADR-072).** New game: the hand moves a lighthouse beam on a dark sea; boats in the light sail towards it, boats in the dark wait at anchor, and the player leads each one along buoys into the harbour past rocks, whales, fog and currents. 10 nights, stars from bumps, no boat ever lost. `lighthouse.js` (sea and levels) is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_lighthouse_keeper.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Prize Claw (ADR-071).** New game: an arcade claw machine steered by the open hand and dropped with a fist; centred grabs hold best, heavy toys slip, misses make the claw stronger. 10 machines with stacked piles, a swinging claw, golden crowns and conveyor belts; won toys fill a collection. `claw.js` (machine and levels) is balance-tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_prize_claw.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Shadow Puppets (ADR-070).** New game: the lamp throws the player's hand shadow on a wall, and five hand shapes (fist snail, one finger swan, two fingers rabbit, first and little finger deer, open hand bird) turn it into that animal. 10 stories ask each animal to go to the right spot; stars from time, no failing; 6 in-game achievements. `shadows.js` (shapes and stories) is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_shadow_puppets.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.

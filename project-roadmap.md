@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-10-30 (Lighthouse Keeper — ADR-072)
+> Last updated: 2026-10-30 (Orchestra Conductor — ADR-073)
 
 ---
 
@@ -109,6 +109,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-10-30] Orchestra Conductor (ADR-073).** Hand-conducted animal orchestra, 10 pieces. **Next:** apply `supabase/seed_orchestra_conductor.sql` to the AWS RDS database, then check the beat detector with a live hand on the Pi (stroke size from the sofa, tracking rate).
 - [x] **[2026-10-30] Lighthouse Keeper (ADR-072).** Beam-guided boat game, 10 nights. **Next:** apply `supabase/seed_lighthouse_keeper.sql` to the AWS RDS database, then check on the Pi how steady the beam is from the sofa.
 - [x] **[2026-10-30] Prize Claw (ADR-071).** Hand-steered claw machine, 10 machines, collection. **Next:** apply `supabase/seed_prize_claw.sql` to the AWS RDS database, then try the fist-to-grab timing on the Pi.
 - [x] **[2026-10-30] Shadow Puppets (ADR-070).** Hand-shadow story game: 5 animal shapes, 10 stories. **Next:** apply `supabase/seed_shadow_puppets.sql` to the AWS RDS database, then try the shapes with a live hand from the sofa on the Pi.
@@ -186,4 +187,5 @@ _None active._
 
 ## Future Ideas
 
+- Next games, in this order: **Weather Garden** (open hand raised for sun, wiggling fingers for rain, sideways swipe for wind against pests; plants need different mixes to bloom across the seasons) and **Paper Plane Pilot** (flat hand tilts to bank and rises or falls to climb or dive, flying through rings to a runway).
 - Paywall / purchasing system
