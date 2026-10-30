@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ice Rink Skater</title>
+<style>
+:root { --ice:#dff1fb; --navy:#13294b; --red:#e63946; --cream:#fdf6e3; --mustard:#f4a300; --led:#ffb627; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:var(--cream); color:var(--navy); font-family:'Arial Black','Helvetica Neue','DejaVu Sans',Arial,sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#rink { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Slanted poster buttons; the hold fills them from the left. */
+.slant { position:absolute; height:92px; padding:0 54px; border:none; cursor:pointer; transform:skewX(-12deg);
+  font:900 30px 'Arial Black','DejaVu Sans',Arial,sans-serif; letter-spacing:0.04em; color:var(--cream); text-transform:uppercase;
+  background:linear-gradient(90deg, var(--mustard) calc(var(--p, 0) * 100%), var(--red) 0); box-shadow:8px 8px 0 var(--navy); }
+.slant > span { display:inline-block; transform:skewX(12deg); }
+.slant.navy { background:linear-gradient(90deg, var(--mustard) calc(var(--p, 0) * 100%), var(--navy) 0); box-shadow:8px 8px 0 var(--red); }
+.slant.big { height:112px; font-size:40px; padding:0 70px; }
+.slant.hot { outline:5px solid var(--mustard); outline-offset:4px; }
+.slant[hidden] { display:none; }
+
+#menu { background:var(--cream); }
+#menu .stripes { position:absolute; left:0; top:0; width:1280px; height:720px;
+  background:repeating-linear-gradient(-12deg, transparent 0 60px, rgba(19,41,75,0.05) 60px 120px); pointer-events:none; }
+#menu h1 { position:absolute; left:640px; top:50px; font-size:96px; line-height:0.92; color:var(--navy); letter-spacing:-0.01em; }
+#menu h1 em { font-style:normal; color:var(--red); display:block; }
+#menu .tag { position:absolute; left:646px; top:250px; font:bold 24px Arial,'DejaVu Sans',sans-serif; color:var(--navy); }
+.events { position:absolute; left:640px; top:300px; display:flex; flex-direction:column; gap:10px; }
+.ev { display:flex; align-items:center; gap:16px; width:560px; }
+.ev .n { width:56px; height:56px; flex:none; background:var(--navy); color:var(--cream); display:flex; align-items:center; justify-content:center; font-size:30px; transform:skewX(-12deg); }
+.ev div { font:bold 21px Arial,'DejaVu Sans',sans-serif; line-height:1.3; }
+.ev div b { font-family:'Arial Black','DejaVu Sans',Arial,sans-serif; color:var(--red); }
+#menu .slant.big { left:660px; top:512px; }
+#menu .slant.snd { left:60px; top:614px; height:84px; font-size:22px; padding:0 30px; }
+#menu .slant.exit { left:60px; top:512px; height:84px; font-size:22px; padding:0 30px; }
+
+#board { background:var(--navy); }
+#board h2 { position:absolute; left:60px; top:30px; font-size:48px; color:var(--cream); transform:skewX(-8deg); }
+#board h2 em { font-style:normal; color:var(--red); }
+.tiles { position:absolute; left:60px; top:108px; display:grid; grid-template-columns:repeat(5, 220px); gap:12px 16px; }
+.tile { position:relative; height:136px; padding:10px 14px; background:#0b1730; border:4px solid #2a3f66; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between;
+  font-family:'Courier New','DejaVu Sans Mono',monospace; color:var(--led); text-shadow:0 0 8px rgba(255,182,39,0.6);
+  background-image:linear-gradient(90deg, rgba(255,182,39,0.25) calc(var(--p, 0) * 100%), transparent 0); }
+.tile .num { font-size:34px; font-weight:bold; line-height:1; }
+.tile .nm { font-size:20px; font-weight:bold; line-height:1.1; }
+.tile .dots { font-size:22px; letter-spacing:6px; }
+.tile.hot { border-color:var(--led); }
+.tile.locked { opacity:0.35; cursor:default; }
+#board .slant { left:60px; top:596px; }
+
+#hud { position:absolute; left:50%; top:10px; transform:translateX(-50%); display:flex; background:var(--navy); color:var(--cream); box-shadow:6px 6px 0 var(--red); pointer-events:none; }
+#hud div { padding:8px 22px; font:900 22px 'Arial Black','DejaVu Sans',Arial,sans-serif; border-right:3px solid #2a3f66; white-space:nowrap; }
+#hud div:last-child { border-right:none; }
+#hud span { color:var(--led); font-family:'Courier New','DejaVu Sans Mono',monospace; font-size:26px; }
+#tip { position:absolute; left:24px; bottom:18px; padding:10px 18px; background:var(--cream); border:4px solid var(--navy); font:bold 21px Arial,'DejaVu Sans',sans-serif; pointer-events:none; }
+#intro { position:absolute; inset:0; background:rgba(253,246,227,0.82); }
+#intro[hidden] { display:none; }
+#intro .card { position:absolute; left:50%; top:90px; transform:translateX(-50%); width:760px; padding:26px 34px; background:var(--cream); border:6px solid var(--navy); box-shadow:12px 12px 0 var(--red); text-align:center; }
+#intro h2 { font-size:44px; }
+#intro p { font:bold 22px Arial,'DejaVu Sans',sans-serif; line-height:1.45; margin-top:10px; }
+#intro .slant { left:500px; top:470px; }
+
+#result { background:var(--cream); }
+#result .stripes { position:absolute; inset:0; background:repeating-linear-gradient(-12deg, transparent 0 60px, rgba(230,57,70,0.06) 60px 120px); }
+#result h2 { position:absolute; left:0; right:0; top:36px; text-align:center; font-size:56px; }
+.judges { position:absolute; left:50%; top:140px; transform:translateX(-50%); display:flex; gap:40px; }
+.judge { display:flex; flex-direction:column; align-items:center; gap:10px; }
+.card10 { width:170px; height:150px; background:#fff; border:6px solid var(--navy); display:flex; align-items:center; justify-content:center; font-size:66px; color:var(--red);
+  box-shadow:8px 8px 0 var(--navy); transform:rotateX(90deg); transition:transform 0.4s; }
+.card10.up { transform:none; }
+.judge span { font:bold 20px Arial,'DejaVu Sans',sans-serif; }
+#rs-stars { position:absolute; left:0; right:0; top:390px; display:flex; justify-content:center; gap:10px; }
+#rs-stars svg { width:64px; height:64px; }
+#rs-line { position:absolute; left:0; right:0; top:466px; text-align:center; font:bold 24px Arial,'DejaVu Sans',sans-serif; }
+#result .slant.s1, #result .slant.s2, #result .slant.s3 { top:528px; height:84px; font-size:26px; padding:0 34px; }
+#result .slant.s1 { left:120px; }
+#result .slant.s2 { left:480px; }
+#result .slant.s3 { left:840px; }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border:5px solid var(--navy); object-fit:cover; transform:scaleX(-1); background:#000; }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; bottom:18px; transform:translateX(-50%); font:bold 22px Arial,'DejaVu Sans',sans-serif; padding:8px 20px; background:var(--cream); border:4px solid var(--navy);
+  white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.play { bottom:auto; top:74px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; left:50%; top:16px; transform:translateX(-50%); font:900 22px 'Arial Black','DejaVu Sans',Arial,sans-serif; padding:12px 22px; background:var(--red); color:var(--cream);
+  box-shadow:6px 6px 0 var(--navy); opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="rink" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div class="stripes"></div>
+    <h1>ICE RINK<em>SKATER</em></h1>
+    <div class="tag">Glide, carve and leap for the judges!</div>
+    <div class="events">
+      <div class="ev"><div class="n">1</div><div><b>Steer with your hand.</b> Your skater glides towards it across the ice.</div></div>
+      <div class="ev"><div class="n">2</div><div><b>Follow the figure.</b> Skate along the dotted line through every flag.</div></div>
+      <div class="ev"><div class="n">3</div><div><b>Make a fist to jump</b> over cones. Then the judges hold up their scores!</div></div>
+    </div>
+    <button type="button" class="slant big" data-dwell="play"><span>Skate!</span></button>
+    <button type="button" class="slant navy snd" data-dwell="sound" id="btn-sound"><span>Sound on</span></button>
+    <button type="button" class="slant navy exit" data-dwell="exit" id="btn-exit" hidden><span>Back to games</span></button>
+  </section>
+
+  <section class="screen" id="board">
+    <h2>EVENT <em>BOARD</em></h2>
+    <div class="tiles" id="tiles"></div>
+    <button type="button" class="slant navy" data-dwell="menu"><span>Menu</span></button>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="hud"><div id="hd-name"></div><div>FLAGS <span id="hd-flags">0</span></div><div>TIME <span id="hd-time">0</span></div></div>
+    <div id="tip"></div>
+    <div id="intro">
+      <div class="card"><h2 id="in-title"></h2><p id="in-text"></p></div>
+      <button type="button" class="slant big" data-dwell="begin"><span>Go!</span></button>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="stripes"></div>
+    <h2 id="rs-title"></h2>
+    <div class="judges" id="judges"></div>
+    <div id="rs-stars"></div>
+    <div id="rs-line"></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="skate.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const S = window.Skate;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), rinkCv = $('rink'), ink = $('ink'), video = $('cam');
+const rctx = rinkCv.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'ice-rink-skater-v1';
+const N = S.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true, ach: {}, jumps: 0 };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        ach: s.ach || {}, jumps: s.jumps | 0 };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every routine skated since the game was opened; reported once, when the player leaves or finishes the last event.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null, noiseBuf = null, glide = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function noise(a) {
+  if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  return noiseBuf;
+}
+function tone(f, dur, type = 'sine', vol = 0.1, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+// The blades hiss louder the faster the skater goes; only the volume changes.
+function glideSound(speed) {
+  const a = progress.sound ? audio() : null;
+  if (!glide) {
+    if (!a || speed <= 0) return;
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = noise(a); s.loop = true; f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 2; g.gain.value = 0;
+    s.connect(f).connect(g).connect(a.destination); s.start();
+    glide = { g, a };
+  }
+  glide.g.gain.setTargetAtTime(progress.sound ? Math.min(0.08, speed / 5000) : 0, glide.a.currentTime, 0.1);
+}
+const SFX = {
+  select() { tone(660, 0.1, 'square', 0.06); tone(990, 0.12, 'square', 0.05, 0, 0.07); },
+  gate() { tone(1175, 0.12, 'triangle', 0.08); },
+  jump() { tone(400, 0.3, 'sine', 0.1, 900); },
+  land() { tone(220, 0.1, 'triangle', 0.08); },
+  stumble() { tone(200, 0.35, 'sawtooth', 0.08, 90); },
+  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, 0, i * 0.1)); },
+  card() { tone(880, 0.08, 'square', 0.05); },
+  cheer() {
+    const a = audio(); if (!a) return;
+    for (let k = 0; k < 20; k++) {
+      const t = a.currentTime + k * 0.05, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+      s.buffer = noise(a); f.type = 'bandpass'; f.frequency.value = 1500 + Math.random() * 1500;
+      g.gain.setValueAtTime(0.1 * (1 - k / 24), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      s.connect(f).connect(g).connect(a.destination); s.start(t); s.stop(t + 0.06);
+    }
+  },
+  badge() { [784, 988, 1319].forEach((f, i) => tone(f, 0.2, 'sine', 0.08, 0, i * 0.08)); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- drawing ----------
+const NAVY = '#13294b', RED = '#e63946', CREAM = '#fdf6e3', MUSTARD = '#f4a300';
+const iceBg = document.createElement('canvas');
+iceBg.width = 1280; iceBg.height = 720;
+(function paintRink(c) {
+  c.fillStyle = NAVY; c.fillRect(0, 0, 1280, 720);
+  const R = S.RINK, pad = 40;
+  c.fillStyle = '#ffffff'; c.beginPath(); c.roundRect(R.x0 - pad, R.y0 - pad, R.x1 - R.x0 + pad * 2, R.y1 - R.y0 + pad * 2, 120); c.fill();
+  c.fillStyle = '#e8f5fc'; c.beginPath(); c.roundRect(R.x0 - pad + 10, R.y0 - pad + 10, R.x1 - R.x0 + pad * 2 - 20, R.y1 - R.y0 + pad * 2 - 20, 112); c.fill();
+  c.strokeStyle = RED; c.lineWidth = 10; c.beginPath(); c.roundRect(R.x0 - pad, R.y0 - pad, R.x1 - R.x0 + pad * 2, R.y1 - R.y0 + pad * 2, 120); c.stroke();
+  c.strokeStyle = 'rgba(230,57,70,0.25)'; c.lineWidth = 6; c.beginPath(); c.moveTo(640, R.y0 - pad + 10); c.lineTo(640, R.y1 + pad - 10); c.stroke();
+  c.strokeStyle = 'rgba(19,41,75,0.15)'; for (const x of [430, 850]) { c.beginPath(); c.moveTo(x, R.y0 - pad + 10); c.lineTo(x, R.y1 + pad - 10); c.stroke(); }
+  c.beginPath(); c.arc(640, 405, 70, 0, 7); c.strokeStyle = 'rgba(230,57,70,0.25)'; c.stroke();
+  let seed = 7; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  c.strokeStyle = 'rgba(19,41,75,0.06)'; c.lineWidth = 2;
+  for (let k = 0; k < 60; k++) { const x = R.x0 + r() * (R.x1 - R.x0), y = R.y0 + r() * (R.y1 - R.y0); c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 30, y - 10, x + 60 + r() * 40, y + r() * 20 - 10); c.stroke(); }
+})(iceBg.getContext('2d'));
+
+function drawSkater(c, x, y, heading, t, lift, spin, scale = 1) {
+  c.save(); c.translate(x, y);
+  c.fillStyle = 'rgba(19,41,75,0.18)'; c.beginPath(); c.ellipse(0, 6 + lift * 14, 26 - lift * 8, 12 - lift * 3, 0, 0, 7); c.fill();
+  c.translate(0, -lift * 22); c.scale(scale * (1 + lift * 0.25), scale * (1 + lift * 0.25));
+  c.rotate(heading + Math.PI / 2 + spin);
+  const swing = Math.sin(t * 8) * 0.35;
+  c.strokeStyle = NAVY; c.lineWidth = 7; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(-6, 6); c.lineTo(-10 + swing * 10, 26); c.moveTo(6, 6); c.lineTo(10 - swing * 10, 26); c.stroke();
+  c.fillStyle = RED; c.beginPath(); c.ellipse(0, 0, 15, 18, 0, 0, 7); c.fill();
+  c.strokeStyle = RED; c.lineWidth = 6; c.beginPath(); c.moveTo(-14, -2); c.lineTo(-34, 6 + swing * 8); c.moveTo(14, -2); c.lineTo(34, 6 - swing * 8); c.stroke();
+  c.fillStyle = MUSTARD; c.fillRect(-12, -14, 24, 7); c.beginPath(); c.moveTo(10, -10); c.lineTo(22 + swing * 6, -2); c.lineTo(14, -6); c.fill();
+  c.fillStyle = '#f2c9a0'; c.beginPath(); c.arc(0, -18, 10, 0, 7); c.fill();
+  c.fillStyle = NAVY; c.beginPath(); c.arc(0, -21, 9, Math.PI, 0); c.fill();
+  c.restore();
+}
+function drawCone(c, x, y, state) {
+  if (state === 'hit') { c.save(); c.translate(x, y); c.rotate(1.2); }
+  else { c.save(); c.translate(x, y); }
+  c.fillStyle = state === 'cleared' ? 'rgba(244,163,0,0.35)' : '#ff7b00';
+  c.beginPath(); c.moveTo(-20, 16); c.lineTo(0, -26); c.lineTo(20, 16); c.closePath(); c.fill();
+  c.fillStyle = '#fff'; c.fillRect(-11, -6, 22, 6);
+  c.fillStyle = NAVY; c.fillRect(-24, 14, 48, 6);
+  c.restore();
+}
+function drawFlag(c, x, y, n, state) {
+  c.strokeStyle = NAVY; c.lineWidth = 3; c.beginPath(); c.moveTo(x, y + 14); c.lineTo(x, y - 30); c.stroke();
+  c.fillStyle = state === 'next' ? RED : state === 'done' ? 'rgba(19,41,75,0.3)' : 'rgba(230,57,70,0.45)';
+  c.beginPath(); c.moveTo(x, y - 30); c.lineTo(x + 30, y - 22); c.lineTo(x, y - 14); c.fill();
+  if (state === 'next') { c.strokeStyle = 'rgba(230,57,70,0.5)'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, S.GATE_R, 0, 7); c.stroke(); }
+  c.fillStyle = state === 'done' ? 'rgba(19,41,75,0.4)' : NAVY; c.font = '900 18px Arial Black, Arial, sans-serif'; c.textAlign = 'center'; c.fillText(String(n), x + 12, y - 33);
+}
+function drawPoster(c, t) {
+  c.fillStyle = CREAM; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = RED; c.beginPath(); c.arc(330, 380, 270, 0, 7); c.fill();
+  c.fillStyle = MUSTARD; c.beginPath(); c.arc(330, 380, 190, 0, 7); c.fill();
+  c.fillStyle = NAVY; c.beginPath(); c.moveTo(0, 560); c.lineTo(640, 470); c.lineTo(640, 720); c.lineTo(0, 720); c.fill();
+  c.fillStyle = '#dff1fb'; c.beginPath(); c.moveTo(0, 600); c.lineTo(640, 520); c.lineTo(640, 720); c.lineTo(0, 720); c.fill();
+  c.strokeStyle = 'rgba(19,41,75,0.25)'; c.lineWidth = 4; c.beginPath(); c.moveTo(60, 660); c.quadraticCurveTo(330, 560, 600, 600); c.stroke();
+  // A big flat skater in an arabesque, gently gliding.
+  const gx = 330 + Math.sin(t * 0.8) * 20;
+  c.save(); c.translate(gx, 420); c.fillStyle = NAVY;
+  c.beginPath(); c.arc(-20, -170, 28, 0, 7); c.fill();
+  c.beginPath(); c.moveTo(-40, -140); c.lineTo(10, -140); c.lineTo(20, -40); c.lineTo(-30, -40); c.closePath(); c.fill();
+  c.lineCap = 'round'; c.strokeStyle = NAVY; c.lineWidth = 18;
+  c.beginPath(); c.moveTo(-30, -125); c.lineTo(-150, -170); c.moveTo(8, -125); c.lineTo(120, -150); c.stroke();
+  c.beginPath(); c.moveTo(-10, -45); c.lineTo(-20, 80); c.moveTo(10, -50); c.lineTo(160, -40); c.stroke();
+  c.lineWidth = 6; c.beginPath(); c.moveTo(-50, 92); c.lineTo(10, 92); c.moveTo(166, -70); c.lineTo(166, -10); c.stroke();
+  c.fillStyle = RED; c.beginPath(); c.moveTo(-20, -150); c.lineTo(-90, -110 + Math.sin(t * 3) * 10); c.lineTo(-60, -150); c.fill();
+  c.restore();
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'board', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  rinkCv.style.display = name === 'play' || name === 'menu' ? 'block' : 'none';
+  $('menu').style.background = 'none';
+  video.classList.toggle('off', name === 'play');
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+  if (name !== 'play') glideSound(0);
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').innerHTML = `<span>Sound ${progress.sound ? 'on' : 'off'}</span>`; }
+updateSoundLabel();
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#f4a300' : 'none'}" stroke="#13294b" stroke-width="1.8"/></svg>`;
+}
+function openBoard() {
+  routine = null;
+  $('tiles').innerHTML = S.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    return `<div class="tile${locked ? ' locked' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <div class="num">${String(i + 1).padStart(2, '0')}</div><div class="nm">${lv.name.toUpperCase()}</div>
+      <div class="dots">${locked ? 'LOCKED' : [0, 1, 2].map((k) => (k < progress.stars[i] ? '●' : '○')).join('')}</div></div>`;
+  }).join('');
+  show('board');
+}
+
+// ---------- achievements ----------
+const ACH = { first: 'First Routine', clean: 'Clean Skate', perfect: 'Perfect Ten', jumper: 'High Jumper', grand: 'Grand Program', champ: 'Ice Champion' };
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- skating ----------
+let routine = null, playing = false, endAt = 0, trail = [], wasJumping = false;
+function openRoutine(i) {
+  routine = S.createRoutine(i, (Math.random() * 1e9) | 0); playing = false; endAt = 0; trail = []; wasJumping = false;
+  const lv = S.LEVELS[i];
+  $('hd-name').textContent = lv.name.toUpperCase();
+  $('in-title').textContent = lv.name;
+  $('in-text').textContent = `Skate the dotted figure through all ${routine.gates.length} flags, in order.${lv.cones.length ? ` Make a fist to jump over the ${lv.cones.length === 1 ? 'cone' : lv.cones.length + ' cones'}.` : ''} Stay close to the line for high scores!`;
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishRoutine() {
+  const i = routine.level, r = S.result(routine);
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  unlockAch('first');
+  if (r.stumbles === 0 && S.LEVELS[i].cones.length) unlockAch('clean');
+  if (r.judges.some((j) => j >= 10)) unlockAch('perfect');
+  if (progress.jumps >= 10) unlockAch('jumper');
+  if (i === N - 1) unlockAch('grand');
+  if (progress.stars.every((s) => s === 3)) unlockAch('champ');
+  const last = i === N - 1;
+  $('rs-title').textContent = r.stars === 3 ? 'STANDING OVATION!' : r.stars === 2 ? 'LOVELY SKATING!' : 'WELL SKATED!';
+  $('judges').innerHTML = r.judges.map((j, k) => `<div class="judge"><div class="card10" id="card${k}">${j.toFixed(1)}</div><span>Judge ${k + 1}</span></div>`).join('');
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-line').textContent = `On the line ${r.accuracy}%  ·  Stumbles ${r.stumbles}  ·  Score ${r.score}`;
+  $('rs-buttons').innerHTML = (!last ? '<button type="button" class="slant s1" data-dwell="next"><span>Next event</span></button>' : '<button type="button" class="slant s1" data-dwell="board"><span>Event board</span></button>')
+    + '<button type="button" class="slant navy s2" data-dwell="again"><span>Skate again</span></button>'
+    + (!last ? '<button type="button" class="slant navy s3" data-dwell="board"><span>Board</span></button>' : '');
+  playing = false;
+  show('result');
+  [0, 1, 2].forEach((k) => setTimeout(() => { const el = $(`card${k}`); if (el) { el.classList.add('up'); sfx('card'); } }, 500 + k * 450));
+  setTimeout(() => sfx('cheer'), 1900);
+  if (last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openBoard(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': routine = null; show('menu'); break;
+    case 'board': openBoard(); break;
+    case 'level': openRoutine(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; break;
+    case 'next': openRoutine(Math.min(N - 1, routine.level + 1)); break;
+    case 'again': openRoutine(routine.level); break;
+  }
+}
+
+// The platform's Back button: out of a routine to the event board, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { playing = false; openBoard(); return true; }
+  if (screen === 'board') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, pose: 'none', raw: 'none', rawSince: 0, reported: false };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// Fingers judged by distance from the wrist, so it works whichever way the hand is turned.
+function poseOf(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  const straight = [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+  return straight === 0 ? 'fist' : straight >= 3 ? 'open' : 'other';
+}
+// The middle of the camera frame covers the whole screen, so every corner of the rink is reachable from a sofa.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+function handleLandmarks(lm, now) {
+  const tx = reach(1 - lm[9].x, 0.12, 0.88) * W, ty = reach(lm[9].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.5;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true;
+  const raw = poseOf(lm);
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (fresh || now - hand.rawSince >= 100) hand.pose = raw;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.pose = 'none';
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+const mouse = { x: null, y: null, down: false };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-dwell]')) mouse.down = true; });
+addEventListener('pointerup', () => { mouse.down = false; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on')) act(el);
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && hand.pose !== 'fist' && !(screen === 'play' && playing)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]') || el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHud(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintplay', screen === 'play', (v) => $('hint').classList.toggle('play', v));
+  if (!routine || screen !== 'play') return;
+  setOnce('flags', `${routine.next}/${routine.gates.length}`, (v) => { $('hd-flags').textContent = v; });
+  setOnce('time', `${Math.floor(routine.t)}s`, (v) => { $('hd-time').textContent = v; });
+  const cone = routine.cones.find((c) => !c.cleared && !c.hit && Math.hypot(c.x - routine.pos.x, c.y - routine.pos.y) < 160);
+  const tip = routine.stumble > 0 ? 'Oops! Back on your feet...' : cone ? 'Cone ahead: make a fist to jump!' : 'Lead your skater along the dotted line';
+  setOnce('tip', tip, (v) => { $('tip').textContent = v; });
+  setOnce('tipShown', playing, (v) => { $('tip').hidden = !v; });
+}
+
+function renderRink(now, dt) {
+  const c = rctx, t = now / 1000;
+  if (screen === 'menu') { drawPoster(c, t); return; }
+  if (!routine) return;
+  c.drawImage(iceBg, 0, 0);
+  const r = routine;
+  c.setLineDash([3, 14]); c.strokeStyle = 'rgba(19,41,75,0.55)'; c.lineWidth = 5; c.lineCap = 'round';
+  c.beginPath(); r.path.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke(); c.setLineDash([]);
+  c.strokeStyle = 'rgba(80,120,170,0.35)'; c.lineWidth = 3;
+  c.beginPath(); trail.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); c.stroke();
+  for (const cone of r.cones) drawCone(c, cone.x, cone.y, cone.hit ? 'hit' : cone.cleared ? 'cleared' : 'up');
+  r.gates.forEach((g, k) => { if (k >= r.next - 1 && k <= r.next + 2) drawFlag(c, g.x, g.y, k + 1, k < r.next ? 'done' : k === r.next ? 'next' : 'later'); });
+  const lift = r.jump > 0 ? Math.sin((1 - r.jump / S.JUMP_SECONDS) * Math.PI) : 0;
+  const spin = r.stumble > 0 ? (0.8 - r.stumble) * 12 : 0;
+  drawSkater(c, r.pos.x, r.pos.y, r.heading, t, lift, spin);
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present) return;
+  const fist = hand.pose === 'fist';
+  if (screen === 'play' && playing) {
+    c.strokeStyle = fist ? '#e63946' : '#13294b'; c.lineWidth = 4;
+    c.beginPath(); c.arc(hand.x, hand.y, fist ? 14 : 20, 0, Math.PI * 2); c.stroke();
+    return;
+  }
+  c.fillStyle = '#13294b'; c.beginPath(); c.arc(hand.x, hand.y, 8, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#e63946'; c.lineWidth = 4; c.beginPath(); c.arc(hand.x, hand.y, 22, 0, Math.PI * 2); c.stroke();
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Skating follows the real frame time, capped so a stall on a slow device cannot jump the skater.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  if (screen === 'play' && routine && playing && !routine.done) {
+    let target = null, jump = false;
+    if (hand.present) { target = toStage(hand.x, hand.y); jump = hand.pose === 'fist'; }
+    else if (mouse.x !== null) { target = toStage(mouse.x, mouse.y); jump = mouse.down; }
+    S.step(routine, dt, target, jump);
+    trail.push({ x: routine.pos.x, y: routine.pos.y }); if (trail.length > 160) trail.shift();
+    glideSound(Math.hypot(routine.vel.x, routine.vel.y));
+    for (const ev of routine.events) {
+      if (ev.type === 'gate') sfx('gate');
+      else if (ev.type === 'jump') { sfx('jump'); progress.jumps++; }
+      else if (ev.type === 'cleared') toast('Great jump!');
+      else if (ev.type === 'stumble') sfx('stumble');
+      else if (ev.type === 'done') { sfx('done'); endAt = now + 1200; glideSound(0); save(); }
+    }
+    routine.events.length = 0;
+    const jumping = routine.jump > 0;
+    if (wasJumping && !jumping) sfx('land');
+    wasJumping = jumping;
+  }
+  if (endAt && now >= endAt) { endAt = 0; finishRoutine(); }
+  renderRink(now, dt);
+  updateDwell(now);
+  updateHud(now);
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
