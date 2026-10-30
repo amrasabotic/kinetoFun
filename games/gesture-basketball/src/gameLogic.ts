@@ -63,9 +63,9 @@ export interface BasketGestureInput {
   aimX:         number;   // 0–1, mirrored wrist X
   handDetected: boolean;
   shootFired:   boolean;
-  throwPower:   number;   // 0–1, rise-based throw power
-  wristY:       number;   // 0–1 current wrist Y (for UI)
-  chargeRatio:  number;   // 0–1 how charged the throw is (for UI)
+  throwPower:   number;   // 0–1, power when the fist opened
+  charging:     boolean;  // fist held, power sweeping
+  chargeRatio:  number;   // 0–1 current power (for UI)
 }
 
 export interface DifficultyConfig {

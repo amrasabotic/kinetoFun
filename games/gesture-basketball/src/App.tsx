@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useHandTracking }          from './useHandTracking';
-import { useMenuHand }              from './useMenuHand';
+import { useMenuHand, usesSharedCursor } from './useMenuHand';
 import { deriveBasketGesture, useGestureRefs } from './useGesture';
 import {
   initialGameState, stepGame, previewArc,
@@ -138,7 +138,7 @@ function MenuGestureLayer({ children }: {
       <video ref={videoRef as React.RefObject<HTMLVideoElement>}
         className="absolute opacity-0 pointer-events-none w-1 h-1" muted playsInline />
       {children({ hand, activeId, dwellProgress })}
-      {hand.detected && (
+      {hand.detected && !usesSharedCursor && (
         <div className="pointer-events-none fixed z-50"
           style={{ left: hand.x * window.innerWidth - CURSOR_R, top: hand.y * window.innerHeight - CURSOR_R, width: CURSOR_R * 2, height: CURSOR_R * 2 }}>
           <svg width={CURSOR_R * 2} height={CURSOR_R * 2}>
@@ -267,12 +267,12 @@ const HOW_ITEMS = [
     desc: 'Position yourself so the camera sees your upper body — chest to above your head. Good lighting helps tracking.' },
   { icon: '↔️', title: '1 · Aim', color: '#fb923c',
     desc: 'Move your shooting hand left or right. The dotted arc on screen shows exactly where your shot will go in real-time.' },
-  { icon: '⬇️', title: '2 · Get Ready', color: '#fbbf24',
-    desc: 'Hold your hand in the lower half of the camera frame (below your waist height in the image). The green "READY" badge lights up.' },
-  { icon: '🏀', title: '3 · Throw!', color: '#f97316',
-    desc: 'Make a natural throwing motion — flick your wrist/arm upward quickly. The faster you throw, the more power the shot has.' },
+  { icon: '✊', title: '2 · Wind Up', color: '#fbbf24',
+    desc: 'Make a fist. The power bar under the player sweeps up and down while you hold it.' },
+  { icon: '🏀', title: '3 · Shoot!', color: '#f97316',
+    desc: 'Open your hand to shoot with the power the bar shows.' },
   { icon: '📐', title: 'Power matters', color: '#a78bfa',
-    desc: `A gentle throw = weak arc (undershoots). A natural medium throw = perfect arc. A hard throw = overshoots. Find your rhythm.` },
+    desc: `Too little power falls short, too much flies over. Open your hand when the bar is just under half full.` },
   { icon: '🏆', title: 'Scoring', color: '#4ade80',
     desc: `${MAX_SHOTS} shots per game, ${POINTS_PER_BASKET} pts each = ${MAX_SHOTS * POINTS_PER_BASKET} pts max. Consecutive baskets build a streak bonus.` },
 ];
@@ -485,9 +485,8 @@ function GameScreen({ difficulty, onQuit }: { difficulty: Difficulty; onQuit: ()
     vDwellRef.current    = 0;
     setFistProgress(0);
     setVProgress(0);
-    gestureRefs.shootFiredRef.current = false;
-    gestureRefs.peakYRef.current      = 0.7;
-    gestureRefs.baseYRef.current      = 0.7;
+    gestureRefs.chargeFromRef.current = null;
+    gestureRefs.poseRef.current       = { raw: null, since: 0, held: null };
     setDisp(gsRef.current);
   };
   handleRestartRef.current = handleRestart;
@@ -1081,13 +1080,13 @@ function drawGame(
   // ── 11. Throw indicator (aiming state) ────────────────────────────────────
   if (gs.phase === 'aiming' && gesture.handDetected) {
     const charge = gesture.chargeRatio;
-    const isReady = gesture.wristY > 0.52;
+    const isReady = gesture.charging;
 
     // Charge bar (bottom of canvas, under player)
     const barX = PLAYER_X - 30;
     const barY = CANVAS_H - 18;
-    const barW = 60;
-    const barH = 8;
+    const barW = 90;
+    const barH = 12;
 
     // Track background
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -1106,14 +1105,18 @@ function drawGame(
     }
 
     // Status label
-    ctx.font      = 'bold 10px sans-serif';
+    // Sweet spot, so the player knows when to let go.
+    ctx.fillStyle = 'rgba(74,222,128,0.55)';
+    ctx.fillRect(barX + barW * 0.4, barY - 3, barW * 0.14, barH + 6);
+
+    ctx.font      = 'bold 13px sans-serif';
     ctx.textAlign = 'center';
     if (isReady) {
       ctx.fillStyle = '#4ade80';
-      ctx.fillText('READY — flick up!', barX + barW / 2, barY - 5);
+      ctx.fillText('Open hand to shoot!', barX + barW / 2, barY - 7);
     } else {
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillText('lower hand to ready', barX + barW / 2, barY - 5);
+      ctx.fillText('Make a fist to wind up', barX + barW / 2, barY - 7);
     }
   }
 

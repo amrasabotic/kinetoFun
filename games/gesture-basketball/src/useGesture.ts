@@ -2,75 +2,75 @@ import { useRef } from 'react';
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import type { BasketGestureInput } from './gameLogic';
 
-// ── Rise-detection throw ───────────────────────────────────────────────────────
-// Player holds hand below READY_Y (lower half of frame), then raises it.
-// When wrist rises THROW_THRESHOLD above the resting baseline, a shot fires.
-// Power = how much it rose / MAX_RISE.
-// After a shot the hand must return to READY_Y before the next shot is available.
+// Fist winds up, opening the hand shoots. A pose needs no big arm movement, which the camera
+// often misses from a sofa; the power sweeps up and down while the fist is held, so timing the release is the skill.
 
-const READY_Y         = 0.54;   // wrist must be below this (lower half) to ready up
-const THROW_THRESHOLD = 0.14;   // rise above baseline needed to fire (14% of frame)
-const MAX_RISE        = 0.32;   // rise = full power (1.0)
+const SWEEP_MS  = 1400;  // power climbs 0 to 1 in this time, then falls back
+const MIN_HOLD  = 250;   // a fist shorter than this is a flicker, not a wind-up
+const POSE_MS   = 90;    // a pose must hold this long before it counts
 
-const WRIST = 0;
+const TIPS: [number, number][] = [[8, 5], [12, 9], [16, 13], [20, 17]];
+const dist = (a: NormalizedLandmark, b: NormalizedLandmark) => Math.hypot(a.x - b.x, a.y - b.y);
+
+function pose(lm: NormalizedLandmark[]): 'fist' | 'open' | null {
+  const w = lm[0];
+  const curled = TIPS.filter(([t, k]) => dist(lm[t], w) < dist(lm[k], w) * 1.15).length;
+  const straight = TIPS.filter(([t, k]) => dist(lm[t], w) > dist(lm[k], w) * 1.45).length;
+  if (curled >= 3) return 'fist';
+  if (straight >= 3) return 'open';
+  return null;
+}
+
+// The middle of the camera view covers the full aim range, so the edges never need reaching.
+const reach = (v: number, lo: number, hi: number) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
 
 export interface GestureRefs {
-  shootFiredRef: React.MutableRefObject<boolean>;
-  peakYRef:      React.MutableRefObject<number>;
-  baseYRef:      React.MutableRefObject<number>;
+  poseRef:      React.MutableRefObject<{ raw: 'fist' | 'open' | null; since: number; held: 'fist' | 'open' | null }>;
+  chargeFromRef: React.MutableRefObject<number | null>;
 }
 
 export function useGestureRefs(): GestureRefs {
   return {
-    shootFiredRef: useRef(false),
-    peakYRef:      useRef(0.7),
-    baseYRef:      useRef(0.7),
+    poseRef:       useRef({ raw: null, since: 0, held: null }),
+    chargeFromRef: useRef<number | null>(null),
   };
 }
 
+export function sweepPower(heldMs: number): number {
+  const phase = (heldMs / SWEEP_MS) % 2;
+  return phase <= 1 ? phase : 2 - phase;
+}
+
 export function deriveBasketGesture(
-  hands:   NormalizedLandmark[][],
-  refs:    GestureRefs,
+  hands: NormalizedLandmark[][],
+  refs:  GestureRefs,
+  now:   number = performance.now(),
 ): BasketGestureInput {
+  const { poseRef, chargeFromRef } = refs;
   if (hands.length === 0) {
-    return { aimX: 0.5, handDetected: false, shootFired: false, throwPower: 0, wristY: 0.7, chargeRatio: 0 };
+    chargeFromRef.current = null;
+    return { aimX: 0.5, handDetected: false, shootFired: false, throwPower: 0, charging: false, chargeRatio: 0 };
   }
 
-  const wrist  = hands[0][WRIST];
-  const aimX   = 1 - wrist.x;
-  const wristY = wrist.y;
+  const lm   = hands[0];
+  const aimX = reach(1 - lm[0].x, 0.15, 0.85);
 
-  const { shootFiredRef, peakYRef, baseYRef } = refs;
+  const raw = pose(lm);
+  const p = poseRef.current;
+  if (raw !== p.raw) { p.raw = raw; p.since = now; }
+  if (raw && now - p.since >= POSE_MS) p.held = raw;
 
-  if (shootFiredRef.current) {
-    // Waiting for hand to return to resting position before next shot
-    if (wristY > READY_Y) {
-      shootFiredRef.current  = false;
-      peakYRef.current       = wristY;
-      baseYRef.current       = wristY;
-    }
-    return { aimX, handDetected: true, shootFired: false, throwPower: 0, wristY, chargeRatio: 0 };
+  if (p.held === 'fist') {
+    chargeFromRef.current ??= now;
+    const power = sweepPower(now - chargeFromRef.current);
+    return { aimX, handDetected: true, shootFired: false, throwPower: 0, charging: true, chargeRatio: power };
   }
 
-  // Continuously track resting baseline (only while hand is in ready zone)
-  if (wristY > READY_Y) {
-    baseYRef.current = wristY;
-    peakYRef.current = wristY;
+  const from = chargeFromRef.current;
+  chargeFromRef.current = null;
+  if (p.held === 'open' && from !== null && now - from >= MIN_HOLD) {
+    const power = sweepPower(now - from);
+    return { aimX, handDetected: true, shootFired: true, throwPower: power, charging: false, chargeRatio: power };
   }
-
-  // Track peak (highest point reached above baseline)
-  if (wristY < peakYRef.current) {
-    peakYRef.current = wristY;
-  }
-
-  const rise = baseYRef.current - peakYRef.current;
-
-  if (rise > THROW_THRESHOLD) {
-    const throwPower      = Math.min(rise / MAX_RISE, 1.0);
-    shootFiredRef.current = true;
-    return { aimX, handDetected: true, shootFired: true, throwPower, wristY, chargeRatio: 1 };
-  }
-
-  const chargeRatio = Math.min(rise / THROW_THRESHOLD, 1);
-  return { aimX, handDetected: true, shootFired: false, throwPower: 0, wristY, chargeRatio };
+  return { aimX, handDetected: true, shootFired: false, throwPower: 0, charging: false, chargeRatio: 0 };
 }
