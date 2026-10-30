@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-10-30 (Pottery Studio — ADR-069)
+> Last updated: 2026-10-30 (Shadow Puppets — ADR-070)
 >
 > ⚠️ **Migrations 0011 (favorites) and 0012 (user display settings) are written but NOT yet applied** — same DB-role limitation described below. The favorites feature and server-side settings persistence will silently no-op (empty list / setting not saved server-side) until the user runs these against AWS RDS via their DB GUI.
 >
@@ -43,6 +43,7 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-30] Shadow Puppets (ADR-070).** New game: the lamp throws the player's hand shadow on a wall, and five hand shapes (fist snail, one finger swan, two fingers rabbit, first and little finger deer, open hand bird) turn it into that animal. 10 stories ask each animal to go to the right spot; stars from time, no failing; 6 in-game achievements. `shadows.js` (shapes and stories) is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_shadow_puppets.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Pottery Studio (ADR-069).** New game: point one finger to shape clay on a spinning wheel (push in for thinner and taller, pull out for wider, volume kept), match 12 gold outlines from a tall cup to a grand vase, then glaze (6 colours, 3 patterns), fire in the kiln and keep pots on a shelf; a free studio has no outline. `pottery.js` (clay model and scoring) is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_pottery_studio.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] TV flag fix (ADR-067 follow-up).** Opening any website page now clears the TV flag (`TvModeSync`), so a computer that once opened /tvsetup no longer sends players to /tvsetup/games after a game or plays games in TV size. /tvsetup still sets it and play pages keep it, so the Pi is unchanged.
 - **[2026-10-30] Wizard Academy rebuilt (ADR-068).** Same id and folder, new game: ten lessons that each teach a rune (circle Fireball, line down Frost, triangle Shield, zigzag Lightning, line across Gust, V Arcane Bolt), then two combos and a Shadow Dragon boss. Point one finger and draw a rune in the air to cast; resting an open hand on a spell card casts the same spell at 75% power. Five vector-drawn enemy types (imp, skeleton archer, troll, wraith, dragon), stars and unlocks saved in the browser, six in-game achievements, one score per visit. Split into `runes.js` (shape recogniser), `engine.js` (battle rules, no rendering) and `index.html`, so the recogniser and level balance are tested headless. Not yet tried with a live hand on the Pi.

@@ -1654,3 +1654,15 @@ No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) a
 **Input.** Same rules as Wizard Academy: pointing is the tool, an open hand presses buttons by resting (so shaping never presses Done or Start over by accident), orientation-independent poses, 250 ms slip tolerance, `__kfPointer`, Back steps studio → pots → menu → leave, one score per visit, frame-time scaling. A mouse drag also shapes the clay.
 
 **Verification.** A Node test plays each pot with a fingertip sweeping at about 250 px/s aiming at the outline: every target fits the wheel limits, reaches two stars within 25 s and three stars within 60 s, keeps its volume within 2%, and untouched clay earns only one star. A headless Chrome run shapes the first pot with the mouse (55% to 96%), glazes, fires, and checks the shelf, saving, unlocking, the free studio, Back and exactly one integer `GAME_COMPLETE`. The TV size audit at 1.5x passes. Not yet tried with a live hand.
+
+
+## ADR-070 — Shadow Puppets: animal hand shapes on a lamp-lit wall
+
+**Date:** 2026-10-30
+**Status:** Accepted
+
+**Decision.** A new plain HTML game, `games/shadow-puppets`, split like ADR-068/069: `shadows.js` holds shape recognition, the 10 stories and scoring with no rendering, and `index.html` draws the wall, the player's hand shadow and the animal silhouettes. Five shapes, told apart only by which of the index, middle, ring and pinky fingers are straight (fist: snail, index: swan, index and middle: rabbit, index and pinky: deer, all four: bird). The thumb is ignored and each finger is judged by tip-to-wrist against joint-to-wrist distance, so hand angle does not matter; a finger between straight and curled may count either way, but only if exactly one shape still fits and at most one finger is unsure, so shapes are never confused. A shape must hold for 200 ms before the shadow turns into the animal. Each story step asks for a shape held for 0.8 s inside a spot on the wall; the position is the palm centre, which stays steady whatever the fingers do. Stars come from the time against a par for the story, and nobody fails.
+
+**Input.** The palm centre is the cursor; any hand shape presses buttons by resting, since every shape is a puppet; buttons are off while a story plays. Otherwise as ADR-068: middle of the camera view covers the screen, 250 ms slip tolerance, `__kfPointer`, Back steps story → stories → menu → leave, one score per visit.
+
+**Verification.** 20,000 synthetic hands (each shape, neat and sloppy, any rotation, squashed as if tilted, jittered) are recognised 100% with no confusion, and three non-puppet shapes are never accepted. Every story's spots are inside the reachable wall and apart from the previous spot, and a simulated child finishes each one inside par. A headless Chrome run on a test copy of the page that accepts synthetic hand points lights the menu cards, plays the first story to the end, screenshots every animal and the plain hand shadow, and checks saving, Back and one integer `GAME_COMPLETE`. The TV size audit at 1.5x passes. Not yet tried with a live hand.
