@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-10-30 (Star Painter — ADR-076)
+> Last updated: 2026-10-30 (Ice Rink Skater — ADR-077)
 
 ---
 
@@ -109,6 +109,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-10-30] Ice Rink Skater (ADR-077).** Hand-steered figure skating, 15 events, retro poster style. **Next:** apply `supabase/seed_ice_rink_skater.sql` to the AWS RDS database, then check the glide and fist-to-jump on the Pi.
 - [x] **[2026-10-30] Star Painter (ADR-076).** Fingertip constellation game, 10 skies, observatory style. **Next:** apply `supabase/seed_star_painter.sql` to the AWS RDS database, then check fingertip picking on the Pi from the sofa.
 - [x] **[2026-10-30] Paper Plane Pilot (ADR-075).** Hand-height flying game, 10 places, paper visual style. **Next:** apply `supabase/seed_paper_plane_pilot.sql` to the AWS RDS database, then check on the Pi how steadily the plane follows a hand from the sofa.
 - [x] **[2026-10-30] Weather Garden (ADR-074).** Hand-made weather for a garden, 10 gardens over four seasons, with its own visual design. **Next:** apply `supabase/seed_weather_garden.sql` to the AWS RDS database, then check the fist-for-rain and swipe-for-wind gestures on the Pi.
@@ -190,5 +191,5 @@ _None active._
 
 ## Future Ideas
 
-- Next games, each with its own visual design (ADR-074): **Bubble Bath Bakery** (open and close the fist to knead, move the hand to roll, hold over jars to decorate cakes for customers) and **Ice Rink Skater** (trace loops, eights and spirals on the ice while judges hold up score cards).
+- Next game, with its own visual design (ADR-074): **Bubble Bath Bakery** (open and close the fist to knead, move the hand to roll, hold over jars to decorate cakes for customers).
 - Paywall / purchasing system
