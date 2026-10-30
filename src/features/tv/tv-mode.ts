@@ -8,7 +8,8 @@
 // With the flag off, the platform behaves exactly as it does on a computer.
 //
 // The flag is per browser and outlives pairing: disconnecting a TV signs it
-// out, but the device is still a TV, so it stays on until `?tv=0` clears it.
+// out, but the device is still a TV. Opening any website page clears it
+// (see TvModeSync), so a computer that once showed the TV screens is not stuck.
 
 import { useSyncExternalStore } from "react";
 
