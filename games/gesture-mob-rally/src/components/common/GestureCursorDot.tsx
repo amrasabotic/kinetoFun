@@ -1,10 +1,16 @@
 import { useEffect, useRef } from 'react';
-import { useMenuCursorRef, EMPTY_CURSOR } from '../../gestures/MenuCursor';
+import { useMenuCursorRef, EMPTY_CURSOR, kf, usesSharedCursor } from '../../gestures/MenuCursor';
 
 /** Visible fingertip cursor for menu screens — the only visual feedback for where the "pointer" is. */
 export default function GestureCursorDot() {
   const cursorRef = useMenuCursorRef();
   const dotRef = useRef<HTMLDivElement>(null);
+
+  // Mounted exactly while buttons are on screen, so it switches the platform's cursor on and off.
+  useEffect(() => {
+    kf.__kfMenu?.(true);
+    return () => kf.__kfMenu?.(false);
+  }, []);
 
   // Moved straight on the element each frame; a re-render plus a CSS transition made it lag behind the hand.
   useEffect(() => {
@@ -22,6 +28,8 @@ export default function GestureCursorDot() {
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [cursorRef]);
+
+  if (usesSharedCursor) return null;
 
   return (
     <div

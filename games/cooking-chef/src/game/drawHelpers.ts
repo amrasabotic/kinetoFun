@@ -61,12 +61,21 @@ export function drawHandCursor(ctx: CanvasRenderingContext2D, h: HandData): void
   ctx.restore();
 }
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself.
+type SharedCursor = { x: number; y: number; visible: boolean };
+export const kf = (typeof window !== 'undefined' ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+export const usesSharedCursor = !!kf.__kfCursor;
+
 // The hand that presses buttons; menus show only this one so there is never a second cursor.
 export function leadHand(hands: HandData[]): HandData | null {
-  return hands.find(h => h.visible) ?? null;
+  const h = hands.find(h => h.visible) ?? null;
+  const s = kf.__kfCursor;
+  if (!h || !s) return h;
+  return s.visible ? { ...h, x: s.x * window.innerWidth, y: s.y * window.innerHeight } : null;
 }
 
 export function drawPointer(ctx: CanvasRenderingContext2D, hands: HandData[]): void {
+  if (usesSharedCursor) return;
   const h = leadHand(hands);
   if (h) drawHandCursor(ctx, h);
 }

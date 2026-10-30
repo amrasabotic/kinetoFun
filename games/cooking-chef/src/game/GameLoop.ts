@@ -6,7 +6,7 @@ import { particleSystem } from '@/systems/ParticleSystem';
 import { scoreSystem } from '@/systems/ScoreSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
-import { drawTimerBar, drawHandCursor } from './drawHelpers';
+import { drawTimerBar, drawHandCursor, kf } from './drawHelpers';
 
 import { initCalibration, updateCalibration, drawCalibration } from '@/screens/CalibrationScreen';
 import { drawMenu, menuDwell } from '@/screens/MenuScreen';
@@ -131,6 +131,8 @@ export function tick(
       default:            break;
     }
     prevScreen = screen;
+    // Screens with buttons use the platform's cursor; cooking keeps the game's own hand rings.
+    kf.__kfMenu?.(!['loading', 'countdown', 'play', 'transition', 'boss-intro'].includes(screen));
   }
 
   const mgId = state.sequence[state.mgIndex] as MinigameId | undefined;

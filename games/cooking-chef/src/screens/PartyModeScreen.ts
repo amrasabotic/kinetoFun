@@ -1,6 +1,6 @@
 import type { HandData, GameAction } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawPointer, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd, leadHand } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { SHORT_SEQUENCE } from '@/hooks/useGameState';
@@ -21,7 +21,7 @@ export function initPartySetup(): void {
 
 export function updatePartySetup(dt: number, hands: HandData[], dispatch: Dispatch<GameAction>): void {
   partyAnim += dt;
-  const bh = hands.find(h => h.visible) ?? null;
+  const bh = leadHand(hands);
   const fired = partyDwell.tick(bh);
   if (!fired) return;
   audioSynth.select();

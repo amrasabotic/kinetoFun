@@ -1,6 +1,6 @@
 import type { HandData, GameAction, AchievementId } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawPointer, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd, leadHand } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
@@ -30,7 +30,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
 
 export function updateAchievements(dt: number, hands: HandData[], dispatch: Dispatch<GameAction>): void {
   void dt;
-  const bh = hands.find(h => h.visible) ?? null;
+  const bh = leadHand(hands);
   const fired = achieveDwell.tick(bh);
   if (fired === 'back') { audioSynth.select(); dispatch({ type: 'NAVIGATE', screen: 'menu' }); }
 }

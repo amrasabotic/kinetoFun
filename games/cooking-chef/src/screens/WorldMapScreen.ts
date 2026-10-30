@@ -1,6 +1,6 @@
 import type { HandData, GameAction, MinigameId } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawPointer, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd, leadHand } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
@@ -29,7 +29,7 @@ export function initWorldMap(): void { /* reset anim state if needed */ }
 
 export function updateWorldMap(dt: number, hands: HandData[], dispatch: Dispatch<GameAction>): void {
   void dt;
-  const bh = hands.find(h => h.visible) ?? null;
+  const bh = leadHand(hands);
   const fired = worldDwell.tick(bh);
   if (!fired) return;
   audioSynth.select();

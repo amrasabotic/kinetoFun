@@ -1,6 +1,6 @@
 import type { HandData, GameAction, GameSession, GameMode } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawPointer, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd, leadHand } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
@@ -30,7 +30,7 @@ export function initResults(session: GameSession, particles: ParticleSystem): vo
 
 export function updateResults(dt: number, hands: HandData[], dispatch: Dispatch<GameAction>): void {
   resultsTimer += dt;
-  const bh = hands.find(h => h.visible) ?? null;
+  const bh = leadHand(hands);
   const fired = resultsDwell.tick(bh);
   if (fired) handleResultsActivate(fired, dispatch);
 }

@@ -416,14 +416,25 @@ function resetDwell() {
   if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
   dwell.el = null; dwell.p = 0;
 }
+// On the platform the bridge supplies one cursor for every game and the platform draws it; buttons follow that cursor.
+const shared = window.__kfCursor;
+let menuOn = null;
+function pointer() {
+  if (shared) return shared.visible ? { x: shared.x * W, y: shared.y * H } : null;
+  return hand.present ? { x: hand.x, y: hand.y } : null;
+}
+
 function updateDwell(now) {
   let target = null;
-  if (hand.present && now >= armedAt && !(screen === 'story' && playing)) {
+  const menu = !(screen === 'story' && playing);
+  if (menu !== menuOn) { menuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = pointer();
+  if (pt && now >= armedAt && menu) {
     for (const el of $(screen).querySelectorAll('[data-dwell]')) {
       if (el.closest('[hidden]')) continue;
       const r = el.getBoundingClientRect();
       if (!r.width) continue;
-      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+      if (pt.x >= r.left - 16 && pt.x <= r.right + 16 && pt.y >= r.top - 16 && pt.y <= r.bottom + 16) { target = el; break; }
     }
   }
   // After a press, the same target waits until the hand leaves it, so holding never repeats.
@@ -639,7 +650,8 @@ function renderWall(now, dt) {
 function renderInk() {
   const c = ictx;
   c.clearRect(0, 0, W, H);
-  if (!hand.present || (screen === 'story' && playing) || !dwell.el) return;
+  // The button itself fills; a ring here would sit beside the platform's cursor.
+  if (shared || !hand.present || (screen === 'story' && playing) || !dwell.el) return;
   c.strokeStyle = '#ffd27a'; c.lineWidth = 7;
   c.beginPath(); c.arc(hand.x, hand.y, 34, -Math.PI / 2, -Math.PI / 2 + dwell.p * Math.PI * 2); c.stroke();
 }
