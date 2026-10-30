@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shadow Puppets</title>
+<style>
+:root { --gold:#ffd27a; --ink:#fff7e6; --muted:#e6d5bb; --panel:rgba(30,20,40,0.9); --line:rgba(255,210,122,0.45); }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#140d1c; color:var(--ink); font-family:'Trebuchet MS','Segoe UI',Arial,sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#wall { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+
+.screen { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px 40px; text-align:center; }
+.screen.on { display:flex; }
+.dim { background:rgba(15,8,22,0.72); }
+.clear { background:none; }
+
+h1 { font-size:68px; line-height:1.05; font-family:Georgia,'Times New Roman',serif; color:var(--gold); }
+h2 { font-size:42px; font-family:Georgia,'Times New Roman',serif; color:var(--gold); }
+.sub { font-size:24px; color:var(--muted); max-width:900px; }
+.small { font-size:20px; color:var(--muted); }
+.row { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; }
+
+.btn { position:relative; min-width:230px; min-height:84px; padding:14px 34px; border-radius:20px; overflow:hidden; cursor:pointer;
+  border:3px solid rgba(255,255,255,0.25); background:linear-gradient(135deg,#7a3fb0,#c0659a); color:#fff;
+  font:800 28px 'Trebuchet MS','Segoe UI',Arial,sans-serif; box-shadow:0 8px 24px rgba(0,0,0,0.35); }
+.btn.alt { background:rgba(255,255,255,0.08); border-color:var(--line); }
+.btn::after, .tile::after { content:''; position:absolute; left:0; bottom:0; height:9px; width:100%; background:var(--gold);
+  transform-origin:left; transform:scaleX(var(--p,0)); }
+.btn.hot, .tile.hot { border-color:var(--gold); box-shadow:0 0 0 5px rgba(255,210,122,0.35); }
+.btn[hidden] { display:none; }
+
+.shapes { display:flex; gap:14px; justify-content:center; }
+.shape { width:200px; padding:12px 8px; border-radius:18px; background:var(--panel); border:2px solid var(--line); display:flex; flex-direction:column; align-items:center; gap:4px; }
+.shape.seen { border-color:#7dffb2; box-shadow:0 0 0 4px rgba(125,255,178,0.3); }
+.shape svg { width:70px; height:70px; }
+.shape b { font-size:24px; color:var(--gold); }
+.shape span { font-size:18px; color:var(--muted); line-height:1.3; }
+
+.tiles { display:grid; grid-template-columns:repeat(5, 210px); gap:16px; }
+.tile { position:relative; overflow:hidden; height:150px; border-radius:18px; background:var(--panel); border:3px solid var(--line); cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+.tile .num { font-size:34px; font-weight:800; color:var(--gold); line-height:1; }
+.tile .nm { font-size:19px; padding:0 8px; }
+.tile .who { display:flex; gap:2px; }
+.tile .who svg { width:30px; height:30px; }
+.tile.locked { opacity:0.45; cursor:default; }
+.stars { display:flex; gap:4px; justify-content:center; }
+.stars svg { width:24px; height:24px; }
+.stars.big svg { width:72px; height:72px; }
+
+#say { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:760px; padding:10px 24px; border-radius:18px; background:var(--panel);
+  border:2px solid var(--line); pointer-events:none; }
+#say .lbl { font-size:18px; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; }
+#say .txt { font-size:28px; font-weight:700; line-height:1.25; }
+#need { position:absolute; left:20px; bottom:20px; display:flex; align-items:center; gap:12px; padding:10px 18px; border-radius:18px; background:var(--panel); border:2px solid var(--line); }
+#need svg { width:64px; height:64px; }
+#need b { font-size:26px; color:var(--gold); display:block; }
+#need span { font-size:19px; color:var(--muted); }
+#seen { position:absolute; right:20px; bottom:20px; padding:12px 22px; border-radius:18px; background:var(--panel); border:2px solid var(--line); font-size:24px; font-weight:700; }
+#seen.ok { border-color:#7dffb2; color:#7dffb2; }
+#intro { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:rgba(15,8,22,0.78); }
+#intro[hidden] { display:none; }
+#intro p { font-size:24px; color:var(--muted); }
+
+.result { display:flex; flex-direction:column; align-items:center; gap:14px; background:var(--panel); border:3px solid var(--line); border-radius:22px; padding:26px 40px; }
+.lines { display:grid; grid-template-columns:auto auto; gap:6px 36px; font-size:24px; text-align:left; }
+.lines .v { color:var(--gold); font-weight:800; text-align:right; }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border-radius:14px; border:2px solid var(--line); object-fit:cover; transform:scaleX(-1); background:#000; }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:22px; padding:8px 22px; border-radius:30px; background:rgba(15,8,22,0.92);
+  border:2px solid var(--line); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.low { top:auto; bottom:110px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; right:16px; top:16px; font-size:22px; font-weight:700; padding:12px 20px; border-radius:14px; background:#3a2350; border:2px solid var(--gold);
+  color:var(--gold); opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="wall" width="1280" height="720"></canvas>
+
+  <section class="screen dim on" id="menu">
+    <h1>Shadow Puppets</h1>
+    <p class="sub">The lamp throws your hand's shadow on the wall. Make an animal shape and it comes to life!</p>
+    <div class="shapes" id="menu-shapes"></div>
+    <p class="small">Try them now: hold a shape up to the camera and it lights up.</p>
+    <div class="row">
+      <button type="button" class="btn" data-dwell="play">Play</button>
+      <button type="button" class="btn alt" data-dwell="sound" id="btn-sound">Sound: On</button>
+      <button type="button" class="btn alt" data-dwell="exit" id="btn-exit" hidden>Back to games</button>
+    </div>
+  </section>
+
+  <section class="screen dim" id="map">
+    <h2>Choose a story</h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="row"><button type="button" class="btn alt" data-dwell="menu">Menu</button></div>
+  </section>
+
+  <section class="screen clear" id="story">
+    <div id="say"><div class="lbl" id="say-lbl"></div><div class="txt" id="say-txt"></div></div>
+    <div id="need"></div>
+    <div id="seen">Show me a shape</div>
+    <div id="intro">
+      <h2 id="in-title"></h2>
+      <p>You will need these animals:</p>
+      <div class="shapes" id="in-shapes"></div>
+      <button type="button" class="btn" data-dwell="begin">Start the story</button>
+      <p class="small">Rest your hand on the button to start.</p>
+    </div>
+  </section>
+
+  <section class="screen dim" id="result">
+    <div class="result">
+      <h2 id="rs-title"></h2>
+      <div class="stars big" id="rs-stars"></div>
+      <div class="lines" id="rs-lines"></div>
+      <div class="row" id="rs-buttons"></div>
+    </div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="shadows.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const S = window.Shadows;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), wall = $('wall'), ink = $('ink'), video = $('cam');
+const wctx = wall.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'shadow-puppets-v1';
+const N = S.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true, ach: {}, made: {} };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        ach: s.ach || {}, made: s.made || {} };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every story played since the game was opened; reported once, when the player leaves or finishes the last story.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function tone(f, dur, type = 'sine', vol = 0.12, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+const ANIMAL_SOUND = {
+  rabbit() { tone(900, 0.08, 'sine', 0.1, 1300); tone(1100, 0.08, 'sine', 0.08, 1500, 0.1); },
+  swan() { tone(420, 0.25, 'triangle', 0.1, 360); },
+  snail() { tone(300, 0.4, 'sine', 0.08, 380); },
+  deer() { tone(520, 0.12, 'triangle', 0.1, 700); tone(520, 0.12, 'triangle', 0.1, 700, 0.18); },
+  bird() { [1500, 1900, 1600].forEach((f, i) => tone(f, 0.08, 'sine', 0.08, f * 1.2, i * 0.09)); },
+};
+const SFX = {
+  select() { tone(620, 0.12, 'triangle', 0.12); tone(930, 0.16, 'triangle', 0.1, 0, 0.08); },
+  step() { [660, 880].forEach((f, i) => tone(f, 0.18, 'triangle', 0.11, 0, i * 0.09)); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.12, 0, i * 0.12)); },
+  badge() { [784, 988, 1319].forEach((f, i) => tone(f, 0.2, 'sine', 0.09, 0, i * 0.08)); },
+};
+function sfx(name) { try { (SFX[name] || ANIMAL_SOUND[name])(); } catch (e) { /* audio is optional */ } }
+
+// ---------- icons ----------
+function handSVG(fingers, color = '#ffd27a') {
+  const xs = [30, 44, 58, 72], tall = [40, 44, 40, 32];
+  let s = `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="24" y="52" width="54" height="40" rx="14" fill="${color}"/>`;
+  s += `<rect x="12" y="58" width="16" height="26" rx="8" transform="rotate(-25 20 70)" fill="${color}"/>`;
+  fingers.forEach((f, i) => { const h = f ? tall[i] : 12; s += `<rect x="${xs[i] - 6}" y="${56 - h}" width="12" height="${h + 6}" rx="6" fill="${color}"/>`; });
+  return s + '</svg>';
+}
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffd27a' : 'rgba(255,255,255,0.15)'}" stroke="${on ? '#fff3c4' : 'rgba(255,255,255,0.3)'}" stroke-width="1"/></svg>`;
+}
+const LOCK_SVG = '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="#e6d5bb"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#e6d5bb" stroke-width="2.5"/></svg>';
+const shapeCard = (id) => `<div class="shape" data-shape="${id}">${handSVG(S.SHAPES[id].fingers)}<b>${S.SHAPES[id].name}</b><span>${S.SHAPES[id].how}</span></div>`;
+$('menu-shapes').innerHTML = S.SHAPE_ORDER.map(shapeCard).join('');
+
+// ---------- achievements ----------
+const ACH = { first: 'First Show', all: 'All Five Animals', three: 'Three Stars', quick: 'Quick Hands', finale: 'The Big Show', master: 'Puppet Master' };
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'map', 'story', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  video.classList.toggle('off', name === 'story');
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = `Sound: ${progress.sound ? 'On' : 'Off'}`; }
+updateSoundLabel();
+
+function openMap() {
+  $('tiles').innerHTML = S.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    const who = [...new Set(lv.steps.map((s) => s.shape))].map((id) => handSVG(S.SHAPES[id].fingers, locked ? '#8a7a90' : '#ffd27a')).join('');
+    return `<div class="tile${locked ? ' locked' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <div class="num">${i + 1}</div><div class="nm">${lv.name}</div><div class="who">${who}</div>
+      ${locked ? LOCK_SVG : `<div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div>`}</div>`;
+  }).join('');
+  show('map');
+}
+
+// ---------- story ----------
+let story = null, playing = false, endAt = 0;
+function openStory(i) {
+  story = S.createStory(i); playing = false; endAt = 0;
+  const lv = S.LEVELS[i];
+  $('in-title').textContent = lv.name;
+  $('in-shapes').innerHTML = [...new Set(lv.steps.map((s) => s.shape))].map(shapeCard).join('');
+  $('intro').hidden = false;
+  hud = {};
+  showStep();
+  show('story');
+}
+function showStep() {
+  const lv = S.LEVELS[story.level], st = lv.steps[Math.min(story.step, lv.steps.length - 1)];
+  $('say-lbl').textContent = `${lv.name} · ${Math.min(story.step + 1, lv.steps.length)} of ${lv.steps.length}`;
+  $('say-txt').textContent = st.text;
+  $('need').innerHTML = `${handSVG(S.SHAPES[st.shape].fingers)}<div><b>Make a ${S.SHAPES[st.shape].name}</b><span>${S.SHAPES[st.shape].how}</span></div>`;
+}
+function finishStory() {
+  const i = story.level, r = S.result(story);
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  unlockAch('first');
+  if (r.stars === 3) unlockAch('three');
+  if (r.seconds <= S.LEVELS[i].par / 2) unlockAch('quick');
+  if (i === N - 1) unlockAch('finale');
+  if (progress.stars.every((s) => s === 3)) unlockAch('master');
+  const last = i === N - 1;
+  $('rs-title').textContent = r.stars === 3 ? 'Bravo! What a show!' : r.stars === 2 ? 'Great show!' : 'The end!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Time', r.seconds + ' s'], ['Score', r.score]].map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const btn = (action, label, alt) => `<button type="button" class="btn${alt ? ' alt' : ''}" data-dwell="${action}">${label}</button>`;
+  $('rs-buttons').innerHTML = !last ? btn('next', 'Next story') + btn('again', 'Play again', true) + btn('map', 'Stories', true)
+    : btn('map', 'Stories') + btn('again', 'Play again', true);
+  playing = false;
+  show('result');
+  if (last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openMap(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': show('menu'); break;
+    case 'map': openMap(); break;
+    case 'level': openStory(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; story.t = 0; armedAt = performance.now() + ARM_MS; break;
+    case 'next': openStory(Math.min(N - 1, story.level + 1)); break;
+    case 'again': openStory(story.level); break;
+  }
+}
+
+// The platform's Back button: out of a story to the story list, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'story' || screen === 'result') { playing = false; openMap(); return true; }
+  if (screen === 'map') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, lm: null, raw: null, rawSince: 0, shape: null, shapeAt: 0, reported: false };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+// A shape must stay the same this long before the puppet changes, so passing shapes do not flicker.
+const SHAPE_MS = 200;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// The middle of the camera frame covers the whole screen, so every corner of the wall is reachable from a sofa.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+
+function handleLandmarks(lm, now) {
+  const tx = reach(1 - lm[9].x, 0.12, 0.88) * W, ty = reach(lm[9].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.5;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lm = lm; hand.lastSeen = now; hand.present = true;
+  const raw = S.classify(lm);
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (raw && now - hand.rawSince >= SHAPE_MS && raw !== hand.shape) {
+    hand.shape = raw; hand.shapeAt = now;
+    progress.made[raw] = true;
+    if (S.SHAPE_ORDER.every((id) => progress.made[id])) { save(); unlockAch('all'); }
+    sfx(raw);
+  } else if (!raw && hand.shape && now - hand.rawSince >= SLIP_MS) hand.shape = null;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.shape = null; hand.raw = null;
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on')) act(el);
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && !(screen === 'story' && playing)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHud(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintlow', screen === 'story', (v) => $('hint').classList.toggle('low', v));
+  setOnce('shape', hand.shape || '', (v) => {
+    for (const el of document.querySelectorAll('.shape')) el.classList.toggle('seen', el.dataset.shape === v);
+    const seen = $('seen');
+    seen.textContent = v ? `I see a ${S.SHAPES[v].name}!` : 'Show me a shape';
+    seen.classList.toggle('ok', !!v);
+  });
+}
+
+// ---------- the wall ----------
+const FIELD = { w: 1280, h: 720 };
+const bg = document.createElement('canvas');
+bg.width = 1280; bg.height = 720;
+(function paintWall(c) {
+  c.fillStyle = '#2a1a2e'; c.fillRect(0, 0, 1280, 720);
+  const lamp = c.createRadialGradient(640, 300, 40, 640, 330, 760);
+  lamp.addColorStop(0, '#fff1cf'); lamp.addColorStop(0.45, '#f2c98f'); lamp.addColorStop(0.8, '#9c6a63'); lamp.addColorStop(1, '#3b2434');
+  c.fillStyle = lamp; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = 'rgba(80,40,30,0.07)';
+  for (let x = 0; x < 1280; x += 64) c.fillRect(x, 0, 2, 720);
+  c.fillStyle = '#5b2a3a'; c.fillRect(0, 0, 1280, 26); c.fillRect(0, 694, 1280, 26);
+  c.fillStyle = '#7d3a4d';
+  for (let x = 0; x < 1280; x += 80) { c.beginPath(); c.arc(x + 40, 26, 40, 0, Math.PI); c.fill(); }
+})(bg.getContext('2d'));
+
+const SHADOW = 'rgba(28,14,26,0.9)';
+const PROP = 'rgba(52,30,48,0.82)';
+
+function drawProp(c, kind, x, y, t) {
+  c.save(); c.translate(x, y); c.fillStyle = PROP; c.strokeStyle = PROP; c.lineCap = 'round';
+  if (kind === 'carrot') {
+    c.beginPath(); c.moveTo(-14, -20); c.lineTo(14, -20); c.lineTo(0, 30); c.closePath(); c.fill();
+    c.lineWidth = 6; for (const a of [-0.4, 0, 0.4]) { c.beginPath(); c.moveTo(0, -20); c.lineTo(Math.sin(a) * 22, -44); c.stroke(); }
+  } else if (kind === 'burrow') {
+    c.beginPath(); c.ellipse(0, 20, 70, 40, 0, Math.PI, 0); c.fill();
+    c.fillStyle = 'rgba(15,6,14,0.95)'; c.beginPath(); c.ellipse(0, 20, 26, 22, 0, Math.PI, 0); c.fill();
+  } else if (kind === 'lily') {
+    c.beginPath(); c.ellipse(0, 10, 50, 14, 0, 0.3, Math.PI * 2 - 0.3); c.lineTo(0, 10); c.fill();
+    for (let k = 0; k < 5; k++) { c.beginPath(); c.ellipse(Math.cos(k * 1.26) * 9, -6 + Math.sin(k * 1.26) * 5, 8, 14, k * 1.26, 0, 7); c.fill(); }
+  } else if (kind === 'moon') {
+    c.fillStyle = 'rgba(255,248,220,0.85)'; c.beginPath(); c.arc(0, 0, 34, 0, 7); c.fill();
+    c.fillStyle = 'rgba(242,201,143,0.9)'; c.beginPath(); c.arc(14, -8, 30, 0, 7); c.fill();
+  } else if (kind === 'leaf') {
+    c.beginPath(); c.ellipse(0, 0, 38, 18, -0.4, 0, 7); c.fill();
+    c.lineWidth = 3; c.strokeStyle = 'rgba(242,201,143,0.6)'; c.beginPath(); c.moveTo(-30, 12); c.lineTo(30, -12); c.stroke();
+  } else if (kind === 'mushroom') {
+    c.fillRect(-10, -6, 20, 40);
+    c.beginPath(); c.ellipse(0, -8, 46, 30, 0, Math.PI, 0); c.fill();
+  } else if (kind === 'tree') {
+    c.fillRect(-12, -10, 24, 110);
+    for (const [dx, dy, r] of [[0, -60, 60], [-46, -30, 42], [46, -30, 42], [0, -14, 46]]) { c.beginPath(); c.arc(dx, dy, r, 0, 7); c.fill(); }
+  } else if (kind === 'stream') {
+    c.lineWidth = 8;
+    for (let k = 0; k < 3; k++) { c.beginPath(); for (let i = -70; i <= 70; i += 10) { const yy = k * 16 + Math.sin(i / 14 + t * 3 + k) * 5; if (i === -70) c.moveTo(i, yy); else c.lineTo(i, yy); } c.stroke(); }
+  } else if (kind === 'cloud') {
+    for (const [dx, dy, r] of [[-34, 6, 26], [0, -8, 34], [34, 6, 26], [0, 12, 24]]) { c.beginPath(); c.arc(dx, dy, r, 0, 7); c.fill(); }
+  } else if (kind === 'nest') {
+    c.beginPath(); c.ellipse(0, 10, 52, 22, 0, 0, Math.PI); c.fill();
+    c.lineWidth = 4; for (let k = -40; k <= 40; k += 14) { c.beginPath(); c.moveTo(k - 8, 6); c.lineTo(k + 12, 22); c.stroke(); }
+  } else if (kind === 'sun') {
+    c.fillStyle = 'rgba(255,240,190,0.9)'; c.beginPath(); c.arc(0, 0, 30, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(255,240,190,0.9)'; c.lineWidth = 6;
+    for (let k = 0; k < 8; k++) { const a = k * 0.785 + t * 0.5; c.beginPath(); c.moveTo(Math.cos(a) * 40, Math.sin(a) * 40); c.lineTo(Math.cos(a) * 54, Math.sin(a) * 54); c.stroke(); }
+  } else if (kind === 'star') {
+    c.beginPath();
+    for (let k = 0; k < 10; k++) { const r = k % 2 ? 16 : 38, a = -Math.PI / 2 + k * Math.PI / 5; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); c.fill();
+  }
+  c.restore();
+}
+
+// Animal silhouettes, roughly 160 px wide, facing right; dir flips them.
+function drawAnimal(c, kind, x, y, t, dir, scale) {
+  c.save(); c.translate(x, y); c.scale(dir * scale, scale); c.fillStyle = SHADOW; c.strokeStyle = SHADOW; c.lineCap = 'round'; c.lineJoin = 'round';
+  if (kind === 'rabbit') {
+    const hop = Math.abs(Math.sin(t * 6)) * -12;
+    c.translate(0, hop);
+    c.beginPath(); c.ellipse(-10, 20, 46, 34, 0, 0, 7); c.fill();
+    c.beginPath(); c.arc(36, -12, 26, 0, 7); c.fill();
+    c.beginPath(); c.ellipse(28, -60, 9, 34, -0.2, 0, 7); c.fill();
+    c.beginPath(); c.ellipse(46, -58, 9, 32, 0.25, 0, 7); c.fill();
+    c.beginPath(); c.arc(-58, 10, 12, 0, 7); c.fill();
+    c.beginPath(); c.ellipse(20, 50, 18, 8, 0, 0, 7); c.fill();
+    c.fillStyle = 'rgba(255,241,207,0.8)'; c.beginPath(); c.arc(44, -16, 4, 0, 7); c.fill();
+  } else if (kind === 'swan') {
+    const bob = Math.sin(t * 2) * 4;
+    c.translate(0, bob);
+    c.beginPath(); c.ellipse(-10, 30, 62, 26, 0, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(-70, 22); c.lineTo(-92, 4); c.lineTo(-60, 36); c.fill();
+    c.lineWidth = 16; c.beginPath(); c.moveTo(34, 22); c.bezierCurveTo(70, 0, 20, -40, 46, -64); c.stroke();
+    c.beginPath(); c.arc(50, -66, 12, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(58, -70); c.lineTo(80, -62); c.lineTo(58, -60); c.fill();
+    c.lineWidth = 4; c.strokeStyle = 'rgba(28,14,26,0.5)';
+    for (const k of [0, 1]) { c.beginPath(); c.moveTo(-80 + k * 20, 62 + k * 8); c.lineTo(60 - k * 20, 62 + k * 8); c.stroke(); }
+  } else if (kind === 'snail') {
+    const slide = Math.sin(t * 2) * 3;
+    c.beginPath(); c.ellipse(4 + slide, 40, 74, 14, 0, 0, 7); c.fill();
+    c.beginPath(); c.arc(-10, 0, 44, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(242,201,143,0.55)'; c.lineWidth = 5; c.beginPath();
+    for (let a = 0; a < Math.PI * 5; a += 0.2) { const r = 4 + a * 2.4; c.lineTo(-10 + Math.cos(a) * r, Math.sin(a) * r); }
+    c.stroke();
+    c.strokeStyle = SHADOW; c.lineWidth = 6;
+    c.beginPath(); c.moveTo(62 + slide, 34); c.lineTo(76 + slide, -4); c.moveTo(70 + slide, 34); c.lineTo(94 + slide, 2); c.stroke();
+    c.beginPath(); c.arc(76 + slide, -6, 6, 0, 7); c.arc(95 + slide, 0, 6, 0, 7); c.fill();
+  } else if (kind === 'deer') {
+    const step = Math.sin(t * 5) * 8;
+    c.beginPath(); c.ellipse(-6, 0, 58, 28, 0, 0, 7); c.fill();
+    c.lineWidth = 10;
+    for (const [lx, s] of [[-44, 1], [-30, -1], [26, 1], [40, -1]]) { c.beginPath(); c.moveTo(lx, 10); c.lineTo(lx + s * step * 0.5, 72); c.stroke(); }
+    c.lineWidth = 18; c.beginPath(); c.moveTo(40, -6); c.lineTo(62, -48); c.stroke();
+    c.beginPath(); c.ellipse(76, -54, 24, 13, 0.3, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(-60, -10); c.lineTo(-74, -22); c.lineTo(-62, 0); c.fill();
+    c.lineWidth = 5;
+    c.beginPath(); c.moveTo(62, -64); c.lineTo(50, -102); c.moveTo(56, -84); c.lineTo(36, -94); c.moveTo(70, -64); c.lineTo(86, -100); c.moveTo(80, -86); c.lineTo(100, -92); c.stroke();
+    c.fillStyle = 'rgba(255,241,207,0.8)'; c.beginPath(); c.arc(82, -58, 3.5, 0, 7); c.fill();
+  } else if (kind === 'bird') {
+    const flap = 0.6 + Math.sin(t * 10) * 0.5;
+    c.beginPath(); c.ellipse(0, 0, 44, 20, 0, 0, 7); c.fill();
+    c.beginPath(); c.arc(42, -8, 16, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(54, -12); c.lineTo(76, -6); c.lineTo(54, -2); c.fill();
+    c.beginPath(); c.moveTo(-40, -2); c.lineTo(-76, -18); c.lineTo(-70, 10); c.closePath(); c.fill();
+    for (const lift of [1, -0.45]) {
+      c.save(); c.translate(-4, -8); c.scale(1, lift * (0.4 + flap));
+      c.beginPath(); c.moveTo(-16, 0); c.quadraticCurveTo(-24, -70, 34, -76); c.quadraticCurveTo(14, -34, 22, 0); c.closePath(); c.fill();
+      c.restore();
+    }
+    c.fillStyle = 'rgba(255,241,207,0.8)'; c.beginPath(); c.arc(46, -12, 3.5, 0, 7); c.fill();
+  }
+  c.restore();
+}
+
+// The player's real hand shadow, drawn from the tracked points around the palm position.
+const BONES = [[0, 1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
+function drawHandShadow(c, lm, cx, cy, alpha) {
+  const span = Math.hypot(lm[9].x - lm[0].x, lm[9].y - lm[0].y) || 0.1;
+  const k = 120 / span;
+  const p = (i) => ({ x: cx + (lm[9].x - lm[i].x) * k, y: cy + (lm[i].y - lm[9].y) * k });
+  c.save(); c.globalAlpha = alpha; c.fillStyle = SHADOW; c.strokeStyle = SHADOW; c.lineCap = 'round'; c.lineJoin = 'round';
+  c.beginPath();
+  for (const i of [0, 1, 5, 9, 13, 17]) { const q = p(i); if (i) c.lineTo(q.x, q.y); else c.moveTo(q.x, q.y); }
+  c.closePath(); c.fill(); c.lineWidth = 34; c.stroke();
+  for (const chain of BONES) {
+    c.lineWidth = chain[0] === 0 ? 26 : 24;
+    c.beginPath();
+    chain.forEach((i, n) => { const q = p(i); if (n) c.lineTo(q.x, q.y); else c.moveTo(q.x, q.y); });
+    c.stroke();
+  }
+  c.restore();
+}
+
+let facing = 1, lastPX = 0, morph = 0, puppetKind = null;
+function renderWall(now, dt) {
+  const c = wctx, t = now / 1000;
+  c.drawImage(bg, 0, 0);
+  const active = screen === 'story' && story;
+  if (active) {
+    const lv = S.LEVELS[story.level];
+    lv.steps.forEach((st, i) => {
+      if (i < story.step) return;
+      drawProp(c, st.prop, st.at[0] * FIELD.w, st.at[1] * FIELD.h, t);
+    });
+    if (playing && !story.done) {
+      const st = lv.steps[story.step], x = st.at[0] * FIELD.w, y = st.at[1] * FIELD.h, r = S.ZONE_R * FIELD.h;
+      c.save();
+      c.strokeStyle = `rgba(255,210,122,${0.55 + Math.sin(t * 4) * 0.25})`; c.lineWidth = 5; c.setLineDash([14, 10]);
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke();
+      c.setLineDash([]);
+      if (story.hold > 0) {
+        c.strokeStyle = '#7dffb2'; c.lineWidth = 10;
+        c.beginPath(); c.arc(x, y, r + 8, -Math.PI / 2, -Math.PI / 2 + (story.hold / S.HOLD) * Math.PI * 2); c.stroke();
+      }
+      c.restore();
+    }
+  }
+  if (hand.present && hand.lm) {
+    const pos = toStage(hand.x, hand.y);
+    if (Math.abs(pos.x - lastPX) > 2) facing = pos.x > lastPX ? 1 : -1;
+    lastPX = pos.x;
+    if (hand.shape) { puppetKind = hand.shape; morph = Math.min(1, morph + dt * 5); }
+    else morph = Math.max(0, morph - dt * 5);
+    if (morph < 1) drawHandShadow(c, hand.lm, pos.x, pos.y, 1 - morph);
+    if (morph > 0 && puppetKind) {
+      c.save(); c.globalAlpha = morph;
+      drawAnimal(c, puppetKind, pos.x, pos.y, t, facing, 0.75 + morph * 0.25);
+      c.restore();
+    }
+  } else morph = 0;
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present || (screen === 'story' && playing) || !dwell.el) return;
+  c.strokeStyle = '#ffd27a'; c.lineWidth = 7;
+  c.beginPath(); c.arc(hand.x, hand.y, 34, -Math.PI / 2, -Math.PI / 2 + dwell.p * Math.PI * 2); c.stroke();
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Time scales with the real frame time, capped so a stall on a slow device cannot skip a step.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  if (screen === 'story' && story && playing && !story.done) {
+    const pos = hand.present ? toStage(hand.x, hand.y) : null;
+    const before = story.step;
+    S.update(story, hand.shape, pos && { x: pos.x / FIELD.w, y: pos.y / FIELD.h }, dt);
+    for (const ev of story.events) if (ev.type === 'step') sfx('step');
+    story.events.length = 0;
+    if (story.step !== before && !story.done) showStep();
+    if (story.done) { sfx('win'); endAt = now + 1200; }
+  }
+  if (endAt && now >= endAt) { endAt = 0; finishStory(); }
+  renderWall(now, dt);
+  updateDwell(now);
+  updateHud(now);
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
