@@ -1640,3 +1640,17 @@ No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) a
 **Not verified.** Drawing with a real hand at sofa distance, the pose thresholds and the 12%-of-screen minimum rune size need a live check on the Pi. Achievements are kept in the game (six) and are not reported to the platform, which only collects allow-listed games.
 
 **Follow-up to ADR-067 [2026-10-30] — TV flag no longer sticks on computers.** The TV flag was set by any /tvsetup screen and only cleared by `?tv=0`, so a laptop that once showed the TV screens treated website games as TV games (Back led to /tvsetup/games, games were scaled up and lost their glow effects). A Pi only ever shows /tvsetup screens and play pages, so now any other website page clears the flag, /tvsetup sets it and a play page keeps it.
+
+
+## ADR-069 — Pottery Studio: shaping clay on a wheel by fingertip
+
+**Date:** 2026-10-30
+**Status:** Accepted
+
+**Decision.** A new plain HTML game, `games/pottery-studio`, built like Wizard Academy (ADR-068): `pottery.js` holds the clay model, the 12 target pots and scoring with no rendering, and `index.html` holds camera, input, drawing, sound and screens. The clay is 40 rings around the wheel axis. A pointing fingertip pushes rings in, or drags them out when it is within 40 px outside the surface; the volume is kept constant, so squeezing makes the pot taller and widening makes it shorter, as with real clay. The spinning wheel slowly evens out small bumps. Each target is scaled to the starting clay's volume, so every pot can be made.
+
+**Scoring.** The match is the overlap of the two outlines (shared over combined area), rescaled so that 55% overlap counts as 0%, because an untouched lump already overlaps most targets by 55–90%. Stars: 60% for two, 80% for three. Every finished pot earns at least one star and unlocks the next one; there is no failing.
+
+**Input.** Same rules as Wizard Academy: pointing is the tool, an open hand presses buttons by resting (so shaping never presses Done or Start over by accident), orientation-independent poses, 250 ms slip tolerance, `__kfPointer`, Back steps studio → pots → menu → leave, one score per visit, frame-time scaling. A mouse drag also shapes the clay.
+
+**Verification.** A Node test plays each pot with a fingertip sweeping at about 250 px/s aiming at the outline: every target fits the wheel limits, reaches two stars within 25 s and three stars within 60 s, keeps its volume within 2%, and untouched clay earns only one star. A headless Chrome run shapes the first pot with the mouse (55% to 96%), glazes, fires, and checks the shelf, saving, unlocking, the free studio, Back and exactly one integer `GAME_COMPLETE`. The TV size audit at 1.5x passes. Not yet tried with a live hand.
