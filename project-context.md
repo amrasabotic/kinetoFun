@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-10-30 (Weather Garden — ADR-074)
+> Last updated: 2026-10-30 (Paper Plane Pilot — ADR-075)
 >
 > ⚠️ **Migrations 0011 (favorites) and 0012 (user display settings) are written but NOT yet applied** — same DB-role limitation described below. The favorites feature and server-side settings persistence will silently no-op (empty list / setting not saved server-side) until the user runs these against AWS RDS via their DB GUI.
 >
@@ -43,6 +43,7 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-30] Paper Plane Pilot (ADR-075).** New game in a hand-drawn paper style (taped title, sticky notes, ticket buttons, route map): the hand's height steers a paper plane through hoops past birds, kites, rooftops, storms and mountains, a fist boosts, and every flight ends on a runway (soft landings score more). 10 generated courses with a checked clear flight line. `plane.js` is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_paper_plane_pilot.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Weather Garden (ADR-074).** New game with its own bright look (wooden sign, seed packets, round buttons, stepping-stone level path): the weather follows the hand over the garden, open hand for sun, fist for rain, fast swipe for wind against bugs; each plant has its own happy range of sun and water and says what it needs in a bubble. 10 gardens from spring to winter with 1 to 6 plants, passing rain clouds, heatwaves and frost; every plant blooms, faster gardens earn more stars. `garden.js` is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_weather_garden.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Orchestra Conductor (ADR-073).** New game: waving the hand conducts an animal orchestra (drums, strings, horns, flutes) that plays at the waved tempo; big waves loud, small waves soft; waving over a lit-up section brings it in. 10 pieces of traditional and public-domain tunes, all synthesised; stars from tempo, dynamics and cues, no failing. `conductor.js` (beats, tunes, scoring) is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_orchestra_conductor.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Lighthouse Keeper (ADR-072).** New game: the hand moves a lighthouse beam on a dark sea; boats in the light sail towards it, boats in the dark wait at anchor, and the player leads each one along buoys into the harbour past rocks, whales, fog and currents. 10 nights, stars from bumps, no boat ever lost. `lighthouse.js` (sea and levels) is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_lighthouse_keeper.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
