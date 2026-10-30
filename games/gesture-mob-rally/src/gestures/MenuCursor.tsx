@@ -11,6 +11,9 @@ export interface CursorPoint {
 export const EMPTY_CURSOR: CursorPoint = { xPct: 50, yPct: 50, detected: false, pinch: false };
 const EMPTY = EMPTY_CURSOR;
 
+// The camera loses a hand at its edges, so the middle of its view is stretched over the whole screen.
+const reach = (v: number, lo: number, hi: number) => Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100));
+
 const CursorRefContext = createContext<React.RefObject<CursorPoint> | null>(null);
 
 /**
@@ -32,17 +35,24 @@ export function MenuCursorProvider({
 
   useEffect(() => {
     let raf = 0;
+    let reported = false;
+    // Lets the platform's Back button follow this cursor.
+    const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
     function tick() {
       const hand = handRef.current;
       const tip = hand?.landmarks?.[8];
       if (hand?.detected && tip) {
-        const rawX = (1 - tip.x) * 100;
-        const rawY = tip.y * 100;
-        smooth.current.x += (rawX - smooth.current.x) * 0.25;
-        smooth.current.y += (rawY - smooth.current.y) * 0.25;
+        const rawX = reach(1 - tip.x, 0.12, 0.88);
+        const rawY = reach(tip.y, 0.1, 0.75);
+        // Light smoothing only: heavier smoothing made the cursor trail behind the hand.
+        smooth.current.x += (rawX - smooth.current.x) * 0.5;
+        smooth.current.y += (rawY - smooth.current.y) * 0.5;
         cursorRef.current = { xPct: smooth.current.x, yPct: smooth.current.y, detected: true, pinch: hand.isPinch };
+        kf.__kfPointer?.(smooth.current.x / 100, smooth.current.y / 100);
+        reported = true;
       } else {
         cursorRef.current = { ...cursorRef.current, detected: false, pinch: false };
+        if (reported) { kf.__kfPointer?.(null); reported = false; }
       }
       raf = requestAnimationFrame(tick);
     }

@@ -8,7 +8,6 @@ import { useLeaderboardStore } from '../../stores/useLeaderboardStore';
 import { colorThemeIndex } from '../../game/cosmetics/cosmeticDefs';
 import GestureCursorDot from '../common/GestureCursorDot';
 import HUD from '../ui/HUD';
-import PauseOverlay from './PauseOverlay';
 import GameOverScreen from '../ui/GameOverScreen';
 
 interface Props {
@@ -58,7 +57,6 @@ export default function GameCanvas({ handRef, canvasRef }: Props) {
 
       {hud && !showGameOver && <HUD hud={hud} />}
 
-      {hud?.paused && !showGameOver && <PauseOverlay />}
 
       {showGameOver && <GestureCursorDot />}
       {showGameOver && hud && (
