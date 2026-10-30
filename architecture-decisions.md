@@ -1774,3 +1774,17 @@ No new gesture primitive needed — `isPinching` (thumb-index distance < 0.07) a
 The platform's Back button no longer draws a ring at the raw fingertip for games that do not report a cursor: about 80 games draw their own cursor without reporting it, so the ring showed up as a second cursor next to Back. The button now lights up when the hand comes within 220 px instead.
 
 **Verification.** Type-check and static build pass; not yet tried with a live hand.
+
+**Follow-up [2026-10-31] — ring restored for unreported games.** Removing the ring left most sports games (basketball, darts, bowling, mini golf and others) with no pointer near Back, since they hide their own cursor during play. The ring is back, but only for games that do not report a cursor through `__kfPointer`; games that draw and report their own cursor (Cooking Chef, Mob Rally) never get it, so it is not a second cursor there. The button still lights up when the hand is near.
+
+**Follow-up [2026-10-31] — spotting a game's own cursor.** The restored ring doubled up in games that draw a cursor without reporting it (Farm Builder, Volleyball's menus). The bridge now looks, at most four times a second, for a small round element that ignores clicks or is fixed in place and has moved within the last second; while one is seen, it asks for no ring. Games that hide their cursor during play still get the ring. A cursor drawn inside a canvas cannot be seen this way, so such games report it through `__kfPointer` (Cooking Chef, and the eight games sharing `useMenuHand.ts`).
+
+
+## ADR-080 — One platform cursor for buttons (pilot)
+
+**Date:** 2026-10-31
+**Status:** Pilot
+
+**Decision.** Pointing at buttons moves from each game to the platform. `kf-bridge.js` turns the fingertip it already sees into one shared cursor (stretched from the middle of the camera view, lightly smoothed) and exposes it as `window.__kfCursor`; a game calls `window.__kfMenu(true)` while buttons are on screen, hit-tests its buttons with `__kfCursor`, and draws no pointer of its own; the platform draws the cursor over the game and Back uses the same position. Gameplay keeps each game's own hand reading and visuals (Cooking Chef's hand rings while cooking, the puppet in Shadow Puppets). Games without `__kfCursor` (run outside the platform) fall back to their own cursor, so removing the bridge API rolls a game back. Piloted on Gesture Volleyball, Mob Rally, Farm Builder, Cooking Chef and Shadow Puppets.
+
+**Verification.** All five type-check and build; a Node run of the bridge with synthetic hands checks the mapping, smoothing and hand-lost state. Not yet tried with a live hand.
