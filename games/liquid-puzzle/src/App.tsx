@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { GestureProvider } from './mediaPipe/GestureProvider';
 import { useGesture } from './hooks/useGesture';
 import { CameraGate } from './components/CameraGate';
@@ -23,6 +23,7 @@ import {
 } from './systems/save';
 import { setMusicVolume, setSfxVolume, startAmbientMusic } from './systems/audio';
 import { dailySeed } from './utils/helpers';
+import { useMenuCursor } from './sharedCursor';
 
 type ScreenName = 'howto' | 'menu' | 'levelSelect' | 'statistics' | 'settings' | 'credits' | 'game';
 
@@ -47,6 +48,7 @@ function AppShell({ save, setSave }: AppShellProps) {
   const gesture = useGesture();
   // How to Play is the first screen after calibration every time the game loads.
   const [screen, setScreen] = useState<ScreenName>('howto');
+  useMenuCursor(screen !== 'game');
   const [launch, setLaunch] = useState<Launch | null>(null);
   const [runKey, setRunKey] = useState(0);
 
@@ -82,6 +84,13 @@ function AppShell({ save, setSave }: AppShellProps) {
     setRunKey((k) => k + 1);
   }, [launch]);
 
+  // The platform ends the game on GAME_COMPLETE, so level scores add up here and are reported once, when the player leaves.
+  const sessionScoreRef = useRef(0);
+  const leaveGame = useCallback(() => {
+    const score = sessionScoreRef.current;
+    window.parent?.postMessage(score > 0 ? { type: 'GAME_COMPLETE', score } : { type: 'GAME_EXIT' }, '*');
+  }, []);
+
   const handleWin = useCallback(
     (result: WinResult) => {
       if (result.mode === 'endless') {
@@ -89,7 +98,7 @@ function AppShell({ save, setSave }: AppShellProps) {
       } else {
         setSave(recordLevelWin(result.mode, result.level, result.stars, result.movesUsed, result.hintsUsed, result.undosUsed, result.elapsedMs));
       }
-      window.parent?.postMessage({ type: 'GAME_COMPLETE', score: result.score }, '*');
+      sessionScoreRef.current += result.score;
     },
     [setSave],
   );
@@ -100,11 +109,15 @@ function AppShell({ save, setSave }: AppShellProps) {
   // The platform's Back button: one screen back, and out of the game from the first screens.
   useEffect(() => {
     (window as unknown as { __kfBack?: () => boolean }).__kfBack = () => {
-      if (screen === 'howto' || screen === 'menu') return false;
+      if (screen === 'howto' || screen === 'menu') {
+        if (sessionScoreRef.current <= 0) return false;
+        leaveGame();
+        return true;
+      }
       setScreen('menu');
       return true;
     };
-  }, [screen]);
+  }, [screen, leaveGame]);
 
   if (screen === 'game' && launch) {
     return (
@@ -159,6 +172,7 @@ function AppShell({ save, setSave }: AppShellProps) {
           onStatistics={() => setScreen('statistics')}
           onSettings={() => setScreen('settings')}
           onCredits={() => setScreen('credits')}
+          onExitToPlatform={leaveGame}
           onHowToPlay={() => setScreen('howto')}
           dailyDone={hasDailyCompletedToday()}
           gesture={gesture}

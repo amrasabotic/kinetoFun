@@ -5,7 +5,7 @@ export interface GestureState {
   isHovering: boolean; // a hand is currently detected
   isPinching: boolean; // pinch over a tube to grab it, drag over another (still pinching) to pour into it
   isPalmOpen: boolean; // held for PAUSE_HOLD_MS anywhere opens the pause menu
-  isThumbsUp: boolean; // edge-triggered — undo the last move
+  isThumbsUp: boolean; // held — undo the last move
   isVictorySign: boolean; // edge-triggered — show a hint
 }
 

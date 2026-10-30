@@ -184,8 +184,8 @@ export function GameScreen({ mode, level, seed, settings, onExit, onWin, onAdvan
 
       <div className="lp-gesture-legend">
         <span>Hold on a tube: lift it · hold on another: pour</span>
-        <span>Thumbs up: undo</span>
-        <span>Victory sign: hint</span>
+        <span>Hold thumbs up: undo</span>
+        <span>Hold victory sign: hint</span>
         {gameplayEnabled && <DwellButton label="⏸ Pause" holdMs={1200} onActivate={() => setPaused(true)} />}
       </div>
 

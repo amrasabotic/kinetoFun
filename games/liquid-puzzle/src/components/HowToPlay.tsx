@@ -7,7 +7,7 @@ const STEPS: { icon: string; title: string; desc: string }[] = [
   { icon: '🧪', title: 'The goal', desc: 'Sort the liquids so each tube holds one colour.' },
   { icon: '✋', title: 'Pour', desc: 'Hold your hand on a tube to lift it, then hold on another tube to pour.' },
   { icon: '🎨', title: 'Rule', desc: 'Pour only onto the same colour or into an empty tube.' },
-  { icon: '👍', title: 'Undo and hint', desc: 'Thumbs-up undoes a pour; a victory sign ✌️ shows a hint.' },
+  { icon: '👍', title: 'Undo and hint', desc: 'Hold a thumbs-up to undo a pour; hold a victory sign ✌️ for a hint.' },
   { icon: '⏸️', title: 'Pause', desc: 'Hold your hand on the Pause button.' },
   { icon: '⭐', title: 'Stars', desc: 'Fewer pours, hints and undos earn more stars.' },
 ];

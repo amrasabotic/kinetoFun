@@ -22,6 +22,10 @@ export function useTubeInteraction({ tubeRefs, onPour, enabled }: UseTubeInterac
   const [grabbedIndex, setGrabbedIndex] = useState<number | null>(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const grabbedRef = useRef<number | null>(null);
+  // The caller passes a new onPour every render; restarting the loop for it wiped the "just poured here" guard,
+  // so the hand still resting on the target lifted it and the next hold poured it straight back.
+  const onPourRef = useRef(onPour);
+  onPourRef.current = onPour;
 
   const clearSelection = useCallback(() => {
     grabbedRef.current = null;
@@ -91,7 +95,7 @@ export function useTubeInteraction({ tubeRefs, onPour, enabled }: UseTubeInterac
           } else if (grabbedRef.current === target) {
             clearSelection();
           } else {
-            onPour(grabbedRef.current, target);
+            onPourRef.current(grabbedRef.current, target);
             clearSelection();
           }
         }
@@ -103,7 +107,7 @@ export function useTubeInteraction({ tubeRefs, onPour, enabled }: UseTubeInterac
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [enabled, tubeRefs, gestureRef, onPour, clearSelection]);
+  }, [enabled, tubeRefs, gestureRef, clearSelection]);
 
   return { hoveredIndex, selectedIndex: grabbedIndex, holdProgress, clearSelection };
 }

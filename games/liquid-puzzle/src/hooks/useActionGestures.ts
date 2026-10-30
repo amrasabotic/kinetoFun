@@ -7,17 +7,17 @@ interface UseActionGesturesOptions {
   enabled: boolean;
 }
 
-/**
- * The three non-tube gestures, each edge-triggered or held so they can
- * never fire from a single noisy frame: thumbs-up fires undo the instant it
- * appears (it's already a deliberate, distinctive pose — no hold needed on
- * top of it), and a victory sign fires a hint the same way. Pause is an
- * on-screen button: an open-palm pause fired while players rested a hand on a tube.
- */
+// A hand opening out of a pinch passes through a thumbs-up shape, which undid pours the instant it appeared.
+// So undo and hint need the pose held, and are ignored right after a pinch. Pause is an on-screen button.
+const HOLD_MS = 600;
+const AFTER_PINCH_MS = 800;
+
 export function useActionGestures({ onUndo, onHint, enabled }: UseActionGesturesOptions) {
   const gestureRef = useGestureRef();
-  const wasThumbsUpRef = useRef(false);
-  const wasVictoryRef = useRef(false);
+  const thumbsSinceRef = useRef<number | null>(null);
+  const victorySinceRef = useRef<number | null>(null);
+  const firedRef = useRef(false);
+  const lastPinchRef = useRef(-Infinity);
 
   useEffect(() => {
     let raf = 0;
@@ -27,12 +27,21 @@ export function useActionGestures({ onUndo, onHint, enabled }: UseActionGestures
         return;
       }
       const g = gestureRef.current;
+      const now = performance.now();
+      if (g.isPinching) lastPinchRef.current = now;
+      const calm = now - lastPinchRef.current > AFTER_PINCH_MS;
 
-      if (g.isThumbsUp && !wasThumbsUpRef.current) onUndo();
-      wasThumbsUpRef.current = g.isThumbsUp;
+      const thumbs = calm && g.isThumbsUp;
+      const victory = calm && g.isVictorySign;
+      thumbsSinceRef.current = thumbs ? (thumbsSinceRef.current ?? now) : null;
+      victorySinceRef.current = victory ? (victorySinceRef.current ?? now) : null;
 
-      if (g.isVictorySign && !wasVictoryRef.current) onHint();
-      wasVictoryRef.current = g.isVictorySign;
+      // One hold, one action: the pose must drop before it can fire again.
+      if (!thumbs && !victory) firedRef.current = false;
+      else if (!firedRef.current) {
+        if (thumbsSinceRef.current !== null && now - thumbsSinceRef.current >= HOLD_MS) { firedRef.current = true; onUndo(); }
+        else if (victorySinceRef.current !== null && now - victorySinceRef.current >= HOLD_MS) { firedRef.current = true; onHint(); }
+      }
 
       raf = requestAnimationFrame(loop);
     }
