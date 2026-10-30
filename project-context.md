@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-10-30 (Ice Rink Skater — ADR-077)
+> Last updated: 2026-10-30 (Bubble Bath Bakery — ADR-078)
 >
 > ⚠️ **Migrations 0011 (favorites) and 0012 (user display settings) are written but NOT yet applied** — same DB-role limitation described below. The favorites feature and server-side settings persistence will silently no-op (empty list / setting not saved server-side) until the user runs these against AWS RDS via their DB GUI.
 >
@@ -43,6 +43,7 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-10-30] Bubble Bath Bakery (ADR-078).** New game in a cosy-bakery style (chalkboard menu, donut buttons, cork board of order tickets): animal customers order treats, made by kneading (open and close the hand), rolling (sweep left and right), baking (fist when the oven needle is in the gold) and decorating (rest on the asked-for jars). 10 days from cookies to a birthday cake. `bakery.js` is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_bubble_bath_bakery.sql` (Adventure), **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Ice Rink Skater (ADR-077).** New game in a retro winter-poster style (stacked title, slanted buttons, LED event board, score cards): the hand steers a skater gliding along figures on a rink seen from above, through numbered flags, with a fist to jump cones; three judges score how true the line was. 15 events from a warm-up circle to the Champion's Finale. `skate.js` is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_ice_rink_skater.sql` (Sports), **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Star Painter (ADR-076).** New game in an observatory style (telescope eyepiece, parchment cards, brass dials, round star chart): the fingertip picks up a star and draws glowing lines to the next stars of a constellation, in any order; 15 skies from the Kite to the Phoenix, with drifting clouds and shooting stars to catch. Finished pictures come alive. `stars.js` is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_star_painter.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
 - **[2026-10-30] Paper Plane Pilot (ADR-075).** New game in a hand-drawn paper style (taped title, sticky notes, ticket buttons, route map): the hand's height steers a paper plane through hoops past birds, kites, rooftops, storms and mountains, a fist boosts, and every flight ends on a runway (soft landings score more). 10 generated courses with a checked clear flight line. `plane.js` is tested headless. Registered in `src/games/registry.ts`; catalog row in `supabase/seed_paper_plane_pilot.sql`, **not yet applied** to the AWS RDS database. Not yet tried with a live hand.
