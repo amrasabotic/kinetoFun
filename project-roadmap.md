@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-10-30 (Prize Claw — ADR-071)
+> Last updated: 2026-10-30 (Lighthouse Keeper — ADR-072)
 
 ---
 
@@ -109,6 +109,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-10-30] Lighthouse Keeper (ADR-072).** Beam-guided boat game, 10 nights. **Next:** apply `supabase/seed_lighthouse_keeper.sql` to the AWS RDS database, then check on the Pi how steady the beam is from the sofa.
 - [x] **[2026-10-30] Prize Claw (ADR-071).** Hand-steered claw machine, 10 machines, collection. **Next:** apply `supabase/seed_prize_claw.sql` to the AWS RDS database, then try the fist-to-grab timing on the Pi.
 - [x] **[2026-10-30] Shadow Puppets (ADR-070).** Hand-shadow story game: 5 animal shapes, 10 stories. **Next:** apply `supabase/seed_shadow_puppets.sql` to the AWS RDS database, then try the shapes with a live hand from the sofa on the Pi.
 - [x] **[2026-10-30] Pottery Studio (ADR-069).** Clay-shaping game, 12 pots, glazing, kiln, shelf. **Next:** apply `supabase/seed_pottery_studio.sql` to the AWS RDS database, then try it with a live hand on the Pi. Shadow Puppets is the next game.
