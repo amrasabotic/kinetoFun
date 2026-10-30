@@ -80,13 +80,13 @@
   var lastSent = 0;
   var lastVisible = false;
 
-  function send(x, y, visible, ring) {
+  function send(x, y, visible, ring, cursor) {
     var now = performance.now();
     // Reports are cheap, but there is no need for more than ~30 a second.
     if (visible === lastVisible && now - lastSent < 33) return;
     lastSent = now;
     lastVisible = visible;
-    window.parent.postMessage({ type: 'KF_HAND', x: x, y: y, visible: visible, ring: !!ring }, '*');
+    window.parent.postMessage({ type: 'KF_HAND', x: x, y: y, visible: visible, ring: !!ring, cursor: !!cursor }, '*');
   }
 
   // The camera loses a hand at its edges, so the middle of its view is stretched over the whole screen.
@@ -112,19 +112,79 @@
   var ownPointerAt = -Infinity;
 
   // A game that maps the hand to its own cursor reports it here (0-1 of its viewport), so Back fills where that cursor is drawn.
-  // noCursor is accepted for older callers; the platform no longer draws a ring of its own.
+  // noCursor: the game draws nothing there, so the platform shows a ring near Back instead.
   window.__kfPointer = function (x, y, noCursor) {
     ownPointerAt = performance.now();
     if (typeof x === 'number' && typeof y === 'number') send(x, y, true, noCursor); else send(0, 0, false);
   };
 
+  // The shared cursor: one mapping for every game. A game that opts in reads __kfCursor (0-1 of its viewport)
+  // for its buttons and calls __kfMenu(true) while buttons are on screen; the platform then draws the cursor.
+  var shared = { x: 0.5, y: 0.5, visible: false };
+  var menuOn = false;
+  window.__kfCursor = shared;
+  window.__kfMenu = function (on) {
+    menuOn = !!on;
+    if (menuOn && shared.visible) send(shared.x, shared.y, true, false, true);
+  };
+
+  function updateShared(p) {
+    if (!p) { shared.visible = false; return; }
+    var tx = stretch(p.x, 0.12, 0.88), ty = stretch(p.y, 0.1, 0.75);
+    // Light smoothing only: more makes the cursor trail behind the hand.
+    var a = shared.visible ? 0.5 : 1;
+    shared.x += (tx - shared.x) * a;
+    shared.y += (ty - shared.y) * a;
+    shared.visible = true;
+  }
+
   function report(points, isHand) {
     var now = performance.now();
-    if (now - ownPointerAt < 500) return;
     if (isHand) lastHandAt = now;
     else if (now - lastHandAt < 1000) return;
     var p = pointer(points);
-    if (p) send(stretch(p.x, 0.12, 0.88), stretch(p.y, 0.1, 0.75), true, true); else send(0, 0, false);
+    updateShared(p);
+    if (menuOn) { if (p) send(shared.x, shared.y, true, false, true); else send(0, 0, false); return; }
+    if (now - ownPointerAt < 500) return;
+    if (!p) { send(0, 0, false); return; }
+    // Back follows the cursor the player sees; the raw fingertip can sit far from it.
+    var c = gameCursorShown(now) && gameCursor && gameCursor.isConnected ? gameCursor.getBoundingClientRect() : null;
+    if (c) send((c.left + c.width / 2) / window.innerWidth, (c.top + c.height / 2) / window.innerHeight, true, false);
+    else send(stretch(p.x, 0.12, 0.88), stretch(p.y, 0.1, 0.75), true, true);
+  }
+
+  // Many games draw their own cursor without reporting it; the platform ring next to it would be a second cursor.
+  // Such a cursor is a small round element that ignores clicks and moves with the hand, so look for one moving.
+  var cursorSeenAt = -Infinity;
+  var lastScan = -Infinity;
+  var lastPos = new WeakMap();
+  var gameCursor = null;
+
+  function gameCursorShown(now) {
+    if (now - lastScan > 250) {
+      lastScan = now;
+      try { if (scanForCursor()) cursorSeenAt = now; } catch (e) { /* treat as no cursor */ }
+    }
+    return now - cursorSeenAt < 1000;
+  }
+
+  function scanForCursor() {
+    var found = false;
+    var els = document.querySelectorAll('[style]');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var r = el.getBoundingClientRect();
+      if (r.width < 14 || r.width > 100 || Math.abs(r.width - r.height) > 4) continue;
+      var cs = getComputedStyle(el);
+      if (cs.pointerEvents !== 'none' && cs.position !== 'fixed') continue;
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) continue;
+      var round = parseFloat(cs.borderTopLeftRadius) >= r.width * 0.4 || !!el.querySelector('circle');
+      if (!round) continue;
+      var prev = lastPos.get(el);
+      lastPos.set(el, r.left + ',' + r.top);
+      if (prev && prev !== r.left + ',' + r.top) { found = true; gameCursor = el; }
+    }
+    return found;
   }
 
   // Called by the patched tasks-vision builds (see scripts/patch-game-builds.js).
