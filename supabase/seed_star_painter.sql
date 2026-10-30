@@ -14,8 +14,8 @@ values (
   'Star Painter',
   'Join the stars with your fingertip and watch the constellations come alive.',
   'Your fingertip is a little wand of light. Rest it on a star to pick it up, then rest on the next star of the '
-  'picture to draw a glowing line between them, in any order you like. Ten skies go from the Kite and Cassiopeia to '
-  'Orion, the Dragon and the Great Whale; later skies add drifting clouds that hide stars and shooting stars to catch '
+  'picture to draw a glowing line between them, in any order you like. Fifteen skies go from the Kite and Cassiopeia to '
+  'Orion, the Great Whale, Pegasus and the Phoenix; later skies add drifting clouds that hide stars and shooting stars to catch '
   'for a bonus. Every picture can be finished, and each one comes alive when it is complete.',
   'Draw constellations with your fingertip, catch shooting stars, and watch the night sky come alive.',
   'Puzzle',

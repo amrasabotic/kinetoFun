@@ -285,8 +285,9 @@ updateSoundLabel();
 function starSVG(on, color = '#f3cf7a') {
   return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? color : 'none'}" stroke="${color}" stroke-width="1.5"/></svg>`;
 }
-// Medallions spiral inwards on the round chart, from the outer edge to the centre.
-const MEDAL_POS = [[260, 120], [480, 90], [700, 90], [920, 120], [1040, 300], [880, 440], [640, 460], [400, 440], [480, 270], [720, 280]];
+// Medallions wind across the chart in three rows: left to right, back again, then left to right.
+const MEDAL_X = [250, 420, 590, 760, 930], MEDAL_Y = [90, 265, 440];
+const MEDAL_POS = Array.from({ length: 15 }, (_, i) => { const row = Math.floor(i / 5), col = row % 2 ? 4 - (i % 5) : i % 5; return [MEDAL_X[col], MEDAL_Y[row]]; });
 function openChart() {
   sky = null;
   $('medals').innerHTML = S.LEVELS.map((lv, i) => {
@@ -308,7 +309,7 @@ function drawChartRings(c, t) {
 }
 
 // ---------- achievements ----------
-const ACH = { first: 'First Constellation', catcher: 'Wish Maker', five: 'Five Shooting Stars', hunter: 'Orion Found', whale: 'The Great Whale', astro: 'Astronomer' };
+const ACH = { first: 'First Constellation', catcher: 'Wish Maker', five: 'Five Shooting Stars', hunter: 'Orion Found', whale: 'The Great Whale', phoenix: 'Phoenix Rising', astro: 'Astronomer' };
 let toastTimer = 0;
 function toast(text) {
   const el = $('toast'); el.textContent = text; el.classList.add('show');
@@ -346,7 +347,8 @@ function finishSky() {
   if (r.caught > 0) unlockAch('catcher');
   if (progress.caught >= 5) unlockAch('five');
   if (S.LEVELS[i].creature === 'hunter') unlockAch('hunter');
-  if (i === N - 1) unlockAch('whale');
+  if (S.LEVELS[i].creature === 'whale') unlockAch('whale');
+  if (i === N - 1) unlockAch('phoenix');
   if (progress.stars.every((s) => s === 3)) unlockAch('astro');
   const last = i === N - 1;
   $('rs-title').textContent = `${S.LEVELS[i].name} shines!`;
