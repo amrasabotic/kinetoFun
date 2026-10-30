@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lighthouse Keeper</title>
+<style>
+:root { --gold:#ffe08a; --ink:#f2f7ff; --muted:#bccbe6; --panel:rgba(6,14,36,0.9); --line:rgba(255,224,138,0.45); }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#040a1c; color:var(--ink); font-family:'Trebuchet MS','Segoe UI',Arial,sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#sea { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+
+.screen { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px 40px; text-align:center; }
+.screen.on { display:flex; }
+.dim { background:rgba(4,10,28,0.8); }
+.clear { background:none; }
+
+h1 { font-size:68px; line-height:1.05; font-family:Georgia,'Times New Roman',serif; color:var(--gold); }
+h2 { font-size:42px; font-family:Georgia,'Times New Roman',serif; color:var(--gold); }
+.sub { font-size:24px; color:var(--muted); max-width:900px; }
+.small { font-size:20px; color:var(--muted); }
+.row { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; }
+
+.btn { position:relative; min-width:230px; min-height:84px; padding:14px 34px; border-radius:20px; overflow:hidden; cursor:pointer;
+  border:3px solid rgba(255,255,255,0.25); background:linear-gradient(135deg,#e2a23a,#f0c75a); color:#1a1405;
+  font:800 28px 'Trebuchet MS','Segoe UI',Arial,sans-serif; box-shadow:0 8px 24px rgba(0,0,0,0.35); }
+.btn.alt { background:rgba(255,255,255,0.08); border-color:var(--line); color:var(--ink); }
+.btn::after, .tile::after { content:''; position:absolute; left:0; bottom:0; height:9px; width:100%; background:#fff;
+  transform-origin:left; transform:scaleX(var(--p,0)); }
+.btn.hot, .tile.hot { border-color:var(--gold); box-shadow:0 0 0 5px rgba(255,224,138,0.35); }
+.btn[hidden] { display:none; }
+
+.steps { display:grid; grid-template-columns:repeat(3, 300px); gap:18px; }
+.step { background:var(--panel); border:2px solid var(--line); border-radius:18px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.step canvas { width:80px; height:80px; }
+.step b { font-size:22px; color:var(--gold); }
+.step span { font-size:19px; color:var(--muted); line-height:1.35; }
+
+.tiles { display:grid; grid-template-columns:repeat(5, 210px); gap:16px; }
+.tile { position:relative; overflow:hidden; height:150px; border-radius:18px; background:var(--panel); border:3px solid var(--line); cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+.tile .num { font-size:34px; font-weight:800; color:var(--gold); line-height:1; }
+.tile .nm { font-size:19px; padding:0 8px; }
+.tile .tags { font-size:18px; color:var(--muted); }
+.tile.locked { opacity:0.45; cursor:default; }
+.stars { display:flex; gap:4px; justify-content:center; }
+.stars svg { width:24px; height:24px; }
+.stars.big svg { width:72px; height:72px; }
+
+#hud { position:absolute; top:8px; left:50%; transform:translateX(-50%); display:flex; gap:22px; align-items:baseline; padding:6px 24px; border-radius:30px;
+  background:rgba(6,14,36,0.75); border:2px solid var(--line); pointer-events:none; white-space:nowrap; }
+#hud .lbl { display:inline; margin-right:8px; }
+#hud .val { display:inline; font-size:26px; }
+.panel { background:var(--panel); border:2px solid var(--line); border-radius:14px; padding:6px 18px; min-width:170px; text-align:center; }
+.lbl { font-size:18px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+.val { font-size:28px; font-weight:800; color:var(--gold); line-height:1.15; }
+.val.sm { font-size:22px; color:var(--ink); }
+#tip { position:absolute; left:20px; bottom:20px; font-size:21px; padding:10px 18px; border-radius:16px; background:var(--panel); border:2px solid var(--line); pointer-events:none; }
+#banner { position:absolute; left:50%; top:110px; transform:translateX(-50%); font-size:32px; font-weight:800; color:var(--gold); white-space:nowrap;
+  padding:10px 26px; border-radius:18px; background:rgba(4,10,28,0.85); border:2px solid var(--gold); opacity:0; transition:opacity 0.25s; pointer-events:none; }
+#banner.show { opacity:1; }
+#intro { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:rgba(4,10,28,0.8); }
+#intro[hidden] { display:none; }
+#intro p { font-size:26px; color:var(--muted); max-width:820px; }
+
+.result { display:flex; flex-direction:column; align-items:center; gap:14px; background:var(--panel); border:3px solid var(--line); border-radius:22px; padding:26px 40px; }
+.lines { display:grid; grid-template-columns:auto auto; gap:6px 36px; font-size:24px; text-align:left; }
+.lines .v { color:var(--gold); font-weight:800; text-align:right; }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border-radius:14px; border:2px solid var(--line); object-fit:cover; transform:scaleX(-1); background:#000; }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:22px; padding:8px 22px; border-radius:30px; background:rgba(4,10,28,0.92);
+  border:2px solid var(--line); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.play { top:64px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; right:16px; top:16px; font-size:22px; font-weight:700; padding:12px 20px; border-radius:14px; background:#16244a; border:2px solid var(--gold);
+  color:var(--gold); opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="sea" width="1280" height="720"></canvas>
+
+  <section class="screen dim on" id="menu">
+    <h1>Lighthouse Keeper</h1>
+    <p class="sub">It is a dark night at sea. Shine the lighthouse beam with your hand and guide every boat safely home.</p>
+    <div class="steps">
+      <div class="step"><canvas width="80" height="80" data-icon="beam"></canvas><b>1. Move your hand</b><span>The beam of light follows your hand across the sea.</span></div>
+      <div class="step"><canvas width="80" height="80" data-icon="boat"></canvas><b>2. Boats follow the light</b><span>A boat in the light sails towards it. Boats in the dark wait.</span></div>
+      <div class="step"><canvas width="80" height="80" data-icon="buoy"></canvas><b>3. Follow the buoys</b><span>Lead each boat past the rocks and into the harbour.</span></div>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" data-dwell="play">Play</button>
+      <button type="button" class="btn alt" data-dwell="sound" id="btn-sound">Sound: On</button>
+      <button type="button" class="btn alt" data-dwell="exit" id="btn-exit" hidden>Back to games</button>
+    </div>
+    <p class="small">Rest your hand on a button to press it.</p>
+  </section>
+
+  <section class="screen dim" id="map">
+    <h2>Choose a night</h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="row"><button type="button" class="btn alt" data-dwell="menu">Menu</button></div>
+  </section>
+
+  <section class="screen clear" id="play">
+    <div id="hud">
+      <div><span class="lbl" id="hd-level">Night 1</span><span class="val sm" id="hd-name"></span></div>
+      <div><span class="lbl">Home</span><span class="val" id="hd-home">0</span></div>
+      <div><span class="lbl">Bumps</span><span class="val" id="hd-bumps">0</span></div>
+    </div>
+    <div id="tip"></div>
+    <div id="banner"></div>
+    <div id="intro">
+      <h2 id="in-title"></h2>
+      <p id="in-text"></p>
+      <button type="button" class="btn" data-dwell="begin">Start</button>
+      <p class="small">Rest your hand on Start.</p>
+    </div>
+  </section>
+
+  <section class="screen dim" id="result">
+    <div class="result">
+      <h2 id="rs-title"></h2>
+      <div class="stars big" id="rs-stars"></div>
+      <div class="lines" id="rs-lines"></div>
+      <div class="row" id="rs-buttons"></div>
+    </div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="lighthouse.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const L = window.Lighthouse;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), sea = $('sea'), ink = $('ink'), video = $('cam');
+const sctx = sea.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'lighthouse-keeper-v1';
+const N = L.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true, ach: {}, boats: 0 };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        ach: s.ach || {}, boats: s.boats | 0 };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every night played since the game was opened; reported once, when the player leaves or finishes the last night.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function tone(f, dur, type = 'sine', vol = 0.12, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+const SFX = {
+  select() { tone(620, 0.12, 'triangle', 0.12); tone(930, 0.16, 'triangle', 0.1, 0, 0.08); },
+  arrive() { tone(180, 0.6, 'sine', 0.08, 150); },
+  lit() { tone(880, 0.1, 'sine', 0.05, 1100); },
+  bump() { tone(110, 0.3, 'square', 0.08, 70); },
+  home() { [1047, 1319, 1568].forEach((f, i) => tone(f, 0.5, 'sine', 0.08, 0, i * 0.12)); },
+  over() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.12, 0, i * 0.12)); },
+  badge() { [784, 988, 1319].forEach((f, i) => tone(f, 0.2, 'sine', 0.09, 0, i * 0.08)); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- drawing pieces ----------
+function drawBoat(c, b, t, flash) {
+  c.save(); c.translate(b.x, b.y + Math.sin(t * 2 + b.id) * 1.5); c.rotate(b.h);
+  c.fillStyle = flash ? '#ff6b6b' : '#8a5a34';
+  c.beginPath(); c.moveTo(24, 0); c.quadraticCurveTo(10, -13, -18, -11); c.lineTo(-18, 11); c.quadraticCurveTo(10, 13, 24, 0); c.fill();
+  c.fillStyle = '#5c3a20'; c.fillRect(-14, -7, 26, 14);
+  c.fillStyle = '#f4f1e6'; c.beginPath(); c.moveTo(6, -2); c.lineTo(-12, -22); c.lineTo(-12, 2); c.closePath(); c.fill();
+  c.restore();
+  if (b.lit) {
+    c.fillStyle = '#ffe08a'; c.beginPath(); c.arc(b.x, b.y, 4, 0, 7); c.fill();
+  }
+}
+function drawRock(c, x, y, r, t) {
+  c.strokeStyle = 'rgba(220,235,255,0.35)'; c.lineWidth = 3;
+  c.beginPath(); c.arc(x, y, r + 6 + Math.sin(t * 2 + x) * 2, 0, 7); c.stroke();
+  c.fillStyle = '#4a4f5c';
+  c.beginPath();
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2, rr = r * (0.82 + 0.18 * Math.sin(x * 0.1 + k * 2.3)); c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  c.closePath(); c.fill();
+  c.fillStyle = '#6b7282'; c.beginPath(); c.arc(x - r * 0.25, y - r * 0.25, r * 0.4, 0, 7); c.fill();
+}
+function drawWhale(c, w, t) {
+  const dirX = (w.b[0] - w.a[0]) * w.dir, dirY = (w.b[1] - w.a[1]) * w.dir;
+  c.save(); c.translate(w.x, w.y); c.rotate(Math.atan2(dirY, dirX));
+  const s = w.r / 40;
+  c.scale(s, s);
+  c.fillStyle = '#29466b';
+  c.beginPath(); c.ellipse(0, 0, 52, 28, 0, 0, 7); c.fill();
+  const flick = Math.sin(t * 4) * 6;
+  c.beginPath(); c.moveTo(-46, 0); c.lineTo(-74, -16 + flick); c.lineTo(-64, 0); c.lineTo(-74, 16 + flick); c.closePath(); c.fill();
+  c.fillStyle = '#c6d6ee'; c.beginPath(); c.ellipse(10, 10, 30, 10, 0, 0, Math.PI); c.fill();
+  c.fillStyle = '#0b1530'; c.beginPath(); c.arc(30, -6, 4, 0, 7); c.fill();
+  if (Math.sin(t * 1.3 + w.a[0]) > 0.85) {
+    c.fillStyle = 'rgba(220,240,255,0.7)';
+    for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(20 + (k - 2) * 6, -34 - k % 2 * 8, 5, 0, 7); c.fill(); }
+  }
+  c.restore();
+}
+function drawBuoy(c, x, y, t, i) {
+  const on = Math.sin(t * 3 + i) > 0;
+  c.fillStyle = i % 2 ? '#2fbf71' : '#e8484a';
+  c.beginPath(); c.arc(x, y, 11, 0, 7); c.fill();
+  c.fillStyle = on ? '#fff6c8' : 'rgba(255,246,200,0.3)'; c.beginPath(); c.arc(x, y - 3, 4, 0, 7); c.fill();
+}
+function iconCanvas(cv, kind) {
+  const c = cv.getContext('2d'), w = cv.width;
+  c.fillStyle = '#0b1838'; c.fillRect(0, 0, w, w);
+  if (kind === 'beam') {
+    const g = c.createRadialGradient(w * 0.55, w * 0.4, 2, w * 0.55, w * 0.4, w * 0.45);
+    g.addColorStop(0, 'rgba(255,240,180,0.95)'); g.addColorStop(1, 'rgba(255,240,180,0)');
+    c.fillStyle = g; c.fillRect(0, 0, w, w);
+    c.fillStyle = '#f4f1e6'; c.fillRect(w * 0.12, w * 0.55, w * 0.14, w * 0.4); c.fillStyle = '#e8484a'; c.fillRect(w * 0.12, w * 0.68, w * 0.14, w * 0.08);
+  } else if (kind === 'boat') {
+    drawBoat(c, { x: w / 2, y: w / 2, h: -0.4, id: 1, lit: true }, 0, false);
+  } else if (kind === 'buoy') {
+    c.save(); c.scale(1.6, 1.6); drawBuoy(c, w / 3.2, w / 3.2, 1, 0); c.restore();
+  }
+}
+document.querySelectorAll('canvas[data-icon]').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+
+// ---------- sea, darkness and light ----------
+const seaBg = document.createElement('canvas');
+seaBg.width = 1280; seaBg.height = 720;
+(function paintSea(c) {
+  const g = c.createLinearGradient(0, 0, 0, 720);
+  g.addColorStop(0, '#0e2f5e'); g.addColorStop(1, '#0a2447');
+  c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = '#26351f'; c.fillRect(0, 690, L.HARBOUR.x0 - 10, 30); c.fillRect(L.HARBOUR.x1 + 10, 690, 1280, 30);
+  c.fillStyle = '#7a5a3a'; c.fillRect(L.HARBOUR.x0 - 14, 640, 14, 80); c.fillRect(L.HARBOUR.x1, 640, 14, 80);
+})(seaBg.getContext('2d'));
+const dark = document.createElement('canvas');
+dark.width = 1280; dark.height = 720;
+const dctx = dark.getContext('2d');
+const LAMP = { x: 800, y: 600 };
+const fogSprite = document.createElement('canvas');
+fogSprite.width = fogSprite.height = 128;
+(function paintFog(c) {
+  const g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(205,215,235,0.22)'); g.addColorStop(1, 'rgba(205,215,235,0)');
+  c.fillStyle = g; c.fillRect(0, 0, 128, 128);
+})(fogSprite.getContext('2d'));
+const fogBlobs = Array.from({ length: 14 }, (_, i) => ({ x: (i * 97) % 1280, y: 80 + ((i * 53) % 560), r: 90 + (i % 4) * 30, v: 12 + (i % 3) * 6 }));
+
+function holeAt(x, y, r, strength) {
+  const g = dctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(0,0,0,${strength})`); g.addColorStop(0.65, `rgba(0,0,0,${strength * 0.7})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+  dctx.fillStyle = g; dctx.beginPath(); dctx.arc(x, y, r, 0, 7); dctx.fill();
+}
+
+function renderSea(now, dt) {
+  const c = sctx, t = now / 1000;
+  c.drawImage(seaBg, 0, 0);
+  c.strokeStyle = 'rgba(160,200,255,0.12)'; c.lineWidth = 2;
+  for (let k = 0; k < 26; k++) {
+    const y = (k * 29 + t * 8) % 690, x = (k * 173) % 1280 + Math.sin(t + k) * 20;
+    c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 20, y - 5, x + 40, y); c.stroke();
+  }
+  if (!game) { drawLighthouse(c, t); return; }
+  const lv = L.LEVELS[game.level];
+  c.save(); c.setLineDash([6, 14]); c.strokeStyle = 'rgba(255,224,138,0.25)'; c.lineWidth = 3;
+  c.beginPath(); lv.buoys.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.lineTo(L.HARBOUR.cx, L.HARBOUR.cy - 20); c.stroke(); c.restore();
+  for (const [x, y, r] of lv.rocks) drawRock(c, x, y, r, t);
+  for (const [x, y, r] of L.COAST) { c.fillStyle = '#3a4048'; c.beginPath(); c.arc(x, y + 6, r * 0.8, 0, 7); c.fill(); }
+  lv.buoys.forEach(([x, y], i) => drawBuoy(c, x, y, t, i));
+  for (const w of game.whales) drawWhale(c, w, t);
+  for (const b of game.boats) drawBoat(c, b, t, b.stun > 0 && Math.floor(now / 100) % 2 === 0);
+  drawLighthouse(c, t);
+
+  dctx.globalCompositeOperation = 'source-over';
+  dctx.fillStyle = 'rgba(2,6,18,0.7)'; dctx.fillRect(0, 0, 1280, 720);
+  dctx.globalCompositeOperation = 'destination-out';
+  if (spot) holeAt(spot.x, spot.y, L.lightRadius(game) * 1.25, 1);
+  lv.buoys.forEach(([x, y]) => holeAt(x, y, 46, 0.7));
+  for (const b of game.boats) holeAt(b.x, b.y, 34, 0.45);
+  holeAt(L.HARBOUR.cx, 700, 120, 0.8);
+  holeAt(LAMP.x, LAMP.y, 70, 0.9);
+  c.drawImage(dark, 0, 0);
+  // Moonlit foam keeps rocks and whales faintly visible in the dark, so a player can plan a route.
+  c.strokeStyle = 'rgba(200,225,255,0.3)'; c.lineWidth = 3;
+  for (const [x, y, r] of lv.rocks) { c.beginPath(); c.arc(x, y, r + 4, 0, 7); c.stroke(); }
+  for (const w of game.whales) { c.beginPath(); c.ellipse(w.x, w.y, w.r * 1.35, w.r * 0.8, Math.atan2(w.b[1] - w.a[1], w.b[0] - w.a[0]), 0, 7); c.stroke(); }
+
+  if (lv.fog) {
+    for (const f of fogBlobs) {
+      f.x += f.v * dt; if (f.x - f.r > 1280) f.x = -f.r;
+      c.drawImage(fogSprite, f.x - f.r * 1.4, f.y - f.r, f.r * 2.8, f.r * 2);
+    }
+  }
+  if (spot) {
+    const a = Math.atan2(spot.y - LAMP.y, spot.x - LAMP.x), R = L.lightRadius(game), d = Math.hypot(spot.x - LAMP.x, spot.y - LAMP.y);
+    const spread = Math.atan2(R * 0.8, d);
+    c.fillStyle = 'rgba(255,236,170,0.10)';
+    c.beginPath(); c.moveTo(LAMP.x, LAMP.y);
+    c.lineTo(LAMP.x + Math.cos(a - spread) * d * 1.05, LAMP.y + Math.sin(a - spread) * d * 1.05);
+    c.lineTo(LAMP.x + Math.cos(a + spread) * d * 1.05, LAMP.y + Math.sin(a + spread) * d * 1.05);
+    c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(255,236,170,0.4)'; c.lineWidth = 3;
+    c.beginPath(); c.arc(spot.x, spot.y, R, 0, Math.PI * 2); c.stroke();
+  }
+  for (let i = floats.length - 1; i >= 0; i--) {
+    const f = floats[i]; f.t += dt;
+    if (f.t > 1.2) { floats.splice(i, 1); continue; }
+    c.globalAlpha = 1 - f.t / 1.2; c.fillStyle = f.color; c.font = '800 30px Trebuchet MS, Arial, sans-serif'; c.textAlign = 'center';
+    c.fillText(f.text, f.x, f.y - f.t * 50);
+  }
+  c.globalAlpha = 1;
+}
+function drawLighthouse(c, t) {
+  c.fillStyle = '#26351f'; c.beginPath(); c.ellipse(LAMP.x, 712, 70, 24, 0, 0, 7); c.fill();
+  c.fillStyle = '#f4f1e6';
+  c.beginPath(); c.moveTo(LAMP.x - 24, 712); c.lineTo(LAMP.x + 24, 712); c.lineTo(LAMP.x + 15, LAMP.y + 16); c.lineTo(LAMP.x - 15, LAMP.y + 16); c.closePath(); c.fill();
+  c.fillStyle = '#e8484a'; c.fillRect(LAMP.x - 21, 676, 42, 10); c.fillRect(LAMP.x - 18, 646, 36, 10);
+  c.fillStyle = '#2a2a33'; c.fillRect(LAMP.x - 18, LAMP.y + 6, 36, 10);
+  c.fillStyle = '#ffe08a'; c.beginPath(); c.arc(LAMP.x, LAMP.y, 10 + Math.sin(t * 6), 0, 7); c.fill();
+  c.fillStyle = '#e8484a'; c.beginPath(); c.moveTo(LAMP.x - 16, LAMP.y - 8); c.lineTo(LAMP.x + 16, LAMP.y - 8); c.lineTo(LAMP.x, LAMP.y - 24); c.fill();
+}
+const floats = [];
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'map', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  video.classList.toggle('off', name === 'play');
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = `Sound: ${progress.sound ? 'On' : 'Off'}`; }
+updateSoundLabel();
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffe08a' : 'rgba(255,255,255,0.15)'}" stroke="${on ? '#fff3c4' : 'rgba(255,255,255,0.3)'}" stroke-width="1"/></svg>`;
+}
+const LOCK_SVG = '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="#bccbe6"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#bccbe6" stroke-width="2.5"/></svg>';
+function tags(lv) {
+  return [`${lv.spawns.length} ${lv.spawns.length === 1 ? 'boat' : 'boats'}`, lv.fog && 'fog', lv.whales && 'whales', lv.current && 'storm'].filter(Boolean).join(' · ');
+}
+function openMap() {
+  game = null;
+  $('tiles').innerHTML = L.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    return `<div class="tile${locked ? ' locked' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <div class="num">${i + 1}</div><div class="nm">${lv.name}</div><div class="tags">${tags(lv)}</div>
+      ${locked ? LOCK_SVG : `<div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div>`}</div>`;
+  }).join('');
+  show('map');
+}
+
+// ---------- achievements ----------
+const ACH = { first: 'First Boat Home', calm: 'Not a Scratch', fog: 'Through the Fog', whale: 'Whale Friend', regatta: 'Grand Regatta', keeper: 'Master Keeper' };
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- playing ----------
+let game = null, playing = false, endAt = 0, spot = null;
+let bannerTimer = 0;
+function banner(text, ms = 1600) {
+  const el = $('banner'); el.textContent = text; el.classList.add('show');
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+function openGame(i) {
+  game = L.createGame(i); playing = false; endAt = 0; floats.length = 0; spot = null;
+  const lv = L.LEVELS[i];
+  $('hd-level').textContent = `Night ${i + 1}`;
+  $('hd-name').textContent = lv.name;
+  $('in-title').textContent = lv.name;
+  const extra = [lv.fog && 'Fog makes your light smaller.', lv.whales && 'Watch the whales and wait for them to swim past.', lv.current && 'A storm current pushes moving boats sideways.'].filter(Boolean).join(' ');
+  $('in-text').textContent = `Guide ${lv.spawns.length === 1 ? 'the boat' : `all ${lv.spawns.length} boats`} into the harbour without bumping into anything. ${extra}`;
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishGame() {
+  const i = game.level, r = L.result(game);
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  const lv = L.LEVELS[i];
+  if (r.bumps === 0) unlockAch('calm');
+  if (lv.fog) unlockAch('fog');
+  if (lv.whales && r.bumps === 0) unlockAch('whale');
+  if (i === N - 1) unlockAch('regatta');
+  if (progress.stars.every((s) => s === 3)) unlockAch('keeper');
+  const last = i === N - 1;
+  $('rs-title').textContent = r.stars === 3 ? 'Every boat is safe!' : r.stars === 2 ? 'Safe in the harbour!' : 'All home at last!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Boats home', game.saved], ['Bumps', r.bumps], ['Time', r.seconds + ' s'], ['Score', r.score]].map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const btn = (action, label, alt) => `<button type="button" class="btn${alt ? ' alt' : ''}" data-dwell="${action}">${label}</button>`;
+  $('rs-buttons').innerHTML = !last ? btn('next', 'Next night') + btn('again', 'Play again', true) + btn('map', 'All nights', true)
+    : btn('map', 'All nights') + btn('again', 'Play again', true);
+  playing = false;
+  show('result');
+  if (last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openMap(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': game = null; show('menu'); break;
+    case 'map': openMap(); break;
+    case 'level': openGame(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; break;
+    case 'next': openGame(Math.min(N - 1, game.level + 1)); break;
+    case 'again': openGame(game.level); break;
+  }
+}
+
+// The platform's Back button: out of a night to the list of nights, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { playing = false; openMap(); return true; }
+  if (screen === 'map') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, reported: false };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// The middle of the camera frame covers the whole screen, so every part of the sea is reachable from a sofa.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+function handleLandmarks(lm, now) {
+  const tx = reach(1 - lm[9].x, 0.12, 0.88) * W, ty = reach(lm[9].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.45;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false;
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+let mouse = null;
+addEventListener('pointermove', (e) => { mouse = { x: e.clientX, y: e.clientY }; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on')) act(el);
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && !(screen === 'play' && playing)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHud(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000 && !mouse) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintplay', screen === 'play', (v) => $('hint').classList.toggle('play', v));
+  if (!game || screen !== 'play') return;
+  setOnce('home', `${game.saved} / ${game.total}`, (v) => { $('hd-home').textContent = v; });
+  setOnce('bumps', game.bumps, (v) => { $('hd-bumps').textContent = v; });
+  const waiting = game.boats.some((b) => !b.lit);
+  const tip = !game.boats.length ? 'A boat is coming...' : game.boats.some((b) => b.lit) ? 'Lead it along the buoys to the harbour' : waiting ? 'Shine your light on a waiting boat' : '';
+  setOnce('tip', tip, (v) => { $('tip').textContent = v; $('tip').hidden = !v; });
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present || (screen === 'play' && playing)) return;
+  c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(hand.x, hand.y, 7, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#ffffff'; c.lineWidth = 3; c.beginPath(); c.arc(hand.x, hand.y, 20, 0, Math.PI * 2); c.stroke();
+  if (dwell.el && dwell.p > 0) {
+    c.strokeStyle = '#ffe08a'; c.lineWidth = 7;
+    c.beginPath(); c.arc(hand.x, hand.y, 32, -Math.PI / 2, -Math.PI / 2 + dwell.p * Math.PI * 2); c.stroke();
+  }
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Movement scales with the real frame time, capped so a stall on a slow device cannot jump the boats.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  if (screen === 'play' && game && playing && !game.over) {
+    spot = hand.present ? toStage(hand.x, hand.y) : mouse ? toStage(mouse.x, mouse.y) : null;
+    L.step(game, dt, spot);
+    for (const ev of game.events) {
+      if (ev.type === 'arrive') { sfx('arrive'); banner('A boat is coming!', 1200); }
+      else if (ev.type === 'lit') sfx('lit');
+      else if (ev.type === 'bump') { sfx('bump'); floats.push({ text: 'Bump!', x: ev.x, y: ev.y - 20, t: 0, color: '#ff8a8a' }); }
+      else if (ev.type === 'home') {
+        sfx('home'); floats.push({ text: 'Home!', x: L.HARBOUR.cx, y: 640, t: 0, color: '#ffe08a' });
+        progress.boats++; save(); unlockAch('first');
+      } else if (ev.type === 'over') { sfx('over'); endAt = now + 1500; }
+    }
+    game.events.length = 0;
+  } else if (screen === 'play' && game && !playing) spot = null;
+  if (endAt && now >= endAt) { endAt = 0; finishGame(); }
+  renderSea(now, dt);
+  updateDwell(now);
+  updateHud(now);
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
