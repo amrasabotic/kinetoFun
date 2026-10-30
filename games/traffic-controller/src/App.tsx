@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGestureTracking } from './useGestureTracking';
-import { useMenuHand } from './useMenuHand';
+import { useMenuHand, usesSharedCursor } from './useMenuHand';
 import { useGameCanvas } from './useGameCanvas';
 import { initialGameState, updateGame, restartGame, CANVAS_W, CANVAS_H } from './gameLogic';
 import type { GameState } from './gameLogic';
@@ -92,7 +92,7 @@ function MenuGestureLayer({ children }: {
       <video ref={videoRef as React.RefObject<HTMLVideoElement>}
         className="absolute opacity-0 pointer-events-none w-1 h-1" muted playsInline />
       {children({ activeId, dwellProgress })}
-      {hand.detected && (
+      {hand.detected && !usesSharedCursor && (
         <div className="pointer-events-none fixed z-40"
           style={{ left: hand.x * window.innerWidth - CURSOR_R, top: hand.y * window.innerHeight - CURSOR_R, width: CURSOR_R * 2, height: CURSOR_R * 2 }}>
           <svg width={CURSOR_R * 2} height={CURSOR_R * 2}>

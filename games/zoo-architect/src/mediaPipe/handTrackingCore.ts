@@ -16,6 +16,11 @@ function dist(a: NormalizedLandmark, b: NormalizedLandmark): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself.
+type SharedCursor = { x: number; y: number; visible: boolean };
+export const kf = (typeof window !== 'undefined' ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+export const usesSharedCursor = !!kf.__kfCursor;
+
 function classify(lm: NormalizedLandmark[], mirror: boolean): { cursorX: number; cursorY: number; indexZ: number; isPalmOpen: boolean; isFist: boolean; isPinching: boolean } {
   const wrist = lm[0];
   const midMcp = lm[9];
@@ -99,8 +104,12 @@ export function startHandTracking(opts: StartOptions): () => void {
           const lm = res.landmarks[0];
           const c = classify(lm, opts.mirror);
           const a = opts.smoothing;
-          sx = sx + (c.cursorX - sx) * a;
-          sy = sy + (c.cursorY - sy) * a;
+          const shared = kf.__kfCursor;
+          if (shared?.visible) { sx = shared.x; sy = shared.y; }
+          else {
+            sx = sx + (c.cursorX - sx) * a;
+            sy = sy + (c.cursorY - sy) * a;
+          }
           const confidence = res.handednesses?.[0]?.[0]?.score ?? 0.8;
           (window as unknown as { __kfPointer?: (x: number | null, y?: number) => void }).__kfPointer?.(sx, sy);
           opts.onFrame({

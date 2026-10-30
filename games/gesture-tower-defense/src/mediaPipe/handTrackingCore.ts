@@ -20,6 +20,11 @@ function dist(a: NormalizedLandmark, b: NormalizedLandmark): number {
  */
 const reach = (v: number) => Math.min(1, Math.max(0, (v - 0.12) / 0.76));
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself.
+type SharedCursor = { x: number; y: number; visible: boolean };
+export const kf = (typeof window !== 'undefined' ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+export const usesSharedCursor = !!kf.__kfCursor;
+
 function classify(lm: NormalizedLandmark[], mirror: boolean): { cursorX: number; cursorY: number; pinchDist: number } {
   const wrist = lm[0];
   const midMcp = lm[9];
@@ -99,8 +104,12 @@ export function startHandTracking(opts: StartOptions): () => void {
           const lm = res.landmarks[0];
           const c = classify(lm, opts.mirror);
           const a = opts.smoothing;
-          sx = sx + (c.cursorX - sx) * a;
-          sy = sy + (c.cursorY - sy) * a;
+          const shared = kf.__kfCursor;
+          if (shared?.visible) { sx = shared.x; sy = shared.y; }
+          else {
+            sx = sx + (c.cursorX - sx) * a;
+            sy = sy + (c.cursorY - sy) * a;
+          }
 
           // A looser sensitivity setting widens both the trigger and
           // release distance together, preserving the hysteresis gap so

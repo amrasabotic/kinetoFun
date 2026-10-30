@@ -11,6 +11,11 @@ export interface MenuHandData {
 // The camera loses a hand at its edges, so the middle of its view is stretched over the whole screen (Back sits in a corner).
 const reach = (v: number, lo: number, hi: number) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kf = (typeof window !== 'undefined' ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+export const usesSharedCursor = !!kf.__kfCursor;
+
 let sharedLandmarker: Promise<HandLandmarker> | null = null;
 
 export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHandData {
@@ -29,7 +34,10 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
     if (video.currentTime !== lastTimeRef.current) {
       lastTimeRef.current = video.currentTime;
       const results = lm.detectForVideo(video, performance.now());
-      if (results.landmarks?.length > 0) {
+      const shared = kf.__kfCursor;
+      if (shared) {
+        setHand(shared.visible ? { detected: true, x: shared.x, y: shared.y } : prev => ({ ...prev, detected: false }));
+      } else if (results.landmarks?.length > 0) {
         const wrist = results.landmarks[0][0];
         setHand({ detected: true, x: reach(1 - wrist.x, 0.12, 0.88), y: reach(wrist.y, 0.2, 0.85) });
       } else {
@@ -71,11 +79,11 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
     };
   }, [detect, videoRef]);
 
-  // Lets the platform's Back button follow this cursor instead of drawing its own ring beside it.
+  // Buttons are on screen while a menu is mounted, so the platform shows its cursor.
   useEffect(() => {
-    const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
-    if (hand.detected) kf.__kfPointer?.(hand.x, hand.y); else kf.__kfPointer?.(null);
-  }, [hand]);
+    kf.__kfMenu?.(true);
+    return () => kf.__kfMenu?.(false);
+  }, []);
 
   return hand;
 }

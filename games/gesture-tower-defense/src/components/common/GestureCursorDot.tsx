@@ -1,9 +1,17 @@
+import { useEffect } from 'react';
 import { useGesture } from '../../mediaPipe/GestureProvider';
+import { kf, usesSharedCursor } from '../../mediaPipe/handTrackingCore';
 
 export default function GestureCursorDot() {
   const { frame } = useGesture();
 
-  if (!frame.detected) return null;
+  // Mounted exactly while the hand points at things, so it switches the platform's cursor on and off.
+  useEffect(() => {
+    kf.__kfMenu?.(true);
+    return () => kf.__kfMenu?.(false);
+  }, []);
+
+  if (!frame.detected || usesSharedCursor) return null;
 
   const size = frame.isPinching ? 20 : 26;
   const left = frame.cursorX * window.innerWidth;
