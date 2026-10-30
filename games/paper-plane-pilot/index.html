@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paper Plane Pilot</title>
+<style>
+:root { --paper:#fbf8ef; --ink:#23365c; --pencil:#4a4a4a; --red:#e2574c; --note-y:#fff3a3; --note-p:#ffd1dc; --note-b:#cfe8ff; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#efe9d8; color:var(--ink); font-family:'Segoe Print','Comic Sans MS','Chalkboard SE','DejaVu Sans',sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#sky { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+.graph { background-color:var(--paper);
+  background-image:linear-gradient(rgba(35,54,92,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(35,54,92,0.08) 1px, transparent 1px);
+  background-size:32px 32px; }
+
+/* Ticket buttons: notched sides, and the hold fills them from the left. */
+.ticket { position:absolute; display:flex; align-items:center; justify-content:center; height:96px; padding:0 44px; cursor:pointer; border:none;
+  font:bold 30px 'Segoe Print','Comic Sans MS','DejaVu Sans',sans-serif; color:var(--ink);
+  background:linear-gradient(90deg, #ffd166 calc(var(--p, 0) * 100%), #fff 0);
+  -webkit-mask:radial-gradient(circle at 0 50%, transparent 16px, #000 17px) left / 51% 100% no-repeat, radial-gradient(circle at 100% 50%, transparent 16px, #000 17px) right / 51% 100% no-repeat;
+  mask:radial-gradient(circle at 0 50%, transparent 16px, #000 17px) left / 51% 100% no-repeat, radial-gradient(circle at 100% 50%, transparent 16px, #000 17px) right / 51% 100% no-repeat;
+  filter:drop-shadow(0 4px 0 rgba(35,54,92,0.35)); }
+.ticket.big { height:116px; font-size:40px; padding:0 64px; }
+.ticket.hot { filter:drop-shadow(0 0 6px #ffb703) drop-shadow(0 4px 0 rgba(35,54,92,0.35)); }
+.ticket[hidden] { display:none; }
+
+.strip { position:absolute; left:120px; top:56px; width:1040px; padding:22px 40px; background:#fff; transform:rotate(-1.5deg); box-shadow:0 6px 14px rgba(0,0,0,0.12); text-align:center; }
+.strip::before, .strip::after { content:''; position:absolute; top:-16px; width:120px; height:34px; background:rgba(255,226,120,0.75); }
+.strip::before { left:40px; transform:rotate(-6deg); } .strip::after { right:40px; transform:rotate(5deg); }
+.strip h1 { font-size:66px; line-height:1.1; color:var(--ink); }
+.strip p { font-size:22px; color:var(--pencil); margin-top:6px; }
+
+.notes { position:absolute; left:150px; top:290px; display:flex; gap:40px; }
+.note { width:300px; min-height:200px; padding:16px 18px; box-shadow:0 8px 12px rgba(0,0,0,0.15); display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
+.note:nth-child(1) { background:var(--note-y); transform:rotate(-3deg); }
+.note:nth-child(2) { background:var(--note-p); transform:rotate(2deg); }
+.note:nth-child(3) { background:var(--note-b); transform:rotate(-1deg); }
+.note canvas { width:90px; height:66px; }
+.note b { font-size:22px; }
+.note span { font-size:19px; line-height:1.35; color:var(--pencil); }
+#menu .ticket.big { left:300px; top:540px; }
+#menu .ticket.snd { left:660px; top:550px; }
+#menu .ticket.exit { left:930px; top:550px; }
+.strip .press { font-size:19px; margin-top:2px; }
+
+#map h2 { position:absolute; left:60px; top:28px; font-size:44px; transform:rotate(-2deg); }
+.pin { position:absolute; width:120px; height:120px; border-radius:50%; background:#fff; border:5px solid var(--ink); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; cursor:pointer; box-shadow:0 5px 0 rgba(35,54,92,0.35);
+  background-image:conic-gradient(rgba(255,183,3,0.65) calc(var(--p, 0) * 360deg), transparent 0); }
+.pin.hot { border-color:var(--red); }
+.pin.locked { cursor:default; border-style:dashed; border-color:#9aa3b5; color:#9aa3b5; }
+.pin .num { font-size:36px; font-weight:bold; line-height:1; }
+.pin .stars svg { width:20px; height:20px; }
+.place { position:absolute; width:200px; text-align:center; font-size:19px; color:var(--pencil); pointer-events:none; }
+#map .ticket { left:40px; top:600px; }
+
+#tag { position:absolute; right:24px; top:18px; padding:10px 22px; background:#fff; transform:rotate(2deg); box-shadow:0 4px 10px rgba(0,0,0,0.15); text-align:right; pointer-events:none; }
+#tag b { display:block; font-size:24px; }
+#tag span { font-size:20px; color:var(--pencil); }
+#tip { position:absolute; left:24px; bottom:20px; padding:10px 18px; background:var(--note-y); transform:rotate(-2deg); font-size:21px; box-shadow:0 4px 10px rgba(0,0,0,0.15); pointer-events:none; }
+#intro { position:absolute; inset:0; background:rgba(251,248,239,0.6); }
+#intro[hidden] { display:none; }
+#intro .card { position:absolute; left:50%; top:110px; transform:translateX(-50%) rotate(-1deg); width:720px; padding:26px 34px; background:var(--note-b); box-shadow:0 10px 16px rgba(0,0,0,0.18); text-align:center; }
+#intro h2 { font-size:40px; }
+#intro p { font-size:22px; line-height:1.45; margin-top:8px; color:var(--pencil); }
+#intro .ticket { left:490px; top:470px; }
+
+#result .pass { position:absolute; left:50%; top:60px; transform:translateX(-50%) rotate(1deg); width:700px; padding:24px 34px; background:#fff; border-left:18px dashed var(--red);
+  box-shadow:0 10px 16px rgba(0,0,0,0.18); text-align:center; }
+#result h2 { font-size:40px; }
+#result .stars { display:flex; justify-content:center; gap:6px; margin:6px 0; }
+#result .stars svg { width:64px; height:64px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:6px 40px; justify-content:center; font-size:23px; text-align:left; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#result .ticket.t1 { left:250px; top:520px; }
+#result .ticket.t2 { left:600px; top:530px; }
+#result .ticket.t3 { left:880px; top:530px; }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border:6px solid #fff; object-fit:cover; transform:scaleX(-1) rotate(-2deg); background:#000; box-shadow:0 4px 10px rgba(0,0,0,0.2); }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); font-size:22px; padding:8px 20px; background:#fff; box-shadow:0 4px 10px rgba(0,0,0,0.15);
+  white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.play { bottom:auto; top:18px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; left:50%; top:16px; transform:translateX(-50%) rotate(-1deg); font-size:22px; font-weight:bold; padding:12px 20px; background:var(--note-p);
+  box-shadow:0 4px 10px rgba(0,0,0,0.15); opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="sky" width="1280" height="720"></canvas>
+
+  <section class="screen graph on" id="menu">
+    <div class="strip">
+      <h1>Paper Plane Pilot</h1>
+      <p>Fold your plane, raise your hand, and fly through every hoop!</p>
+      <p class="press">Rest your hand on a ticket to press it.</p>
+    </div>
+    <div class="notes">
+      <div class="note"><canvas width="90" height="66" data-icon="up"></canvas><b>Hand up, plane up</b><span>Raise your hand to climb and lower it to dive.</span></div>
+      <div class="note"><canvas width="90" height="66" data-icon="hoop"></canvas><b>Fly through hoops</b><span>Steer around birds, kites and trees.</span></div>
+      <div class="note"><canvas width="90" height="66" data-icon="land"></canvas><b>Land softly</b><span>Glide down onto the runway at the end. A fist goes faster!</span></div>
+    </div>
+    <button type="button" class="ticket big" data-dwell="play">Fly!</button>
+    <button type="button" class="ticket snd" data-dwell="sound" id="btn-sound">Sound: on</button>
+    <button type="button" class="ticket exit" data-dwell="exit" id="btn-exit" hidden>Back to games</button>
+  </section>
+
+  <section class="screen" id="map">
+    <h2>Flight map</h2>
+    <div id="pins"></div>
+    <button type="button" class="ticket" data-dwell="menu">Menu</button>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="tag"><b id="tg-name"></b><span id="tg-score"></span></div>
+    <div id="tip"></div>
+    <div id="intro">
+      <div class="card"><h2 id="in-title"></h2><p id="in-text"></p></div>
+      <button type="button" class="ticket big" data-dwell="begin">Take off</button>
+    </div>
+  </section>
+
+  <section class="screen graph" id="result">
+    <div class="pass"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="plane.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const P = window.Plane;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), sky = $('sky'), ink = $('ink'), video = $('cam');
+const sctx = sky.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'paper-plane-pilot-v1';
+const N = P.PLACES.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true, ach: {}, hoops: 0 };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        ach: s.ach || {}, hoops: s.hoops | 0 };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every flight since the game was opened; reported once, when the player leaves or finishes the last place.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null, noiseBuf = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function tone(f, dur, type = 'sine', vol = 0.1, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+function rustle(dur, freq, vol) {
+  const a = audio(); if (!a) return;
+  if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const t = a.currentTime, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  s.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f).connect(g).connect(a.destination); s.start(t); s.stop(t + dur + 0.05);
+}
+const SFX = {
+  select() { tone(700, 0.1, 'triangle'); tone(1050, 0.12, 'triangle', 0.08, 0, 0.07); },
+  hoop() { tone(880, 0.15, 'sine', 0.1, 1320); tone(1320, 0.2, 'sine', 0.07, 0, 0.08); },
+  miss() { tone(330, 0.2, 'sine', 0.06, 260); },
+  bump() { rustle(0.35, 2500, 0.35); tone(150, 0.15, 'square', 0.04); },
+  land() { rustle(0.5, 600, 0.3); [523, 659, 784].forEach((f, i) => tone(f, 0.25, 'triangle', 0.1, 0, 0.2 + i * 0.1)); },
+  wind() { rustle(0.8, 400, 0.2); },
+  badge() { [784, 988, 1319].forEach((f, i) => tone(f, 0.2, 'sine', 0.08, 0, i * 0.08)); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- doodles ----------
+const INK = '#23365c';
+function outline(c, w = 4) { c.strokeStyle = INK; c.lineWidth = w; c.lineJoin = 'round'; c.lineCap = 'round'; c.stroke(); }
+function drawPlane(c, x, y, tilt, wobble) {
+  c.save(); c.translate(x, y); c.rotate(tilt + wobble);
+  c.beginPath(); c.moveTo(34, 0); c.lineTo(-28, -18); c.lineTo(-16, 0); c.lineTo(-28, 16); c.closePath();
+  c.fillStyle = '#ffffff'; c.fill(); outline(c, 3.5);
+  c.beginPath(); c.moveTo(34, 0); c.lineTo(-16, 0); c.lineTo(-24, 10); c.closePath(); c.fillStyle = '#dfe9f7'; c.fill(); outline(c, 2.5);
+  c.restore();
+}
+function drawHoop(c, x, y, size, state, t) {
+  const color = state === 'hit' ? '#4caf50' : state === 'miss' ? '#b8b8b8' : ['#e2574c', '#f4a261', '#2a9d8f', '#8e6bd8'][Math.floor(x / 430) % 4];
+  c.beginPath(); c.ellipse(x, y, 16, size / 2, 0, 0, 7);
+  c.strokeStyle = color; c.lineWidth = 12; c.stroke();
+  c.beginPath(); c.ellipse(x, y, 16, size / 2, 0, 0, 7); outline(c, 2.5);
+  if (state === 'hit') { c.strokeStyle = '#4caf50'; c.lineWidth = 6; c.beginPath(); c.moveTo(x - 14, y - size / 2 - 22); c.lineTo(x - 4, y - size / 2 - 12); c.lineTo(x + 16, y - size / 2 - 36); c.stroke(); }
+}
+function drawThing(c, th, x, t) {
+  if (th.kind === 'tree') {
+    c.beginPath(); c.rect(x - 14, th.top + 60, 28, P.SKY.ground - th.top - 60); c.fillStyle = '#9c6b3f'; c.fill(); outline(c, 3);
+    c.beginPath(); c.arc(x, th.top + 48, th.w / 2 + 6, 0, 7); c.fillStyle = '#7cc46a'; c.fill(); outline(c, 3.5);
+  } else if (th.kind === 'building') {
+    c.beginPath(); c.rect(x - th.w / 2, th.top, th.w, P.SKY.ground - th.top); c.fillStyle = '#c9ced8'; c.fill(); outline(c, 3.5);
+    c.fillStyle = '#ffe28a';
+    for (let wy = th.top + 20; wy < P.SKY.ground - 30; wy += 46) for (const wx of [-30, 10]) { c.beginPath(); c.rect(x + wx, wy, 20, 24); c.fill(); outline(c, 2); }
+  } else if (th.kind === 'mountain') {
+    c.beginPath(); c.moveTo(x - th.w / 2, P.SKY.ground); c.lineTo(x, th.top); c.lineTo(x + th.w / 2, P.SKY.ground); c.closePath(); c.fillStyle = '#a3b6c9'; c.fill(); outline(c, 3.5);
+    c.beginPath(); c.moveTo(x - 30, th.top + 50); c.lineTo(x, th.top); c.lineTo(x + 30, th.top + 50); c.lineTo(x + 10, th.top + 40); c.lineTo(x - 8, th.top + 52); c.closePath(); c.fillStyle = '#fff'; c.fill(); outline(c, 2.5);
+  } else {
+    const y = P.thingY(th, t);
+    if (th.kind === 'bird') {
+      const flap = Math.sin(t * 10 + th.x) * 10;
+      c.beginPath(); c.moveTo(x - 30, y - 6 + flap); c.quadraticCurveTo(x - 14, y - 22 - flap, x, y); c.quadraticCurveTo(x + 14, y - 22 - flap, x + 30, y - 6 + flap); outline(c, 5);
+      c.beginPath(); c.arc(x, y + 4, 9, 0, 7); c.fillStyle = INK; c.fill();
+    } else if (th.kind === 'kite') {
+      c.beginPath(); c.moveTo(x, y - 34); c.lineTo(x + 24, y); c.lineTo(x, y + 34); c.lineTo(x - 24, y); c.closePath(); c.fillStyle = '#f4a261'; c.fill(); outline(c, 3.5);
+      c.beginPath(); c.moveTo(x, y + 34); c.quadraticCurveTo(x - 20, y + 70, x + 6, y + 100 + Math.sin(t * 3) * 8); outline(c, 2.5);
+    } else if (th.kind === 'balloon') {
+      c.beginPath(); c.moveTo(x, y + th.r); c.lineTo(x + 4, y + th.r + 50); outline(c, 2);
+      c.beginPath(); c.ellipse(x, y, th.r * 0.85, th.r, 0, 0, 7); c.fillStyle = '#ff8fab'; c.fill(); outline(c, 3.5);
+    } else if (th.kind === 'storm') {
+      c.fillStyle = '#9aa3b5';
+      c.beginPath(); for (const [dx, dy, r] of [[-40, 6, 34], [0, -16, 44], [44, 4, 34], [6, 22, 34]]) { c.moveTo(x + dx + r, y + dy); c.arc(x + dx, y + dy, r, 0, 7); } c.fill();
+      if (Math.sin(t * 5 + th.x) > 0.6) { c.beginPath(); c.moveTo(x, y + 40); c.lineTo(x - 12, y + 70); c.lineTo(x + 6, y + 70); c.lineTo(x - 8, y + 104); c.strokeStyle = '#ffc93c'; c.lineWidth = 6; c.stroke(); }
+    }
+  }
+}
+function iconCanvas(cv, kind) {
+  const c = cv.getContext('2d');
+  if (kind === 'up') { drawPlane(c, 50, 36, -0.5, 0); c.beginPath(); c.moveTo(14, 58); c.lineTo(14, 14); c.moveTo(6, 22); c.lineTo(14, 12); c.lineTo(22, 22); outline(c, 3); }
+  else if (kind === 'hoop') { drawHoop(c, 60, 33, 56, null, 0); c.save(); c.scale(0.6, 0.6); drawPlane(c, 50, 55, 0, 0); c.restore(); }
+  else if (kind === 'land') { c.beginPath(); c.rect(4, 50, 82, 10); c.fillStyle = '#9aa3b5'; c.fill(); outline(c, 2); c.save(); c.scale(0.7, 0.7); drawPlane(c, 70, 50, 0.25, 0); c.restore(); }
+}
+document.querySelectorAll('canvas[data-icon]').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+
+function drawNotebook(c, scroll) {
+  c.fillStyle = '#fbf8ef'; c.fillRect(0, 0, 1280, 720);
+  c.strokeStyle = 'rgba(80,140,220,0.25)'; c.lineWidth = 2;
+  for (let y = 40; y < 720; y += 40) { c.beginPath(); c.moveTo(0, y); c.lineTo(1280, y); c.stroke(); }
+  const mx = 90 - (scroll * 0.2) % 1600;
+  c.strokeStyle = 'rgba(226,87,76,0.35)';
+  for (const off of [0, 1600]) { c.beginPath(); c.moveTo(mx + off, 0); c.lineTo(mx + off, 720); c.stroke(); }
+  c.fillStyle = 'rgba(255,255,255,0.9)';
+  for (let k = 0; k < 6; k++) {
+    const x = ((k * 380 - scroll * 0.35) % 2280 + 2280) % 2280 - 300, y = 80 + (k * 97) % 260;
+    c.beginPath(); for (const [dx, dy, r] of [[-34, 6, 26], [0, -10, 34], [34, 6, 26]]) { c.moveTo(x + dx + r, y + dy); c.arc(x + dx, y + dy, r, 0, 7); } c.fill();
+    c.strokeStyle = 'rgba(35,54,92,0.25)'; c.lineWidth = 2; c.stroke();
+  }
+  c.beginPath(); c.moveTo(0, P.SKY.ground);
+  for (let x = 0; x <= 1280; x += 40) c.lineTo(x, P.SKY.ground + Math.sin((x + scroll) / 120) * 8);
+  c.lineTo(1280, 720); c.lineTo(0, 720); c.closePath(); c.fillStyle = '#9ed58a'; c.fill(); outline(c, 3);
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'map', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  sky.style.display = name === 'play' || name === 'map' ? 'block' : 'none';
+  video.classList.toggle('off', name === 'play');
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = `Sound: ${progress.sound ? 'on' : 'off'}`; }
+updateSoundLabel();
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffc93c' : 'none'}" stroke="#23365c" stroke-width="1.5"/></svg>`;
+}
+const PIN_POS = [[150, 170], [370, 120], [590, 190], [810, 130], [1030, 200], [1090, 360], [840, 470], [620, 420], [400, 480], [180, 410]];
+function openMap() {
+  flight = null;
+  $('pins').innerHTML = P.PLACES.map((pl, i) => {
+    const locked = i + 1 > progress.unlocked, [x, y] = PIN_POS[i];
+    return `<div class="pin${locked ? ' locked' : ''}" style="left:${x}px;top:${y}px"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <div class="num">${i + 1}</div><div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>
+      <div class="place" style="left:${x - 40}px;top:${y + 126}px">${pl.name}</div>`;
+  }).join('');
+  show('map');
+}
+// The map's dotted flight route sits behind the pins.
+function drawMapRoute(c) {
+  c.fillStyle = '#fbf8ef'; c.fillRect(0, 0, 1280, 720);
+  c.strokeStyle = 'rgba(35,54,92,0.08)'; c.lineWidth = 1;
+  for (let x = 0; x <= 1280; x += 32) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 720); c.stroke(); }
+  for (let y = 0; y <= 720; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(1280, y); c.stroke(); }
+  c.setLineDash([4, 14]); c.strokeStyle = 'rgba(35,54,92,0.5)'; c.lineWidth = 5; c.lineCap = 'round';
+  c.beginPath();
+  PIN_POS.forEach(([x, y], i) => { const cx = x + 60, cy = y + 60; if (i) { const [px, py] = PIN_POS[i - 1]; c.quadraticCurveTo((px + x) / 2 + 60, Math.min(py, y) + 10, cx, cy); } else c.moveTo(cx, cy); });
+  c.stroke(); c.setLineDash([]);
+  drawPlane(c, PIN_POS[Math.min(N - 1, progress.unlocked - 1)][0] + 140, PIN_POS[Math.min(N - 1, progress.unlocked - 1)][1] + 20, -0.3, 0);
+}
+
+// ---------- achievements ----------
+const ACH = { first: 'First Flight', soft: 'Feather Landing', ring: 'Hoop Hero', clean: 'Not a Crease', grand: 'Grand Tour', ace: 'Ace Pilot' };
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- flying ----------
+let flight = null, playing = false, endAt = 0, hoopState = [], trail = [];
+function openFlight(i) {
+  flight = P.createFlight(i); playing = false; endAt = 0; trail = [];
+  hoopState = flight.course.hoops.map(() => null);
+  const pl = P.PLACES[i];
+  $('tg-name').textContent = pl.name;
+  $('in-title').textContent = `Next stop: ${pl.name}`;
+  const extra = [pl.kinds.includes('bird') && 'birds', pl.kinds.includes('kite') && 'kites', pl.kinds.includes('building') && 'rooftops',
+    pl.kinds.includes('storm') && 'storm clouds', pl.kinds.includes('mountain') && 'mountains', pl.kinds.includes('tree') && 'trees', pl.kinds.includes('balloon') && 'balloons'].filter(Boolean);
+  $('in-text').textContent = `Fly through ${flight.course.hoops.length} hoops${extra.length ? ' and watch out for ' + extra.join(', ') : ''}.${pl.wind ? ' Wind will push your plane up and down.' : ''} Raise your hand to climb, lower it to dive, then glide down onto the runway.`;
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishFlight() {
+  const i = flight.level, r = P.result(flight);
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  progress.hoops += r.hoops;
+  save();
+  unlockAch('first');
+  if (r.landing === 'soft') unlockAch('soft');
+  if (progress.hoops >= 50) unlockAch('ring');
+  if (r.bumps === 0 && r.hoops === r.total) unlockAch('clean');
+  if (i === N - 1) unlockAch('grand');
+  if (progress.stars.every((s) => s === 3)) unlockAch('ace');
+  const last = i === N - 1;
+  $('rs-title').textContent = r.stars === 3 ? 'Perfect flight!' : r.stars === 2 ? 'Nice flying!' : 'You made it!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Hoops', `${r.hoops} of ${r.total}`], ['Bumps', r.bumps], ['Landing', r.landing === 'soft' ? 'Soft as a feather' : 'A little bumpy'], ['Score', r.score]]
+    .map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  $('rs-buttons').innerHTML = (!last ? '<button type="button" class="ticket big t1" data-dwell="next">Next stop</button>' : '<button type="button" class="ticket big t1" data-dwell="map">Flight map</button>')
+    + '<button type="button" class="ticket t2" data-dwell="again">Fly again</button>'
+    + (!last ? '<button type="button" class="ticket t3" data-dwell="map">Map</button>' : '');
+  playing = false;
+  show('result');
+  if (last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openMap(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': flight = null; show('menu'); break;
+    case 'map': openMap(); break;
+    case 'level': openFlight(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; break;
+    case 'next': openFlight(Math.min(N - 1, flight.level + 1)); break;
+    case 'again': openFlight(flight.level); break;
+  }
+}
+
+// The platform's Back button: out of a flight to the map, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { playing = false; openMap(); return true; }
+  if (screen === 'map') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, pose: 'none', raw: 'none', rawSince: 0, reported: false };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// Fingers judged by distance from the wrist, so it works whichever way the hand is turned.
+function poseOf(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  const straight = [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+  return straight === 0 ? 'fist' : straight >= 3 ? 'open' : 'other';
+}
+// The middle of the camera frame covers the whole screen, so the plane reaches the top and bottom of the sky from a sofa.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+function handleLandmarks(lm, now) {
+  const tx = reach(1 - lm[9].x, 0.12, 0.88) * W, ty = reach(lm[9].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.5;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true;
+  const raw = poseOf(lm);
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (fresh || now - hand.rawSince >= 120) hand.pose = raw;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.pose = 'none';
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+const mouse = { x: null, y: null, down: false };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-dwell]')) mouse.down = true; });
+addEventListener('pointerup', () => { mouse.down = false; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on')) act(el);
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && hand.pose !== 'fist' && !(screen === 'play' && playing)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]') || el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHud(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintplay', screen === 'play', (v) => $('hint').classList.toggle('play', v));
+  if (!flight || screen !== 'play') return;
+  setOnce('score', `Hoops ${flight.passed} of ${flight.course.hoops.length}  ·  Bumps ${flight.bumps}`, (v) => { $('tg-score').textContent = v; });
+  const toEnd = flight.course.end - flight.x;
+  const tip = toEnd < 900 ? 'Runway ahead! Lower your hand to land' : boosting ? 'Zoom!' : 'Raise or lower your hand to steer';
+  setOnce('tip', tip, (v) => { $('tip').textContent = v; });
+  setOnce('tipShown', playing, (v) => { $('tip').hidden = !v; });
+}
+
+// ---------- drawing ----------
+function renderFlight(now) {
+  const c = sctx, t = now / 1000, f = flight, off = f.x - P.PLANE.x;
+  drawNotebook(c, f.x);
+  const end = f.course.end;
+  if (end - off < 1500) {
+    const rx = end - off - 500;
+    c.beginPath(); c.rect(rx, P.LAND.y + P.PLANE.r - 4, 900, 26); c.fillStyle = '#9aa3b5'; c.fill(); outline(c, 3);
+    c.strokeStyle = '#fff'; c.lineWidth = 5; c.setLineDash([26, 22]); c.beginPath(); c.moveTo(rx + 10, P.LAND.y + P.PLANE.r + 9); c.lineTo(rx + 890, P.LAND.y + P.PLANE.r + 9); c.stroke(); c.setLineDash([]);
+    const fx = end - off;
+    c.beginPath(); c.moveTo(fx, P.LAND.y + P.PLANE.r - 4); c.lineTo(fx, P.LAND.y - 80); outline(c, 3);
+    c.beginPath(); c.moveTo(fx, P.LAND.y - 80); c.lineTo(fx + 50, P.LAND.y - 66); c.lineTo(fx, P.LAND.y - 52); c.fillStyle = '#e2574c'; c.fill(); outline(c, 2.5);
+  }
+  for (const w of f.course.winds) {
+    const a = w.x0 - off, b = w.x1 - off;
+    if (b < -50 || a > 1330) continue;
+    c.strokeStyle = 'rgba(35,54,92,0.35)'; c.lineWidth = 3;
+    for (let k = 0; k < 5; k++) {
+      const x = a + (b - a) * (k + 0.5) / 5, y = 320 + Math.sin(t * 3 + k) * 20, dir = w.push > 0 ? 1 : -1;
+      c.beginPath(); c.moveTo(x, y - dir * 40); c.lineTo(x, y + dir * 40); c.moveTo(x - 10, y + dir * 28); c.lineTo(x, y + dir * 40); c.lineTo(x + 10, y + dir * 28); c.stroke();
+    }
+  }
+  for (const th of f.course.things) { const x = th.x - off; if (x > -300 && x < 1580) drawThing(c, th, x, t); }
+  f.course.hoops.forEach((h, k) => { const x = h.x - off; if (x > -60 && x < 1340) drawHoop(c, x, h.y, h.size, hoopState[k], t); });
+  trail.push({ x: f.x, y: f.y }); if (trail.length > 40) trail.shift();
+  c.setLineDash([6, 10]); c.strokeStyle = 'rgba(35,54,92,0.35)'; c.lineWidth = 3; c.beginPath();
+  trail.forEach((p, k) => { const x = p.x - off - 30; if (k) c.lineTo(x, p.y); else c.moveTo(x, p.y); }); c.stroke(); c.setLineDash([]);
+  drawPlane(c, P.PLANE.x, f.y, Math.max(-0.5, Math.min(0.5, f.vy / 500)), f.stun > 0 ? Math.sin(t * 40) * 0.25 : 0);
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present || (screen === 'play' && playing)) return;
+  c.fillStyle = '#23365c'; c.beginPath(); c.arc(hand.x, hand.y, 7, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#23365c'; c.lineWidth = 3; c.beginPath(); c.arc(hand.x, hand.y, 20, 0, Math.PI * 2); c.stroke();
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now(), boosting = false;
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Flight scales with the real frame time, capped so a stall on a slow device cannot jump the plane.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  boosting = false;
+  if (screen === 'play' && flight && playing && !flight.done) {
+    let target = null;
+    if (hand.present) { target = toStage(hand.x, hand.y).y; boosting = hand.pose === 'fist'; }
+    else if (mouse.x !== null) { target = toStage(mouse.x, mouse.y).y; boosting = mouse.down; }
+    P.step(flight, dt, target, boosting);
+    for (const ev of flight.events) {
+      if (ev.type === 'hoop') { hoopState[ev.index] = 'hit'; sfx('hoop'); }
+      else if (ev.type === 'miss') { hoopState[ev.index] = 'miss'; sfx('miss'); }
+      else if (ev.type === 'bump') sfx('bump');
+      else if (ev.type === 'land') { sfx('land'); endAt = now + 1500; }
+    }
+    flight.events.length = 0;
+  }
+  if (endAt && now >= endAt) { endAt = 0; finishFlight(); }
+  if (screen === 'play' && flight) renderFlight(now);
+  else if (screen === 'map') drawMapRoute(sctx);
+  updateDwell(now);
+  updateHud(now);
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
