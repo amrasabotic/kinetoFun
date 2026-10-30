@@ -112,7 +112,7 @@
   var ownPointerAt = -Infinity;
 
   // A game that maps the hand to its own cursor reports it here (0-1 of its viewport), so Back fills where that cursor is drawn.
-  // noCursor: the game draws nothing there, so the platform shows a ring near Back instead.
+  // noCursor is accepted for older callers; the platform no longer draws a ring of its own.
   window.__kfPointer = function (x, y, noCursor) {
     ownPointerAt = performance.now();
     if (typeof x === 'number' && typeof y === 'number') send(x, y, true, noCursor); else send(0, 0, false);
