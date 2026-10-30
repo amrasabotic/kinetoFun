@@ -679,13 +679,26 @@ function poseCanPress() {
   return true;
 }
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menu buttons follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => screen !== 'battle' && screen !== 'ready';
+const kfSharedMenu = () => !!kfShared && kfInMenu();
+function kfPoint() {
+  if (kfSharedMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  return hand.present ? { x: hand.x, y: hand.y } : null;
+}
+
 function updateDwell(now) {
   let target = null;
-  if (hand.present && now >= armedAt && poseCanPress() && !(screen === 'battle' && (paused || !battle || battle.over))) {
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = kfPoint();
+  if (pt && now >= armedAt && poseCanPress() && !(screen === 'battle' && (paused || !battle || battle.over))) {
     for (const el of dwellTargets()) {
       const r = el.getBoundingClientRect();
       if (!r.width) continue;
-      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) {
+      if (pt.x >= r.left - 16 && pt.x <= r.right + 16 && pt.y >= r.top - 16 && pt.y <= r.bottom + 16) {
         if (el.classList.contains('card') && !cardReady(el.dataset.spell)) continue;
         target = el; break;
       }
@@ -1113,7 +1126,7 @@ function renderInk(now) {
     drawPath(c, tr.pts, tr.color, 16, 1 - age);
   }
   if (stroke.active) drawPath(c, stroke.pts, '#c99bff', 14, 0.95);
-  if (!hand.present) return;
+  if (!hand.present || kfSharedMenu()) return;
   const x = hand.x, y = hand.y, pointing = hand.pose === 'point';
   c.lineWidth = 4;
   c.strokeStyle = hand.pose === 'fist' ? 'rgba(200,200,220,0.5)' : pointing ? '#ffd166' : '#ffffff';

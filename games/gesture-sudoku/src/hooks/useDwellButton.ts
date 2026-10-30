@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGestureRef } from './useGesture';
+import { buttonPointer } from '../sharedCursor';
 
 /**
  * Generic gesture-activated button: hovering the cursor over the bound
@@ -24,10 +25,11 @@ export function useDwellButton(holdMs: number, onActivate: () => void) {
     function loop() {
       const el = elRef.current;
       const gesture = gestureRef.current;
-      if (el && gesture.isHovering) {
+      const pt = buttonPointer(gesture.isHovering ? { x: gesture.cursorX, y: gesture.cursorY } : null);
+      if (el && pt) {
         const rect = el.getBoundingClientRect();
-        const px = gesture.cursorX * window.innerWidth;
-        const py = gesture.cursorY * window.innerHeight;
+        const px = pt.x * window.innerWidth;
+        const py = pt.y * window.innerHeight;
         const now = performance.now();
         const isOver = now >= armedAtRef.current && px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
         if (isOver) lastOverRef.current = now;

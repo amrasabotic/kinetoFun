@@ -607,14 +607,27 @@ function poseCanPress() {
   if (screen === 'shape' && shaping) return hand.pose !== 'point';
   return true;
 }
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menu buttons follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => !(screen === 'shape' && shaping);
+const kfSharedMenu = () => !!kfShared && kfInMenu();
+function kfPoint() {
+  if (kfSharedMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  return hand.present ? { x: hand.x, y: hand.y } : null;
+}
+
 function updateDwell(now) {
   let target = null;
-  if (hand.present && now >= armedAt && poseCanPress()) {
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = kfPoint();
+  if (pt && now >= armedAt && poseCanPress()) {
     for (const el of $(screen).querySelectorAll('[data-dwell]')) {
       if (el.closest('[hidden]')) continue;
       const r = el.getBoundingClientRect();
       if (!r.width) continue;
-      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+      if (pt.x >= r.left - 16 && pt.x <= r.right + 16 && pt.y >= r.top - 16 && pt.y <= r.bottom + 16) { target = el; break; }
     }
   }
   // After a press, the same target waits until the hand leaves it, so holding never repeats.
@@ -798,7 +811,7 @@ function renderStudio(now, dt) {
 function renderInk() {
   const c = ictx;
   c.clearRect(0, 0, W, H);
-  if (!hand.present) return;
+  if (!hand.present || kfSharedMenu()) return;
   const x = hand.x, y = hand.y, tool = screen === 'shape' && shaping && hand.pose === 'point';
   c.lineWidth = 4;
   c.strokeStyle = hand.pose === 'fist' ? 'rgba(220,210,200,0.5)' : tool ? '#ffcf70' : '#ffffff';

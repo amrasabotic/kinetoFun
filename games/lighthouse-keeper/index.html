@@ -559,14 +559,27 @@ function resetDwell() {
   if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
   dwell.el = null; dwell.p = 0;
 }
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menu buttons follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => !(screen === 'play' && playing);
+const kfSharedMenu = () => !!kfShared && kfInMenu();
+function kfPoint() {
+  if (kfSharedMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  return hand.present ? { x: hand.x, y: hand.y } : null;
+}
+
 function updateDwell(now) {
   let target = null;
-  if (hand.present && now >= armedAt && !(screen === 'play' && playing)) {
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = kfPoint();
+  if (pt && now >= armedAt && !(screen === 'play' && playing)) {
     for (const el of $(screen).querySelectorAll('[data-dwell]')) {
       if (el.closest('[hidden]')) continue;
       const r = el.getBoundingClientRect();
       if (!r.width) continue;
-      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+      if (pt.x >= r.left - 16 && pt.x <= r.right + 16 && pt.y >= r.top - 16 && pt.y <= r.bottom + 16) { target = el; break; }
     }
   }
   // After a press, the same target waits until the hand leaves it, so holding never repeats.
@@ -602,7 +615,7 @@ function updateHud(now) {
 function renderInk() {
   const c = ictx;
   c.clearRect(0, 0, W, H);
-  if (!hand.present || (screen === 'play' && playing)) return;
+  if (!hand.present || kfSharedMenu() || (screen === 'play' && playing)) return;
   c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(hand.x, hand.y, 7, 0, Math.PI * 2); c.fill();
   c.strokeStyle = '#ffffff'; c.lineWidth = 3; c.beginPath(); c.arc(hand.x, hand.y, 20, 0, Math.PI * 2); c.stroke();
   if (dwell.el && dwell.p > 0) {
