@@ -2,6 +2,17 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode } from "react";
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = window as unknown as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 /*
  * One camera + hand landmarker shared by the whole game, so the menus and
  * the match are both hand-controlled. The game runs on TVs with no mouse:
@@ -199,10 +210,13 @@ export function DwellCursor({ visible }: { visible: boolean }) {
         release();
         return;
       }
-      const x = cursorX * window.innerWidth;
-      const y = cursorY * window.innerHeight;
+      const menu = visibleRef.current;
+      kfMenu(menu);
+      const sh = menu ? kfShared : undefined;
+      const x = (sh ? sh.x : cursorX) * window.innerWidth;
+      const y = (sh ? sh.y : cursorY) * window.innerHeight;
       dot.style.transform = `translate(${x}px, ${y}px)`;
-      dot.style.opacity = visibleRef.current ? "1" : "0";
+      dot.style.opacity = menu && !sh ? "1" : "0";
 
       const now = performance.now();
       const hit = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-dwell]") ?? null;

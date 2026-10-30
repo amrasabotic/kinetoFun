@@ -19,6 +19,17 @@ import {
   SCORE_PER_STAR, TOTAL_LEVELS,
 } from './utils/constants';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = window as unknown as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Screen  = 'landing' | 'howtoplay' | 'levelselect' | 'game';
@@ -232,8 +243,14 @@ function DwellLayer({ children }: {
   const activeRef  = useRef<string | null>(null);
   const rafRef     = useRef(0);
 
+  // Menu screens mount this layer, so it switches the platform's cursor on and off.
+  useEffect(() => {
+    kfMenu(true);
+    return () => kfMenu(false);
+  }, []);
+
   const loop = useCallback((ts: number) => {
-    const h = handRef.current;
+    const h = kfShared ? { detected: kfShared.visible, x: kfShared.x, y: kfShared.y } : handRef.current;
     if (!h.detected) {
       setActive(null); setProgress(0);
       dwellStart.current = null; activeRef.current = null;
@@ -271,7 +288,7 @@ function DwellLayer({ children }: {
       <video ref={videoRef as React.RefObject<HTMLVideoElement>}
         className="absolute opacity-0 pointer-events-none w-1 h-1" muted playsInline />
       {children({ hand, active, progress })}
-      {hand.detected && (
+      {hand.detected && !kfShared && (
         <div className="pointer-events-none fixed z-50"
           style={{
             left: hand.x * window.innerWidth - CURSOR_R_MENU,

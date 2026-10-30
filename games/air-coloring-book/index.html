@@ -657,7 +657,8 @@ function showCompletion(){
 // ═══════════════════════════════════════════════
 function drawCursor(x, y, active, hoverPct) {
   cCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
-  if(x < 0) return;
+  if(kfShared && x >= 0 && !active !== kfMenuOn){ kfMenuOn = !active; if(window.__kfMenu) window.__kfMenu(!active); }
+  if(x < 0 || (kfShared && !active)) return;
 
   const r = active ? 18 : 16;
   const col = active ? currentColor : '#ffffff';
@@ -825,12 +826,18 @@ let lastGesture = 'none';
 // The middle of the camera frame covers the whole page, so the side panels and corners are reachable.
 const REACH = 0.12;
 let smoothX = -1, smoothY = -1;
+// On the platform the bridge supplies one cursor for every game and the platform draws it.
+// While colouring, the game's own ring shows the brush instead, at the same spot.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+
 function landmarkToPage(lm) {
   const nx = Math.min(1, Math.max(0, (1 - lm.x - REACH) / (1 - 2*REACH)));
   const ny = Math.min(1, Math.max(0, (lm.y - REACH) / (1 - 2*REACH)));
   const tx = nx * window.innerWidth, ty = ny * window.innerHeight;
   if(smoothX < 0){ smoothX = tx; smoothY = ty; }
-  smoothX += (tx - smoothX) * 0.45; smoothY += (ty - smoothY) * 0.45;
+  if(kfShared){ smoothX = kfShared.x * window.innerWidth; smoothY = kfShared.y * window.innerHeight; }
+  else { smoothX += (tx - smoothX) * 0.45; smoothY += (ty - smoothY) * 0.45; }
   const rect = drawingCanvas.getBoundingClientRect();
   return { cx: smoothX, cy: smoothY, dx: smoothX - rect.left, dy: smoothY - rect.top };
 }

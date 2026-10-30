@@ -229,8 +229,8 @@ function onHandResults(res){
   }
   if(!best){ if(window.__kfPointer) window.__kfPointer(null); return; }
   handVisible=true;
-  handX=reach(1-best[8].x)*W;
-  handY=reach(best[8].y)*H;
+  handX=(kfShared?kfShared.x:reach(1-best[8].x))*W;
+  handY=(kfShared?kfShared.y:reach(best[8].y))*H;
   canPress=!detectFist(best);
   if(window.__kfPointer) window.__kfPointer(handX/W,handY/H);
 }
@@ -382,14 +382,20 @@ function drawDwellBar(x,y,w,h,id){
   if(p<=0) return;
   card(x+8,y+h-10,(w-16)*p,6,3,'#00ff88',null);
 }
+// On the platform the bridge supplies one cursor for every game and the platform draws it; only the press progress is drawn here.
+const kfShared=window.__kfCursor;
+if(window.__kfMenu) window.__kfMenu(true);
+
 function drawCursor(){
   if(!handVisible||handX<0) return;
   cx.save();
+  if(!kfShared){
   shadow('#4fc3f7',12);
   cx.fillStyle=canPress?'rgba(79,195,247,0.45)':'rgba(255,255,255,0.25)';
   cx.strokeStyle='#fff';cx.lineWidth=4;
   cx.beginPath();cx.arc(handX,handY,18,0,Math.PI*2);cx.fill();cx.stroke();
   noShadow();
+  }
   if(dwellId&&canPress){
     const p=Math.min((Date.now()-dwellT)/DWELL_MS,1);
     shadow('#00ff88',8);

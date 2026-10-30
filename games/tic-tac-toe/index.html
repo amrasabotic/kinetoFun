@@ -485,6 +485,9 @@ const video       = document.getElementById('video');
 const camOvEl     = document.getElementById('cam-overlay');
 const camCtx      = camOvEl.getContext('2d');
 const screenCur   = document.getElementById('screen-cursor');
+// On the platform the bridge supplies one cursor for every game and the platform draws it.
+const kfShared = window.__kfCursor;
+if (window.__kfMenu) window.__kfMenu(true);
 const resultOv    = document.getElementById('result-overlay');
 const resultText  = document.getElementById('result-text');
 const turnVal     = document.getElementById('turnVal');
@@ -648,8 +651,8 @@ hands.onResults(results => {
   // Index fingertip = landmark 8
   // lm coords are 0..1 in original (unmirrored) video frame
   // CSS mirrors the video with scaleX(-1), so mirrored X = 1 - lm[8].x
-  const normX = 1 - lm[8].x;  // mirrored
-  const normY = lm[8].y;
+  const normX = kfShared ? kfShared.x : 1 - lm[8].x;  // mirrored
+  const normY = kfShared ? kfShared.y : lm[8].y;
 
   // Pinch = distance between thumb tip (4) and index tip (8)
   const dx = lm[8].x - lm[4].x;
@@ -662,12 +665,12 @@ hands.onResults(results => {
   const sy = normY * window.innerHeight;
 
   // Move screen cursor
-  screenCur.style.display = 'block';
+  screenCur.style.display = kfShared ? 'none' : 'block';
   screenCur.style.left    = sx + 'px';
   screenCur.style.top     = sy + 'px';
   screenCur.classList.toggle('pinch', isPinching);
 
-  if (window.__kfPointer) window.__kfPointer(normX, normY);
+  if (!kfShared && window.__kfPointer) window.__kfPointer(normX, normY);
   handleHand(sx, sy, isPinching);
 });
 

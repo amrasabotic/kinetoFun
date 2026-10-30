@@ -1,6 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { HandPosition } from '../types/game';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = window as unknown as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 /*
  * The game is played on TVs with no mouse, so menus are hand-controlled:
  * a cursor follows the index fingertip, and any element marked `data-dwell`
@@ -57,7 +68,8 @@ export const HandCursor: React.FC<HandCursorProps> = ({ getPosition, visible }) 
       raf = requestAnimationFrame(tick);
       const root = rootRef.current;
       if (!root) return;
-      const pos = getPosition();
+      kfMenu(visibleRef.current);
+      const pos = kfShared ? { detected: kfShared.visible, x: kfShared.x, y: kfShared.y } : getPosition();
       if (!pos.detected && visibleRef.current && target && performance.now() - lastOnTarget <= GRACE_MS) return;
       if (!pos.detected || !visibleRef.current) {
         root.style.opacity = '0';
@@ -113,7 +125,8 @@ export const HandCursor: React.FC<HandCursorProps> = ({ getPosition, visible }) 
       style={{ opacity: 0 }}
     >
       <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90">
-        <circle cx="24" cy="24" r={RING_R} fill="rgba(74,222,128,0.15)" stroke="rgba(255,255,255,0.35)" strokeWidth="3" />
+        {/* With the platform cursor only the press progress is drawn here. */}
+        {!kfShared && <circle cx="24" cy="24" r={RING_R} fill="rgba(74,222,128,0.15)" stroke="rgba(255,255,255,0.35)" strokeWidth="3" />}
         <circle
           ref={ringRef}
           cx="24"

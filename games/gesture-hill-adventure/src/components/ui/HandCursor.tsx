@@ -1,5 +1,16 @@
 import { useEffect, useRef } from 'react';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = window as unknown as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 /** Hand position in screen space, 0..1 on each axis, already mirrored. */
 export type HandPoint = { x: number; y: number } | null;
 
@@ -66,6 +77,7 @@ export default function HandCursor({ getPoint, enabled = true }: {
 
       const hasButtons = document.querySelector('button:not([disabled])') !== null;
       if (!hand && target && hasButtons && performance.now() - lastOnTarget <= GRACE_MS) return;
+      kfMenu(on && hasButtons);
       if (!hand || !hasButtons) {
         cursor.style.opacity = '0';
         target = null;
@@ -73,8 +85,8 @@ export default function HandCursor({ getPoint, enabled = true }: {
         return;
       }
 
-      x += (hand.x - x) * SMOOTHING;
-      y += (hand.y - y) * SMOOTHING;
+      if (kfShared) { x = kfShared.x; y = kfShared.y; }
+      else { x += (hand.x - x) * SMOOTHING; y += (hand.y - y) * SMOOTHING; }
       const px = x * window.innerWidth;
       const py = y * window.innerHeight;
       cursor.style.opacity = '1';
@@ -123,8 +135,9 @@ export default function HandCursor({ getPoint, enabled = true }: {
       aria-hidden
     >
       <svg width="52" height="52" viewBox="0 0 52 52">
-        <circle cx="26" cy="26" r="9" fill="rgba(255,255,255,0.9)" stroke="#7C3AED" strokeWidth="3" />
-        <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="4" />
+        {/* With the platform cursor only the press progress is drawn here. */}
+        {!kfShared && <circle cx="26" cy="26" r="9" fill="rgba(255,255,255,0.9)" stroke="#7C3AED" strokeWidth="3" />}
+        {!kfShared && <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="4" />}
         <circle
           ref={ringRef}
           cx="26" cy="26" r="22" fill="none" stroke="#5EED7A" strokeWidth="4" strokeLinecap="round"

@@ -1302,11 +1302,11 @@ function onResults(results) {
   const tip = landmarks[8];
   const px = reach(1 - tip.x) * window.innerWidth;
   const py = reach(tip.y) * window.innerHeight;
-  smX = smX === null ? px : smX + (px - smX) * 0.4;
-  smY = smY === null ? py : smY + (py - smY) * 0.4;
-  handCursor.style.display = 'block';
+  smX = kfShared ? kfShared.x * window.innerWidth : smX === null ? px : smX + (px - smX) * 0.4;
+  smY = kfShared ? kfShared.y * window.innerHeight : smY === null ? py : smY + (py - smY) * 0.4;
+  handCursor.style.display = kfShared ? 'none' : 'block';
   handCursor.style.transform = `translate(${smX}px, ${smY}px)`;
-  if (window.__kfPointer) window.__kfPointer(smX / window.innerWidth, smY / window.innerHeight);
+  if (!kfShared && window.__kfPointer) window.__kfPointer(smX / window.innerWidth, smY / window.innerHeight);
   updateGestureUI('HAND');
   dwellAt(smX, smY);
 }
@@ -1322,6 +1322,9 @@ const DWELL_ARM_MS = 1200;
 const REACH = 0.12;
 const reach = v => Math.min(1, Math.max(0, (v - REACH) / (1 - 2 * REACH)));
 const handCursor = document.getElementById('hand-cursor');
+// On the platform the bridge supplies one cursor for every game and the platform draws it.
+const kfShared = window.__kfCursor;
+if (window.__kfMenu) window.__kfMenu(true);
 let smX = null, smY = null;
 let dwellEl = null, dwellSince = 0, pressedEl = null, dwellArmedAt = 0;
 

@@ -2,6 +2,17 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { ReactNode } from "react";
 import { startHandTracking, type HandTracker, type HandTrackingState } from "@/lib/hand-tracking";
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = window as unknown as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 /*
  * One camera + hand tracker for the whole game, started as soon as it loads.
  * The game is played on TVs with no mouse, so every screen is hand-controlled:
@@ -136,10 +147,13 @@ function DwellCursor() {
         if (target && performance.now() - lastOnTarget > GRACE_MS) release();
         return;
       }
-      const x = point.x * window.innerWidth;
-      const y = point.y * window.innerHeight;
+      const menu = !hiddenRef.current;
+      kfMenu(menu);
+      const sh = menu ? kfShared : undefined;
+      const x = (sh ? sh.x : point.x) * window.innerWidth;
+      const y = (sh ? sh.y : point.y) * window.innerHeight;
       dot.style.transform = `translate(${x}px, ${y}px)`;
-      dot.style.opacity = hiddenRef.current ? "0" : "1";
+      dot.style.opacity = !menu || sh ? "0" : "1";
 
       const now = performance.now();
       const hit = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-dwell]") ?? null;
