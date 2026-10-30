@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Garden</title>
+<style>
+:root { --leaf:#3f9d4a; --leaf-dark:#2a6b33; --wood:#8a5a34; --wood-dark:#5e3a1f; --cream:#fffaf0; --text:#2f2a20; --sun:#ffc93c; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#9fd8f5; color:var(--text); font-family:'Verdana','DejaVu Sans','Segoe UI',sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#garden { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Round buttons fill with a ring while the hand rests on them. */
+.round { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; border:none;
+  font:bold 26px 'Verdana','DejaVu Sans',sans-serif; color:var(--text); box-shadow:0 10px 0 rgba(0,0,0,0.18); }
+.round::before { content:''; position:absolute; inset:-12px; border-radius:50%;
+  background:conic-gradient(#fff calc(var(--p, 0) * 360deg), transparent 0); -webkit-mask:radial-gradient(circle, transparent 62%, #000 63%); mask:radial-gradient(circle, transparent 62%, #000 63%); }
+.round.hot { filter:brightness(1.08); }
+.round.sunbtn { background:radial-gradient(circle at 40% 35%, #ffe680, var(--sun) 60%, #f0a020); width:190px; height:190px; font-size:34px; }
+.round.leafbtn { background:radial-gradient(circle at 40% 35%, #8fd98f, var(--leaf)); color:#fff; width:140px; height:140px; font-size:20px; text-align:center; line-height:1.25; }
+.round[hidden] { display:none; }
+
+.sign { position:absolute; left:70px; top:70px; width:560px; padding:26px 30px 30px; background:repeating-linear-gradient(180deg, var(--wood) 0 58px, var(--wood-dark) 58px 62px);
+  border-radius:14px; box-shadow:0 12px 0 rgba(0,0,0,0.2); transform:rotate(-2deg); color:var(--cream); }
+.sign::before, .sign::after { content:''; position:absolute; top:-70px; width:6px; height:72px; background:#c9b28a; }
+.sign::before { left:80px; } .sign::after { right:80px; }
+.sign h1 { font-size:62px; line-height:1.05; text-shadow:0 4px 0 var(--wood-dark); }
+.sign p { margin-top:12px; font-size:22px; line-height:1.4; }
+
+.packets { position:absolute; right:60px; top:60px; display:flex; flex-direction:column; gap:16px; }
+.packet { width:470px; display:flex; gap:16px; align-items:center; padding:14px 18px; background:var(--cream); border-radius:10px; box-shadow:0 8px 0 rgba(0,0,0,0.15);
+  border-top:16px solid var(--c); }
+.packet:nth-child(1) { transform:rotate(1.5deg); } .packet:nth-child(2) { transform:rotate(-1deg) translateX(-30px); } .packet:nth-child(3) { transform:rotate(2deg); }
+.packet canvas { width:84px; height:84px; flex:none; }
+.packet b { display:block; font-size:22px; margin-bottom:4px; }
+.packet span { font-size:19px; line-height:1.35; }
+
+#menu .sunbtn { left:180px; top:440px; }
+#menu .leafbtn.snd { left:420px; top:470px; }
+#menu .leafbtn.exit { left:590px; top:470px; }
+.sign .press { font-size:19px; opacity:0.85; }
+
+#paths .stone { position:absolute; width:150px; height:112px; border-radius:50% / 45%; background:radial-gradient(circle at 40% 30%, #e8e2d6, #b9b0a0);
+  box-shadow:0 8px 0 rgba(0,0,0,0.2); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; }
+#paths .stone::before { content:''; position:absolute; inset:-10px; border-radius:50% / 45%;
+  background:conic-gradient(#fff calc(var(--p, 0) * 360deg), transparent 0); -webkit-mask:radial-gradient(ellipse, transparent 62%, #000 63%); mask:radial-gradient(ellipse, transparent 62%, #000 63%); }
+#paths .stone.hot { filter:brightness(1.08); }
+#paths .stone.locked { filter:grayscale(1) brightness(0.8); cursor:default; }
+#paths .stone .num { font-size:34px; font-weight:bold; }
+#paths .stone .stars svg { width:22px; height:22px; }
+#paths .season { position:absolute; font-size:22px; font-weight:bold; color:var(--cream); background:var(--wood); padding:6px 16px; border-radius:8px; box-shadow:0 5px 0 var(--wood-dark); }
+#paths .leafbtn { left:40px; bottom:24px; }
+#paths h2 { position:absolute; left:50%; top:24px; transform:translateX(-50%); font-size:40px; color:var(--cream); text-shadow:0 3px 0 var(--leaf-dark); }
+
+#hud { position:absolute; right:20px; top:16px; padding:10px 22px; background:var(--wood); color:var(--cream); border-radius:12px; box-shadow:0 6px 0 var(--wood-dark); text-align:right; pointer-events:none; }
+#hud b { display:block; font-size:24px; }
+#hud span { font-size:20px; }
+#tip { position:absolute; left:50%; top:16px; transform:translateX(-50%); font-size:21px; background:rgba(255,250,240,0.92); padding:10px 18px; border-radius:20px; pointer-events:none; }
+#intro { position:absolute; inset:0; background:rgba(255,250,240,0.55); }
+#intro[hidden] { display:none; }
+#intro .card { position:absolute; left:50%; top:120px; transform:translateX(-50%) rotate(-1deg); width:760px; padding:26px 32px; background:var(--cream); border-radius:14px;
+  border-top:20px solid var(--leaf); box-shadow:0 10px 0 rgba(0,0,0,0.15); text-align:center; }
+#intro h2 { font-size:36px; margin-bottom:8px; }
+#intro p { font-size:20px; line-height:1.4; }
+#intro .needs { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 12px; margin-top:12px; }
+#intro .need { font-size:18px; background:#f1ead8; padding:6px 14px; border-radius:12px; white-space:nowrap; }
+#intro .sunbtn { left:560px; top:548px; width:160px; height:160px; font-size:30px; }
+
+#result .card { position:absolute; left:50%; top:70px; transform:translateX(-50%) rotate(1deg); width:560px; padding:26px 30px; background:var(--cream); border-radius:14px;
+  border-top:20px solid var(--sun); box-shadow:0 10px 0 rgba(0,0,0,0.15); text-align:center; }
+#result h2 { font-size:38px; }
+#result .stars svg { width:66px; height:66px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:6px 30px; font-size:22px; text-align:left; justify-content:center; margin-top:10px; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#result .sunbtn { left:330px; top:460px; width:170px; height:170px; font-size:26px; }
+#result .leafbtn.b1 { left:540px; top:475px; }
+#result .leafbtn.b2 { left:710px; top:475px; }
+.stars { display:flex; gap:4px; justify-content:center; }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border-radius:14px; border:4px solid var(--cream); object-fit:cover; transform:scaleX(-1); background:#000; }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; bottom:20px; transform:translateX(-50%); font-size:22px; padding:8px 22px; border-radius:30px; background:rgba(255,250,240,0.95);
+  white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.play { bottom:auto; top:74px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; left:50%; top:16px; transform:translateX(-50%); font-size:22px; font-weight:bold; padding:12px 20px; border-radius:14px; background:var(--leaf); color:#fff;
+  opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="garden" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div class="sign">
+      <h1>Weather Garden</h1>
+      <p>You are the weather! Give every plant the sun and rain it loves, and blow the hungry bugs away.</p>
+      <p class="press">Rest your hand on a round button to press it.</p>
+    </div>
+    <div class="packets">
+      <div class="packet" style="--c:#ffc93c"><canvas width="84" height="84" data-icon="sun"></canvas><div><b>Open hand: sunshine</b><span>Hold your open hand over a plant to shine on it.</span></div></div>
+      <div class="packet" style="--c:#4da3ff"><canvas width="84" height="84" data-icon="rain"></canvas><div><b>Squeeze a fist: rain</b><span>Squeeze the cloud to water the plant below.</span></div></div>
+      <div class="packet" style="--c:#3f9d4a"><canvas width="84" height="84" data-icon="wind"></canvas><div><b>Swipe fast: wind</b><span>Sweep your hand across to blow the bugs away.</span></div></div>
+    </div>
+    <button type="button" class="round sunbtn" data-dwell="play">Play</button>
+    <button type="button" class="round leafbtn snd" data-dwell="sound" id="btn-sound">Sound on</button>
+    <button type="button" class="round leafbtn exit" data-dwell="exit" id="btn-exit" hidden>Back to games</button>
+  </section>
+
+  <section class="screen" id="paths">
+    <h2>Pick a garden</h2>
+    <div id="stones"></div>
+    <button type="button" class="round leafbtn" data-dwell="menu">Menu</button>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="hud"><b id="hd-name"></b><span id="hd-bloom"></span></div>
+    <div id="tip"></div>
+    <div id="intro">
+      <div class="card"><h2 id="in-title"></h2><p id="in-text"></p><div class="needs" id="in-needs"></div></div>
+      <button type="button" class="round sunbtn" data-dwell="begin">Start</button>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="card"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="garden.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const G = window.Garden;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), garden = $('garden'), ink = $('ink'), video = $('cam');
+const gctx = garden.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'weather-garden-v1';
+const N = G.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true, ach: {}, bugs: 0, seasons: {} };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        ach: s.ach || {}, bugs: s.bugs | 0, seasons: s.seasons || {} };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every garden grown since the game was opened; reported once, when the player leaves or finishes the last garden.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null, noiseBuf = null, rainSound = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function noise(a) {
+  if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  return noiseBuf;
+}
+function tone(f, dur, type = 'sine', vol = 0.1, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+// Rain hiss runs while it rains; only its volume changes.
+function rainLevel(on) {
+  const a = progress.sound ? audio() : null;
+  if (!rainSound) {
+    if (!a || !on) return;
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = noise(a); s.loop = true; f.type = 'highpass'; f.frequency.value = 2500; g.gain.value = 0;
+    s.connect(f).connect(g).connect(a.destination); s.start();
+    rainSound = { g, a };
+  }
+  rainSound.g.gain.setTargetAtTime(on && progress.sound ? 0.08 : 0, rainSound.a.currentTime, 0.1);
+}
+function whoosh() {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  s.buffer = noise(a); f.type = 'bandpass'; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(1800, t + 0.5);
+  g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+  s.connect(f).connect(g).connect(a.destination); s.start(t); s.stop(t + 0.7);
+}
+const SFX = {
+  select() { tone(660, 0.12, 'triangle'); tone(990, 0.14, 'triangle', 0.08, 0, 0.08); },
+  bloom() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.25, 'sine', 0.09, 0, i * 0.08)); },
+  bug() { tone(240, 0.15, 'square', 0.04, 300); },
+  munch() { tone(180, 0.08, 'square', 0.05); tone(160, 0.08, 'square', 0.05, 0, 0.12); },
+  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.11, 0, i * 0.12)); },
+  badge() { [784, 988, 1319].forEach((f, i) => tone(f, 0.2, 'sine', 0.08, 0, i * 0.08)); },
+};
+function sfx(name) { try { if (name === 'wind') whoosh(); else SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- drawing pieces ----------
+const SKY = { spring: ['#9fd8f5', '#e2f4ff'], summer: ['#6cc4f0', '#fff2c4'], autumn: ['#f6b77a', '#ffe7c4'], winter: ['#c4d6e6', '#f2f6fa'] };
+const GROUND = { spring: '#5cb85c', summer: '#7dbb48', autumn: '#b48a3c', winter: '#e8eef4' };
+const GROUND_Y = 560;
+
+function drawSun(c, x, y, r, t) {
+  c.fillStyle = '#ffd84d';
+  for (let k = 0; k < 10; k++) { const a = k * 0.628 + t * 0.6; c.beginPath(); c.moveTo(x + Math.cos(a) * r * 1.2, y + Math.sin(a) * r * 1.2); c.lineTo(x + Math.cos(a + 0.12) * r * 1.6, y + Math.sin(a + 0.12) * r * 1.6); c.lineTo(x + Math.cos(a - 0.12) * r * 1.6, y + Math.sin(a - 0.12) * r * 1.6); c.fill(); }
+  c.fillStyle = '#ffc93c'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+}
+function drawCloud(c, x, y, s, color) {
+  c.fillStyle = color;
+  for (const [dx, dy, r] of [[-40, 6, 30], [-10, -14, 38], [26, -4, 32], [50, 10, 24], [4, 14, 30]]) { c.beginPath(); c.arc(x + dx * s, y + dy * s, r * s, 0, 7); c.fill(); }
+}
+function drawScene(c, season, t) {
+  const sky = SKY[season], g = c.createLinearGradient(0, 0, 0, GROUND_Y);
+  g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]);
+  c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = season === 'winter' ? '#d6e2ec' : '#8fcf7a';
+  c.beginPath(); c.moveTo(0, 470); c.quadraticCurveTo(320, 380, 640, 450); c.quadraticCurveTo(960, 520, 1280, 420); c.lineTo(1280, 720); c.lineTo(0, 720); c.fill();
+  c.fillStyle = '#c99a62';
+  for (let x = 20; x < 1280; x += 60) { c.fillRect(x, 470, 16, 90); c.beginPath(); c.moveTo(x, 470); c.lineTo(x + 8, 458); c.lineTo(x + 16, 470); c.fill(); }
+  c.fillRect(0, 490, 1280, 10); c.fillRect(0, 530, 1280, 10);
+  c.fillStyle = GROUND[season]; c.fillRect(0, GROUND_Y, 1280, 160);
+  c.fillStyle = '#6b4a2e'; c.fillRect(0, GROUND_Y, 1280, 26);
+  if (season === 'winter') { c.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 40; k++) { const x = (k * 137 + t * 20) % 1280, y = (k * 71 + t * 40) % GROUND_Y; c.beginPath(); c.arc(x, y, 3, 0, 7); c.fill(); } }
+  if (season === 'autumn') { c.fillStyle = '#d9652b'; for (let k = 0; k < 14; k++) { const x = (k * 211 + t * 30) % 1280, y = (k * 97 + t * 25) % GROUND_Y; c.beginPath(); c.ellipse(x, y, 7, 4, t + k, 0, 7); c.fill(); } }
+}
+
+const FLOWER = { sunflower: '#ffc93c', cactus: '#ff6fa8', fern: '#3f9d4a', tulip: '#e8484a', rose: '#ff7fae' };
+function drawPlant(c, p, x, t, munched) {
+  const grow = p.growth / 100, sway = Math.sin(t * 1.5 + x) * 3, base = GROUND_Y + 6;
+  const droop = p.sun < G.SPECIES[p.kind].sun[0] ? 10 : 0;
+  c.save(); c.translate(x, base);
+  c.fillStyle = '#8a5a34'; c.beginPath(); c.ellipse(0, 4, 34, 10, 0, 0, 7); c.fill();
+  if (p.kind === 'cactus') {
+    const h = 30 + grow * 110;
+    c.fillStyle = '#4caf50'; c.beginPath(); c.roundRect(-16, -h, 32, h, 16); c.fill();
+    if (grow > 0.4) { c.beginPath(); c.roundRect(-38, -h * 0.65, 22, 14, 7); c.roundRect(-38, -h * 0.65 - 30, 14, 40, 7); c.fill(); }
+    if (grow > 0.6) { c.beginPath(); c.roundRect(16, -h * 0.5, 22, 14, 7); c.roundRect(26, -h * 0.5 - 26, 14, 36, 7); c.fill(); }
+    if (p.bloomed) { c.fillStyle = FLOWER.cactus; for (let k = 0; k < 6; k++) { c.beginPath(); c.ellipse(Math.cos(k) * 9, -h - 4 + Math.sin(k) * 5, 9, 5, k, 0, 7); c.fill(); } }
+  } else if (p.kind === 'fern') {
+    const h = 20 + grow * 90;
+    c.strokeStyle = '#3f9d4a'; c.lineWidth = 6; c.lineCap = 'round';
+    for (const a of [-0.9, -0.45, 0, 0.45, 0.9]) {
+      c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(Math.sin(a) * h * 0.6 + sway, -h * 0.8, Math.sin(a) * h + sway, -h * (1 - Math.abs(a) * 0.35) + droop); c.stroke();
+    }
+    if (p.bloomed) { c.fillStyle = '#9be89b'; for (const a of [-0.45, 0.45, 0]) { c.beginPath(); c.arc(Math.sin(a) * h + sway, -h * (1 - Math.abs(a) * 0.35), 9, 0, 7); c.fill(); } }
+  } else {
+    const tall = p.kind === 'sunflower' ? 190 : 120, h = 24 + grow * tall;
+    c.strokeStyle = '#3f9d4a'; c.lineWidth = p.kind === 'sunflower' ? 9 : 6; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(sway, -h * 0.5, sway * 2, -h + droop); c.stroke();
+    c.fillStyle = '#4caf50';
+    if (grow > 0.2) { c.beginPath(); c.ellipse(-16, -h * 0.35, 18, 8, -0.5, 0, 7); c.ellipse(16 + sway, -h * 0.55, 18, 8, 0.5, 0, 7); c.fill(); }
+    const fx = sway * 2, fy = -h + droop;
+    if (p.bloomed) {
+      if (p.kind === 'sunflower') {
+        c.fillStyle = FLOWER.sunflower; for (let k = 0; k < 12; k++) { const a = k * 0.524; c.beginPath(); c.ellipse(fx + Math.cos(a) * 26, fy + Math.sin(a) * 26, 16, 7, a, 0, 7); c.fill(); }
+        c.fillStyle = '#6b3f1d'; c.beginPath(); c.arc(fx, fy, 18, 0, 7); c.fill();
+      } else if (p.kind === 'tulip') {
+        c.fillStyle = FLOWER.tulip; c.beginPath(); c.moveTo(fx - 18, fy - 4); c.lineTo(fx - 18, fy - 30); c.lineTo(fx - 6, fy - 20); c.lineTo(fx, fy - 34); c.lineTo(fx + 6, fy - 20);
+        c.lineTo(fx + 18, fy - 30); c.lineTo(fx + 18, fy - 4); c.quadraticCurveTo(fx, fy + 10, fx - 18, fy - 4); c.fill();
+      } else {
+        c.fillStyle = FLOWER.rose; c.beginPath(); c.arc(fx, fy - 6, 20, 0, 7); c.fill();
+        c.strokeStyle = '#d14a7c'; c.lineWidth = 3; c.beginPath(); for (let a = 0; a < 9; a += 0.3) c.lineTo(fx + Math.cos(a) * a * 1.8, fy - 6 + Math.sin(a) * a * 1.8); c.stroke();
+      }
+    } else if (grow > 0.6) { c.fillStyle = '#7cc46a'; c.beginPath(); c.ellipse(fx, fy - 6, 9, 14, 0, 0, 7); c.fill(); }
+  }
+  if (p.frost > 0) {
+    c.fillStyle = 'rgba(190,230,255,0.55)'; c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = 3;
+    c.beginPath(); c.ellipse(0, -55, 46, 70, 0, 0, 7); c.fill(); c.stroke();
+    c.strokeStyle = '#ffffff'; c.lineWidth = 3;
+    for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; c.beginPath(); c.moveTo(Math.cos(a) * -14, -60 + Math.sin(a) * -14); c.lineTo(Math.cos(a) * 14, -60 + Math.sin(a) * 14); c.stroke(); }
+  }
+  if (munched) { c.fillStyle = 'rgba(255,255,255,0.8)'; c.font = 'bold 20px Verdana, sans-serif'; c.textAlign = 'center'; c.fillText('munch!', 0, -40 - Math.abs(Math.sin(t * 8)) * 6); }
+  c.restore();
+}
+function drawMeters(c, p, x) {
+  const sp = G.SPECIES[p.kind], top = 600, h = 90;
+  [['sun', '#ffc93c', -58], ['water', '#4da3ff', 46]].forEach(([k, color, dx]) => {
+    const band = sp[k], v = p[k];
+    c.fillStyle = 'rgba(255,250,240,0.85)'; c.fillRect(x + dx, top, 14, h);
+    c.fillStyle = 'rgba(63,157,74,0.35)'; c.fillRect(x + dx, top + h - (band[1] / 100) * h, 14, ((band[1] - band[0]) / 100) * h);
+    c.fillStyle = color; c.fillRect(x + dx + 3, top + h - (v / 100) * h, 8, (v / 100) * h);
+    c.strokeStyle = '#2f2a20'; c.lineWidth = 2; c.strokeRect(x + dx, top, 14, h);
+  });
+  c.fillStyle = '#2f2a20'; c.font = 'bold 18px Verdana, sans-serif'; c.textAlign = 'center';
+  c.fillText(G.SPECIES[p.kind].name, x, 712);
+  // What the plant wants right now, so a child does not have to read the meters.
+  const say = p.bloomed ? 'Thank you!' : p.frost > 0 ? 'Frozen! Sun!' : p.sun < sp.sun[0] ? 'More sun!' : p.sun > sp.sun[1] ? 'Too sunny!'
+    : p.water < sp.water[0] ? 'Needs water!' : p.water > sp.water[1] ? 'Too wet!' : 'Happy!';
+  const happy = say === 'Happy!' || p.bloomed;
+  c.font = 'bold 20px Verdana, sans-serif';
+  const w = c.measureText(say).width + 28, y = 330;
+  c.fillStyle = happy ? '#e6f7e2' : '#fff4d6'; c.strokeStyle = happy ? '#3f9d4a' : '#d08a2a'; c.lineWidth = 3;
+  c.beginPath(); c.roundRect(x - w / 2, y - 22, w, 38, 16); c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(x - 8, y + 16); c.lineTo(x, y + 28); c.lineTo(x + 8, y + 16); c.fill();
+  c.fillStyle = '#2f2a20'; c.fillText(say, x, y + 5);
+}
+function drawBug(c, x, y, t) {
+  c.save(); c.translate(x, y + Math.sin(t * 12) * 1.5);
+  c.fillStyle = '#d62828'; c.beginPath(); c.arc(0, 0, 13, Math.PI, 0); c.fill();
+  c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(0, -2, 3, 0, 7); c.arc(-6, -6, 2.5, 0, 7); c.arc(6, -6, 2.5, 0, 7); c.fill();
+  c.beginPath(); c.arc(-13, -2, 5, 0, 7); c.fill();
+  c.restore();
+}
+function iconCanvas(cv, kind) {
+  const c = cv.getContext('2d'), w = cv.width;
+  c.fillStyle = '#e2f4ff'; c.fillRect(0, 0, w, w);
+  if (kind === 'sun') drawSun(c, w / 2, w / 2, w * 0.22, 0);
+  else if (kind === 'rain') { drawCloud(c, w / 2, w * 0.36, 0.55, '#8a97a8'); c.strokeStyle = '#4da3ff'; c.lineWidth = 4; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(w * 0.28 + k * 12, w * 0.6); c.lineTo(w * 0.24 + k * 12, w * 0.8); c.stroke(); } }
+  else if (kind === 'wind') { c.strokeStyle = '#3f9d4a'; c.lineWidth = 5; c.lineCap = 'round'; for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(w * 0.15, w * (0.3 + k * 0.2)); c.quadraticCurveTo(w * 0.6, w * (0.2 + k * 0.2), w * 0.85, w * (0.32 + k * 0.2)); c.stroke(); } }
+}
+document.querySelectorAll('canvas[data-icon]').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'paths', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  video.classList.toggle('off', name === 'play');
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+  if (name !== 'play') rainLevel(false);
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = progress.sound ? 'Sound on' : 'Sound off'; }
+updateSoundLabel();
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffc93c' : 'rgba(0,0,0,0.15)'}" stroke="${on ? '#b07a10' : 'rgba(0,0,0,0.25)'}" stroke-width="1"/></svg>`;
+}
+// Stepping stones wind across the garden in pairs of rows, one season per part of the path.
+const STONE_POS = [[120, 160], [320, 140], [520, 170], [720, 140], [920, 170], [1020, 380], [820, 400], [620, 380], [420, 400], [220, 380]];
+// Each label sits above or below the stones of its season.
+const SEASON_LABELS = [['Spring', 330, 105], ['Summer', 800, 105], ['Autumn', 710, 530], ['Winter', 300, 530]];
+function openPaths() {
+  game = null;
+  let html = SEASON_LABELS.map(([n, x, y]) => `<div class="season" style="left:${x}px;top:${y}px">${n}</div>`).join('');
+  html += G.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked, [x, y] = STONE_POS[i];
+    return `<div class="stone${locked ? ' locked' : ''}" style="left:${x}px;top:${y}px"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <div class="num">${i + 1}</div><div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>`;
+  }).join('');
+  $('stones').innerHTML = html;
+  show('paths');
+}
+
+// ---------- achievements ----------
+const ACH = { first: 'First Bloom', bugs: 'Bug Blower', seasons: 'Four Seasons', cactus: 'Desert Gardener', grand: 'Grand Bloom', green: 'Green Thumb' };
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- growing ----------
+let game = null, playing = false, endAt = 0, weatherNow = null, gustFx = null, munching = new Set();
+const notice = { text: '', until: 0 };
+function announce(text) { notice.text = text; notice.until = performance.now() + 3500; }
+function openGarden(i) {
+  game = G.createGarden(i); playing = false; endAt = 0; gustFx = null; munching = new Set();
+  const lv = G.LEVELS[i];
+  $('hd-name').textContent = `${lv.season[0].toUpperCase() + lv.season.slice(1)}: ${lv.name}`;
+  $('in-title').textContent = lv.name;
+  const seasonNote = { spring: 'A gentle spring day.', summer: 'Summer sun dries the soil quickly. Water often!', autumn: 'Autumn days are dim. Plants need extra sun.', winter: 'Winter is cold and dark. Keep the sun shining!' }[lv.season];
+  const kinds = new Set(lv.events.map((e) => e.type));
+  const surprises = [kinds.has('cloud') && 'Rain clouds will drift past and water what is below.', kinds.has('heat') && 'A heatwave is coming.',
+    kinds.has('frost') && 'Frost will freeze some plants: shine sun on them to thaw them.'].filter(Boolean).join(' ');
+  $('in-text').textContent = `Help all ${lv.plants.length === 1 ? 'your plant' : lv.plants.length + ' plants'} bloom. ${seasonNote}${lv.pests.length ? ' Bugs will come, so swipe them away!' : ''} ${surprises}`;
+  $('in-needs').innerHTML = [...new Set(lv.plants)].map((k) => {
+    const s = G.SPECIES[k], word = (b) => (b[0] >= 55 ? 'lots of' : b[1] <= 45 ? 'a little' : 'some');
+    return `<div class="need"><b>${s.name}</b>: ${word(s.sun)} sun, ${word(s.water)} water</div>`;
+  }).join('');
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishGarden() {
+  const i = game.level, r = G.result(game), lv = G.LEVELS[i];
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  progress.bugs += r.bugs; progress.seasons[lv.season] = true;
+  save();
+  if (progress.bugs >= 10) unlockAch('bugs');
+  if (['spring', 'summer', 'autumn', 'winter'].every((s) => progress.seasons[s])) unlockAch('seasons');
+  if (lv.plants.includes('cactus') && r.stars === 3) unlockAch('cactus');
+  if (i === N - 1) unlockAch('grand');
+  if (progress.stars.every((s) => s === 3)) unlockAch('green');
+  const last = i === N - 1;
+  $('rs-title').textContent = r.stars === 3 ? 'What a beautiful garden!' : r.stars === 2 ? 'Everything is blooming!' : 'Your garden grew!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Time', r.seconds + ' s'], ['Bugs blown away', r.bugs], ['Score', r.score]].map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  $('rs-buttons').innerHTML = (!last ? '<button type="button" class="round sunbtn" data-dwell="next">Next garden</button>' : '<button type="button" class="round sunbtn" data-dwell="paths">All gardens</button>')
+    + '<button type="button" class="round leafbtn b1" data-dwell="again">Grow again</button>'
+    + (!last ? '<button type="button" class="round leafbtn b2" data-dwell="paths">All gardens</button>' : '');
+  playing = false;
+  show('result');
+  if (last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openPaths(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': game = null; show('menu'); break;
+    case 'paths': openPaths(); break;
+    case 'level': openGarden(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; break;
+    case 'next': openGarden(Math.min(N - 1, game.level + 1)); break;
+    case 'again': openGarden(game.level); break;
+  }
+}
+
+// The platform's Back button: out of a garden to the path, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { playing = false; openPaths(); return true; }
+  if (screen === 'paths') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, pose: 'none', raw: 'none', rawSince: 0, reported: false, samples: [] };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// Fingers judged by distance from the wrist, so it works whichever way the hand is turned.
+function poseOf(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  const straight = [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+  return straight === 0 ? 'fist' : straight >= 3 ? 'open' : 'other';
+}
+// The middle of the camera frame covers the whole screen, so every plant and button is reachable from a sofa.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+function handleLandmarks(lm, now) {
+  const tx = reach(1 - lm[9].x, 0.12, 0.88) * W, ty = reach(lm[9].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.6;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true;
+  hand.samples.push({ x: toStage(tx, ty).x / 1280, t: now / 1000 });
+  if (hand.samples.length > 20) hand.samples.shift();
+  const raw = poseOf(lm);
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (fresh || now - hand.rawSince >= 120) hand.pose = raw;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.pose = 'none'; hand.samples = [];
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+const mouse = { x: null, y: null, down: false, samples: [] };
+addEventListener('pointermove', (e) => {
+  mouse.x = e.clientX; mouse.y = e.clientY;
+  mouse.samples.push({ x: toStage(e.clientX, e.clientY).x / 1280, t: performance.now() / 1000 });
+  if (mouse.samples.length > 20) mouse.samples.shift();
+});
+addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-dwell]')) mouse.down = true; });
+addEventListener('pointerup', () => { mouse.down = false; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on')) act(el);
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && hand.pose !== 'fist' && !(screen === 'play' && playing)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]') || el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHud(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintplay', screen === 'play', (v) => $('hint').classList.toggle('play', v));
+  if (!game || screen !== 'play') return;
+  setOnce('bloom', `Blooming: ${game.plants.filter((p) => p.bloomed).length} of ${game.plants.length}`, (v) => { $('hd-bloom').textContent = v; });
+  const bug = game.bugs.length > 0;
+  const tip = now < notice.until ? notice.text : bug ? 'A bug! Swipe your hand fast across it' : weatherNow === 'sun' ? 'Sunshine! Fist to make rain' : weatherNow === 'rain' ? 'Raining! Open your hand for sun' : 'Hold your hand over a plant';
+  setOnce('tip', tip, (v) => { $('tip').textContent = v; });
+  setOnce('tipShown', playing, (v) => { $('tip').hidden = !v; });
+}
+
+// ---------- drawing ----------
+function renderGarden(now, dt) {
+  const c = gctx, t = now / 1000;
+  const lv = game ? G.LEVELS[game.level] : null;
+  drawScene(c, lv ? lv.season : 'spring', t);
+  if (!game) {
+    for (const [x, kind] of [[140, 'sunflower'], [260, 'tulip'], [1120, 'rose'], [1200, 'cactus']]) drawPlant(c, { kind, growth: 100, bloomed: true, sun: 80, water: 60 }, x, t, false);
+    drawCloud(c, 900, 520, 0.8, 'rgba(255,255,255,0.9)');
+    return;
+  }
+  game.plants.forEach((p, i) => { drawPlant(c, p, p.x * 1280, t, munching.has(i)); drawMeters(c, p, p.x * 1280); });
+  for (const b of game.bugs) drawBug(c, b.x * 1280, GROUND_Y + (b.on ? -30 : 2), t);
+  for (const cl of game.clouds) {
+    const x = cl.x * 1280;
+    c.strokeStyle = 'rgba(77,163,255,0.7)'; c.lineWidth = 3;
+    for (let k = 0; k < 12; k++) { const rx = x - 70 + ((k * 41) % 140), ry = 230 + ((t * 380 + k * 67) % (GROUND_Y - 240)); c.beginPath(); c.moveTo(rx, ry); c.lineTo(rx - 3, ry + 14); c.stroke(); }
+    drawCloud(c, x, 200, 1.25, '#7d8796');
+  }
+  if (game.t < game.heatUntil) {
+    c.fillStyle = 'rgba(255,140,40,0.13)'; c.fillRect(0, 0, 1280, GROUND_Y);
+    c.strokeStyle = 'rgba(255,170,80,0.45)'; c.lineWidth = 3;
+    for (let k = 0; k < 6; k++) { const y = 260 + k * 45; c.beginPath(); for (let x = 0; x <= 1280; x += 40) c.lineTo(x, y + Math.sin(x / 50 + t * 4 + k) * 6); c.stroke(); }
+  }
+  if (playing && weatherNow && aimX != null) {
+    const x = aimX * 1280, target = G.plantAt(game, aimX), px = target >= 0 ? game.plants[target].x * 1280 : x;
+    if (weatherNow === 'sun') {
+      c.fillStyle = 'rgba(255,230,120,0.28)'; c.beginPath(); c.moveTo(x - 40, 160); c.lineTo(x + 40, 160); c.lineTo(px + 70, GROUND_Y); c.lineTo(px - 70, GROUND_Y); c.fill();
+      drawSun(c, x, 120, 46, t);
+    } else {
+      c.strokeStyle = 'rgba(77,163,255,0.8)'; c.lineWidth = 3;
+      for (let k = 0; k < 16; k++) { const rx = x - 60 + ((k * 37) % 120), ry = 150 + ((t * 400 + k * 53) % (GROUND_Y - 160)); c.beginPath(); c.moveTo(rx + (px - x) * (ry - 150) / 420, ry); c.lineTo(rx + (px - x) * (ry - 150) / 420 - 3, ry + 14); c.stroke(); }
+      drawCloud(c, x, 120, 1.1, '#8a97a8');
+    }
+  } else if (playing && aimX != null) drawCloud(c, aimX * 1280, 120, 0.8, 'rgba(255,255,255,0.85)');
+  if (gustFx) {
+    gustFx.t += dt;
+    const p = gustFx.t / 0.6;
+    if (p >= 1) gustFx = null;
+    else {
+      c.strokeStyle = `rgba(255,255,255,${1 - p})`; c.lineWidth = 6; c.lineCap = 'round';
+      for (let k = 0; k < 4; k++) { const y = 420 + k * 40, x0 = gustFx.a * 1280, x1 = gustFx.b * 1280; c.beginPath(); c.moveTo(x0, y); c.quadraticCurveTo((x0 + x1) / 2, y - 30, x0 + (x1 - x0) * Math.min(1, p * 2), y); c.stroke(); }
+    }
+  }
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present || (screen === 'play' && playing)) return;
+  c.fillStyle = 'rgba(255,255,255,0.95)'; c.beginPath(); c.arc(hand.x, hand.y, 8, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#2f2a20'; c.lineWidth = 3; c.beginPath(); c.arc(hand.x, hand.y, 20, 0, Math.PI * 2); c.stroke();
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now(), aimX = null, swipeQuietUntil = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Plants grow with the real frame time, capped so a stall on a slow device cannot skip ahead.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  weatherNow = null; aimX = null;
+  if (screen === 'play' && game && playing && !game.done) {
+    let samples = null;
+    if (hand.present) {
+      aimX = toStage(hand.x, hand.y).x / 1280;
+      weatherNow = hand.pose === 'open' ? 'sun' : hand.pose === 'fist' ? 'rain' : null;
+      samples = hand.samples;
+    } else if (mouse.x !== null) {
+      aimX = toStage(mouse.x, mouse.y).x / 1280;
+      weatherNow = mouse.down ? 'rain' : 'sun';
+      samples = mouse.samples;
+    }
+    let gust = null;
+    if (samples && now >= swipeQuietUntil) {
+      gust = G.detectSwipe(samples);
+      // A swipe is wind, not weather: no sun or rain for a moment, and one swipe counts once.
+      if (gust) { swipeQuietUntil = now + 400; samples.length = 0; gustFx = { a: Math.min(...gust), b: Math.max(...gust), t: 0 }; sfx('wind'); }
+    }
+    if (now < swipeQuietUntil) weatherNow = null;
+    G.step(game, dt, aimX == null ? null : { x: aimX, weather: weatherNow, gust });
+    rainLevel(weatherNow === 'rain');
+    for (const ev of game.events) {
+      if (ev.type === 'bloom') { sfx('bloom'); unlockAch('first'); }
+      else if (ev.type === 'bug') sfx('bug');
+      else if (ev.type === 'munch') { sfx('munch'); munching.add(ev.plant); }
+      else if (ev.type === 'blown') munching = new Set(game.bugs.filter((b) => b.on).map((b) => b.target));
+      else if (ev.type === 'cloud') { announce('A rain cloud is passing over!'); sfx('bug'); }
+      else if (ev.type === 'heat') { announce('Heatwave! Plants dry out fast'); sfx('munch'); }
+      else if (ev.type === 'frost') { announce('Frost! Shine the sun on the frozen plant'); sfx('bug'); }
+      else if (ev.type === 'thaw') sfx('bloom');
+      else if (ev.type === 'done') { sfx('done'); endAt = now + 1600; rainLevel(false); }
+    }
+    game.events.length = 0;
+  } else rainLevel(false);
+  if (endAt && now >= endAt) { endAt = 0; finishGarden(); }
+  renderGarden(now, dt);
+  updateDwell(now);
+  updateHud(now);
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
