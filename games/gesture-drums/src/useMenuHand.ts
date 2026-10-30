@@ -8,6 +8,9 @@ export interface MenuHandData {
 }
 
 // Each menu screen mounts this hook; loading the model once avoids seconds without a cursor on every screen change.
+// The camera loses a hand at its edges, so the middle of its view is stretched over the whole screen (Back sits in a corner).
+const reach = (v: number, lo: number, hi: number) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+
 let sharedLandmarker: Promise<HandLandmarker> | null = null;
 
 export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHandData {
@@ -28,7 +31,7 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
       const results = lm.detectForVideo(video, performance.now());
       if (results.landmarks?.length > 0) {
         const wrist = results.landmarks[0][0];
-        setHand({ detected: true, x: 1 - wrist.x, y: wrist.y });
+        setHand({ detected: true, x: reach(1 - wrist.x, 0.12, 0.88), y: reach(wrist.y, 0.2, 0.85) });
       } else {
         setHand(prev => ({ ...prev, detected: false }));
       }
@@ -67,6 +70,12 @@ export function useMenuHand(videoRef: React.RefObject<HTMLVideoElement>): MenuHa
       if (video?.srcObject) (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
     };
   }, [detect, videoRef]);
+
+  // Lets the platform's Back button follow this cursor instead of drawing its own ring beside it.
+  useEffect(() => {
+    const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
+    if (hand.detected) kf.__kfPointer?.(hand.x, hand.y); else kf.__kfPointer?.(null);
+  }, [hand]);
 
   return hand;
 }
