@@ -111,6 +111,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'paper-plane-pilot':      { folder: 'paper-plane-pilot',      indexPath: '/games/paper-plane-pilot/index.html' },
   'star-painter':           { folder: 'star-painter',           indexPath: '/games/star-painter/index.html' },
   'ice-rink-skater':        { folder: 'ice-rink-skater',        indexPath: '/games/ice-rink-skater/index.html' },
+  'bubble-bath-bakery':     { folder: 'bubble-bath-bakery',     indexPath: '/games/bubble-bath-bakery/index.html' },
   'tic-tac-toe':            { folder: 'tic-tac-toe',            indexPath: '/games/tic-tac-toe/index.html' },
   'air-hockey':             { folder: 'air-hockey',             indexPath: '/games/air-hockey/index.html' },
   'connect-4':              { folder: 'connect-4',              indexPath: '/games/connect-4/index.html' },

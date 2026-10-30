@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bubble Bath Bakery</title>
+<style>
+:root { --mint:#cfeee2; --pink:#ff8fb8; --cream:#fff8ee; --cocoa:#5a3622; --board:#2f4a3a; --chalk:#f4f1e8; --cork:#c99a63; --gold:#f5b642; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:var(--cream); color:var(--cocoa); font-family:'Trebuchet MS','Verdana','DejaVu Sans',sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#shop { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Donut buttons: the icing ring fills while the hand rests on them. */
+.donut { position:absolute; width:170px; height:170px; border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;
+  font:bold 24px 'Trebuchet MS','DejaVu Sans',sans-serif; color:var(--cocoa); line-height:1.1; padding:0 30px;
+  background:radial-gradient(circle, var(--cream) 0 27%, #e7b77d 28% 36%, var(--pink) 37% 64%, #e7b77d 65% 70%, transparent 71%); }
+.donut::before { content:''; position:absolute; inset:-14px; border-radius:50%; background:conic-gradient(#fff 0 calc(var(--p, 0) * 360deg), transparent 0);
+  -webkit-mask:radial-gradient(circle, transparent 64%, #000 65%); mask:radial-gradient(circle, transparent 64%, #000 65%); }
+.donut::after { content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle at 30% 30%, #fff 0 3px, transparent 4px), radial-gradient(circle at 70% 26%, #4d6fd6 0 3px, transparent 4px),
+  radial-gradient(circle at 80% 60%, #ffd166 0 3px, transparent 4px), radial-gradient(circle at 26% 70%, #3fb07a 0 3px, transparent 4px), radial-gradient(circle at 60% 82%, #fff 0 3px, transparent 4px); }
+.donut span { position:relative; z-index:1; background:rgba(255,248,238,0.92); padding:4px 10px; border-radius:14px; }
+.donut.big { width:210px; height:210px; font-size:30px; }
+.donut.choc { background:radial-gradient(circle, var(--cream) 0 27%, #e7b77d 28% 36%, #7a4a2a 37% 64%, #e7b77d 65% 70%, transparent 71%); }
+.donut.hot { filter:brightness(1.08); }
+.donut[hidden] { display:none; }
+
+#menu { background:var(--mint); }
+.chalk { position:absolute; left:50px; top:40px; width:640px; height:600px; background:var(--board); border:22px solid #8a5a34; border-radius:10px; box-shadow:0 12px 24px rgba(0,0,0,0.25);
+  padding:30px 34px; color:var(--chalk); font-family:'Segoe Print','Comic Sans MS','DejaVu Sans',sans-serif; }
+.chalk h1 { font-size:56px; line-height:1.05; color:#fff; text-shadow:0 0 2px rgba(255,255,255,0.6); }
+.chalk h1 em { font-style:normal; color:#ffc2d6; }
+.chalk p { font-size:21px; margin-top:8px; opacity:0.9; }
+.chalk ol { margin-top:18px; padding-left:0; list-style:none; display:flex; flex-direction:column; gap:12px; }
+.chalk li { font-size:21px; line-height:1.3; display:flex; gap:12px; align-items:center; }
+.chalk li canvas { width:56px; height:56px; flex:none; }
+.chalk li b { color:#ffe28a; }
+#menu .donut.big { left:880px; top:110px; }
+#menu .donut.snd { left:730px; top:320px; width:150px; height:150px; font-size:19px; }
+#menu .donut.exit { left:1000px; top:40px; width:150px; height:150px; font-size:19px; }
+
+#cork { background:var(--cork); background-image:radial-gradient(rgba(90,54,34,0.25) 1.5px, transparent 2px), radial-gradient(rgba(255,240,200,0.25) 1.5px, transparent 2px);
+  background-size:18px 18px, 23px 23px; background-position:0 0, 9px 11px; }
+#cork h2 { position:absolute; left:50px; top:28px; font-size:44px; color:var(--cream); text-shadow:0 3px 0 rgba(90,54,34,0.6); }
+.tickets { position:absolute; left:50px; top:110px; display:grid; grid-template-columns:repeat(5, 220px); gap:26px 18px; }
+.ticket { position:relative; height:200px; padding:22px 14px 12px; background:#fffdf6; box-shadow:0 8px 14px rgba(0,0,0,0.25); cursor:pointer; text-align:center;
+  background-image:linear-gradient(0deg, rgba(255,143,184,0.35) calc(var(--p, 0) * 100%), transparent 0); }
+.ticket:nth-child(odd) { transform:rotate(-2deg); } .ticket:nth-child(even) { transform:rotate(1.5deg); }
+.ticket::before { content:''; position:absolute; left:50%; top:-10px; width:22px; height:22px; margin-left:-11px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #ff8f8f, #c0262f); box-shadow:0 3px 3px rgba(0,0,0,0.3); }
+.ticket .day { font-size:20px; letter-spacing:0.1em; color:#b0805a; }
+.ticket .nm { font-size:22px; font-weight:bold; margin:4px 0 6px; }
+.ticket .items { font-size:18px; color:#7a5a44; line-height:1.3; }
+.ticket .stars svg { width:24px; height:24px; }
+.ticket.hot { outline:4px solid var(--pink); }
+.ticket.locked { filter:grayscale(1) opacity(0.55); cursor:default; }
+#cork .donut { left:40px; top:560px; width:140px; height:140px; font-size:20px; }
+
+#sign { position:absolute; left:50%; top:10px; transform:translateX(-50%); padding:8px 26px; background:#8a5a34; color:var(--cream); border-radius:12px; box-shadow:0 5px 0 #5a3622;
+  font-size:22px; font-weight:bold; white-space:nowrap; pointer-events:none; }
+#task { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); padding:10px 26px; background:var(--cream); border:4px solid var(--pink); border-radius:24px;
+  font-size:26px; font-weight:bold; white-space:nowrap; pointer-events:none; box-shadow:0 5px 0 rgba(90,54,34,0.2); }
+#task small { font-size:20px; font-weight:normal; color:#7a5a44; margin-left:8px; }
+#intro { position:absolute; inset:0; background:rgba(255,248,238,0.75); }
+#intro[hidden] { display:none; }
+#intro .card { position:absolute; left:50%; top:80px; transform:translateX(-50%) rotate(-1deg); width:700px; padding:26px 34px; background:#fffdf6; box-shadow:0 10px 20px rgba(0,0,0,0.2); text-align:center; }
+#intro h2 { font-size:40px; }
+#intro p { font-size:22px; line-height:1.45; margin-top:8px; color:#7a5a44; }
+#intro .donut { left:535px; top:440px; }
+
+#result { background:var(--mint); }
+.receipt { position:absolute; left:50%; top:40px; transform:translateX(-50%); width:520px; padding:26px 34px 34px; background:#fffdf6; box-shadow:0 10px 20px rgba(0,0,0,0.2);
+  font-family:'Courier New','DejaVu Sans Mono',monospace; text-align:center;
+  -webkit-mask:linear-gradient(#000, #000) top / 100% calc(100% - 14px) no-repeat, radial-gradient(circle at 10px 0, transparent 9px, #000 10px) bottom / 20px 14px repeat-x;
+  mask:linear-gradient(#000, #000) top / 100% calc(100% - 14px) no-repeat, radial-gradient(circle at 10px 0, transparent 9px, #000 10px) bottom / 20px 14px repeat-x; }
+.receipt h2 { font-family:'Trebuchet MS','DejaVu Sans',sans-serif; font-size:36px; }
+.receipt .stars { display:flex; justify-content:center; gap:6px; margin:8px 0; }
+.receipt .stars svg { width:58px; height:58px; }
+.receipt .lines { display:grid; grid-template-columns:1fr auto; gap:4px 20px; font-size:22px; text-align:left; border-top:3px dashed #c9b49a; padding-top:10px; }
+.receipt .lines .v { font-weight:bold; }
+#result .donut.d1 { left:300px; top:520px; width:170px; height:170px; }
+#result .donut.d2 { left:560px; top:530px; width:150px; height:150px; font-size:20px; }
+#result .donut.d3 { left:800px; top:530px; width:150px; height:150px; font-size:20px; }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border-radius:20px; border:5px solid #fff; object-fit:cover; transform:scaleX(-1); background:#000; box-shadow:0 4px 10px rgba(0,0,0,0.2); }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; bottom:18px; transform:translateX(-50%); font-size:22px; padding:8px 20px; border-radius:20px; background:#fffdf6; border:3px solid var(--pink);
+  white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.play { bottom:auto; top:64px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; left:50%; top:16px; transform:translateX(-50%); font-size:22px; font-weight:bold; padding:12px 22px; border-radius:20px; background:var(--pink); color:#fff;
+  opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="shop" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div class="chalk">
+      <h1>Bubble Bath <em>Bakery</em></h1>
+      <p>Bake treats for hungry customers, all with your hands!</p>
+      <ol>
+        <li><canvas width="56" height="56" data-icon="knead"></canvas><div><b>Knead:</b> open and close your hand.</div></li>
+        <li><canvas width="56" height="56" data-icon="roll"></canvas><div><b>Roll:</b> sweep your hand left and right.</div></li>
+        <li><canvas width="56" height="56" data-icon="bake"></canvas><div><b>Bake:</b> make a fist when the needle is in the gold.</div></li>
+        <li><canvas width="56" height="56" data-icon="jar"></canvas><div><b>Decorate:</b> rest your hand on the jars the customer asks for.</div></li>
+      </ol>
+    </div>
+    <button type="button" class="donut big" data-dwell="play"><span>Open the shop</span></button>
+    <button type="button" class="donut choc snd" data-dwell="sound" id="btn-sound"><span>Sound on</span></button>
+    <button type="button" class="donut choc exit" data-dwell="exit" id="btn-exit" hidden><span>Back to games</span></button>
+  </section>
+
+  <section class="screen" id="cork">
+    <h2>Today's orders</h2>
+    <div class="tickets" id="tickets"></div>
+    <button type="button" class="donut choc" data-dwell="menu"><span>Menu</span></button>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="sign"></div>
+    <div id="task"></div>
+    <div id="intro">
+      <div class="card"><h2 id="in-title"></h2><p id="in-text"></p></div>
+      <button type="button" class="donut big" data-dwell="begin"><span>Let's bake!</span></button>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="receipt"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="bakery.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const B = window.Bakery;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), shop = $('shop'), ink = $('ink'), video = $('cam');
+const sctx = shop.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'bubble-bath-bakery-v1';
+const N = B.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true, ach: {}, served: 0, perfect: 0 };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        ach: s.ach || {}, served: s.served | 0, perfect: s.perfect | 0 };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every day of baking since the game was opened; reported once, when the player leaves or finishes the last day.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null, noiseBuf = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function tone(f, dur, type = 'sine', vol = 0.1, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+function thud(freq, vol) {
+  const a = audio(); if (!a) return;
+  if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate * 0.4, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const t = a.currentTime, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  s.buffer = noiseBuf; f.type = 'lowpass'; f.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+  s.connect(f).connect(g).connect(a.destination); s.start(t); s.stop(t + 0.2);
+}
+const SFX = {
+  select() { tone(700, 0.1, 'triangle'); tone(1050, 0.12, 'triangle', 0.08, 0, 0.07); },
+  knead() { thud(500, 0.45); },
+  roll() { thud(900, 0.25); tone(300, 0.12, 'sine', 0.04, 360); },
+  ding() { tone(1568, 0.6, 'sine', 0.1); tone(2093, 0.6, 'sine', 0.05, 0, 0.02); },
+  topping() { tone(990, 0.1, 'triangle', 0.08); tone(1320, 0.12, 'triangle', 0.06, 0, 0.06); },
+  wrong() { tone(260, 0.2, 'sine', 0.07, 200); },
+  served() { [784, 988, 1175].forEach((f, i) => tone(f, 0.2, 'triangle', 0.09, 0, i * 0.08)); },
+  bell() { tone(1318, 0.5, 'sine', 0.08); tone(1760, 0.5, 'sine', 0.05, 0, 0.12); },
+  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.11, 0, i * 0.12)); },
+  badge() { [784, 988, 1319].forEach((f, i) => tone(f, 0.2, 'sine', 0.08, 0, i * 0.08)); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- drawing ----------
+const COCOA = '#5a3622';
+const BAKE_COLOR = { raw: '#f3dfb8', doughy: '#f0d9a8', perfect: '#e0a24e', burnt: '#7a4a2a' };
+function outline(c, w = 3) { c.strokeStyle = COCOA; c.lineWidth = w; c.lineJoin = 'round'; c.stroke(); }
+
+function drawTreat(c, kind, x, y, s, bake, toppings) {
+  const base = BAKE_COLOR[bake || 'raw'];
+  c.save(); c.translate(x, y); c.scale(s, s);
+  if (kind === 'cookies') {
+    for (const [dx, dy] of [[-44, 6], [0, -8], [44, 6]]) {
+      c.beginPath(); c.arc(dx, dy, 30, 0, 7); c.fillStyle = base; c.fill(); outline(c);
+      c.fillStyle = COCOA; for (const [ex, ey] of [[-8, -6], [8, 4], [-2, 10], [10, -10]]) { c.beginPath(); c.arc(dx + ex, dy + ey, 3.5, 0, 7); c.fill(); }
+    }
+  } else if (kind === 'bread') {
+    c.beginPath(); c.ellipse(0, 0, 80, 44, 0, Math.PI, 0); c.lineTo(80, 24); c.lineTo(-80, 24); c.closePath(); c.fillStyle = base; c.fill(); outline(c);
+    c.strokeStyle = 'rgba(90,54,34,0.5)'; c.lineWidth = 3; for (const dx of [-40, 0, 40]) { c.beginPath(); c.moveTo(dx - 12, -30); c.lineTo(dx + 12, -16); c.stroke(); }
+  } else if (kind === 'cupcake') {
+    c.beginPath(); c.moveTo(-40, 0); c.lineTo(40, 0); c.lineTo(30, 50); c.lineTo(-30, 50); c.closePath(); c.fillStyle = '#9bd4f5'; c.fill(); outline(c);
+    c.beginPath(); c.ellipse(0, -6, 46, 32, 0, Math.PI, 0); c.closePath(); c.fillStyle = base; c.fill(); outline(c);
+  } else if (kind === 'donut') {
+    c.beginPath(); c.arc(0, 0, 60, 0, 7); c.arc(0, 0, 20, 0, 7, true); c.fillStyle = base; c.fill('evenodd'); outline(c);
+  } else if (kind === 'pie') {
+    c.beginPath(); c.ellipse(0, 10, 80, 34, 0, 0, 7); c.fillStyle = '#b8524a'; c.fill(); outline(c);
+    c.strokeStyle = base; c.lineWidth = 9; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(k * 26 - 20, -12); c.lineTo(k * 26 + 20, 32); c.stroke(); c.beginPath(); c.moveTo(k * 26 + 20, -12); c.lineTo(k * 26 - 20, 32); c.stroke(); }
+    c.beginPath(); c.ellipse(0, 10, 80, 34, 0, 0, 7); outline(c, 6);
+  } else {
+    const tall = kind === 'birthday' ? 3 : 2;
+    for (let k = 0; k < tall; k++) { c.beginPath(); c.rect(-70 + k * 10, 30 - (k + 1) * 34, 140 - k * 20, 34); c.fillStyle = k % 2 ? '#fff1d6' : base; c.fill(); outline(c); }
+    if (kind === 'birthday' && bake) for (const dx of [-30, 0, 30]) { c.fillStyle = '#4d6fd6'; c.fillRect(dx - 4, 30 - tall * 34 - 28, 8, 26); c.fillStyle = '#ffb627'; c.beginPath(); c.ellipse(dx, 30 - tall * 34 - 34, 5, 9, 0, 0, 7); c.fill(); }
+  }
+  (toppings || []).forEach((id, k) => {
+    const jar = B.JARS.find((j) => j.id === id);
+    c.fillStyle = jar.color;
+    if (id === 'sprinkles') { for (let n = 0; n < 14; n++) { c.save(); c.translate(-50 + (n * 37) % 100, -26 + (n * 13) % 22 - k * 6); c.rotate(n); c.fillStyle = ['#ff8fb8', '#4d6fd6', '#3fb07a', '#fff'][n % 4]; c.fillRect(-5, -2, 10, 4); c.restore(); } }
+    else if (id === 'cherry' || id === 'blue') { for (let n = 0; n < (id === 'cherry' ? 3 : 7); n++) { c.beginPath(); c.arc(-30 + n * (id === 'cherry' ? 30 : 10), -34 - k * 6 + (n % 2) * 6, id === 'cherry' ? 10 : 6, 0, 7); c.fill(); outline(c, 2); } }
+    else { c.beginPath(); c.ellipse(0, -22 - k * 6, 56, 16, 0, 0, 7); c.fill(); }
+  });
+  c.restore();
+}
+
+const CUSTOMERS = ['bunny', 'bear', 'cat', 'fox'];
+function drawCustomer(c, who, x, y, t, happy) {
+  const bob = Math.sin(t * 2) * 4 + (happy ? Math.abs(Math.sin(t * 9)) * -10 : 0);
+  c.save(); c.translate(x, y + bob);
+  const fur = { bunny: '#f3eee6', bear: '#a86f43', cat: '#f2a65a', fox: '#e2733a' }[who];
+  c.fillStyle = fur;
+  if (who === 'bunny') { c.beginPath(); c.ellipse(-22, -110, 14, 46, -0.1, 0, 7); c.ellipse(22, -110, 14, 46, 0.1, 0, 7); c.fill(); outline(c); }
+  else if (who === 'bear') { c.beginPath(); c.arc(-40, -76, 20, 0, 7); c.arc(40, -76, 20, 0, 7); c.fill(); outline(c); }
+  else { c.beginPath(); c.moveTo(-48, -60); c.lineTo(-34, -110); c.lineTo(-10, -72); c.moveTo(48, -60); c.lineTo(34, -110); c.lineTo(10, -72); c.fill(); outline(c); }
+  c.beginPath(); c.arc(0, -40, 56, 0, 7); c.fill(); outline(c);
+  c.fillStyle = '#ff8fb8'; c.beginPath(); c.arc(0, 30, 70, Math.PI, 0); c.fill(); outline(c);
+  c.fillStyle = COCOA;
+  if (happy) { c.lineWidth = 4; c.strokeStyle = COCOA; c.beginPath(); c.arc(-20, -46, 8, Math.PI, 0); c.stroke(); c.beginPath(); c.arc(20, -46, 8, Math.PI, 0); c.stroke(); }
+  else { c.beginPath(); c.arc(-20, -46, 6, 0, 7); c.arc(20, -46, 6, 0, 7); c.fill(); }
+  c.beginPath(); c.arc(0, -28, 6, 0, 7); c.fill();
+  c.strokeStyle = COCOA; c.lineWidth = 3; c.beginPath(); c.arc(0, -22, 12, 0.2, Math.PI - 0.2); c.stroke();
+  c.fillStyle = 'rgba(255,143,184,0.5)'; c.beginPath(); c.arc(-34, -26, 9, 0, 7); c.arc(34, -26, 9, 0, 7); c.fill();
+  c.restore();
+}
+
+const backdrop = document.createElement('canvas');
+backdrop.width = 1280; backdrop.height = 720;
+(function paintShop(c) {
+  c.fillStyle = '#cfeee2'; c.fillRect(0, 0, 1280, 720);
+  c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 3;
+  for (let y = 0; y < 440; y += 48) { c.beginPath(); c.moveTo(0, y); c.lineTo(1280, y); c.stroke(); }
+  for (let y = 0; y < 440; y += 48) for (let x = (y / 48) % 2 ? 0 : 32; x < 1280; x += 64) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + 48); c.stroke(); }
+  c.fillStyle = '#ffd6e5';
+  for (let x = 0; x < 1280; x += 80) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 80, 0); c.lineTo(x + 40, 40); c.fill(); }
+  c.fillStyle = '#b07a4e'; c.fillRect(160, 238, 960, 18); c.fillStyle = '#8a5a34'; c.fillRect(160, 252, 960, 8);
+  const counter = c.createLinearGradient(0, 440, 0, 720);
+  counter.addColorStop(0, '#f7e2c4'); counter.addColorStop(1, '#e4c39a');
+  c.fillStyle = counter; c.fillRect(0, 440, 1280, 280);
+  c.fillStyle = '#ffffff'; c.fillRect(0, 436, 1280, 16);
+  c.strokeStyle = 'rgba(90,54,34,0.15)'; c.lineWidth = 2; for (let x = 0; x < 1280; x += 160) { c.beginPath(); c.moveTo(x, 460); c.lineTo(x, 720); c.stroke(); }
+})(backdrop.getContext('2d'));
+
+const OVEN = { x: 1060, y: 330, w: 210, h: 220 };
+function drawOven(c, d, t) {
+  c.fillStyle = '#e8eef4'; c.beginPath(); c.roundRect(OVEN.x - OVEN.w / 2, OVEN.y - OVEN.h / 2, OVEN.w, OVEN.h, 20); c.fill(); outline(c, 4);
+  const baking = d && B.curStep(d) && B.curStep(d).type === 'bake';
+  c.fillStyle = baking ? '#ffb85c' : '#3d3a4a'; c.beginPath(); c.roundRect(OVEN.x - 80, OVEN.y - 20, 160, 100, 14); c.fill(); outline(c, 3);
+  const gx = OVEN.x, gy = OVEN.y - 50, gr = 58;
+  c.beginPath(); c.arc(gx, gy, gr, Math.PI, 0); c.fillStyle = '#fff'; c.fill(); outline(c, 3);
+  if (d) {
+    const z = B.LEVELS[d.level].zone, ang = (v) => Math.PI + Math.min(1, v / B.BAKE_MAX) * Math.PI;
+    c.beginPath(); c.moveTo(gx, gy); c.arc(gx, gy, gr - 4, ang(z[0]), ang(z[1])); c.closePath(); c.fillStyle = '#ffd166'; c.fill();
+    c.beginPath(); c.moveTo(gx, gy); c.arc(gx, gy, gr - 4, ang(z[1]), 2 * Math.PI); c.closePath(); c.fillStyle = 'rgba(122,74,42,0.35)'; c.fill();
+    const v = baking ? d.needle : 0;
+    c.strokeStyle = '#e63946'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(gx, gy); c.lineTo(gx + Math.cos(ang(v)) * (gr - 8), gy + Math.sin(ang(v)) * (gr - 8)); c.stroke();
+  }
+  c.fillStyle = COCOA; c.beginPath(); c.arc(gx, gy, 6, 0, 7); c.fill();
+}
+function drawJars(c, d, t) {
+  const want = d && B.curStep(d) && B.curStep(d).type === 'decorate' ? B.curStep(d).toppings[B.curStep(d).done] : null;
+  B.JARS.forEach((j) => {
+    const x = j.x * 1280, y = B.JAR_Y * 720, glow = want === j.id;
+    if (glow) { c.fillStyle = `rgba(255,214,102,${0.35 + Math.sin(t * 6) * 0.15})`; c.beginPath(); c.arc(x, y, 76, 0, 7); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.8)'; c.beginPath(); c.roundRect(x - 46, y - 52, 92, 104, 16); c.fill(); outline(c, 3);
+    c.fillStyle = j.color; c.beginPath(); c.roundRect(x - 38, y - 20, 76, 64, 12); c.fill();
+    if (j.id === 'sprinkles') for (let n = 0; n < 10; n++) { c.save(); c.translate(x - 26 + (n * 17) % 52, y - 8 + (n * 23) % 44); c.rotate(n); c.fillStyle = ['#ff8fb8', '#4d6fd6', '#3fb07a', '#fff'][n % 4]; c.fillRect(-5, -2, 10, 4); c.restore(); }
+    c.fillStyle = '#e7b77d'; c.beginPath(); c.roundRect(x - 50, y - 64, 100, 18, 6); c.fill(); outline(c, 3);
+    if (d && d.jarHover === j.id && d.jarT > 0) { c.strokeStyle = '#ff8fb8'; c.lineWidth = 7; c.beginPath(); c.arc(x, y, 64, -Math.PI / 2, -Math.PI / 2 + (d.jarT / B.JAR_HOLD) * Math.PI * 2); c.stroke(); }
+  });
+}
+function iconCanvas(cv, kind) {
+  const c = cv.getContext('2d'), w = cv.width;
+  c.strokeStyle = '#f4f1e8'; c.fillStyle = '#f4f1e8'; c.lineWidth = 3; c.lineCap = 'round';
+  if (kind === 'knead') { c.beginPath(); c.ellipse(w / 2, w * 0.62, 20, 13, 0, 0, 7); c.stroke(); c.beginPath(); c.moveTo(w / 2 - 12, 8); c.lineTo(w / 2 - 12, 22); c.moveTo(w / 2, 6); c.lineTo(w / 2, 22); c.moveTo(w / 2 + 12, 8); c.lineTo(w / 2 + 12, 22); c.stroke(); }
+  else if (kind === 'roll') { c.strokeRect(10, 22, 36, 12); c.beginPath(); c.moveTo(2, 28); c.lineTo(10, 28); c.moveTo(46, 28); c.lineTo(54, 28); c.moveTo(8, 46); c.lineTo(48, 46); c.stroke(); }
+  else if (kind === 'bake') { c.beginPath(); c.arc(w / 2, 40, 20, Math.PI, 0); c.stroke(); c.beginPath(); c.moveTo(w / 2, 40); c.lineTo(w / 2 + 12, 26); c.stroke(); }
+  else if (kind === 'jar') { c.strokeRect(14, 16, 28, 34); c.fillRect(12, 10, 32, 6); }
+}
+document.querySelectorAll('canvas[data-icon]').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+
+function drawMenuArt(c, t) {
+  c.fillStyle = '#cfeee2'; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = '#f7e2c4'; c.fillRect(700, 480, 580, 240);
+  c.fillStyle = '#ffffff'; c.fillRect(700, 476, 580, 12);
+  drawTreat(c, 'birthday', 980, 560, 1.1, 'perfect', ['pink', 'sprinkles']);
+  drawTreat(c, 'cupcake', 820, 600, 0.8, 'perfect', ['blue']);
+  drawTreat(c, 'donut', 1170, 610, 0.7, 'perfect', ['choc', 'sprinkles']);
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'cork', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  shop.style.display = name === 'play' || name === 'menu' ? 'block' : 'none';
+  $('menu').style.background = 'none';
+  video.classList.toggle('off', name === 'play');
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').innerHTML = `<span>Sound ${progress.sound ? 'on' : 'off'}</span>`; }
+updateSoundLabel();
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#f5b642' : 'none'}" stroke="#5a3622" stroke-width="1.6"/></svg>`;
+}
+function openCork() {
+  day = null;
+  $('tickets').innerHTML = B.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    const items = lv.orders.map((k) => B.TREATS[k].name).join(', ');
+    return `<div class="ticket${locked ? ' locked' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <div class="day">DAY ${i + 1}</div><div class="nm">${lv.name}</div><div class="items">${items}</div>
+      <div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>`;
+  }).join('');
+  show('cork');
+}
+
+// ---------- achievements ----------
+const ACH = { first: 'First Customer', golden: 'Golden Bake', ten: 'Ten Happy Customers', baker: 'Busy Baker', birthday: 'Birthday Cake', master: 'Master Baker' };
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- baking ----------
+let day = null, playing = false, endAt = 0, happyUntil = 0, servedTreat = null, crumbs = [];
+function openDay(i) {
+  day = B.createDay(i, (Math.random() * 1e9) | 0); playing = false; endAt = 0; happyUntil = 0; servedTreat = null; crumbs = [];
+  const lv = B.LEVELS[i];
+  $('in-title').textContent = `Day ${i + 1}: ${lv.name}`;
+  $('in-text').textContent = `${lv.orders.length === 1 ? 'One customer is' : lv.orders.length + ' customers are'} coming for ${lv.orders.map((k) => B.TREATS[k].name).join(', ')}. Follow the steps at the bottom of the screen, and bake each treat until the needle reaches the gold.`;
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishDay() {
+  const i = day.level, r = B.result(day);
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  progress.served += r.total; progress.perfect += r.perfect;
+  save();
+  if (progress.served >= 10) unlockAch('ten');
+  if (r.total >= 3 && r.perfect === r.total) unlockAch('baker');
+  if (i === N - 1) unlockAch('birthday');
+  if (progress.stars.every((s) => s === 3)) unlockAch('master');
+  const last = i === N - 1;
+  $('rs-title').textContent = r.stars === 3 ? 'Delicious!' : r.stars === 2 ? 'Yummy work!' : 'Everyone is fed!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Customers served', r.total], ['Golden bakes', `${r.perfect} of ${r.total}`], ['A bit doughy', r.doughy], ['A bit burnt', r.burnt], ['Time', r.seconds + ' s'], ['Score', r.score]]
+    .map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  $('rs-buttons').innerHTML = (!last ? '<button type="button" class="donut d1" data-dwell="next"><span>Next day</span></button>' : '<button type="button" class="donut d1" data-dwell="cork"><span>All days</span></button>')
+    + '<button type="button" class="donut choc d2" data-dwell="again"><span>Bake again</span></button>'
+    + (!last ? '<button type="button" class="donut choc d3" data-dwell="cork"><span>All days</span></button>' : '');
+  playing = false;
+  show('result');
+  if (last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openCork(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': day = null; show('menu'); break;
+    case 'cork': openCork(); break;
+    case 'level': openDay(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; break;
+    case 'next': openDay(Math.min(N - 1, day.level + 1)); break;
+    case 'again': openDay(day.level); break;
+  }
+}
+
+// The platform's Back button: out of a day to the order board, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { playing = false; openCork(); return true; }
+  if (screen === 'cork') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, pose: 'none', raw: 'none', rawSince: 0, reported: false };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// Fingers judged by distance from the wrist, so it works whichever way the hand is turned.
+function poseOf(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  const straight = [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+  return straight === 0 ? 'fist' : straight >= 3 ? 'open' : 'other';
+}
+// The middle of the camera frame covers the whole screen, so every jar and button is reachable from a sofa.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+function handleLandmarks(lm, now) {
+  const tx = reach(1 - lm[9].x, 0.12, 0.88) * W, ty = reach(lm[9].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.55;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true;
+  const raw = poseOf(lm);
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  // A pose must hold briefly before it counts, so a hand passing through a fist does not knead or stop the oven.
+  if (fresh || now - hand.rawSince >= 90) hand.pose = raw;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.pose = 'none';
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+const mouse = { x: null, y: null, down: false };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-dwell]')) mouse.down = true; });
+addEventListener('pointerup', () => { mouse.down = false; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on')) act(el);
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && hand.pose !== 'fist' && !(screen === 'play' && playing)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]') || el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+const STEP_TEXT = {
+  knead: (s) => `Knead! <small>Open and close your hand · ${s.done} of ${s.need}</small>`,
+  roll: (s) => `Roll! <small>Sweep your hand left and right · ${s.done} of ${s.need}</small>`,
+  bake: () => 'Bake! <small>Make a fist when the needle is in the gold</small>',
+  decorate: (s) => `Decorate! <small>Rest your hand on: ${s.toppings.slice(s.done).map((id) => B.JARS.find((j) => j.id === id).name).join(', ')}</small>`,
+};
+function updateHud(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintplay', screen === 'play', (v) => $('hint').classList.toggle('play', v));
+  if (!day || screen !== 'play') return;
+  setOnce('sign', `Day ${day.level + 1} · Customer ${Math.min(day.current + 1, day.orders.length)} of ${day.orders.length}`, (v) => { $('sign').textContent = v; });
+  const s = B.curStep(day);
+  setOnce('task', s ? STEP_TEXT[s.type](s) : 'All done!', (v) => { $('task').innerHTML = v; });
+  setOnce('taskShown', playing || day.done, (v) => { $('task').hidden = !v; });
+}
+
+function renderShop(now, dt) {
+  const c = sctx, t = now / 1000;
+  if (screen === 'menu') { drawMenuArt(c, t); return; }
+  if (!day) return;
+  c.drawImage(backdrop, 0, 0);
+  drawJars(c, day, t);
+  drawOven(c, day, t);
+  const o = day.orders[Math.min(day.current, day.orders.length - 1)];
+  const who = CUSTOMERS[Math.min(day.current, day.orders.length - 1) % CUSTOMERS.length];
+  const happy = now < happyUntil;
+  drawCustomer(c, happy && servedTreat ? servedTreat.who : who, 150, 430, t, happy);
+  if (!happy && o && !day.done) {
+    c.fillStyle = '#fffdf6'; c.beginPath(); c.roundRect(240, 290, 200, 130, 14); c.fill(); outline(c, 3);
+    c.beginPath(); c.moveTo(240, 340); c.lineTo(214, 360); c.lineTo(240, 372); c.fill(); outline(c, 3);
+    const dec = o.steps.find((s) => s.type === 'decorate');
+    drawTreat(c, o.kind, 340, 365, 0.55, 'perfect', dec ? dec.toppings : []);
+  }
+  if (happy && servedTreat) drawTreat(c, servedTreat.kind, 290, 470, 0.7, servedTreat.bake, servedTreat.toppings);
+  // The treat on the counter shows each step: squished while kneading, flattened while rolling, in the oven while baking.
+  const s = B.curStep(day);
+  if (s && o && !happy) {
+    const decSteps = o.steps.filter((st) => st.type === 'decorate');
+    const toppings = decSteps.length ? decSteps[0].toppings.slice(0, decSteps[0].done) : [];
+    if (s.type === 'knead') {
+      const squish = hand.pose === 'fist' || mouse.down ? 0.7 : 1;
+      c.save(); c.translate(640, 560); c.scale(1 / squish, squish);
+      c.fillStyle = BAKE_COLOR.raw; c.beginPath(); c.ellipse(0, 0, 90, 60, 0, 0, 7); c.fill(); outline(c); c.restore();
+    } else if (s.type === 'roll') {
+      c.fillStyle = BAKE_COLOR.raw; c.beginPath(); c.ellipse(640, 580, 160 + s.done * 12, 34, 0, 0, 7); c.fill(); outline(c);
+      const px = 480 + (rollX ?? 0.5) * 320;
+      c.fillStyle = '#c98b5a'; c.beginPath(); c.roundRect(px - 110, 532, 220, 30, 14); c.fill(); outline(c);
+      c.fillRect(px - 140, 540, 30, 14); c.fillRect(px + 110, 540, 30, 14);
+    } else if (s.type === 'bake') {
+      c.save(); c.beginPath(); c.roundRect(OVEN.x - 80, OVEN.y - 20, 160, 100, 14); c.clip();
+      drawTreat(c, o.kind, OVEN.x, OVEN.y + 40, 0.55, day.needle > B.LEVELS[day.level].zone[1] ? 'burnt' : day.needle > B.LEVELS[day.level].zone[0] ? 'perfect' : 'doughy', []);
+      c.restore();
+    } else if (s.type === 'decorate') {
+      drawTreat(c, o.kind, 640, 570, 1.2, o.bake, toppings);
+    }
+  }
+  for (let i = crumbs.length - 1; i >= 0; i--) {
+    const q = crumbs[i]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 600 * dt;
+    if (q.t > 0.8) { crumbs.splice(i, 1); continue; }
+    c.globalAlpha = 1 - q.t / 0.8; c.fillStyle = q.color; c.beginPath(); c.arc(q.x, q.y, q.r, 0, 7); c.fill();
+  }
+  c.globalAlpha = 1;
+}
+function puff(x, y, color, n) { for (let k = 0; k < n; k++) crumbs.push({ x, y, vx: (Math.random() - 0.5) * 300, vy: -100 - Math.random() * 200, t: 0, color, r: 3 + Math.random() * 4 }); }
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present) return;
+  const fist = hand.pose === 'fist';
+  c.fillStyle = fist ? '#ff8fb8' : '#fffdf6'; c.strokeStyle = '#5a3622'; c.lineWidth = 3;
+  c.beginPath(); c.arc(hand.x, hand.y, fist ? 14 : 18, 0, Math.PI * 2); c.fill(); c.stroke();
+  if (dwell.el && dwell.p > 0) { c.strokeStyle = '#ff8fb8'; c.lineWidth = 7; c.beginPath(); c.arc(hand.x, hand.y, 30, -Math.PI / 2, -Math.PI / 2 + dwell.p * Math.PI * 2); c.stroke(); }
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now(), rollX = 0.5;
+function frame(now) {
+  requestAnimationFrame(frame);
+  // The oven needle runs on the real frame time, capped so a stall on a slow device cannot skip it ahead.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  if (screen === 'play' && day && playing && !day.done && now >= happyUntil) {
+    let input = null;
+    if (hand.present) { const p = toStage(hand.x, hand.y); input = { x: p.x / 1280, y: p.y / 720, pose: hand.pose }; }
+    else if (mouse.x !== null) { const p = toStage(mouse.x, mouse.y); input = { x: p.x / 1280, y: p.y / 720, pose: mouse.down ? 'fist' : 'open' }; }
+    if (input) rollX = Math.max(0, Math.min(1, (input.x - 0.25) * 2));
+    const before = day.orders[day.current];
+    B.step(day, dt, input);
+    for (const ev of day.events) {
+      if (ev.type === 'knead') { sfx('knead'); puff(640, 540, '#fff3dc', 6); }
+      else if (ev.type === 'roll') { sfx('roll'); puff(640, 570, '#fff3dc', 4); }
+      else if (ev.type === 'baked') {
+        sfx('ding');
+        toast(ev.quality === 'perfect' ? 'Golden and perfect!' : ev.quality === 'burnt' ? 'A little burnt, but still tasty!' : 'A bit doughy, but still tasty!');
+        if (ev.quality === 'perfect') { unlockAch('golden'); puff(OVEN.x, OVEN.y, '#ffd166', 18); }
+      } else if (ev.type === 'topping') { sfx('topping'); const j = B.JARS.find((x) => x.id === ev.id); puff(640, 520, j.color, 12); }
+      else if (ev.type === 'wrongjar') sfx('wrong');
+      else if (ev.type === 'served') {
+        sfx('served'); unlockAch('first');
+        const dec = before.steps.find((s) => s.type === 'decorate');
+        servedTreat = { kind: ev.kind, bake: ev.bake, toppings: dec ? dec.toppings : [], who: CUSTOMERS[day.orders.indexOf(before) % CUSTOMERS.length] };
+        happyUntil = now + 1600;
+        for (let k = 0; k < 3; k++) puff(150, 330, '#ff8fb8', 6);
+      } else if (ev.type === 'customer') setTimeout(() => sfx('bell'), 1600);
+      else if (ev.type === 'done') { sfx('done'); endAt = now + 2000; }
+    }
+    day.events.length = 0;
+  }
+  if (endAt && now >= endAt) { endAt = 0; finishDay(); }
+  if (screen === 'play' || screen === 'menu') renderShop(now, dt);
+  updateDwell(now);
+  updateHud(now);
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
