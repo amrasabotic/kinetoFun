@@ -218,8 +218,17 @@ function dStars(cols){
   }
   cx.globalAlpha=1;
 }
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menus follow it, while
+// the run keeps the game's own gesture cursor.
+const kfShared=window.__kfCursor;
+let kfMenuOn=null;
+function kfInMenu(){
+  const menu=st!==ST.PLAY;
+  if(kfShared&&menu!==kfMenuOn){kfMenuOn=menu;if(window.__kfMenu)window.__kfMenu(menu);}
+  return menu&&!!kfShared;
+}
 function dCursor(){
-  if(!G.det)return;
+  if(!G.det||kfInMenu())return;
   const bx=G.x*W,by=G.y*H;
   cx.save();
   if(G.g==='point'){
@@ -562,7 +571,7 @@ async function startCam(){
     hands.onResults(r=>{
       if(r.multiHandLandmarks&&r.multiHandLandmarks.length>0){
         const lm=r.multiHandLandmarks[0];
-        G.det=true;G.g=classify(lm);G.x=1-lm[8].x;G.y=lm[8].y;
+        G.det=true;G.g=classify(lm);G.x=kfInMenu()?kfShared.x:1-lm[8].x;G.y=kfInMenu()?kfShared.y:lm[8].y;
       }else{G.det=false;G.g='none';}
     });
     const cam=new Camera(v,{onFrame:async()=>{await hands.send({image:v});},width:640,height:480});

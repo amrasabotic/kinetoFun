@@ -197,13 +197,29 @@ function setupGameoverButtons() {
   ];
 }
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menus follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+function kfInMenu() {
+  const menu = state === 'menu' || state === 'gameover';
+  if (kfShared && menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  return menu && !!kfShared;
+}
+function kfButtonPointers() {
+  if (!kfInMenu()) return cursors;
+  if (!kfShared.visible) return [];
+  // The canvas is smaller than the screen and centred, so screen position is converted to canvas space.
+  const r = canvas.getBoundingClientRect();
+  return [{ x: (kfShared.x * window.innerWidth - r.left) * (W / r.width), y: (kfShared.y * window.innerHeight - r.top) * (H / r.height) }];
+}
+
 function updateButtons(dt) {
   if (state !== 'menu' && state !== 'gameover') return;
 
   buttons.forEach(btn => {
     // Check if ANY cursor fingertip is inside this button
     let inside = false;
-    cursors.forEach(c => {
+    kfButtonPointers().forEach(c => {
       if (c.x >= btn.x && c.x <= btn.x+btn.w &&
           c.y >= btn.y && c.y <= btn.y+btn.h) {
         inside = true;
@@ -624,6 +640,7 @@ function drawButtons() {
 
 // ── Cursors ──────────────────────────────────────────────────────────────────
 function drawCursors() {
+  if (kfInMenu()) return;
   cursors.forEach(cur => {
     const col = cur.side === 'left' ? '#00f5ff' : '#bf00ff';
     ctx.save();

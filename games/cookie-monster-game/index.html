@@ -297,8 +297,18 @@ function drawMonster(mx, my) {
   ctx.restore();
 }
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; the start and game-over
+// buttons follow it, while play keeps the game's own finger cursor.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+function kfInMenu() {
+  const menu = state === 'start' || state === 'gameover';
+  if (kfShared && menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  return menu && !!kfShared;
+}
+
 function drawFingerCursor(x, y) {
-  if (!handVisible || x < 0) return;
+  if (!handVisible || x < 0 || kfInMenu()) return;
   ctx.save();
   // outer pulse ring
   const pulse = 0.4 + 0.3 * Math.sin(Date.now() * 0.005);
@@ -630,8 +640,8 @@ function onHandResults(results) {
 
     // Index fingertip = landmark 8, mirrored on X
     const tip = lm[8];
-    handX = (1 - tip.x) * W;
-    handY = tip.y * H;
+    handX = kfInMenu() ? kfShared.x * W : (1 - tip.x) * W;
+    handY = kfInMenu() ? kfShared.y * H : tip.y * H;
 
     debugEl.textContent = `✋ hand detected\nindex: (${Math.round(handX)}, ${Math.round(handY)})`;
   } else {

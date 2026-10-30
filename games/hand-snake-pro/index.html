@@ -468,10 +468,22 @@ function botThink(bot, all) {
 }
 
 // ─── CURSOR ──────────────────────────────────────────────────────────────────
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menus follow it and only
+// their hold progress is drawn here, while steering keeps the game's own crosshair.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+function kfInMenu() {
+  const menu = STATE === 'MENU' || STATE === 'DEAD' || STATE === 'HOW';
+  if (kfShared && menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  return menu && !!kfShared;
+}
+
 function drawCursor() {
   if (!fingerVis) return;
   ctx.save();
-  if (extCount >= 2) {
+  if (kfInMenu()) {
+    // pointer drawn by the platform
+  } else if (extCount >= 2) {
     ctx.strokeStyle = 'rgba(255,217,61,0.95)'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(fX, fY, 14, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,217,61,0.3)'; ctx.lineWidth = 1;
@@ -867,8 +879,8 @@ function onResults(res) {
   sfX = sfX * (1 - SM) + tip.x * SM;
   sfY = sfY * (1 - SM) + tip.y * SM;
   // mirrored cam → flip X
-  fX = (1 - sfX) * gc.width;
-  fY = sfY * gc.height;
+  fX = kfInMenu() ? kfShared.x * gc.width : (1 - sfX) * gc.width;
+  fY = kfInMenu() ? kfShared.y * gc.height : sfY * gc.height;
   fingerVis = true;
 
   if (extCount >= 2) document.getElementById('glbl').textContent = '✌ Two fingers — BOOST!';

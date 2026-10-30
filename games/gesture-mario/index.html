@@ -786,8 +786,13 @@ function clearLevel(){
 /* ═══════════════════════════════════════════
    MAIN LOOP
 ═══════════════════════════════════════════ */
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menus follow it.
+const kfShared=window.__kfCursor;
+let kfMenuOn=null;
 function gameLoop(){
   frameCount++;
+  const kfMenu=gameState!=='playing';
+  if(kfShared&&kfMenu!==kfMenuOn){kfMenuOn=kfMenu;if(window.__kfMenu)window.__kfMenu(kfMenu);}
   if(gameState==='loading'){
     drawLoadingScreen('Starting camera');
   } else if(gameState==='splash'){
@@ -832,12 +837,18 @@ function gameLoop(){
    HOVER SYSTEM
 ═══════════════════════════════════════════ */
 function updateHoverCanvas(items){
-  if(gesture!=='one_finger'){
+  if(kfShared){
+    // The canvas is scaled to the screen, so the screen position is converted to canvas space.
+    const r=canvas.getBoundingClientRect();
+    cursorX=(kfShared.x*innerWidth-r.left)*(W/r.width);
+    cursorY=(kfShared.y*innerHeight-r.top)*(H/r.height);
+  }
+  if(kfShared?!kfShared.visible:gesture!=='one_finger'){
     hoverCursor.style.display='none';
     if(hoverTarget){hoverTarget=null;hoverProgress=0;}
     return;
   }
-  hoverCursor.style.display='block';
+  hoverCursor.style.display=kfShared?'none':'block';
   hoverCursor.style.left=cursorX+'px';
   hoverCursor.style.top=cursorY+'px';
   let found=null;
@@ -915,7 +926,7 @@ function onResults(results){
     cursorX=(1-lm[8].x)*W;cursorY=lm[8].y*H;
   }
   if(ng!==gesture){
-    gesture=ng;hoverTarget=null;hoverProgress=0;
+    gesture=ng;if(!kfShared){hoverTarget=null;hoverProgress=0;}
     splashHoldStart=0;splashHoldActive=false;
   }
   if(gameState==='splash'){

@@ -305,7 +305,22 @@ function getThreshold(){return [null,10,6,4,2.5,1.5][Math.min(5,Math.max(1,setti
 // Screen buttons for dwell selection
 let btns=[];
 function regBtn(id,x,y,w,h){btns.push({id,x,y,w,h});}
+// On the platform the bridge supplies one cursor for every game and the platform draws it; button screens follow it
+// and only their hold progress is drawn here.
+const kfShared=window.__kfCursor;
+let kfMenuOn=null;
+function kfInMenu(){
+  const menu=['menu','howto','settings','leaderboard','results'].includes(gs);
+  if(kfShared&&menu!==kfMenuOn){kfMenuOn=menu;if(window.__kfMenu)window.__kfMenu(menu);}
+  return menu&&!!kfShared;
+}
 function hovBtn(){
+  if(kfInMenu()){
+    if(!kfShared.visible)return null;
+    const sx=kfShared.x*W,sy=kfShared.y*H;
+    for(const b of btns)if(sx>=b.x&&sx<=b.x+b.w&&sy>=b.y&&sy<=b.y+b.h)return b.id;
+    return null;
+  }
   for(const b of btns)if(b.x<=W/2&&W/2<=b.x+b.w){}; // keyboard fallback irrelevant
   // Use first player's hand as cursor (or any visible hand)
   let hx=W/2,hy=H/2,hv=false;
@@ -726,12 +741,16 @@ function drawDwellCursor(){
   for(const p of players){
     if(p.handVisible){hx=p.handX*W;hy=p.handY*H;hcolor=p.color;break;}
   }
+  const kf=kfInMenu();
+  if(kf){hx=kfShared.visible?kfShared.x*W:-1;hy=kfShared.y*H;}
   if(hx<0)return;
   cx.save();
+  if(!kf){
   cx.shadowColor=hcolor;cx.shadowBlur=12;
   cx.strokeStyle=hcolor;cx.lineWidth=2;
   cx.beginPath();cx.arc(hx,hy,16,0,Math.PI*2);cx.stroke();
   cx.fillStyle=hcolor;cx.beginPath();cx.arc(hx,hy,5,0,Math.PI*2);cx.fill();
+  }
   // dwell arc
   if(dwellId){
     const p=Math.min((Date.now()-dwellT)/DWELL,1);
@@ -882,6 +901,7 @@ function loop(ts){
   tickParts();
 
   // ── RENDER ──
+  kfInMenu();
   if(gs==='menu') drawMenu();
   else if(gs==='howto') drawHowTo();
   else if(gs==='settings') drawSettings();
