@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Star Painter</title>
+<style>
+:root { --gold:#f3cf7a; --brass:#b98a3e; --brass-dark:#7a5520; --ink:#eef2ff; --muted:#b9c3e6; --parch:#f4e7c8; --parch-ink:#4a3418; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#050a1f; color:var(--ink); font-family:Georgia,'Times New Roman','DejaVu Serif',serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#sky { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Brass dials: the gold ring around them fills while the hand rests on them. */
+.dial { position:absolute; width:150px; height:150px; border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;
+  font:bold 24px Georgia,'DejaVu Serif',serif; color:#2b1b05; line-height:1.15; padding:0 14px;
+  background:radial-gradient(circle at 35% 30%, #f7dc96, var(--brass) 55%, var(--brass-dark)); box-shadow:0 0 0 6px #3a2a10, 0 0 0 10px rgba(243,207,122,0.25), 0 10px 24px rgba(0,0,0,0.5); }
+.dial::before { content:''; position:absolute; inset:-16px; border-radius:50%;
+  background:conic-gradient(var(--gold) calc(var(--p, 0) * 360deg), transparent 0);
+  -webkit-mask:radial-gradient(circle, transparent 64%, #000 65%); mask:radial-gradient(circle, transparent 64%, #000 65%); }
+.dial.big { width:190px; height:190px; font-size:32px; }
+.dial.hot { filter:brightness(1.1); }
+.dial[hidden] { display:none; }
+
+#menu .title { position:absolute; left:620px; top:40px; width:600px; }
+#menu h1 { font-size:76px; color:var(--gold); letter-spacing:0.02em; text-shadow:0 0 22px rgba(243,207,122,0.4); }
+#menu .title p { font-size:24px; color:var(--muted); margin-top:8px; line-height:1.4; }
+.charts { position:absolute; left:600px; top:236px; display:flex; flex-direction:column; gap:10px; }
+.chart { width:560px; display:flex; gap:16px; align-items:center; padding:12px 18px; background:var(--parch); color:var(--parch-ink); border:3px solid var(--brass);
+  border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,0.4); }
+.chart canvas { width:70px; height:70px; flex:none; }
+.chart b { display:block; font-size:22px; }
+.chart span { font-size:19px; line-height:1.3; }
+#menu .dial.big { left:200px; top:500px; }
+#menu .dial.snd { left:30px; top:560px; width:130px; height:130px; font-size:20px; }
+#menu .dial.exit { left:420px; top:560px; width:130px; height:130px; font-size:20px; }
+
+#chart h2 { position:absolute; left:40px; top:30px; font-size:44px; color:var(--gold); }
+.medal { position:absolute; width:128px; height:128px; border-radius:50%; cursor:pointer; background:radial-gradient(circle at 40% 35%, #1d2a5c, #0b1233);
+  box-shadow:0 0 0 5px var(--brass), 0 0 18px rgba(243,207,122,0.25); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.medal::before { content:''; position:absolute; inset:-14px; border-radius:50%; background:conic-gradient(var(--gold) calc(var(--p, 0) * 360deg), transparent 0);
+  -webkit-mask:radial-gradient(circle, transparent 64%, #000 65%); mask:radial-gradient(circle, transparent 64%, #000 65%); }
+.medal canvas { width:84px; height:66px; }
+.medal .num { position:absolute; top:-8px; left:-8px; width:40px; height:40px; border-radius:50%; background:var(--brass); color:#2b1b05; font-size:22px; font-weight:bold;
+  display:flex; align-items:center; justify-content:center; }
+.medal.locked { filter:grayscale(1) brightness(0.55); cursor:default; }
+.medal .stars svg { width:20px; height:20px; }
+.mlabel { position:absolute; width:180px; text-align:center; font-size:19px; color:var(--muted); pointer-events:none; }
+#chart .dial { left:40px; top:560px; width:130px; height:130px; font-size:22px; }
+
+#plaque { position:absolute; right:22px; top:16px; padding:10px 22px; background:linear-gradient(#d9b065, #a87a30); color:#2b1b05; border-radius:8px; box-shadow:0 0 0 3px #3a2a10;
+  text-align:right; pointer-events:none; }
+#plaque b { display:block; font-size:24px; }
+#plaque span { font-size:20px; }
+#tip { position:absolute; left:22px; bottom:20px; font-size:21px; padding:10px 18px; border-radius:8px; background:rgba(11,18,51,0.85); border:2px solid var(--brass); pointer-events:none; }
+#intro { position:absolute; inset:0; background:rgba(5,10,31,0.7); }
+#intro[hidden] { display:none; }
+#intro .card { position:absolute; left:50%; top:90px; transform:translateX(-50%); width:720px; padding:24px 34px; background:var(--parch); color:var(--parch-ink);
+  border:4px solid var(--brass); border-radius:8px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+#intro h2 { font-size:40px; }
+#intro p { font-size:22px; line-height:1.45; margin-top:8px; }
+#intro canvas { width:280px; height:160px; margin-top:6px; }
+#intro .dial { left:545px; top:500px; }
+
+#result .card { position:absolute; left:50%; top:60px; transform:translateX(-50%); width:640px; padding:24px 34px; background:var(--parch); color:var(--parch-ink);
+  border:4px solid var(--brass); border-radius:8px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+#result h2 { font-size:40px; }
+#result .stars { display:flex; justify-content:center; gap:6px; margin:6px 0; }
+#result .stars svg { width:64px; height:64px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:6px 40px; justify-content:center; font-size:23px; text-align:left; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#result .dial.d1 { left:330px; top:470px; }
+#result .dial.d2 { left:575px; top:500px; width:140px; height:140px; font-size:22px; }
+#result .dial.d3 { left:780px; top:500px; width:140px; height:140px; font-size:22px; }
+
+#cam { position:absolute; right:16px; bottom:16px; width:192px; height:144px; border-radius:50%; border:5px solid var(--brass); object-fit:cover; transform:scaleX(-1); background:#000; }
+#cam.off { opacity:0; }
+#hint { position:absolute; left:50%; bottom:20px; transform:translateX(-50%); font-size:22px; padding:8px 22px; border-radius:30px; background:rgba(11,18,51,0.92);
+  border:2px solid var(--brass); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint.play { bottom:auto; top:16px; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; left:50%; top:16px; transform:translateX(-50%); font-size:22px; font-weight:bold; padding:12px 20px; border-radius:8px; background:var(--parch); color:var(--parch-ink);
+  border:3px solid var(--brass); opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="sky" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div class="title">
+      <h1>Star Painter</h1>
+      <p>Join the stars with your fingertip and watch the night sky come alive.</p>
+    </div>
+    <div class="charts">
+      <div class="chart"><canvas width="70" height="70" data-icon="touch"></canvas><div><b>Rest on a star</b><span>Hold your fingertip on a star to pick it up.</span></div></div>
+      <div class="chart"><canvas width="70" height="70" data-icon="thread"></canvas><div><b>Carry the light</b><span>Rest on the next star of the picture to draw a line.</span></div></div>
+      <div class="chart"><canvas width="70" height="70" data-icon="shoot"></canvas><div><b>Catch shooting stars</b><span>Wave at one as it flies past for a bonus.</span></div></div>
+    </div>
+    <button type="button" class="dial big" data-dwell="play">Look up</button>
+    <button type="button" class="dial snd" data-dwell="sound" id="btn-sound">Sound on</button>
+    <button type="button" class="dial exit" data-dwell="exit" id="btn-exit" hidden>Back to games</button>
+  </section>
+
+  <section class="screen" id="chart">
+    <h2>Star chart</h2>
+    <div id="medals"></div>
+    <button type="button" class="dial" data-dwell="menu">Menu</button>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="plaque"><b id="pq-name"></b><span id="pq-lines"></span></div>
+    <div id="tip"></div>
+    <div id="intro">
+      <div class="card"><h2 id="in-title"></h2><canvas width="280" height="160" id="in-pic"></canvas><p id="in-text"></p></div>
+      <button type="button" class="dial big" data-dwell="begin">Begin</button>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="card"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <video id="cam" autoplay muted playsinline></video>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="stars.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const S = window.Stars;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), skyCv = $('sky'), ink = $('ink'), video = $('cam');
+const sctx = skyCv.getContext('2d'), ictx = ink.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'star-painter-v1';
+const N = S.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true, ach: {}, caught: 0 };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, ...s, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)),
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0),
+        ach: s.ach || {}, caught: s.caught | 0 };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every picture painted since the game was opened; reported once, when the player leaves or finishes the last picture.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound: a soft pentatonic chime per line, so any order of lines sounds musical ----------
+let actx = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function chime(f, dur = 1.2, vol = 0.08, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay;
+  for (const [mul, v] of [[1, vol], [2.01, vol * 0.3], [3.02, vol * 0.12]]) {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine'; o.frequency.value = f * mul;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+  }
+}
+const SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5, 1568, 1760];
+const SFX = {
+  select() { chime(784, 0.4, 0.07); chime(1175, 0.5, 0.05, 0.08); },
+  pick() { chime(1046.5, 0.3, 0.05); },
+  shooting() { chime(1568, 0.6, 0.04); chime(2093, 0.6, 0.03, 0.1); },
+  caught() { [1046.5, 1318.5, 1568, 2093].forEach((f, i) => chime(f, 0.6, 0.06, i * 0.06)); },
+  done() { [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) => chime(f, 1.6, 0.07, i * 0.12)); },
+  badge() { [784, 988, 1319].forEach((f, i) => chime(f, 0.5, 0.06, i * 0.08)); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- the sky ----------
+const backdrop = document.createElement('canvas');
+backdrop.width = 1280; backdrop.height = 720;
+const twinkles = [];
+(function paintBackdrop(c) {
+  const g = c.createLinearGradient(0, 0, 0, 720);
+  g.addColorStop(0, '#040818'); g.addColorStop(0.6, '#0b1640'); g.addColorStop(1, '#1a2458');
+  c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
+  c.save(); c.translate(640, 360); c.rotate(-0.5);
+  const band = c.createRadialGradient(0, 0, 10, 0, 0, 700);
+  band.addColorStop(0, 'rgba(140,120,220,0.18)'); band.addColorStop(1, 'rgba(140,120,220,0)');
+  c.scale(1, 0.28); c.fillStyle = band; c.beginPath(); c.arc(0, 0, 700, 0, 7); c.fill(); c.restore();
+  let seed = 4; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 260; i++) { const x = r() * 1280, y = r() * 720, s = r(); c.fillStyle = `rgba(255,255,255,${0.15 + s * 0.4})`; c.fillRect(x, y, s > 0.9 ? 2 : 1, s > 0.9 ? 2 : 1); }
+  for (let i = 0; i < 40; i++) twinkles.push({ x: r() * 1280, y: r() * 720, p: r() * 6 });
+  c.fillStyle = '#060a1a';
+  c.beginPath(); c.moveTo(0, 720); c.lineTo(0, 660); c.quadraticCurveTo(200, 630, 420, 668); c.quadraticCurveTo(700, 700, 900, 650); c.quadraticCurveTo(1100, 610, 1280, 650); c.lineTo(1280, 720); c.fill();
+})(backdrop.getContext('2d'));
+function drawBackdrop(c, t) {
+  c.drawImage(backdrop, 0, 0);
+  for (const tw of twinkles) { const a = 0.3 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2 + tw.p)); c.fillStyle = `rgba(255,255,255,${a})`; c.beginPath(); c.arc(tw.x, tw.y, 1.6, 0, 7); c.fill(); }
+}
+const glowSprite = document.createElement('canvas');
+glowSprite.width = glowSprite.height = 64;
+(function paintGlow(c) { const g = c.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,240,200,1)'); g.addColorStop(0.25, 'rgba(255,220,150,0.6)'); g.addColorStop(1, 'rgba(255,220,150,0)'); c.fillStyle = g; c.fillRect(0, 0, 64, 64); })(glowSprite.getContext('2d'));
+function drawStar(c, x, y, size, bright) {
+  c.globalAlpha = bright; c.drawImage(glowSprite, x - size * 2, y - size * 2, size * 4, size * 4); c.globalAlpha = 1;
+  c.fillStyle = '#fffaf0'; c.beginPath(); c.arc(x, y, size * 0.35, 0, 7); c.fill();
+}
+const fogSprite = document.createElement('canvas');
+fogSprite.width = fogSprite.height = 128;
+(function paintFog(c) { const g = c.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(60,70,110,0.95)'); g.addColorStop(0.6, 'rgba(60,70,110,0.8)'); g.addColorStop(1, 'rgba(60,70,110,0)'); c.fillStyle = g; c.fillRect(0, 0, 128, 128); })(fogSprite.getContext('2d'));
+
+// A small drawing of a constellation, fitted inside a box.
+function miniFigure(c, lv, w, h, lit) {
+  const xs = lv.pts.map((p) => p[0]), ys = lv.pts.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const s = Math.min((w - 20) / (x1 - x0 || 1), (h - 20) / (y1 - y0 || 1));
+  const map = ([x, y]) => [(w - (x1 - x0) * s) / 2 + (x - x0) * s, (h - (y1 - y0) * s) / 2 + (y - y0) * s];
+  c.strokeStyle = lit ? '#f3cf7a' : 'rgba(243,207,122,0.55)'; c.lineWidth = 2.5; c.lineCap = 'round';
+  for (const [a, b] of lv.lines) { const [ax, ay] = map(lv.pts[a]), [bx, by] = map(lv.pts[b]); c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.stroke(); }
+  c.fillStyle = '#fffaf0';
+  for (const p of lv.pts) { const [x, y] = map(p); c.beginPath(); c.arc(x, y, 3, 0, 7); c.fill(); }
+}
+function iconCanvas(cv, kind) {
+  const c = cv.getContext('2d'), w = cv.width;
+  c.fillStyle = '#0b1233'; c.beginPath(); c.arc(w / 2, w / 2, w / 2, 0, 7); c.fill();
+  if (kind === 'touch') { drawStar(c, w / 2, w / 2, 12, 1); c.strokeStyle = '#f3cf7a'; c.lineWidth = 3; c.beginPath(); c.arc(w / 2, w / 2, 20, -Math.PI / 2, Math.PI * 0.9); c.stroke(); }
+  else if (kind === 'thread') { c.strokeStyle = '#f3cf7a'; c.lineWidth = 3; c.beginPath(); c.moveTo(16, 50); c.lineTo(54, 22); c.stroke(); drawStar(c, 16, 50, 9, 1); drawStar(c, 54, 22, 9, 1); }
+  else if (kind === 'shoot') { const g = c.createLinearGradient(10, 20, 54, 46); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, '#fff'); c.strokeStyle = g; c.lineWidth = 4; c.beginPath(); c.moveTo(10, 20); c.lineTo(54, 46); c.stroke(); drawStar(c, 54, 46, 8, 1); }
+}
+document.querySelectorAll('canvas[data-icon]').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'chart', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  video.classList.toggle('off', name === 'play');
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = progress.sound ? 'Sound on' : 'Sound off'; }
+updateSoundLabel();
+function starSVG(on, color = '#f3cf7a') {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? color : 'none'}" stroke="${color}" stroke-width="1.5"/></svg>`;
+}
+// Medallions spiral inwards on the round chart, from the outer edge to the centre.
+const MEDAL_POS = [[260, 120], [480, 90], [700, 90], [920, 120], [1040, 300], [880, 440], [640, 460], [400, 440], [480, 270], [720, 280]];
+function openChart() {
+  sky = null;
+  $('medals').innerHTML = S.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked, [x, y] = MEDAL_POS[i];
+    return `<div class="medal${locked ? ' locked' : ''}" style="left:${x}px;top:${y}px"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <div class="num">${i + 1}</div><canvas width="84" height="66" data-fig="${i}"></canvas><div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>
+      <div class="mlabel" style="left:${x - 26}px;top:${y + 134}px">${lv.name}</div>`;
+  }).join('');
+  $('medals').querySelectorAll('canvas[data-fig]').forEach((cv) => miniFigure(cv.getContext('2d'), S.LEVELS[cv.dataset.fig], 84, 66, progress.stars[cv.dataset.fig] > 0));
+  show('chart');
+}
+function drawChartRings(c, t) {
+  c.save(); c.translate(660, 380);
+  c.strokeStyle = 'rgba(243,207,122,0.25)'; c.lineWidth = 2;
+  for (const r of [120, 230, 340]) { c.beginPath(); c.arc(0, 0, r, 0, 7); c.stroke(); }
+  c.rotate(t * 0.02);
+  for (let k = 0; k < 24; k++) { c.rotate(Math.PI / 12); c.beginPath(); c.moveTo(330, 0); c.lineTo(350, 0); c.stroke(); }
+  c.restore();
+}
+
+// ---------- achievements ----------
+const ACH = { first: 'First Constellation', catcher: 'Wish Maker', five: 'Five Shooting Stars', hunter: 'Orion Found', whale: 'The Great Whale', astro: 'Astronomer' };
+let toastTimer = 0;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function unlockAch(id) {
+  if (progress.ach[id]) return;
+  progress.ach[id] = Date.now(); save();
+  toast(`Achievement: ${ACH[id]}`); sfx('badge');
+}
+
+// ---------- painting ----------
+let sky = null, playing = false, endAt = 0, celebrateAt = 0, sparkles = [], lineCount = 0;
+function openSky(i) {
+  sky = S.createSky(i, (Math.random() * 1e9) | 0); playing = false; endAt = 0; celebrateAt = 0; sparkles = []; lineCount = 0;
+  const lv = S.LEVELS[i];
+  $('pq-name').textContent = lv.name;
+  $('in-title').textContent = lv.name;
+  const pic = $('in-pic').getContext('2d'); pic.clearRect(0, 0, 280, 160); pic.fillStyle = '#0b1233'; pic.fillRect(0, 0, 280, 160); miniFigure(pic, lv, 280, 160, false);
+  const extra = [lv.clouds && 'Clouds will drift over some stars; wait for them to pass.', lv.shooting && 'Catch any shooting star for a bonus.'].filter(Boolean).join(' ');
+  $('in-text').textContent = `Join the ${lv.pts.length} stars along the ${lv.lines.length} faint lines, in any order. ${extra}`;
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishSky() {
+  const i = sky.level, r = S.result(sky);
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  progress.caught += r.caught;
+  save();
+  unlockAch('first');
+  if (r.caught > 0) unlockAch('catcher');
+  if (progress.caught >= 5) unlockAch('five');
+  if (S.LEVELS[i].creature === 'hunter') unlockAch('hunter');
+  if (i === N - 1) unlockAch('whale');
+  if (progress.stars.every((s) => s === 3)) unlockAch('astro');
+  const last = i === N - 1;
+  $('rs-title').textContent = `${S.LEVELS[i].name} shines!`;
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars, '#b98a3e')).join('');
+  $('rs-lines').innerHTML = [['Time', r.seconds + ' s'], ['Shooting stars caught', r.caught], ['Score', r.score]].map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  $('rs-buttons').innerHTML = (!last ? '<button type="button" class="dial big d1" data-dwell="next">Next sky</button>' : '<button type="button" class="dial big d1" data-dwell="chart">Star chart</button>')
+    + '<button type="button" class="dial d2" data-dwell="again">Paint again</button>'
+    + (!last ? '<button type="button" class="dial d3" data-dwell="chart">Star chart</button>' : '');
+  playing = false;
+  show('result');
+  if (last) reportScore();
+}
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openChart(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': sky = null; show('menu'); break;
+    case 'chart': openChart(); break;
+    case 'level': openSky(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; break;
+    case 'next': openSky(Math.min(N - 1, sky.level + 1)); break;
+    case 'again': openSky(sky.level); break;
+  }
+}
+
+// The platform's Back button: out of a sky to the star chart, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { playing = false; openChart(); return true; }
+  if (screen === 'chart') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, reported: false };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 250;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// The middle of the camera frame covers the whole screen, so every star and button is reachable from a sofa.
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+// The fingertip is the wand, so it is what touches the stars.
+function handleLandmarks(lm, now) {
+  const tx = reach(1 - lm[8].x, 0.12, 0.88) * W, ty = reach(lm[8].y, 0.10, 0.75) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.5;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false;
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+let mouse = null;
+addEventListener('pointermove', (e) => { mouse = { x: e.clientX, y: e.clientY }; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on')) act(el);
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+function updateDwell(now) {
+  let target = null;
+  if (hand.present && now >= armedAt && !(screen === 'play' && playing)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]') || el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (hand.x >= r.left - 16 && hand.x <= r.right + 16 && hand.y >= r.top - 16 && hand.y <= r.bottom + 16) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHud(now) {
+  let text = '';
+  if (statusText) text = statusText;
+  else if (!hand.present && now - hand.lastSeen > 1000 && !mouse) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  setOnce('hintplay', screen === 'play', (v) => $('hint').classList.toggle('play', v));
+  if (!sky || screen !== 'play') return;
+  const lit = sky.lit.filter(Boolean).length, lv = S.LEVELS[sky.level];
+  setOnce('lines', `Lines ${lit} of ${lv.lines.length}`, (v) => { $('pq-lines').textContent = v; });
+  const tip = sky.done ? `The ${lv.creature === 'hunter' ? 'hunter' : lv.name.replace('The ', '').toLowerCase()} comes alive!` : sky.held < 0 ? 'Rest your fingertip on a star' : 'Now rest on the next star of the picture';
+  setOnce('tip', tip, (v) => { $('tip').textContent = v; });
+  setOnce('tipShown', playing || sky.done, (v) => { $('tip').hidden = !v; });
+}
+
+// ---------- drawing ----------
+let pointer = null;
+function renderSky(now, dt) {
+  const c = sctx, t = now / 1000;
+  drawBackdrop(c, t);
+  if (screen === 'chart') { drawChartRings(c, t); return; }
+  if (screen === 'menu') { drawMenuScope(c, t); return; }
+  if (!sky || (screen !== 'play' && screen !== 'result')) return;
+  const lv = S.LEVELS[sky.level];
+  // Once complete, the whole picture drifts and breathes for a moment.
+  const alive = celebrateAt ? Math.min(1, (now - celebrateAt) / 600) : 0;
+  const ox = alive * Math.sin(t * 1.4) * 18, oy = alive * Math.cos(t * 1.1) * 10;
+  const P = lv.pts.map(([x, y]) => [x + ox, y + oy]);
+  lv.lines.forEach(([a, b], k) => {
+    c.lineCap = 'round';
+    if (sky.lit[k]) {
+      c.strokeStyle = `rgba(243,207,122,${0.35 + alive * 0.3})`; c.lineWidth = 12; c.beginPath(); c.moveTo(...P[a]); c.lineTo(...P[b]); c.stroke();
+      c.strokeStyle = '#fff3cf'; c.lineWidth = 3.5; c.beginPath(); c.moveTo(...P[a]); c.lineTo(...P[b]); c.stroke();
+    } else {
+      c.strokeStyle = 'rgba(243,207,122,0.28)'; c.lineWidth = 2; c.setLineDash([4, 10]); c.beginPath(); c.moveTo(...P[a]); c.lineTo(...P[b]); c.stroke(); c.setLineDash([]);
+    }
+  });
+  if (sky.held >= 0 && pointer && playing) {
+    c.strokeStyle = 'rgba(255,240,200,0.8)'; c.lineWidth = 3; c.beginPath(); c.moveTo(...P[sky.held]); c.lineTo(pointer.x, pointer.y); c.stroke();
+  }
+  P.forEach(([x, y], i) => {
+    const big = i === sky.held ? 22 : 16;
+    drawStar(c, x, y, big + Math.sin(t * 3 + i) * 1.5, 0.9);
+    if (i === sky.hover && i !== sky.held && sky.hoverT > 0) {
+      c.strokeStyle = '#f3cf7a'; c.lineWidth = 5; c.beginPath(); c.arc(x, y, S.HOVER_R - 6, -Math.PI / 2, -Math.PI / 2 + (sky.hoverT / S.PICK_SECONDS) * Math.PI * 2); c.stroke();
+    }
+  });
+  for (const cl of sky.clouds) c.drawImage(fogSprite, cl.x - cl.w * 0.75, cl.y - cl.h * 0.9, cl.w * 1.5, cl.h * 1.8);
+  if (sky.shooting) {
+    const sh = sky.shooting, g = c.createLinearGradient(sh.x - 160, sh.y - 25, sh.x, sh.y);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, '#ffffff');
+    c.strokeStyle = g; c.lineWidth = 5; c.beginPath(); c.moveTo(sh.x - 160, sh.y - 25); c.lineTo(sh.x, sh.y); c.stroke();
+    drawStar(c, sh.x, sh.y, 14, 1);
+  }
+  for (let i = sparkles.length - 1; i >= 0; i--) {
+    const s = sparkles[i]; s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt;
+    if (s.t > 1) { sparkles.splice(i, 1); continue; }
+    c.globalAlpha = 1 - s.t; c.fillStyle = '#fff3cf'; c.beginPath(); c.arc(s.x, s.y, 3, 0, 7); c.fill();
+  }
+  c.globalAlpha = 1;
+}
+function sparkleAt(x, y, n) {
+  for (let k = 0; k < n; k++) { const a = Math.random() * 6.28, v = 60 + Math.random() * 160; sparkles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0 }); }
+}
+// The telescope on the menu draws the Big Dipper over and over.
+function drawMenuScope(c, t) {
+  const cx = 300, cy = 265, r = 190, lv = S.LEVELS[3];
+  c.save(); c.beginPath(); c.arc(cx, cy, r, 0, 7); c.clip();
+  c.fillStyle = '#030616'; c.fillRect(cx - r, cy - r, r * 2, r * 2);
+  const xs = lv.pts.map((p) => p[0]), ys = lv.pts.map((p) => p[1]);
+  const mx = (Math.min(...xs) + Math.max(...xs)) / 2, my = (Math.min(...ys) + Math.max(...ys)) / 2, s = 0.5;
+  const P = lv.pts.map(([x, y]) => [cx + (x - mx) * s, cy + (y - my) * s]);
+  const shown = ((t * 1.2) % (lv.lines.length + 3));
+  lv.lines.forEach(([a, b], k) => {
+    if (k >= shown) return;
+    const part = Math.min(1, shown - k);
+    c.strokeStyle = '#f3cf7a'; c.lineWidth = 3; c.beginPath(); c.moveTo(...P[a]); c.lineTo(P[a][0] + (P[b][0] - P[a][0]) * part, P[a][1] + (P[b][1] - P[a][1]) * part); c.stroke();
+  });
+  P.forEach(([x, y], i) => drawStar(c, x, y, 12 + Math.sin(t * 3 + i), 1));
+  c.restore();
+  c.lineWidth = 22; c.strokeStyle = '#8a6326'; c.beginPath(); c.arc(cx, cy, r + 11, 0, 7); c.stroke();
+  c.lineWidth = 4; c.strokeStyle = '#f3cf7a'; c.beginPath(); c.arc(cx, cy, r + 22, 0, 7); c.stroke(); c.beginPath(); c.arc(cx, cy, r, 0, 7); c.stroke();
+  for (let k = 0; k < 36; k++) { const a = k * Math.PI / 18; c.beginPath(); c.moveTo(cx + Math.cos(a) * (r + 2), cy + Math.sin(a) * (r + 2)); c.lineTo(cx + Math.cos(a) * (r + 10), cy + Math.sin(a) * (r + 10)); c.stroke(); }
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present) return;
+  const x = hand.x, y = hand.y;
+  c.fillStyle = 'rgba(255,243,207,0.95)'; c.beginPath(); c.arc(x, y, 6, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(243,207,122,0.8)'; c.lineWidth = 2;
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + performance.now() / 600; c.beginPath(); c.moveTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10); c.lineTo(x + Math.cos(a) * 18, y + Math.sin(a) * 18); c.stroke(); }
+  if (dwell.el && dwell.p > 0) { c.strokeStyle = '#f3cf7a'; c.lineWidth = 6; c.beginPath(); c.arc(x, y, 30, -Math.PI / 2, -Math.PI / 2 + dwell.p * Math.PI * 2); c.stroke(); }
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Clouds and shooting stars move with the real frame time, capped so a stall on a slow device cannot skip ahead.
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  pointer = hand.present ? toStage(hand.x, hand.y) : mouse ? toStage(mouse.x, mouse.y) : null;
+  if (screen === 'play' && sky && playing && !sky.done) {
+    S.step(sky, dt, pointer);
+    const lv = S.LEVELS[sky.level];
+    for (const ev of sky.events) {
+      if (ev.type === 'line') { chime(SCALE[lineCount++ % SCALE.length], 1.2, 0.08); const [ax, ay] = lv.pts[ev.from], [bx, by] = lv.pts[ev.to]; sparkleAt((ax + bx) / 2, (ay + by) / 2, 10); }
+      else if (ev.type === 'pick') sfx('pick');
+      else if (ev.type === 'shooting') sfx('shooting');
+      else if (ev.type === 'caught') { sfx('caught'); sparkleAt(ev.x, ev.y, 24); toast('You caught a shooting star!'); }
+      else if (ev.type === 'done') { sfx('done'); celebrateAt = now; endAt = now + 2600; lv.pts.forEach(([x, y]) => sparkleAt(x, y, 6)); }
+    }
+    sky.events.length = 0;
+  }
+  if (endAt && now >= endAt) { endAt = 0; finishSky(); }
+  renderSky(now, dt);
+  updateDwell(now);
+  updateHud(now);
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>
