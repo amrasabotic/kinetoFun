@@ -421,7 +421,7 @@ function drawBoard() {
   });
 
   // Finger pointer on board
-  if (pointer.visible && pointer.x >= 0) {
+  if (pointer.visible && pointer.x >= 0 && !kfShared) {
     const px = pointer.x * SZ;
     const py = pointer.y * SZ;
     ctx.beginPath(); ctx.arc(px,py,10,0,Math.PI*2);
@@ -659,6 +659,10 @@ const FIST_RESET  = true;
 let splashHover = { active:false, startTime:0 };
 const SPLASH_HOLD_MS = 500;
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; the board follows it.
+const kfShared = window.__kfCursor;
+if (kfShared && window.__kfMenu) window.__kfMenu(true);
+
 function onResults(res) {
   const oc   = document.getElementById('cam-overlay');
   const octx = oc.getContext('2d');
@@ -690,8 +694,14 @@ function onResults(res) {
 
   // Fingertip position (index tip = lm[8]) mapped to board
   // webcam is mirrored, so flip x: boardX = 1 - lm[8].x
-  const tipX = 1 - lm[8].x;
-  const tipY = lm[8].y;
+  let tipX = 1 - lm[8].x;
+  let tipY = lm[8].y;
+  if (kfShared) {
+    // Positions are relative to the board, or to the splash panel before a game, so the screen position is converted.
+    const r = (state.gameStarted ? lc : document.getElementById('splash')).getBoundingClientRect();
+    tipX = (kfShared.x * innerWidth - r.left) / r.width;
+    tipY = (kfShared.y * innerHeight - r.top) / r.height;
+  }
 
   const gesture = detectGesture(lm);
 

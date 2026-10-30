@@ -366,6 +366,7 @@ function gameLoop() {
   }
 
   /* Cursor */
+  cursor.style.display = kfInMenu() ? 'none' : '';
   cursor.style.left = handX + 'px';
   cursor.style.top = handY + 'px';
 
@@ -461,7 +462,7 @@ function buildResultMenu(win) {
 
 /* ── MENU HOVER DETECTION ── */
 function updateMenuHover() {
-  if (fingerCount !== 1 || performance.now() < menuArmedAt) { lastHoveredBtn = -1; hoverFrames = 0; return; }
+  if ((kfInMenu() ? !kfShared.visible : fingerCount !== 1) || performance.now() < menuArmedAt) { lastHoveredBtn = -1; hoverFrames = 0; return; }
   const contRect = document.getElementById('container').getBoundingClientRect();
   let foundIdx = -1;
 
@@ -522,14 +523,29 @@ function countFingers(lm) {
   return count;
 }
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menus follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+function kfInMenu() {
+  const menu = state === STATE.MENU || state === STATE.HOWTO || state === STATE.LEVEL_SELECT || state === STATE.DEAD || state === STATE.WIN;
+  if (kfShared && menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  return menu && !!kfShared;
+}
+
 function onResults(results) {
   if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
     const lm = results.multiHandLandmarks[0];
     const idx = lm[8];
     const rawX = (1 - idx.x) * W;
     const rawY = idx.y * H;
-    handX += (rawX - handX) * 0.45;
-    handY += (rawY - handY) * 0.45;
+    if (kfInMenu()) {
+      const c = document.getElementById('container').getBoundingClientRect();
+      handX = kfShared.x * innerWidth - c.left;
+      handY = kfShared.y * innerHeight - c.top;
+    } else {
+      handX += (rawX - handX) * 0.45;
+      handY += (rawY - handY) * 0.45;
+    }
     fingerCount = countFingers(lm);
     handVisible = true;
     fingerDisplay.textContent = `Fingers: ${fingerCount}`;

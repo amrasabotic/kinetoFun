@@ -283,15 +283,15 @@ function tickDwellBtn(btn) {
   if (s.shownAt == null) s.shownAt = performance.now();
   const armed = performance.now() - s.shownAt >= DWELL_ARM_MS;
 
-  if (!hand.visible || !armed) {
+  if ((kfMenuNow ? !kfShared.visible : !hand.visible) || !armed) {
     s.dwell = Math.max(0, s.dwell - 30);
     btn.classList.remove('active');
     btn.querySelector('.fill-bar').style.width = (s.dwell / DWELL_TIME * 100) + '%';
     return;
   }
 
-  const hx = (1 - hand.x) * window.innerWidth;
-  const hy = hand.y * window.innerHeight;
+  const hx = (kfMenuNow ? kfShared.x : 1 - hand.x) * window.innerWidth;
+  const hy = (kfMenuNow ? kfShared.y : hand.y) * window.innerHeight;
   const rect = btn.getBoundingClientRect();
   const PAD = 50;
   const over = hx >= rect.left - PAD && hx <= rect.right + PAD &&
@@ -695,7 +695,7 @@ function setupMediaPipe(){
       const sy=hand.y*window.innerHeight;
       handCursorEl.style.left=sx+'px';
       handCursorEl.style.top=sy+'px';
-      handCursorEl.className='visible'+(hand.pointing?' pointing':hand.fist?' fist':'');
+      handCursorEl.className=kfMenuNow?'':'visible'+(hand.pointing?' pointing':hand.fist?' fist':'');
     } else {
       hand.visible=false; hand.pointing=false; hand.fist=false;
       handCursorEl.className='';
@@ -759,7 +759,14 @@ if (window.parent !== window) {
   initDwellBtn(exitBtn, () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*'));
 }
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menu screens follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null, kfMenuNow = false;
+
 function menuLoop(){
+  kfMenuNow = !!kfShared && (startBtn.offsetParent !== null || restartBtn.offsetParent !== null);
+  if (kfShared && kfMenuNow !== kfMenuOn) { kfMenuOn = kfMenuNow; if (window.__kfMenu) window.__kfMenu(kfMenuNow); }
+  if (kfMenuNow) handCursorEl.className = '';
   tickDwellBtn(startBtn);
   tickDwellBtn(restartBtn);
   tickDwellBtn(exitBtn);

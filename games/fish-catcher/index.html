@@ -378,14 +378,24 @@ hands.setOptions({
   minTrackingConfidence: 0.6
 });
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; the start and game-over
+// screens follow it, while fishing keeps the game's own net.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+function kfInMenu() {
+  const menu = state === 'start' || state === 'gameover';
+  if (kfShared && menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  return menu && !!kfShared;
+}
+
 hands.onResults(results => {
   if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
     const lm = results.multiHandLandmarks[0];
     // Mirror x because video is mirrored
     const raw = lm[8]; // index tip for pointing cursor
     const mirroredX = 1 - raw.x;
-    netPos.x = mirroredX * canvas.width;
-    netPos.y = raw.y * canvas.height;
+    netPos.x = kfInMenu() ? kfShared.x * canvas.width : mirroredX * canvas.width;
+    netPos.y = kfInMenu() ? kfShared.y * canvas.height : raw.y * canvas.height;
 
     gesture = detectGesture(lm);
     handSeen = true;
@@ -394,7 +404,7 @@ hands.onResults(results => {
     const fc = document.getElementById('finger-cursor');
     fc.style.left = netPos.x + 'px';
     fc.style.top  = netPos.y + 'px';
-    fc.style.display = 'block';
+    fc.style.display = kfInMenu() ? 'none' : 'block';
   } else {
     gesture = 'none';
     handSeen = false;
