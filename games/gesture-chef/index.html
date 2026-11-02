@@ -1,24 +1,775 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👨‍🍳</text></svg>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#FF6B35" />
-    <title>Gesture Chef 👨‍🍳</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap"
-      rel="stylesheet"
-    />
-    <!-- MediaPipe Hands — pinned versions, no async so globals exist before React mounts -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gesture Chef</title>
+<style>
+:root { --mint:#8fd6c4; --mint-dark:#4fa892; --cherry:#e8414f; --cherry-dark:#a82332; --cream:#fff6e4; --chrome:#d9dee3; --ink:#2a2230; --mustard:#f5b82e; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#2a2230; color:var(--ink); font-family:'Trebuchet MS','Segoe UI',sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#kitchen { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Chrome-rimmed diner buttons; a cherry ring fills while the hand rests on one. */
+.btn { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer;
+  border-radius:60px; background:var(--cherry); color:var(--cream); font-weight:bold; font-size:30px; line-height:1.15; padding:0 26px;
+  border:6px solid var(--chrome); box-shadow:0 0 0 4px #9aa3ab, 0 10px 0 var(--cherry-dark), 0 16px 18px rgba(0,0,0,0.35); overflow:hidden; }
+.btn::before { content:''; position:absolute; left:0; top:0; bottom:0; width:calc(var(--p, 0) * 100%); background:rgba(255,246,228,0.35); }
+.btn > * { position:relative; }
+.btn.alt { background:var(--mint-dark); box-shadow:0 0 0 4px #9aa3ab, 0 10px 0 #2f7563, 0 16px 18px rgba(0,0,0,0.35); }
+.btn.hot { filter:brightness(1.12); }
+.btn[hidden] { display:none; }
+.btn small { font-size:20px; font-weight:normal; }
+
+#menu .sign { position:absolute; left:60px; top:40px; width:600px; height:300px; border-radius:40px; background:var(--cherry); border:10px solid var(--chrome);
+  box-shadow:0 0 0 6px #9aa3ab, 0 16px 26px rgba(0,0,0,0.4); text-align:center; padding-top:26px; color:var(--cream); }
+#menu .sign h1 { font-size:84px; font-style:italic; letter-spacing:1px; text-shadow:0 0 18px #ffd0d6, 0 5px 0 var(--cherry-dark); }
+#menu .sign .truck { display:inline-block; margin-top:6px; font-size:34px; font-weight:bold; background:var(--mustard); color:var(--ink); padding:6px 26px; border-radius:30px; letter-spacing:4px; }
+#menu .sign p { font-size:22px; margin-top:14px; padding:0 30px; }
+#menu .board { position:absolute; left:720px; top:40px; width:500px; height:640px; background:#1f1a24; border-radius:20px; border:10px solid #7a5a3a; padding:24px 30px; color:var(--cream); }
+#menu .board h2 { font-size:34px; text-align:center; color:var(--mustard); letter-spacing:3px; margin-bottom:12px; }
+#menu .board .row { display:flex; gap:16px; align-items:center; padding:12px 0; border-bottom:2px dashed rgba(255,246,228,0.25); font-size:24px; }
+#menu .board .row canvas { width:84px; height:84px; flex:none; }
+#menu .board .row b { display:block; font-size:26px; color:var(--mint); }
+#menu .go { left:80px; top:400px; width:300px; height:130px; font-size:44px; }
+#menu .snd { left:410px; top:415px; width:230px; height:100px; font-size:26px; }
+#menu .exit { left:120px; top:570px; width:340px; height:90px; font-size:26px; }
+
+#days h2 { position:absolute; left:50%; top:24px; transform:translateX(-50%); font-size:46px; color:var(--cream); font-style:italic; text-shadow:0 4px 0 var(--cherry-dark); }
+#daylist { position:absolute; left:80px; top:110px; width:1120px; display:grid; grid-template-columns:repeat(5, 1fr); gap:24px 22px; }
+#daylist .btn { position:relative; height:200px; border-radius:30px; font-size:24px; padding:10px; }
+#daylist .btn .n { font-size:46px; }
+#daylist .btn.locked { background:#7d7480; cursor:default; }
+#days .back { left:60px; top:600px; width:240px; height:90px; font-size:28px; }
+.stars { display:flex; gap:4px; justify-content:center; margin-top:6px; }
+.stars svg { width:30px; height:30px; }
+
+#hud { position:absolute; right:16px; top:12px; width:250px; background:var(--cream); border-radius:20px; border:5px solid var(--chrome); padding:8px 14px; text-align:center; pointer-events:none; }
+#hud b { font-size:24px; display:block; }
+#hud .coins { font-size:34px; font-weight:bold; color:var(--cherry); }
+#hud .bar { height:12px; border-radius:6px; background:#e2d8c6; margin-top:6px; overflow:hidden; }
+#hud .bar i { display:block; height:100%; background:var(--mint-dark); width:0; }
+#hud span { font-size:20px; }
+#tip { position:absolute; left:50%; top:282px; transform:translateX(-50%); font-size:24px; font-weight:bold; background:var(--cream); padding:6px 20px; border-radius:20px; border:4px solid var(--chrome); white-space:nowrap; pointer-events:none; }
+#tip[hidden] { display:none; }
+#handstate { position:absolute; left:16px; top:172px; width:200px; text-align:center; font-size:22px; font-weight:bold; padding:6px; border-radius:14px; background:var(--cream); border:4px solid var(--chrome); pointer-events:none; }
+#handstate.closed { background:var(--mustard); }
+
+#intro { position:absolute; inset:0; background:rgba(42,34,48,0.6); }
+#intro[hidden] { display:none; }
+#intro .card { position:absolute; left:240px; top:50px; width:620px; padding:26px 32px; background:var(--cream); border-radius:28px; border:8px solid var(--chrome); box-shadow:0 0 0 4px #9aa3ab; }
+#intro h2 { font-size:42px; color:var(--cherry); font-style:italic; }
+#intro p { font-size:23px; line-height:1.35; margin-top:8px; }
+#intro .new { margin-top:10px; font-size:23px; font-weight:bold; color:var(--mint-dark); }
+#checks { margin-top:14px; display:flex; flex-direction:column; gap:10px; }
+.check { display:flex; align-items:center; gap:14px; font-size:24px; }
+.check i { width:38px; height:38px; border-radius:50%; border:4px solid var(--mint-dark); flex:none; display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:bold; }
+.check.ok i { background:var(--mint-dark); color:#fff; }
+#intro .start { left:900px; top:160px; width:300px; height:130px; font-size:42px; }
+#intro .back { left:930px; top:340px; width:240px; height:90px; font-size:26px; }
+
+#result .card { position:absolute; left:300px; top:40px; width:680px; padding:26px 34px; text-align:center; background:var(--cream); border-radius:30px; border:8px solid var(--chrome); box-shadow:0 0 0 4px #9aa3ab; }
+#result h2 { font-size:52px; color:var(--cherry); font-style:italic; }
+#result .stars svg { width:64px; height:64px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:6px 40px; font-size:25px; justify-content:center; margin-top:10px; text-align:left; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#rs-buttons .btn { top:520px; height:110px; }
+#rs-buttons .b0 { left:200px; width:320px; font-size:34px; } #rs-buttons .b1 { left:550px; width:240px; font-size:28px; } #rs-buttons .b2 { left:820px; width:260px; font-size:28px; }
+
+#camwrap { position:absolute; left:500px; top:556px; width:200px; height:150px; border-radius:16px; border:5px solid var(--chrome); overflow:hidden; background:#000; }
+#stage[data-screen=play] #camwrap { left:16px; top:12px; }
+#cam { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+#bones { position:absolute; inset:0; width:100%; height:100%; }
+#hint { position:absolute; left:50%; top:330px; transform:translateX(-50%); font-size:26px; padding:10px 24px; border-radius:30px; background:var(--cream); border:4px solid var(--chrome); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; left:50%; top:240px; transform:translateX(-50%); font-size:26px; font-weight:bold; padding:10px 22px; border-radius:18px; background:var(--cherry); color:var(--cream);
+  opacity:0; transition:opacity 0.25s; pointer-events:none; z-index:6; white-space:nowrap; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="kitchen" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div class="sign"><h1>Gesture Chef</h1><div class="truck">BURGER TRUCK</div><p>Grill, stack and serve burgers before your customers run out of patience.</p></div>
+    <div class="board">
+      <h2>HOW TO COOK</h2>
+      <div class="row"><canvas width="84" height="84" data-icon="grab"></canvas><div><b>Close your hand: grab</b>Over a box, the grill or the plate.</div></div>
+      <div class="row"><canvas width="84" height="84" data-icon="drop"></canvas><div><b>Open your hand: drop</b>Over the grill, the plate or a customer.</div></div>
+      <div class="row"><canvas width="84" height="84" data-icon="grill"></canvas><div><b>Grill the patties</b>Take them off when brown, before they burn!</div></div>
+      <div class="row"><canvas width="84" height="84" data-icon="burger"></canvas><div><b>Stack and serve</b>Bun, fillings, top bun. Carry the plate to the customer.</div></div>
+    </div>
+    <div class="btn go" data-dwell="play">Open shop</div>
+    <div class="btn alt snd" data-dwell="sound" id="btn-sound">Sound on</div>
+    <div class="btn alt exit" data-dwell="exit" id="btn-exit" hidden>Back to games</div>
+  </section>
+
+  <section class="screen" id="days">
+    <h2>Pick a day</h2>
+    <div id="daylist"></div>
+    <div class="btn alt back" data-dwell="menu">Menu</div>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="hud"><b id="hd-day"></b><div class="coins" id="hd-coins">0</div><span id="hd-goal"></span><div class="bar"><i id="hd-bar"></i></div><span id="hd-time"></span></div>
+    <div id="tip" hidden></div>
+    <div id="handstate">Hand open</div>
+    <div id="intro">
+      <div class="card">
+        <h2 id="in-title"></h2>
+        <p id="in-text"></p>
+        <div class="new" id="in-new"></div>
+        <div id="checks">
+          <div class="check" id="ck-close"><i></i>Close your hand into a fist: the hand sign turns yellow</div>
+          <div class="check" id="ck-open"><i></i>Open it again: the sign says Hand open</div>
+        </div>
+      </div>
+      <div class="btn start" data-dwell="begin">Start</div>
+      <div class="btn alt back" data-dwell="days">Days</div>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="card"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <div id="camwrap"><video id="cam" autoplay muted playsinline></video><canvas id="bones" width="200" height="150"></canvas></div>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="chef.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const C = window.Chef;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), kitchen = $('kitchen'), ink = $('ink'), video = $('cam'), bones = $('bones');
+const kctx = kitchen.getContext('2d'), ictx = ink.getContext('2d'), bctx = bones.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+const toScreen = (x, y) => ({ x: x * K + OX, y: y * K + OY });
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'gesture-chef-truck-v1';
+const N = C.DAYS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') return { ...base, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)), sound: s.sound !== false,
+      stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0) };
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every day played since the game was opened; reported once, when the player leaves or finishes the last day.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null, sizzle = null;
+function audio() {
+  if (!progress.sound) return null;
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { return null; }
+  return actx;
+}
+function tone(f, dur, type = 'sine', vol = 0.1, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+// Grill sizzle runs while anything is on the heat; only its volume changes.
+function sizzleLevel(on) {
+  const a = on ? audio() : null;
+  if (!sizzle) {
+    if (!a) return;
+    const buf = a.createBuffer(1, a.sampleRate, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (Math.random() < 0.3 ? 1 : 0.3);
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = buf; s.loop = true; f.type = 'highpass'; f.frequency.value = 3000; g.gain.value = 0;
+    s.connect(f).connect(g).connect(a.destination); s.start();
+    sizzle = { g, a };
+  }
+  sizzle.g.gain.setTargetAtTime(on && progress.sound ? 0.04 : 0, sizzle.a.currentTime, 0.2);
+}
+const SFX = {
+  select() { tone(660, 0.1, 'triangle'); tone(990, 0.12, 'triangle', 0.08, 0, 0.07); },
+  grab() { tone(440, 0.07, 'triangle', 0.07, 560); },
+  drop() { tone(520, 0.08, 'triangle', 0.07, 380); },
+  ding() { tone(1568, 0.5, 'sine', 0.08); tone(2093, 0.4, 'sine', 0.05, 0, 0.05); },
+  burnt() { tone(200, 0.4, 'sawtooth', 0.06, 120); },
+  nope() { tone(220, 0.15, 'square', 0.05); tone(180, 0.2, 'square', 0.05, 0, 0.12); },
+  coins() { [988, 1319, 1568].forEach((f, i) => tone(f, 0.12, 'square', 0.04, 0, i * 0.07)); },
+  bell() { tone(1319, 0.3, 'sine', 0.07); tone(1760, 0.3, 'sine', 0.05, 0, 0.1); },
+  sad() { tone(330, 0.3, 'triangle', 0.07, 220); },
+  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, 0, i * 0.12)); },
+};
+function sfx(n) { try { SFX[n](); } catch (e) { /* audio is optional */ } }
+
+// ---------- food art ----------
+const LAYER_H = { bun: 16, top: 30, patty: 16, burnt: 16, cheese: 7, lettuce: 9, tomato: 9, onion: 7, bacon: 8 };
+function drawItem(c, kind, x, y, s, cook) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  if (kind === 'bun') { c.fillStyle = '#e3a857'; c.beginPath(); c.roundRect(-44, -10, 88, 18, 8); c.fill(); c.fillStyle = '#f2cf8f'; c.fillRect(-40, -10, 80, 4); }
+  else if (kind === 'top') {
+    c.fillStyle = '#e3a857'; c.beginPath(); c.moveTo(-46, 6); c.quadraticCurveTo(-44, -30, 0, -30); c.quadraticCurveTo(44, -30, 46, 6); c.closePath(); c.fill();
+    c.fillStyle = '#fff3d0'; for (const [a, b] of [[-20, -16], [0, -22], [18, -14], [-8, -8], [28, -4], [-30, -4]]) { c.beginPath(); c.ellipse(a, b, 4, 2, 0.4, 0, 7); c.fill(); }
+  } else if (kind === 'patty' || kind === 'burnt') {
+    const st = kind === 'burnt' ? 'burnt' : cook || 'done';
+    c.fillStyle = st === 'raw' ? '#e98a8a' : st === 'burnt' ? '#2a1d18' : '#7a4426';
+    c.beginPath(); c.roundRect(-46, -9, 92, 18, 9); c.fill();
+    if (st !== 'raw') { c.strokeStyle = st === 'burnt' ? '#111' : '#5a2c14'; c.lineWidth = 3; for (let k = -30; k <= 30; k += 15) { c.beginPath(); c.moveTo(k - 6, -3); c.lineTo(k + 6, 3); c.stroke(); } }
+    if (st === 'burnt') { c.fillStyle = 'rgba(120,120,120,0.6)'; c.beginPath(); c.arc(-10, -22, 8, 0, 7); c.arc(6, -30, 10, 0, 7); c.fill(); }
+  } else if (kind === 'cheese') { c.fillStyle = '#ffcc33'; c.beginPath(); c.moveTo(-44, -4); c.lineTo(44, -4); c.lineTo(44, 3); c.lineTo(24, 3); c.lineTo(18, 12); c.lineTo(12, 3); c.lineTo(-44, 3); c.closePath(); c.fill(); }
+  else if (kind === 'lettuce') { c.fillStyle = '#5cbf4a'; c.beginPath(); c.moveTo(-48, 0); for (let k = -48; k <= 48; k += 12) c.quadraticCurveTo(k + 6, -10, k + 12, 0); c.lineTo(46, 6); c.lineTo(-46, 6); c.fill(); }
+  else if (kind === 'tomato') { c.fillStyle = '#e8414f'; for (const dx of [-24, 24]) { c.beginPath(); c.ellipse(dx, 0, 22, 6, 0, 0, 7); c.fill(); } c.fillStyle = '#ffb3a8'; for (const dx of [-24, 24]) { c.beginPath(); c.ellipse(dx, -1, 12, 2.5, 0, 0, 7); c.fill(); } }
+  else if (kind === 'onion') { c.strokeStyle = '#c99adf'; c.lineWidth = 4; for (const dx of [-26, 0, 26]) { c.beginPath(); c.ellipse(dx, 0, 14, 4, 0, 0, 7); c.stroke(); } }
+  else if (kind === 'bacon') { c.strokeStyle = '#b83a3a'; c.lineWidth = 8; c.beginPath(); c.moveTo(-46, 0); for (let k = -46; k <= 46; k += 23) c.quadraticCurveTo(k + 11, -9, k + 23, 0); c.stroke(); c.strokeStyle = '#f2b5a5'; c.lineWidth = 2; c.stroke(); }
+  else if (kind === 'potato') { c.fillStyle = '#c99a5b'; c.beginPath(); c.ellipse(0, 0, 34, 24, 0.3, 0, 7); c.fill(); c.fillStyle = '#8f6a3a'; for (const [a, b] of [[-10, -6], [12, 4], [2, -12]]) { c.beginPath(); c.arc(a, b, 3, 0, 7); c.fill(); } }
+  else if (kind === 'fries') {
+    const st = cook || 'done';
+    c.fillStyle = st === 'raw' ? '#fff0b8' : st === 'burnt' ? '#5a3a1a' : '#ffd23f';
+    for (let k = -3; k <= 3; k++) c.fillRect(k * 8 - 3, -36 + Math.abs(k) * 3, 7, 34);
+    c.fillStyle = '#e8414f'; c.beginPath(); c.moveTo(-30, -10); c.lineTo(30, -10); c.lineTo(24, 26); c.lineTo(-24, 26); c.fill();
+    c.fillStyle = '#fff6e4'; c.beginPath(); c.arc(0, 8, 8, 0, 7); c.fill();
+  } else if (kind === 'cup' || kind === 'drink') {
+    c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(-24, -30); c.lineTo(24, -30); c.lineTo(18, 32); c.lineTo(-18, 32); c.fill();
+    c.strokeStyle = '#9aa3ab'; c.lineWidth = 3; c.stroke();
+    if (kind === 'drink') { c.fillStyle = '#e8414f'; c.fillRect(-21, -18, 42, 8); c.strokeStyle = '#4fa892'; c.lineWidth = 5; c.beginPath(); c.moveTo(6, -30); c.lineTo(14, -52); c.stroke(); c.fillStyle = '#f2f2f2'; c.beginPath(); c.ellipse(0, -31, 26, 6, 0, 0, 7); c.fill(); }
+  }
+  c.restore();
+}
+function drawStack(c, stack, x, baseY, s) {
+  let y = baseY;
+  for (const k of stack) { const h = LAYER_H[k] * s; drawItem(c, k, x, y - h / 2, s); y -= h; }
+}
+function iconCanvas(cv, kind) {
+  const c = cv.getContext('2d');
+  c.fillStyle = '#2f2836'; c.beginPath(); c.arc(42, 42, 40, 0, 7); c.fill();
+  if (kind === 'grab') drawHand(c, 42, 44, 1, true);
+  else if (kind === 'drop') drawHand(c, 42, 46, 1, false);
+  else if (kind === 'grill') { c.strokeStyle = '#555'; c.lineWidth = 4; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(14, 42 + k * 9); c.lineTo(70, 42 + k * 9); c.stroke(); } drawItem(c, 'patty', 42, 42, 0.5, 'done'); }
+  else drawStack(c, ['bun', 'patty', 'cheese', 'lettuce', 'top'], 42, 66, 0.55);
+}
+function drawHand(c, x, y, s, closed) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  c.fillStyle = closed ? '#f5b82e' : '#fff6e4'; c.strokeStyle = '#2a2230'; c.lineWidth = 3;
+  if (closed) {
+    c.beginPath(); c.roundRect(-20, -14, 40, 32, 12); c.fill(); c.stroke();
+    for (let k = -1; k <= 1; k++) { c.beginPath(); c.moveTo(k * 10, -14); c.lineTo(k * 10, -2); c.stroke(); }
+    c.beginPath(); c.roundRect(-26, -4, 12, 16, 6); c.fill(); c.stroke();
+  } else {
+    c.beginPath(); c.roundRect(-18, -6, 36, 28, 10); c.fill(); c.stroke();
+    for (const [dx, h] of [[-13, 24], [-4, 30], [5, 28], [14, 22]]) { c.beginPath(); c.roundRect(dx - 4, -6 - h, 8, h + 6, 4); c.fill(); c.stroke(); }
+    c.beginPath(); c.roundRect(-30, 0, 14, 8, 4); c.fill(); c.stroke();
+  }
+  c.restore();
+}
+document.querySelectorAll('canvas[data-icon]').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+
+// ---------- kitchen layout ----------
+const SEAT_X = [380, 640, 900];
+const BIN_ORDER = ['bun', 'top', 'patty', 'cheese', 'lettuce', 'tomato', 'onion', 'bacon', 'potato', 'cup'];
+const BIN_NAME = { bun: 'Bottom bun', top: 'Top bun', patty: 'Patties', cheese: 'Cheese', lettuce: 'Lettuce', tomato: 'Tomato', onion: 'Onion', bacon: 'Bacon', potato: 'Potatoes', cup: 'Cups' };
+const STATIONS = [];
+function layout() {
+  STATIONS.length = 0;
+  SEAT_X.forEach((x, i) => STATIONS.push({ id: `seat:${i}`, x: x - 120, y: 40, w: 240, h: 240 }));
+  for (let i = 0; i < C.GRILLS; i++) STATIONS.push({ id: `grill:${i}`, x: 40 + i * 120, y: 330, w: 110, h: 130 });
+  STATIONS.push({ id: 'plate', x: 440, y: 320, w: 260, h: 150 });
+  STATIONS.push({ id: 'fryer', x: 730, y: 330, w: 150, h: 130 });
+  STATIONS.push({ id: 'drink', x: 900, y: 330, w: 150, h: 130 });
+  STATIONS.push({ id: 'trash', x: 1080, y: 330, w: 170, h: 130 });
+  BIN_ORDER.forEach((k, i) => STATIONS.push({ id: `bin:${k}`, x: 22 + i * 124, y: 520, w: 116, h: 180 }));
+}
+layout();
+function stationAt(p, pad = 10) { return STATIONS.find((s) => p.x >= s.x - pad && p.x <= s.x + s.w + pad && p.y >= s.y - pad && p.y <= s.y + s.h + pad) || null; }
+function stationUsable(id) {
+  if (!g) return false;
+  if (id === 'fryer') return g.day.sides.includes('fries');
+  if (id === 'drink') return g.day.sides.includes('drink');
+  if (id.startsWith('bin:')) return C.available(g).includes(id.slice(4));
+  return true;
+}
+
+const SKIN = ['#f2c8a0', '#d9a06f', '#a8724a', '#7a4e2e', '#f5d5b8', '#c68b5e'];
+const SHIRT = ['#4fa892', '#e8414f', '#5b7fd6', '#f5b82e', '#9a6ad6', '#ff8a5c'];
+const HAIR = ['#3a2a1a', '#d9a03a', '#1a1a1a', '#8a3a1a', '#5a4a3a', '#2a2a5a'];
+function drawCustomer(c, x, cust, t) {
+  const mood = 1 - cust.wait / cust.patience;
+  const bob = Math.sin(t * 3 + x) * 2 + 22;
+  c.fillStyle = SHIRT[cust.look]; c.beginPath(); c.roundRect(x - 50, 200 + bob, 100, 70, 30); c.fill();
+  c.fillStyle = SKIN[cust.look]; c.beginPath(); c.arc(x, 170 + bob, 40, 0, 7); c.fill();
+  c.fillStyle = HAIR[cust.look]; c.beginPath(); c.arc(x, 158 + bob, 41, Math.PI * 1.05, Math.PI * 1.95); c.fill();
+  c.fillStyle = '#2a2230'; c.beginPath(); c.arc(x - 14, 168 + bob, 4, 0, 7); c.arc(x + 14, 168 + bob, 4, 0, 7); c.fill();
+  c.strokeStyle = '#2a2230'; c.lineWidth = 3; c.beginPath();
+  const curve = mood > 0.6 ? 8 : mood > 0.3 ? 0 : -8;
+  c.moveTo(x - 12, 186 + bob); c.quadraticCurveTo(x, 186 + bob + curve, x + 12, 186 + bob); c.stroke();
+  if (mood < 0.3) { c.strokeStyle = '#e8414f'; c.beginPath(); c.moveTo(x - 22, 154 + bob); c.lineTo(x - 8, 158 + bob); c.moveTo(x + 22, 154 + bob); c.lineTo(x + 8, 158 + bob); c.stroke(); }
+  // Order ticket above the customer.
+  const o = cust.order, tw = 200, th = 112, tx = x - tw / 2, ty = 14;
+  c.fillStyle = '#fffdf6'; c.strokeStyle = '#c9c1b0'; c.lineWidth = 2; c.beginPath(); c.roundRect(tx, ty, tw, th, 10); c.fill(); c.stroke();
+  c.fillStyle = '#e8414f'; c.fillRect(tx, ty, tw, 8);
+  if (cust.burgerDone) { c.globalAlpha = 0.35; }
+  drawStack(c, o.burger, tx + 64, ty + 100, 0.7);
+  c.globalAlpha = 1;
+  if (cust.burgerDone) tick(c, tx + 64, ty + 62);
+  o.sides.forEach((sd, k) => {
+    const sx = tx + 150, sy = ty + 40 + k * 46;
+    drawItem(c, sd, sx, sy + 6, 0.55, 'done');
+    if (cust.sidesGot.includes(sd)) tick(c, sx, sy);
+  });
+  // Patience bar under the ticket.
+  c.fillStyle = '#e2d8c6'; c.fillRect(tx, ty + th + 6, tw, 10);
+  c.fillStyle = mood > 0.6 ? '#4fa892' : mood > 0.3 ? '#f5b82e' : '#e8414f'; c.fillRect(tx, ty + th + 6, tw * Math.max(0, mood), 10);
+}
+function tick(c, x, y) { c.strokeStyle = '#2f9a4a'; c.lineWidth = 8; c.lineCap = 'round'; c.beginPath(); c.moveTo(x - 14, y); c.lineTo(x - 3, y + 12); c.lineTo(x + 18, y - 14); c.stroke(); c.lineCap = 'butt'; }
+
+function renderKitchen(now) {
+  const c = kctx, t = now / 1000;
+  // Wall, window and counter.
+  c.fillStyle = '#8fd6c4'; c.fillRect(0, 0, 1280, 300);
+  c.fillStyle = '#bfe9dd'; c.fillRect(240, 0, 800, 300);
+  c.fillStyle = '#d9dee3'; c.fillRect(230, 0, 10, 300); c.fillRect(1040, 0, 10, 300);
+  for (let x = 0; x < 1280; x += 40) { c.fillStyle = (x / 40) % 2 ? '#e8414f' : '#fff6e4'; c.fillRect(x, 290, 40, 12); }
+  c.fillStyle = '#c7ced5'; c.fillRect(0, 302, 1280, 190);
+  c.fillStyle = '#e4e8ec'; c.fillRect(0, 302, 1280, 10);
+  for (let y = 492; y < 720; y += 38) for (let x = 0; x < 1280; x += 38) { c.fillStyle = ((x + y) / 38) % 2 ? '#2a2230' : '#fff6e4'; c.fillRect(x, y, 38, 38); }
+  c.fillStyle = 'rgba(42,34,48,0.55)'; c.fillRect(0, 492, 1280, 228);
+  if (!g) {
+    drawStack(c, ['bun', 'patty', 'cheese', 'lettuce', 'tomato', 'top'], 640, 470 + Math.sin(t * 2) * 4, 1.6);
+    return;
+  }
+  const hover = playing && cursor ? stationAt(cursor) : null;
+  const hid = hover ? hover.id : null;
+  g.seats.forEach((cust, i) => { if (cust) drawCustomer(c, SEAT_X[i], cust, t); });
+  for (const s of STATIONS) {
+    const usable = stationUsable(s.id);
+    const [type, arg] = s.id.split(':');
+    if (type === 'seat') { if (hid === s.id && g.held) outline(c, s, dropOk(s.id)); continue; }
+    c.save();
+    if (!usable) c.globalAlpha = 0.35;
+    if (type === 'grill') {
+      c.fillStyle = '#3a3a40'; c.beginPath(); c.roundRect(s.x, s.y, s.w, s.h, 12); c.fill();
+      c.strokeStyle = '#6a6a72'; c.lineWidth = 4; for (let k = 1; k < 6; k++) { c.beginPath(); c.moveTo(s.x + 10, s.y + k * 21); c.lineTo(s.x + s.w - 10, s.y + k * 21); c.stroke(); }
+      const p = g.grill[+arg];
+      if (p) {
+        const st = C.cookState(p.cook, C.COOK.patty);
+        c.fillStyle = 'rgba(255,140,40,0.35)'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.y + s.h / 2 + 10, 50, 20, 0, 0, 7); c.fill();
+        drawItem(c, 'patty', s.x + s.w / 2, s.y + s.h / 2, 1, st);
+        timerRing(c, s.x + s.w - 18, s.y + 18, p.cook, C.COOK.patty);
+      }
+    } else if (type === 'plate') {
+      c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.y + s.h - 26, 120, 26, 0, 0, 7); c.fill();
+      c.strokeStyle = '#c9c1b0'; c.lineWidth = 3; c.stroke();
+      drawStack(c, g.plate, s.x + s.w / 2, s.y + s.h - 28, 1.15);
+      if (!g.plate.length) label(c, 'Plate', s.x + s.w / 2, s.y + s.h - 60);
+    } else if (type === 'fryer') {
+      c.fillStyle = '#9aa3ab'; c.beginPath(); c.roundRect(s.x, s.y + 30, s.w, s.h - 30, 10); c.fill();
+      c.fillStyle = '#e8b04a'; c.fillRect(s.x + 12, s.y + 40, s.w - 24, 30);
+      if (g.fryer) { const st = C.cookState(g.fryer.cook, C.COOK.fries); drawItem(c, 'fries', s.x + s.w / 2, s.y + 60, 1, st); timerRing(c, s.x + s.w - 18, s.y + 18, g.fryer.cook, C.COOK.fries); }
+      label(c, 'Fryer', s.x + s.w / 2, s.y + s.h - 12);
+    } else if (type === 'drink') {
+      c.fillStyle = '#e8414f'; c.beginPath(); c.roundRect(s.x + 10, s.y, s.w - 20, s.h, 14); c.fill();
+      c.fillStyle = '#d9dee3'; c.fillRect(s.x + s.w / 2 - 8, s.y + 20, 16, 20);
+      if (g.drink) {
+        drawItem(c, g.drink.fill >= C.DRINK_FILL ? 'drink' : 'cup', s.x + s.w / 2, s.y + 88, 0.8);
+        if (g.drink.fill < C.DRINK_FILL) { c.fillStyle = '#7a3a1a'; c.fillRect(s.x + s.w / 2 - 3, s.y + 40, 6, 30); }
+      }
+      label(c, 'Soda', s.x + s.w / 2, s.y + s.h - 6, '#fff6e4');
+    } else if (type === 'trash') {
+      c.fillStyle = '#5a6068'; c.beginPath(); c.moveTo(s.x + 30, s.y + 20); c.lineTo(s.x + s.w - 30, s.y + 20); c.lineTo(s.x + s.w - 44, s.y + s.h); c.lineTo(s.x + 44, s.y + s.h); c.fill();
+      c.fillStyle = '#7a8088'; c.fillRect(s.x + 22, s.y + 8, s.w - 44, 16);
+      label(c, 'Bin', s.x + s.w / 2, s.y + 80, '#fff6e4');
+    } else if (type === 'bin') {
+      c.fillStyle = '#fff6e4'; c.beginPath(); c.roundRect(s.x, s.y, s.w, s.h, 14); c.fill();
+      c.fillStyle = '#4fa892'; c.fillRect(s.x, s.y + s.h - 40, s.w, 40);
+      if (usable) {
+        for (let k = 0; k < 3; k++) drawItem(c, arg, s.x + s.w / 2 + (k - 1) * 5, s.y + 90 - k * 16, 0.95, 'raw');
+      } else label(c, 'Soon', s.x + s.w / 2, s.y + 80);
+      label(c, BIN_NAME[arg], s.x + s.w / 2, s.y + s.h - 12, '#fff6e4', 19);
+    }
+    c.restore();
+    if (hid === s.id && usable) outline(c, s, g.held ? dropOk(s.id) : grabOk(s.id));
+  }
+  // Floating coin texts.
+  for (const f of floats) {
+    const k = (now - f.at) / 1400;
+    c.globalAlpha = Math.max(0, 1 - k); c.fillStyle = f.color; c.font = 'bold 34px Trebuchet MS, sans-serif'; c.textAlign = 'center';
+    c.fillText(f.text, f.x, f.y - k * 60); c.globalAlpha = 1;
+  }
+}
+function label(c, text, x, y, color = '#2a2230', size = 22) { c.fillStyle = color; c.font = `bold ${size}px Trebuchet MS, sans-serif`; c.textAlign = 'center'; c.fillText(text, x, y); }
+function outline(c, s, ok) { c.strokeStyle = ok ? '#f5b82e' : 'rgba(232,65,79,0.8)'; c.lineWidth = 6; c.setLineDash(ok ? [] : [10, 8]); c.beginPath(); c.roundRect(s.x - 6, s.y - 6, s.w + 12, s.h + 12, 16); c.stroke(); c.setLineDash([]); }
+function timerRing(c, x, y, cook, [done, burnt]) {
+  const st = cook >= burnt ? 'burnt' : cook >= done ? 'done' : 'raw';
+  const p = st === 'raw' ? cook / done : Math.min(1, (cook - done) / (burnt - done));
+  c.fillStyle = '#fff6e4'; c.beginPath(); c.arc(x, y, 15, 0, 7); c.fill();
+  c.strokeStyle = st === 'raw' ? '#4fa892' : st === 'done' ? '#e8414f' : '#2a2230'; c.lineWidth = 5;
+  c.beginPath(); c.arc(x, y, 11, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); c.stroke();
+  if (st === 'done') { c.fillStyle = '#2f9a4a'; c.beginPath(); c.arc(x, y, 5, 0, 7); c.fill(); }
+}
+function grabOk(id) {
+  const [type, arg] = id.split(':');
+  if (type === 'bin') return C.available(g).includes(arg);
+  if (type === 'grill') return !!g.grill[+arg];
+  if (type === 'fryer') return !!g.fryer;
+  if (type === 'drink') return !!g.drink;
+  if (type === 'plate') return g.plate.length > 0;
+  return false;
+}
+// A dry run on a copy, so the outline shows whether letting go here would work.
+function dropOk(id) {
+  const copy = JSON.parse(JSON.stringify({ ...g, random: null, events: [] }));
+  copy.random = Math.random; copy.events = [];
+  const r = C.drop(copy, id);
+  return ['trash', 'grill', 'fryer', 'drink', 'plate', 'stack', 'served'].includes(r);
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'days', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name; stage.dataset.screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = progress.sound ? 'Sound on' : 'Sound off'; }
+updateSoundLabel();
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#f5b82e' : 'rgba(0,0,0,0.15)'}" stroke="${on ? '#a87a10' : 'rgba(0,0,0,0.2)'}"/></svg>`;
+}
+function openDays() {
+  g = null; playing = false;
+  $('daylist').innerHTML = C.DAYS.map((d, i) => {
+    const locked = i + 1 > progress.unlocked;
+    return `<div class="btn${locked ? ' locked' : ''}"${locked ? '' : ` data-dwell="day" data-day="${i}"`}><span class="n">${i + 1}</span>${locked ? 'Locked' : d.name}<div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>`;
+  }).join('');
+  show('days');
+}
+
+// ---------- a day in the truck ----------
+let g = null, playing = false, cursor = null, floats = [];
+const checks = { close: false, open: false };
+const NEW_THING = ['Grill patties and serve plain burgers.', 'New: cheese.', 'New: lettuce. Up to two customers at once.', 'New: fries! Put potatoes in the fryer.',
+  'New: tomato.', 'New: fizzy drinks! Put a cup under the soda tap.', 'New: double burgers with two patties. Three customers at once!', 'New: onion.', 'New: bacon.', 'The biggest rush of all!'];
+function openDay(i) {
+  g = C.createDay(i); playing = false; floats = [];
+  checks.close = false; checks.open = false;
+  const d = C.DAYS[i];
+  $('hd-day').textContent = `Day ${i + 1}: ${d.name}`;
+  $('in-title').textContent = `Day ${i + 1}: ${d.name}`;
+  $('in-text').textContent = `Earn ${d.goal} coins before closing time. Read each ticket, grill the patties, stack the burger on the plate (bottom bun first, top bun last) and carry the plate to the customer.`;
+  $('in-new').textContent = NEW_THING[i];
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishDay() {
+  const i = g.level, r = C.result(g), last = i === N - 1;
+  playing = false; sizzleLevel(false);
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.coins);
+  if (r.stars >= 1) progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  $('rs-title').textContent = r.stars === 3 ? 'Best burgers in town!' : r.stars === 2 ? 'Great day!' : r.stars === 1 ? 'Shop closed!' : 'Keep practising!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Coins', `${r.coins} / ${r.goal}`], ['Customers served', r.served], ['Happy tips', r.perfect], ['Walked out', r.lost], ['Burnt food', r.burnt]].map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const canNext = !last && progress.unlocked > i + 1;
+  $('rs-buttons').innerHTML = (canNext ? '<div class="btn b0" data-dwell="next">Next day</div>' : '<div class="btn b0" data-dwell="again">Try again</div>')
+    + (canNext ? '<div class="btn alt b1" data-dwell="again">Replay</div>' : '') + '<div class="btn alt b2" data-dwell="days">All days</div>';
+  show('result');
+  sfx('done');
+  if (last && r.stars >= 1) reportScore();
+}
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openDays(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (!progress.sound) sizzleLevel(false); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': g = null; show('menu'); break;
+    case 'days': openDays(); break;
+    case 'day': openDay(Number(el.dataset.day)); break;
+    case 'begin': $('intro').hidden = true; playing = true; resetDwell(); break;
+    case 'next': openDay(Math.min(N - 1, g.level + 1)); break;
+    case 'again': openDay(g.level); break;
+  }
+}
+// The platform's Back button: out of a day to the day list, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { sizzleLevel(false); openDays(); return true; }
+  if (screen === 'days') { show('menu'); return true; }
+  return reportScore();
+};
+
+const WHY = {
+  raw: 'Cook it first!', 'not-burger': 'That does not go in a burger', closed: 'The top bun is on. Serve it, or bin it',
+  wrong: 'Not my order! Check the ticket', 'not-wanted': 'They did not order that', 'has-burger': 'They already have their burger',
+  burnt: 'Burnt! Put it in the bin', 'no-one': 'Nobody is there yet', nowhere: 'Put back. Let go over a station',
+};
+let toastTimer = 0;
+function toast(text, good) {
+  const el = $('toast'); el.textContent = text; el.style.background = good ? '#4fa892' : '#e8414f'; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+function tryGrab() {
+  if (!playing || !cursor || g.held) return;
+  const s = stationAt(cursor);
+  if (s && stationUsable(s.id) && C.grab(g, s.id)) sfx('grab');
+}
+function tryDrop() {
+  if (!playing || !g.held) return;
+  const s = cursor ? stationAt(cursor) : null;
+  const r = C.drop(g, s ? s.id : null);
+  if (['trash', 'grill', 'fryer', 'drink', 'plate', 'stack', 'served'].includes(r)) sfx('drop');
+  else { sfx('nope'); toast(WHY[r] || 'Not here'); }
+}
+function handleEvents(now) {
+  for (const e of g.events) {
+    if (e.type === 'patty-done' || e.type === 'fries-done' || e.type === 'drink-full') sfx('ding');
+    else if (e.type === 'patty-burnt' || e.type === 'fries-burnt') { sfx('burnt'); toast('Something is burning!'); }
+    else if (e.type === 'arrive') sfx('bell');
+    else if (e.type === 'leave') { sfx('sad'); toast('A customer gave up waiting'); }
+    else if (e.type === 'wrong') sfx('nope');
+    else if (e.type === 'burger' || e.type === 'side') sfx('drop');
+    else if (e.type === 'pay') { sfx('coins'); floats.push({ text: `+${e.coins}${e.tip === 3 ? ' Happy!' : ''}`, x: SEAT_X[e.seat], y: 240, at: now, color: '#2f7563' }); }
+    else if (e.type === 'closed') setTimeout(finishDay, 900);
+  }
+  g.events.length = 0;
+  floats = floats.filter((f) => now - f.at < 1400);
+}
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, closed: false, rawSince: 0, raw: null, reported: false, lm: null };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 300;
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) { statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.'; return; }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1, minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) { console.error('hand tracking failed', e); statusText = 'Hand tracking could not start. Reload to try again.'; }
+}
+// Fingers judged by distance from the wrist, so it works whichever way the hand is turned.
+function straightFingers(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  return [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+}
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (!lm) return;
+  // The palm centre barely moves when the fingers curl, so closing the hand does not jerk what it carries.
+  const tx = reach(1 - lm[9].x, 0.15, 0.85) * W, ty = reach(lm[9].y, 0.12, 0.8) * H;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const a = fresh ? 1 : 0.5;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  hand.lastSeen = now; hand.present = true; hand.lm = lm;
+  // Closed at one straight finger or fewer, open at three or more; two keeps the last state so the edge never flickers.
+  const n = straightFingers(lm);
+  const raw = n <= 1 ? true : n >= 3 ? false : hand.closed;
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (raw !== hand.closed && (fresh || now - hand.rawSince >= 110)) {
+    hand.closed = raw;
+    if (screen === 'play' && !$('intro').hidden) { if (raw) checks.close = true; else if (checks.close) checks.open = true; }
+    if (raw) tryGrab(); else tryDrop();
+  }
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.lm = null;
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+const mouse = { x: null, y: null };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-dwell]')) { mouse.x = e.clientX; mouse.y = e.clientY; cursor = toStage(mouse.x, mouse.y); tryGrab(); } });
+addEventListener('pointerup', () => { if (!hand.present) tryDrop(); });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on') && !el.closest('[hidden]')) act(el);
+});
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+// On the platform the bridge supplies one cursor for menus; during a day the game draws its own hand, which shows open or closed.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => !playing;
+const kfSharedMenu = () => !!kfShared && kfInMenu();
+function kfPoint() {
+  if (kfSharedMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  if (hand.present) return { x: hand.x, y: hand.y };
+  return mouse.x !== null ? { x: mouse.x, y: mouse.y } : null;
+}
+function updateDwell(now) {
+  let target = null;
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = kfPoint();
+  if (pt && now >= armedAt && !playing) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]') || el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (pt.x >= r.left - 12 && pt.x <= r.right + 12 && pt.y >= r.top - 12 && pt.y <= r.bottom + 12) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) { resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot'); }
+  else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function updateHud(now) {
+  let text = statusText;
+  if (!text && !hand.present && now - hand.lastSeen > 1200 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  const closed = hand.present ? hand.closed : false;
+  setOnce('hs', hand.present ? (closed ? 'c' : 'o') : 'n', (v) => {
+    $('handstate').textContent = v === 'c' ? 'Hand closed' : v === 'o' ? 'Hand open' : 'No hand';
+    $('handstate').classList.toggle('closed', v === 'c');
+  });
+  if (screen !== 'play' || !g) return;
+  ['close', 'open'].forEach((k) => setOnce('ck' + k, checks[k], (v) => { $('ck-' + k).classList.toggle('ok', v); $('ck-' + k).querySelector('i').textContent = v ? '✓' : ''; }));
+  setOnce('coins', g.coins, (v) => { $('hd-coins').textContent = v; $('hd-bar').style.width = Math.min(100, (v / g.day.goal) * 100) + '%'; });
+  setOnce('goal', g.day.goal, (v) => { $('hd-goal').textContent = `Goal: ${v} coins`; });
+  const left = Math.max(0, Math.ceil(g.day.length - g.t));
+  setOnce('time', left, (v) => { $('hd-time').textContent = v > 0 ? `Closing in ${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}` : 'Closing: last customers'; });
+  let tip = '';
+  if (playing && cursor) {
+    const s = stationAt(cursor);
+    if (g.held) tip = s && stationUsable(s.id) ? (dropOk(s.id) ? 'Open your hand to put it here' : '') : 'Carry it to the grill, plate, a customer or the bin';
+    else if (s && stationUsable(s.id) && grabOk(s.id)) tip = s.id === 'plate' ? 'Close your hand to pick up the plate' : 'Close your hand to grab';
+  }
+  setOnce('tip', tip, (v) => { $('tip').textContent = v; $('tip').hidden = !v; });
+}
+
+function renderBones() {
+  const c = bctx, w = bones.width, h = bones.height;
+  c.clearRect(0, 0, w, h);
+  const lm = hand.present && hand.lm;
+  if (!lm) return;
+  const P = (i) => [(1 - lm[i].x) * w, lm[i].y * h];
+  c.strokeStyle = hand.closed ? '#f5b82e' : '#8fd6c4'; c.lineWidth = 3;
+  for (const f of [[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14, 15, 16], [0, 17, 18, 19, 20], [5, 9, 13, 17]]) {
+    c.beginPath(); f.forEach((i, k) => { const [x, y] = P(i); k ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke();
+  }
+}
+// The carried food and a hand that shows open or closed follow the palm.
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (playing && cursor) {
+    const p = toScreen(cursor.x, cursor.y);
+    c.save(); c.translate(p.x, p.y); c.scale(K, K);
+    if (g.held) {
+      if (g.held.kind === 'plate') { c.fillStyle = '#fff'; c.beginPath(); c.ellipse(0, 30, 90, 18, 0, 0, 7); c.fill(); drawStack(c, g.held.stack, 0, 28, 0.9); }
+      else drawItem(c, g.held.kind, 0, 6, 1, g.held.cook);
+    }
+    drawHand(c, 34, -26, 1.2, hand.present ? hand.closed : !!g.held);
+    c.restore();
+    return;
+  }
+  if (!hand.present || kfSharedMenu()) return;
+  c.fillStyle = 'rgba(255,255,255,0.95)'; c.beginPath(); c.arc(hand.x, hand.y, 9, 0, 7); c.fill();
+  c.strokeStyle = '#e8414f'; c.lineWidth = 4; c.beginPath(); c.arc(hand.x, hand.y, 22, 0, 7); c.stroke();
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  // The day runs on real frame time, capped so a long stall cannot skip ahead.
+  const dt = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  cursor = hand.present ? toStage(hand.x, hand.y) : mouse.x !== null ? toStage(mouse.x, mouse.y) : null;
+  if (screen === 'play' && g && playing && !g.over) {
+    for (let left = dt; left > 1e-6; left -= 1 / 30) C.step(g, Math.min(left, 1 / 30));
+    handleEvents(now);
+    sizzleLevel(g.grill.some(Boolean) || !!g.fryer);
+  }
+  renderKitchen(now);
+  updateDwell(now);
+  updateHud(now);
+  renderBones();
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
 </html>
