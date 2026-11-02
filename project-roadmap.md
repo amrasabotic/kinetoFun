@@ -110,6 +110,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-11-02] Whack-a-Mole rebuilt (ADR-085).** Steady aim, reliable fist smash, 10 levels. **Next:** try the fist smash with a live hand on the Pi, apply `supabase/seed_whack_a_mole_v2.sql`.
 - [x] **[2026-11-02] Pocket Pal rebuilt as a pet show game (ADR-084).** Train four skills with four hand games, win five shows. **Next:** try Sprint pumping and Hurdles jumping with a live hand on the Pi, apply `supabase/seed_pocket_pal_v2.sql`.
 - [x] **[2026-11-02] Gesture Chef rebuilt as Burger Truck (ADR-083).** Grab-and-drop cooking rush, 10 days. **Next:** try the close/open grab with a live hand on the Pi, apply `supabase/seed_gesture_chef.sql`.
 - [x] **[2026-11-02] Gesture Ludo King rebuilt (ADR-082).** 1 or 2 players with computers, rest-to-press only, full rules. **Next:** try with a live hand on the Pi (two players swapping at one camera), apply `supabase/seed_gesture_ludo_king.sql`.

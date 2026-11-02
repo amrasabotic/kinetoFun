@@ -3,619 +3,600 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hand Whack-a-Mole</title>
+<title>Whack-a-Mole</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{background:#0d0520;overflow:hidden;height:100vh;width:100vw;font-family:'Nunito',sans-serif}
-  #app{position:relative;width:100vw;height:100vh}
-  #video{position:absolute;top:-9999px;left:-9999px;width:1px;height:1px}
-  #camBox{
-    position:absolute;bottom:16px;right:16px;width:180px;height:120px;
-    border-radius:12px;overflow:hidden;border:2px solid rgba(255,255,255,.3);
-    box-shadow:0 4px 20px rgba(0,0,0,.7);z-index:60;display:none;background:#000
-  }
-  #prevCanvas{width:100%;height:100%;display:block;transform:scaleX(-1)}
-  #camLbl{
-    position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);
-    color:rgba(255,255,255,.8);font-size:.58rem;font-weight:800;
-    text-align:center;padding:3px;letter-spacing:.1em
-  }
-  #gdot{
-    position:absolute;top:6px;right:7px;width:9px;height:9px;
-    border-radius:50%;background:#666;box-shadow:0 0 5px #666;transition:.15s
-  }
-  #gc{position:absolute;top:0;left:0;width:100%;height:100%}
-  #hud{
-    position:absolute;top:14px;left:0;right:0;
-    display:flex;justify-content:space-between;align-items:center;
-    padding:0 22px;pointer-events:none
-  }
-  .pill{
-    background:rgba(255,255,255,.11);backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,.2);border-radius:999px;
-    padding:7px 18px;color:#fff;font-family:'Fredoka One',cursive;
-    font-size:1rem;letter-spacing:.03em
-  }
-  .pill span{color:#ffd93d}
-  #gbar{
-    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
-    background:rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.2);
-    border-radius:999px;padding:6px 20px;color:#fff;
-    font-size:.8rem;font-weight:700;letter-spacing:.05em;
-    display:flex;align-items:center;gap:8px;pointer-events:none
-  }
-  #gi{font-size:1.3rem}
-  #gn{color:#ffd93d}
+:root { --cab:#c8202f; --cab-dark:#7e1018; --gold:#ffcc2e; --cream:#fff6dc; --ink:#2a1a12; --night:#1c1033; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:var(--night); color:var(--ink); font-family:'Arial Black','Trebuchet MS',sans-serif; overflow:hidden; user-select:none; }
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#board { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Glossy arcade buttons; a white ring fills while the hand rests on one. */
+.ab { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #fff8, transparent 30%), radial-gradient(circle, var(--c) 60%, color-mix(in srgb, var(--c) 60%, #000));
+  border:8px solid #222; box-shadow:0 0 0 6px #555, 0 12px 0 #111, 0 18px 24px rgba(0,0,0,0.5); color:#fff; font-size:26px; line-height:1.1; text-shadow:0 3px 0 rgba(0,0,0,0.45); }
+.ab::before { content:''; position:absolute; inset:-20px; border-radius:50%; background:conic-gradient(#fff calc(var(--p, 0) * 360deg), transparent 0);
+  -webkit-mask:radial-gradient(circle, transparent 67%, #000 68%); mask:radial-gradient(circle, transparent 67%, #000 68%); }
+.ab.hot { filter:brightness(1.15); }
+.ab.off { filter:grayscale(1) brightness(0.6); cursor:default; }
+.ab[hidden] { display:none; }
+.ab small { font-family:'Trebuchet MS',sans-serif; font-size:17px; font-weight:bold; }
+
+.panel { position:absolute; background:var(--cream); border-radius:18px; border:6px solid var(--gold); box-shadow:0 10px 0 var(--cab-dark); padding:16px 20px; }
+#marquee { position:absolute; left:250px; top:24px; width:780px; height:150px; border-radius:30px; background:var(--cab); border:8px solid var(--gold);
+  display:flex; align-items:center; justify-content:center; font-size:72px; color:var(--gold); text-shadow:0 5px 0 var(--cab-dark), 0 0 20px #ffcc2e88; letter-spacing:2px; }
+#bulbs { position:absolute; left:242px; top:16px; width:796px; height:166px; pointer-events:none; }
+#menu .how { left:250px; top:210px; width:520px; font-family:'Trebuchet MS',sans-serif; }
+#menu .how h3 { font-family:'Arial Black',sans-serif; font-size:26px; color:var(--cab); }
+#menu .how p { font-size:21px; line-height:1.35; margin-top:8px; }
+#menu .how b { color:var(--cab); }
+#menu .go { left:840px; top:220px; width:200px; height:200px; font-size:38px; --c:#2fb24a; }
+#menu .snd { left:820px; top:480px; width:130px; height:130px; font-size:20px; --c:#3a6fd8; }
+#menu .exit { left:990px; top:480px; width:130px; height:130px; font-size:18px; --c:#8a8a96; }
+
+#levels h2 { position:absolute; left:50%; top:24px; transform:translateX(-50%); font-size:48px; color:var(--gold); text-shadow:0 4px 0 var(--cab-dark); }
+#lvgrid { position:absolute; left:110px; top:120px; width:1060px; display:grid; grid-template-columns:repeat(5, 1fr); gap:34px 30px; }
+#lvgrid .ab { position:relative; width:170px; height:170px; font-size:44px; }
+#lvgrid .ab .stars { display:flex; gap:2px; margin-top:4px; }
+#lvgrid .ab .stars svg { width:24px; height:24px; }
+#lvgrid .name { font-family:'Trebuchet MS',sans-serif; font-size:16px; }
+#levels .back { left:40px; top:560px; width:130px; height:130px; --c:#8a8a96; }
+
+#hud { left:20px; top:110px; width:260px; font-family:'Trebuchet MS',sans-serif; }
+#hud .lv { font-size:20px; font-weight:bold; color:var(--cab); }
+#hud .sc { font-family:'Arial Black',sans-serif; font-size:52px; line-height:1.1; }
+#hud .goal { font-size:19px; }
+#hud .bar { height:16px; border-radius:8px; background:#e8dcc0; overflow:hidden; margin-top:4px; position:relative; }
+#hud .bar i { display:block; height:100%; background:#2fb24a; width:0; }
+#hud .row { display:flex; justify-content:space-between; font-size:21px; margin-top:10px; font-weight:bold; }
+#hud .hearts { color:var(--cab); font-size:28px; letter-spacing:2px; }
+#combo { position:absolute; left:20px; top:420px; width:260px; text-align:center; font-size:30px; color:var(--gold); text-shadow:0 3px 0 var(--cab-dark); pointer-events:none; }
+#legend { left:1000px; top:110px; width:260px; font-family:'Trebuchet MS',sans-serif; font-size:19px; }
+#legend .it { display:flex; align-items:center; gap:10px; margin-top:6px; }
+#legend canvas { width:52px; height:52px; flex:none; }
+#handstate { position:absolute; left:1000px; top:395px; width:260px; text-align:center; font-size:24px; padding:8px; border-radius:14px; background:var(--cream); border:5px solid var(--gold); pointer-events:none; }
+#handstate.closed { background:var(--cab); color:#fff; }
+#camwrap { position:absolute; right:20px; bottom:20px; width:240px; height:180px; border-radius:16px; border:6px solid var(--gold); overflow:hidden; background:#000; }
+#cam { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+#bones { position:absolute; inset:0; width:100%; height:100%; }
+
+#intro { position:absolute; inset:0; background:rgba(28,16,51,0.7); }
+#intro[hidden] { display:none; }
+#intro .panel { left:300px; top:120px; width:600px; font-family:'Trebuchet MS',sans-serif; }
+#intro h2 { font-family:'Arial Black',sans-serif; font-size:36px; color:var(--cab); }
+#intro p { font-size:22px; line-height:1.35; margin-top:8px; }
+.check { display:flex; align-items:center; gap:12px; font-size:22px; margin-top:10px; }
+.check i { width:36px; height:36px; border-radius:50%; border:4px solid #2fb24a; flex:none; display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:bold; }
+.check.ok i { background:#2fb24a; color:#fff; }
+#intro .start { left:960px; top:150px; width:200px; height:200px; font-size:38px; --c:#2fb24a; }
+#intro .back { left:80px; top:400px; width:130px; height:130px; --c:#8a8a96; }
+
+#result .panel { left:340px; top:60px; width:600px; text-align:center; font-family:'Trebuchet MS',sans-serif; }
+#result h2 { font-family:'Arial Black',sans-serif; font-size:46px; color:var(--cab); }
+#result .stars svg { width:66px; height:66px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:4px 40px; font-size:23px; justify-content:center; margin-top:8px; text-align:left; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#rs-buttons .ab { top:480px; width:170px; height:170px; }
+#rs-buttons .b0 { left:360px; --c:#2fb24a; } #rs-buttons .b1 { left:560px; --c:#e8a020; } #rs-buttons .b2 { left:760px; --c:#8a8a96; }
+.stars { display:flex; gap:4px; justify-content:center; }
+#hint { position:absolute; left:50%; bottom:18px; transform:translateX(-50%); font-family:'Trebuchet MS',sans-serif; font-size:24px; padding:8px 22px; border-radius:30px; background:var(--cream); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint[hidden] { display:none; }
 </style>
 </head>
 <body>
-<div id="app">
-  <video id="video" autoplay muted playsinline></video>
-  <div id="camBox">
-    <canvas id="prevCanvas"></canvas>
-    <div id="gdot"></div>
-    <div id="camLbl">YOU</div>
-  </div>
-  <canvas id="gc"></canvas>
-  <div id="hud">
-    <div class="pill">⭐ <span id="hScore">0</span></div>
-    <div class="pill">❤️ <span id="hLives">❤️❤️❤️</span></div>
-    <div class="pill">⏱ <span id="hTime">60</span>s</div>
-  </div>
-  <div id="gbar"><span id="gi">✋</span><span id="gn">STARTING…</span></div>
+<div id="stage">
+  <canvas id="board" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div id="marquee">WHACK-A-MOLE</div>
+    <canvas id="bulbs" width="796" height="166"></canvas>
+    <div class="panel how">
+      <h3>How to play</h3>
+      <p>Moles pop out of the holes. <b>Move your open hand</b> to aim the hammer, then <b>close it into a fist</b> to smash!</p>
+      <p>Golden moles are worth more, hard hats need two smashes, and <b>never hit a bomb</b>. Score enough points to pass each of the 10 levels.</p>
+      <p>Rest your hand on a big button to press it.</p>
+    </div>
+    <div class="ab go" data-dwell="play">PLAY</div>
+    <div class="ab snd" data-dwell="sound" id="btn-sound">Sound on</div>
+    <div class="ab exit" data-dwell="exit" id="btn-exit" hidden>Back to games</div>
+  </section>
+
+  <section class="screen" id="levels">
+    <h2>Choose a level</h2>
+    <div id="lvgrid"></div>
+    <div class="ab back" data-dwell="menu">Menu</div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="panel" id="hud">
+      <div class="lv" id="hd-level"></div>
+      <div class="sc" id="hd-score">0</div>
+      <div class="goal" id="hd-goal"></div>
+      <div class="bar"><i id="hd-bar"></i></div>
+      <div class="row"><span id="hd-time"></span><span class="hearts" id="hd-lives"></span></div>
+    </div>
+    <div id="combo"></div>
+    <div class="panel" id="legend"></div>
+    <div id="handstate">Hand open</div>
+    <div id="intro">
+      <div class="panel">
+        <h2 id="in-title"></h2>
+        <p id="in-text"></p>
+        <div class="check" id="ck-open"><i></i>Show your open hand: the hammer follows it</div>
+        <div class="check" id="ck-close"><i></i>Close it into a fist: the hammer smashes</div>
+      </div>
+      <div class="ab start" data-dwell="begin">START</div>
+      <div class="ab back" data-dwell="levels">Levels</div>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="panel"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <div id="camwrap"><video id="cam" autoplay muted playsinline></video><canvas id="bones" width="240" height="180"></canvas></div>
+  <div id="hint" hidden></div>
 </div>
+<canvas id="ink"></canvas>
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-<script>
-// ── constants ──────────────────────────────────────────
-const ST = {LOAD:'LOAD',HOW:'HOW',MENU:'MENU',PLAY:'PLAY',OVER:'OVER'};
-// Buttons ignore the hand for a moment after a screen appears, so a hand already
-// pointing at one cannot skip How to Play or press through screens.
-const ARM_MS=1500;
-const COLS=4, ROWS=3, GSEC=60, HF=75;
+<script src="wam.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
 
-// ── state ──────────────────────────────────────────────
-let st=ST.LOAD, score=0, lives=3, tLeft=GSEC;
-let moles=[], parts=[];
-let hPos={x:.5,y:.5}, gest='none', hVis=false;
-let ham={x:-300,y:-300,sw:false};
-let lastFist=false, swCD=0;
-let mBtns=[], selB=-1, hovC={};
-let gTmr=null;
-let btnArmedAt=0;
-
-// ── canvas ─────────────────────────────────────────────
-const canvas = document.getElementById('gc');
-const ctx    = canvas.getContext('2d');
-const video  = document.getElementById('video');
-const pCan   = document.getElementById('prevCanvas');
-const pCtx   = pCan.getContext('2d');
-let   prevOK = false;
-
-function resize(){
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-  pCan.width=180; pCan.height=120;
-  buildGrid(); buildBtns();
+const G = window.WAM;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), board = $('board'), ink = $('ink'), video = $('cam'), bones = $('bones');
+const c = board.getContext('2d'), ictx = ink.getContext('2d'), bctx = bones.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+function fit() {
+  W = innerWidth; H = innerHeight; ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
 }
-window.addEventListener('resize', resize);
-resize();
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+const toScreen = (x, y) => ({ x: x * K + OX, y: y * K + OY });
+// The play field in stage pixels; board positions 0..1 map onto it.
+const BD = { x: 300, y: 100, w: 680, h: 600 };
+const boardXY = (bx, by) => ({ x: BD.x + bx * BD.w, y: BD.y + by * BD.h });
 
-// ── grid ───────────────────────────────────────────────
-function buildGrid(){
-  const W=canvas.width, H=canvas.height;
-  const px=W*.10, py=H*.16;
-  const cw=(W-px*2)/COLS, ch=(H-py*2)/ROWS;
-  moles=[];
-  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
-    moles.push({
-      cx: px+cw*c+cw/2,
-      cy: py+ch*r+ch/2,
-      rx: cw*.36,
-      ry: ch*.20,
-      // animation state — use a single number:
-      // >0 = rising/up (0..1), <0 = sinking after hit (-1..0), 0=idle
-      phase: 0,   // 0=idle, 1=up, 2=hit-sinking
-      anim:  0,   // 0..1 progress
-      timer: null
-    });
-}
-
-// ── buttons ────────────────────────────────────────────
-function buildBtns(){
-  const W=canvas.width, H=canvas.height;
-  if(st===ST.MENU)
-    mBtns=[
-      {label:'🎮  PLAY',    action:'play', x:W/2, y:H*.54, w:240, h:62},
-      {label:'❓  HOW TO',  action:'how',  x:W/2, y:H*.67, w:240, h:62},
-      // Only inside the KinetoFun platform is there somewhere to go back to.
-      ...(window.parent!==window ? [{label:'↩  BACK TO GAMES', action:'exit', x:W/2, y:H*.80, w:280, h:62}] : []),
-    ];
-  else if(st===ST.OVER)
-    mBtns=[{label:'🔄  PLAY AGAIN', action:'play', x:W/2, y:H/2+158, w:256, h:62}];
-  else if(st===ST.HOW)
-    mBtns=[{label:"▶  LET'S PLAY", action:'menu', x:W/2, y:H*.87, w:280, h:62}];
-  else mBtns=[];
-  selB=-1; hovC={};
-  btnArmedAt=performance.now()+ARM_MS;
-}
-
-// ── gesture ────────────────────────────────────────────
-function detectGest(lm){
-  const pip=[6,10,14,18], tip=[8,12,16,20];
-  const ext=tip.map((t,i)=>lm[t].y<lm[pip[i]].y);
-  const thumbOut=lm[4].x<lm[3].x;
-  const n=ext.filter(Boolean).length;
-  if(n===1&&ext[0])    return 'point';
-  if(n===0&&!thumbOut) return 'fist';
-  if(n>=3)             return 'open';
-  return 'none';
-}
-
-// ── game logic ─────────────────────────────────────────
-// The platform's Back button: out of a round or its result to the menu; from the menu or intro, leave.
-window.__kfBack=()=>{
-  if(st===ST.MENU||st===ST.LOAD)return false;
-  clearInterval(gTmr);gTmr=null;
-  moles.forEach(m=>{clearTimeout(m.timer);m.timer=null;});
-  st=ST.MENU;buildBtns();
+// ---------- save ----------
+const SAVE_KEY = 'whack-a-mole-v2';
+const N = G.LEVELS.length;
+const progress = (() => {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s) return { ...base, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)), sound: s.sound !== false, stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0) };
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+})();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+// Points from every level played since the game was opened; reported once, when the player leaves or clears the last level.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
   return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null;
+function tone(f, dur, type = 'square', vol = 0.07, f2 = 0, delay = 0) {
+  if (!progress.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.05);
+  } catch (e) { /* audio is optional */ }
+}
+const SFX = {
+  select() { tone(880, 0.08); tone(1320, 0.1, 'square', 0.06, 0, 0.07); },
+  pop() { tone(500, 0.08, 'triangle', 0.05, 800); },
+  bonk() { tone(160, 0.12, 'square', 0.1, 70); tone(900, 0.06, 'triangle', 0.06); },
+  gold() { [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, 0.1, 'triangle', 0.07, 0, i * 0.05)); },
+  clang() { tone(1400, 0.3, 'triangle', 0.08, 1300); tone(2100, 0.2, 'sine', 0.05); },
+  whoosh() { tone(300, 0.1, 'sawtooth', 0.03, 120); },
+  boom() { tone(120, 0.6, 'sawtooth', 0.12, 40); tone(80, 0.6, 'square', 0.08, 30, 0.05); },
+  escape() { tone(600, 0.12, 'triangle', 0.04, 300); },
+  go() { tone(523, 0.15); tone(784, 0.25, 'square', 0.07, 0, 0.15); },
+  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'square', 0.07, 0, i * 0.12)); },
+};
+function sfx(n) { try { SFX[n](); } catch (e) { /* audio is optional */ } }
+
+// ---------- art ----------
+const BOARD = c;
+function drawMoleArt(x, y, s, kind, dent, t, c = BOARD) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  if (kind === 'bomb') {
+    c.fillStyle = '#222'; c.beginPath(); c.arc(0, -40, 40, 0, 7); c.fill();
+    c.fillStyle = '#555'; c.fillRect(-10, -88, 20, 12);
+    c.strokeStyle = '#a0703a'; c.lineWidth = 5; c.beginPath(); c.moveTo(0, -88); c.quadraticCurveTo(14, -104, 8, -116); c.stroke();
+    c.fillStyle = Math.sin(t * 30) > 0 ? '#ffcc2e' : '#ff5a1e'; c.beginPath(); c.arc(8, -118, 8, 0, 7); c.fill();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(-14, -54, 9, 0, 7); c.fill();
+    c.fillStyle = '#e8202f'; c.font = 'bold 34px Arial Black'; c.textAlign = 'center'; c.fillText('!', 4, -26);
+    c.restore(); return;
+  }
+  const fur = kind === 'gold' ? '#f2c024' : '#8a5a34', belly = kind === 'gold' ? '#fff0a0' : '#c99a6a';
+  c.fillStyle = fur; c.beginPath(); c.ellipse(0, -30, 46, 62, 0, Math.PI, 0); c.lineTo(46, 40); c.lineTo(-46, 40); c.fill();
+  c.fillStyle = belly; c.beginPath(); c.ellipse(0, 10, 28, 30, 0, 0, 7); c.fill();
+  c.fillStyle = '#2a1a12'; c.beginPath(); c.arc(-16, -44, 7, 0, 7); c.arc(16, -44, 7, 0, 7); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(-14, -46, 2.5, 0, 7); c.arc(18, -46, 2.5, 0, 7); c.fill();
+  c.fillStyle = '#f48aa0'; c.beginPath(); c.ellipse(0, -28, 12, 9, 0, 0, 7); c.fill();
+  c.fillStyle = '#fff'; c.fillRect(-7, -18, 6, 9); c.fillRect(1, -18, 6, 9);
+  c.strokeStyle = '#2a1a12'; c.lineWidth = 2; for (const sx of [-1, 1]) for (const dy of [-2, 4]) { c.beginPath(); c.moveTo(sx * 14, -26 + dy); c.lineTo(sx * 36, -30 + dy * 2); c.stroke(); }
+  if (kind === 'gold') { c.fillStyle = '#fff'; for (let k = 0; k < 4; k++) { const a = t * 3 + k * 1.6; c.beginPath(); c.arc(Math.cos(a) * 50, -40 + Math.sin(a) * 50, 4, 0, 7); c.fill(); } }
+  if (kind === 'helmet') {
+    c.fillStyle = '#ffcc2e'; c.beginPath(); c.ellipse(0, -66, 50, 34, 0, Math.PI, 0); c.fill(); c.fillRect(-58, -70, 116, 10);
+    c.fillStyle = '#e0a810'; c.fillRect(-6, -98, 12, 30);
+    if (dent) { c.strokeStyle = '#7a5a10'; c.lineWidth = 4; c.beginPath(); c.moveTo(-20, -86); c.lineTo(-6, -76); c.lineTo(-14, -70); c.moveTo(18, -84); c.lineTo(8, -74); c.stroke(); }
+  }
+  c.restore();
+}
+function starSVG(on, size = 24) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffcc2e' : 'rgba(255,255,255,0.25)'}" stroke="${on ? '#a07a10' : 'rgba(0,0,0,0.3)'}"/></svg>`;
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'levels', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name; stage.dataset.screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  armedAt = performance.now() + ARM_MS; resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = progress.sound ? 'Sound on' : 'Sound off'; }
+updateSoundLabel();
+const LV_COL = ['#2fb24a', '#2fb24a', '#3a6fd8', '#3a6fd8', '#e8a020', '#e8a020', '#d8502a', '#d8502a', '#c8202f', '#9a2ad8'];
+function openLevels() {
+  round = null; playing = false;
+  $('lvgrid').innerHTML = G.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    return `<div class="ab${locked ? ' off' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`} style="--c:${LV_COL[i]}">${i + 1}<span class="name">${locked ? 'Locked' : lv.name}</span><div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>`;
+  }).join('');
+  show('levels');
+}
+
+// ---------- a round ----------
+let round = null, playing = false, swing = 0, fx = [], checks = { open: false, close: false };
+function legend(cfg) {
+  const items = [['mole', `Mole: ${G.POINTS.mole} points`]];
+  if (cfg.gold) items.push(['gold', `Golden: ${G.POINTS.gold} points`]);
+  if (cfg.helmet) items.push(['helmet', `Hard hat: smash twice`]);
+  if (cfg.bomb) items.push(['bomb', `Bomb: DON'T hit!`]);
+  $('legend').innerHTML = '<b>This level</b>' + items.map(([k, t]) => `<div class="it"><canvas width="52" height="52" data-kind="${k}"></canvas>${t}</div>`).join('');
+  $('legend').querySelectorAll('canvas').forEach((cv) => drawMoleArt(26, 44, 0.36, cv.dataset.kind, false, 0, cv.getContext('2d')));
+}
+function openLevel(i) {
+  round = G.createRound(i); playing = false; fx = []; swing = 0;
+  checks = { open: false, close: false };
+  const cfg = G.LEVELS[i];
+  $('hd-level').textContent = `Level ${i + 1}: ${cfg.name}`;
+  $('in-title').textContent = `Level ${i + 1}: ${cfg.name}`;
+  const news = ['Smash the moles before they hide again!', 'Two moles can pop up at once now.', 'New: golden moles are worth 30 points, but they hide fast!',
+    "New: BOMBS! Don't smash them, or you lose a heart.", 'New: moles in hard hats need two smashes.', 'Faster moles, and up to three at once.', 'A real mole party: lots of everything.',
+    'Quick paws needed: moles hide very fast.', 'Up to four moles at once!', 'The Mole King challenge. Good luck!'][i];
+  $('in-text').textContent = `${news} Score ${cfg.goal} points in ${cfg.time} seconds to pass. Ten hits in a row doubles your points!`;
+  legend(cfg);
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishLevel() {
+  const i = round.level, r = G.result(round), last = i === N - 1;
+  playing = false;
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  if (r.stars >= 1) progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  $('rs-title').textContent = r.lives <= 0 ? 'Kaboom! Out of hearts' : r.stars === 3 ? 'Mole master!' : r.stars >= 1 ? 'Level passed!' : 'So close!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Score', `${r.score} / ${r.goal}`], ['Moles smashed', r.hits], ['Got away', r.escaped], ['Best streak', r.best], ['Bombs hit', r.bombs]].map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const canNext = r.stars >= 1 && !last;
+  $('rs-buttons').innerHTML = (canNext ? '<div class="ab b0" data-dwell="next">NEXT</div>' : '<div class="ab b0" data-dwell="again">AGAIN</div>')
+    + (canNext ? '<div class="ab b1" data-dwell="again">Replay</div>' : '') + '<div class="ab b2" data-dwell="levels">Levels</div>';
+  show('result');
+  sfx('done');
+  if (last && r.stars >= 1) reportScore();
+}
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openLevels(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': show('menu'); break;
+    case 'levels': openLevels(); break;
+    case 'level': openLevel(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; resetDwell(); sfx('go'); break;
+    case 'next': openLevel(Math.min(N - 1, round.level + 1)); break;
+    case 'again': openLevel(round.level); break;
+  }
+}
+// The platform's Back button: out of a level to the level list, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { openLevels(); return true; }
+  if (screen === 'levels') { show('menu'); return true; }
+  return reportScore();
 };
 
-function startGame(){
-  st=ST.PLAY;
-  score=0; lives=3; tLeft=GSEC;
-  moles.forEach(m=>{m.phase=0;m.anim=0;clearTimeout(m.timer);m.timer=null;});
-  parts=[];
-  hudup();
-  clearInterval(gTmr);
-  gTmr=setInterval(()=>{tLeft--;if(tLeft<=0)endGame();hudup();},1000);
-  schedMoles();
+function doSmash() {
+  if (!playing || !round || round.over || !aim) return;
+  swing = 1;
+  const r = G.smash(round, aim.bx, aim.by);
+  for (const e of round.events.splice(0)) handleEvent(e);
+  if (r === 'whiff') sfx('whoosh');
 }
-function endGame(){
-  window.parent.postMessage({ type: 'GAME_COMPLETE', score: score }, '*');
-  clearInterval(gTmr); gTmr=null;
-  moles.forEach(m=>{clearTimeout(m.timer);m.timer=null;});
-  st=ST.OVER; buildBtns();
+function handleEvent(e) {
+  const h = e.hole >= 0 ? G.HOLES[e.hole] : null, p = h ? boardXY(h.x, h.y) : null;
+  if (e.type === 'hit') { sfx(e.kind === 'gold' ? 'gold' : 'bonk'); fx.push({ kind: 'pts', x: p.x, y: p.y - 90, text: `+${e.pts}`, t: performance.now(), col: e.kind === 'gold' ? '#ffcc2e' : '#fff' }); fx.push({ kind: 'star', x: p.x, y: p.y - 40, t: performance.now() }); }
+  else if (e.type === 'clang') { sfx('clang'); fx.push({ kind: 'pts', x: p.x, y: p.y - 90, text: 'CLANG! Again!', t: performance.now(), col: '#ffcc2e' }); }
+  else if (e.type === 'boom') { sfx('boom'); fx.push({ kind: 'boom', x: p.x, y: p.y - 40, t: performance.now() }); }
+  else if (e.type === 'escape') sfx('escape');
+  else if (e.type === 'pop') sfx('pop');
+  else if (e.type === 'over') setTimeout(finishLevel, 700);
 }
-function schedMoles(){
-  if(st!==ST.PLAY) return;
-  const idle=moles.filter(m=>m.phase===0);
-  const n=Math.min(1+Math.floor((GSEC-tLeft)/15), 4);
-  shuffle(idle).slice(0,n).forEach(popMole);
-  setTimeout(schedMoles, Math.max(600, 1800-(GSEC-tLeft)*12));
-}
-function popMole(m){
-  if(st!==ST.PLAY||m.phase!==0) return;
-  m.phase=1; m.anim=0;
-  const dur=Math.max(1200,2500-(GSEC-tLeft)*15);
-  m.timer=setTimeout(()=>{
-    if(m.phase===1){
-      m.phase=0; m.anim=0;
-      lives=Math.max(0,lives-1);
-      if(!lives) endGame();
-      hudup();
-    }
-  }, dur);
-}
-function tryHit(hx,hy){
-  if(st!==ST.PLAY) return;
-  moles.forEach(m=>{
-    if(m.phase!==1) return;
-    if(Math.abs(hx-m.cx)<m.rx*1.6 && Math.abs(hy-m.cy)<m.ry*3.5){
-      clearTimeout(m.timer); m.timer=null;
-      m.phase=2; m.anim=0;
-      score+=10; hudup(); burst(m.cx, m.cy);
-    }
-  });
-}
-function burst(x,y){
-  for(let i=0;i<16;i++){
-    const a=Math.random()*Math.PI*2, s=2+Math.random()*6;
-    parts.push({
-      x,y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
-      life:1, dec:.022+Math.random()*.02,
-      r:4+Math.random()*8,
-      col:['#ffd93d','#ff6b6b','#6bcb77','#4d96ff'][0|Math.random()*4]
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, nx: 0.5, ny: 0.5, closed: false, raw: null, rawSince: 0, reported: false, lm: null };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 300;
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream; await video.play();
+  } catch (e) { statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.'; return; }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1, minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
     });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) { console.error('hand tracking failed', e); statusText = 'Hand tracking could not start. Reload to try again.'; }
+}
+// Fingers judged by distance from the wrist, so a tilted hand and either hand work the same.
+function straightFingers(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  return [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+}
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (!lm) return;
+  // The palm centre aims the hammer: it barely moves when the fingers close, so the smash lands where the hand was aiming.
+  const nx = reach(1 - lm[9].x, 0.18, 0.82), ny = reach(lm[9].y, 0.15, 0.8);
+  const fresh = now - hand.lastSeen > SLIP_MS, a = fresh ? 1 : 0.6;
+  hand.nx += (nx - hand.nx) * a; hand.ny += (ny - hand.ny) * a;
+  hand.x = hand.nx * W; hand.y = hand.ny * H;
+  hand.lastSeen = now; hand.present = true; hand.lm = lm;
+  // Closed at one straight finger or fewer, open at three or more; two keeps the last state so the edge never flickers.
+  const n = straightFingers(lm);
+  const raw = n <= 1 ? true : n >= 3 ? false : hand.closed;
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (raw !== hand.closed && (fresh || now - hand.rawSince >= 80)) {
+    hand.closed = raw;
+    if (screen === 'play' && !$('intro').hidden) { if (raw) checks.close = true; }
+    if (raw && !fresh) doSmash();
+  }
+  if (!hand.closed && screen === 'play' && !$('intro').hidden) checks.open = true;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.lm = null;
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
   }
 }
-function hudup(){
-  document.getElementById('hScore').textContent=score;
-  document.getElementById('hLives').textContent='❤️'.repeat(Math.max(0,lives));
-  document.getElementById('hTime').textContent=tLeft;
-}
-function shuffle(a){
-  const b=[...a];
-  for(let i=b.length-1;i>0;i--){
-    const j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]];
-  }
-  return b;
-}
-
-// ── update (runs every frame, no drawing) ──────────────
-const RISE_SPD=0.07, SINK_SPD=0.09;
-function updateMoles(){
-  moles.forEach(m=>{
-    if(m.phase===1){
-      // rising up
-      m.anim=Math.min(1, m.anim+RISE_SPD);
-    } else if(m.phase===2){
-      // hit — sink back down
-      m.anim=Math.min(1, m.anim+SINK_SPD);
-      if(m.anim>=1){ m.phase=0; m.anim=0; }
-    } else {
-      // idle — make sure clean
-      m.anim=0;
-    }
-  });
+const mouse = { x: null, y: null };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-dwell]') && !hand.present) doSmash(); });
+addEventListener('click', (e) => { const el = e.target.closest('[data-dwell]'); if (el && el.closest('.screen.on') && !el.closest('[hidden]') && !el.classList.contains('off')) act(el); });
+// Where the hammer aims: the hand maps across the whole board, so every hole is reachable from a sofa.
+let aim = null;
+function updateAim() {
+  if (hand.present) aim = { bx: hand.nx, by: hand.ny };
+  else if (mouse.x !== null) { const p = toStage(mouse.x, mouse.y); aim = { bx: Math.min(1, Math.max(0, (p.x - BD.x) / BD.w)), by: Math.min(1, Math.max(0, (p.y - BD.y) / BD.h)) }; }
+  else aim = null;
 }
 
-// ── draw helpers ───────────────────────────────────────
-function drawBG(){
-  const W=canvas.width, H=canvas.height;
-  ctx.fillStyle='#0d0520'; ctx.fillRect(0,0,W,H);
-  // stars
-  for(let i=0;i<70;i++){
-    ctx.fillStyle=`rgba(255,255,255,${.3+.4*(i%3)*.5})`;
-    ctx.beginPath();
-    ctx.arc((i*137.5)%W, (i*83.3)%(H*.60), .4+(i%3)*.4, 0, Math.PI*2);
-    ctx.fill();
-  }
-  // ground
-  ctx.fillStyle='#2d6a1f'; ctx.fillRect(0,H*.72,W,H);
-  ctx.fillStyle='#3d8c2a'; ctx.fillRect(0,H*.72,W,6);
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null, at: null };
+const BUTTON_MS = 1000;
+function resetDwell() { if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); } dwell.el = null; dwell.p = 0; }
+// On the platform the bridge supplies one cursor for menus; during a level the game draws its own hammer.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => !playing;
+function menuPoint() {
+  if (kfShared && kfInMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  if (hand.present) return { x: hand.x, y: hand.y };
+  return mouse.x !== null ? { x: mouse.x, y: mouse.y } : null;
 }
-
-function drawHole(m){
-  ctx.save();
-  ctx.translate(m.cx, m.cy+m.ry*.4);
-  ctx.scale(1, .3);
-  // dirt ring
-  ctx.beginPath(); ctx.arc(0,0,m.rx*1.25,0,Math.PI*2);
-  ctx.fillStyle='#5a3a1a'; ctx.fill();
-  // black hole
-  ctx.beginPath(); ctx.arc(0,0,m.rx*1.05,0,Math.PI*2);
-  ctx.fillStyle='#0a0a0a'; ctx.fill();
-  ctx.restore();
-}
-
-function drawMole(m){
-  // yOff: how many pixels below the hole centre the mole starts
-  // phase=1: anim 0→1 means mole rises (yOff goes from big to 0)
-  // phase=2: anim 0→1 means mole sinks back (yOff goes from 0 to big)
-  let yOff;
-  if(m.phase===1){
-    yOff = m.ry*2.8*(1-m.anim);   // rising: start buried, emerge
-  } else if(m.phase===2){
-    yOff = m.ry*2.8*m.anim;       // sinking: start up, go down
-  } else {
-    return; // idle, draw nothing
-  }
-
-  const {cx,cy,rx,ry}=m;
-  const top = cy - ry*1.1 + yOff; // top of mole head
-
-  // clip to the hole opening so mole doesn't show above ground
-  ctx.save();
-  ctx.beginPath();
-  // clip rect from just above the hole down
-  ctx.rect(cx-rx*1.3, cy-ry*3.5, rx*2.6, ry*4.5);
-  // also clip to ellipse mask of hole opening
-  ctx.ellipse(cx, cy+ry*.4, rx*1.25, rx*.38, 0, Math.PI, Math.PI*2);
-  ctx.clip();
-
-  // ── body ──
-  ctx.fillStyle='#7a3a18';
-  ctx.beginPath();
-  ctx.ellipse(cx, top+ry*.6, rx*.72, ry*1.1, 0, 0, Math.PI*2);
-  ctx.fill();
-
-  // ── belly ──
-  ctx.fillStyle='#c4845a';
-  ctx.beginPath();
-  ctx.ellipse(cx, top+ry*.9, rx*.42, ry*.6, 0, 0, Math.PI*2);
-  ctx.fill();
-
-  // ── ears ──
-  ctx.fillStyle='#7a3a18';
-  ctx.beginPath(); ctx.ellipse(cx-rx*.55, top+ry*.05, rx*.17, ry*.25, -.3, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(cx+rx*.55, top+ry*.05, rx*.17, ry*.25,  .3, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle='#c4845a';
-  ctx.beginPath(); ctx.ellipse(cx-rx*.55, top+ry*.05, rx*.09, ry*.14, -.3, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(cx+rx*.55, top+ry*.05, rx*.09, ry*.14,  .3, 0, Math.PI*2); ctx.fill();
-
-  // ── eyes ──
-  const eyeY=top+ry*.28;
-  [-rx*.24, rx*.24].forEach(ex=>{
-    ctx.fillStyle='#fff';
-    ctx.beginPath(); ctx.arc(cx+ex, eyeY, rx*.11, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle='#111';
-    ctx.beginPath(); ctx.arc(cx+ex+rx*.03, eyeY, rx*.065, 0, Math.PI*2); ctx.fill();
-  });
-
-  // ── snout ──
-  ctx.fillStyle='#b06040';
-  ctx.beginPath(); ctx.ellipse(cx, top+ry*.58, rx*.26, ry*.16, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle='#6a2a10';
-  [-rx*.09, rx*.09].forEach(nx=>{
-    ctx.beginPath(); ctx.arc(cx+nx, top+ry*.56, rx*.05, 0, Math.PI*2); ctx.fill();
-  });
-
-  ctx.restore();
-}
-
-function drawHammer(){
-  if(!hVis) return;
-  const hx=ham.x, hy=ham.y, sw=ham.sw;
-  ctx.save();
-  ctx.translate(hx,hy);
-  ctx.rotate(sw ? -Math.PI/3 : -Math.PI/6);
-  // handle
-  ctx.strokeStyle='#7a4e28'; ctx.lineWidth=9; ctx.lineCap='round';
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,75); ctx.stroke();
-  // head
-  ctx.save(); ctx.translate(0,-8); ctx.rotate(Math.PI/2);
-  ctx.fillStyle=sw?'#e03030':'#888';
-  ctx.beginPath(); ctx.roundRect(-32,-12,64,24,5); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=2; ctx.stroke();
-  ctx.restore();
-  // impact rings
-  if(sw){
-    for(let i=1;i<=3;i++){
-      ctx.beginPath(); ctx.arc(0,-8,i*15,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(255,210,0,${.5-i*.12})`; ctx.lineWidth=2.5; ctx.stroke();
+function updateDwell(now) {
+  let target = null;
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = menuPoint();
+  // After a press the hand must move off that spot, so a resting hand cannot press what appears under it next.
+  if (dwell.at && pt && Math.hypot(pt.x - dwell.at.x, pt.y - dwell.at.y) > 60 * K) dwell.at = null;
+  if (pt && now >= armedAt && menu && !dwell.at) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.hidden || el.closest('[hidden]') || el.classList.contains('off')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (pt.x >= r.left - 10 && pt.x <= r.right + 10 && pt.y >= r.top - 10 && pt.y <= r.bottom + 10) { target = el; break; }
     }
   }
-  ctx.restore();
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) { resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot'); }
+  else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; dwell.at = pt; act(el); }
 }
 
-function drawParts(){
-  parts=parts.filter(p=>p.life>0);
-  parts.forEach(p=>{
-    p.x+=p.vx; p.y+=p.vy; p.vy+=.18; p.life-=p.dec;
-    ctx.save(); ctx.globalAlpha=p.life; ctx.fillStyle=p.col;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  });
-}
-
-// On the platform the bridge supplies one cursor for every game and the platform draws it; menus follow it and only
-// the hold progress is drawn here. The hammer in play stays the game's own.
-const kfShared=window.__kfCursor;
-let kfMenuOn=null;
-function kfInMenu(){
-  const menu=st!==ST.PLAY;
-  if(kfShared&&menu!==kfMenuOn){kfMenuOn=menu;if(window.__kfMenu)window.__kfMenu(menu);}
-  return menu&&!!kfShared;
-}
-
-function drawCursor(){
-  // Any hand shows it: a pointing finger is rarely recognised from across the room.
-  if(!hVis) return;
-  const x=hPos.x*canvas.width, y=hPos.y*canvas.height;
-  const p=selB>=0?(hovC[selB]||0)/HF:0;
-  ctx.save();
-  if(!kfInMenu()){
-  ctx.beginPath(); ctx.arc(x,y,22,0,Math.PI*2);
-  ctx.fillStyle='rgba(255,217,61,.35)'; ctx.fill();
-  ctx.lineWidth=4; ctx.strokeStyle='#fff'; ctx.stroke();
+// ---------- drawing ----------
+function renderBoard(now) {
+  const t = now / 1000;
+  c.fillStyle = '#1c1033'; c.fillRect(0, 0, 1280, 720);
+  for (let k = 0; k < 60; k++) { c.fillStyle = `rgba(255,255,255,${0.3 + 0.3 * Math.sin(t * 2 + k)})`; c.fillRect((k * 197) % 1280, (k * 89) % 720, 2, 2); }
+  if (screen === 'menu' || screen === 'levels') return;
+  // Cabinet with a lawn top and bulbs round the edge.
+  c.fillStyle = '#c8202f'; c.beginPath(); c.roundRect(BD.x - 30, BD.y - 30, BD.w + 60, BD.h + 50, 30); c.fill();
+  for (let k = 0; k < 28; k++) {
+    const per = 2 * (BD.w + 60) + 2 * (BD.h + 50), d = (k / 28) * per;
+    let x, y;
+    if (d < BD.w + 60) { x = BD.x - 30 + d; y = BD.y - 30; } else if (d < BD.w + 60 + BD.h + 50) { x = BD.x + BD.w + 30; y = BD.y - 30 + d - (BD.w + 60); }
+    else if (d < 2 * (BD.w + 60) + BD.h + 50) { x = BD.x + BD.w + 30 - (d - BD.w - 60 - BD.h - 50); y = BD.y + BD.h + 20; } else { x = BD.x - 30; y = BD.y + BD.h + 20 - (d - 2 * (BD.w + 60) - BD.h - 50); }
+    c.fillStyle = (k + Math.floor(t * 4)) % 2 ? '#ffcc2e' : '#fff6dc'; c.beginPath(); c.arc(x, y, 7, 0, 7); c.fill();
   }
-  if(p>0){
-    ctx.beginPath(); ctx.arc(x,y,31,-Math.PI/2,-Math.PI/2+Math.PI*2*p);
-    ctx.strokeStyle='#ffd93d'; ctx.lineWidth=7; ctx.lineCap='round'; ctx.stroke();
-  }
-  if(!kfInMenu()){ ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); }
-  ctx.restore();
-}
-
-function drawBtns(){
-  mBtns.forEach((btn,i)=>{
-    const hov=selB===i;
-    const bx=btn.x-btn.w/2, by=btn.y-btn.h/2;
-    ctx.save();
-    if(hov){ctx.shadowColor='#ffd93d';ctx.shadowBlur=20;}
-    ctx.fillStyle=hov?'#ffd93d':'rgba(255,255,255,.14)';
-    ctx.beginPath(); ctx.roundRect(bx,by,btn.w,btn.h,btn.h/2); ctx.fill();
-    ctx.strokeStyle=hov?'#ffd93d':'rgba(255,255,255,.25)'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.roundRect(bx,by,btn.w,btn.h,btn.h/2); ctx.stroke();
-    ctx.shadowBlur=0;
-    ctx.fillStyle=hov?'#1a0a2e':'#fff';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.font=`800 ${Math.min(canvas.width*.026,21)}px 'Nunito',sans-serif`;
-    ctx.fillText(btn.label,btn.x,btn.y);
-    ctx.restore();
-    // hover arc
-    const p=(hovC[i]||0)/HF;
-    if(p>0){
-      ctx.save(); ctx.strokeStyle='#ffd93d'; ctx.lineWidth=4; ctx.lineCap='round';
-      ctx.beginPath(); ctx.arc(btn.x+btn.w/2-20,btn.y,18,-Math.PI/2,-Math.PI/2+Math.PI*2*p);
-      ctx.stroke(); ctx.restore();
+  const g = c.createLinearGradient(0, BD.y, 0, BD.y + BD.h); g.addColorStop(0, '#5cc04a'); g.addColorStop(1, '#3f9a36');
+  c.fillStyle = g; c.beginPath(); c.roundRect(BD.x, BD.y, BD.w, BD.h - 10, 16); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.08)'; for (let k = 0; k < 40; k++) c.fillRect(BD.x + (k * 131) % BD.w, BD.y + (k * 71) % (BD.h - 20), 4, 10);
+  if (!round) return;
+  G.HOLES.forEach((h, i) => {
+    const p = boardXY(h.x, h.y), m = round.holes[i];
+    c.fillStyle = '#6a4424'; c.beginPath(); c.ellipse(p.x, p.y + 6, 86, 30, 0, 0, 7); c.fill();
+    c.fillStyle = '#1e120a'; c.beginPath(); c.ellipse(p.x, p.y, 74, 24, 0, 0, 7); c.fill();
+    if (m) {
+      const hgt = G.height(m);
+      c.save(); c.beginPath(); c.rect(p.x - 90, p.y - 200, 180, 200); c.clip();
+      const wob = m.state === 'bonk' ? 1 - m.t * 3 : 1;
+      drawMoleArt(p.x, p.y + 30 + (1 - hgt) * 110, 1, m.kind, m.kind === 'helmet' && m.hp < 2, t);
+      if (m.state === 'bonk' && m.kind !== 'bomb') { c.fillStyle = '#ffcc2e'; for (let k = 0; k < 3; k++) { const a = t * 8 + k * 2.1; c.beginPath(); c.arc(p.x + Math.cos(a) * 34, p.y - 70 + Math.sin(a) * 10, 6, 0, 7); c.fill(); } }
+      c.restore();
     }
+    // Front lip of the hole drawn over the mole.
+    c.fillStyle = '#6a4424'; c.beginPath(); c.ellipse(p.x, p.y + 6, 86, 30, 0, 0, Math.PI); c.fill();
   });
+  // Where the hammer is aiming: a ring on the hole it would hit.
+  if (playing && aim) {
+    const hi = G.holeAt(aim.bx, aim.by);
+    if (hi >= 0) { const p = boardXY(G.HOLES[hi].x, G.HOLES[hi].y); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 5; c.setLineDash([12, 8]); c.beginPath(); c.ellipse(p.x, p.y, 92, 34, 0, 0, 7); c.stroke(); c.setLineDash([]); }
+  }
+  fx = fx.filter((f) => now - f.t < 900);
+  for (const f of fx) {
+    const k = (now - f.t) / 900;
+    if (f.kind === 'pts') { c.globalAlpha = 1 - k; c.fillStyle = f.col; c.font = 'bold 40px Arial Black'; c.textAlign = 'center'; c.strokeStyle = '#2a1a12'; c.lineWidth = 6; c.strokeText(f.text, f.x, f.y - k * 50); c.fillText(f.text, f.x, f.y - k * 50); c.globalAlpha = 1; }
+    else if (f.kind === 'star') { c.fillStyle = `rgba(255,255,255,${1 - k})`; for (let a = 0; a < 8; a++) { c.beginPath(); c.arc(f.x + Math.cos(a * 0.785) * k * 90, f.y + Math.sin(a * 0.785) * k * 60, 7 * (1 - k), 0, 7); c.fill(); } }
+    else if (f.kind === 'boom') { c.fillStyle = `rgba(255,${120 + k * 100},40,${1 - k})`; c.beginPath(); c.arc(f.x, f.y, 40 + k * 140, 0, 7); c.fill(); c.fillStyle = `rgba(80,80,80,${0.8 - k * 0.8})`; c.beginPath(); c.arc(f.x - 20, f.y - k * 80, 30 + k * 40, 0, 7); c.fill(); }
+  }
 }
-
-// ── screens ────────────────────────────────────────────
-// How to Play: drawn from the very first frame (while the camera starts) and
-// kept on screen until the player holds a hand on LET'S PLAY.
-function drawHow(loading){
-  const W=canvas.width,H=canvas.height;
-  drawBG();
-  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-  ctx.font=`bold ${Math.min(W*.08,66)}px 'Fredoka One',cursive`;
-  ctx.fillStyle='#ffd93d'; ctx.shadowColor='#ff6b6b'; ctx.shadowBlur=22;
-  ctx.fillText('WHACK-A-MOLE',W/2,H*.13); ctx.shadowBlur=0;
-  ctx.font=`${Math.min(W*.032,26)}px 'Fredoka One',cursive`;
-  ctx.fillStyle='#fff'; ctx.fillText('HOW TO PLAY',W/2,H*.21);
-  const ly=H*.37;
-  [['✋','HAND','Hold on a button to select'],['✋','OPEN PALM','Move the hammer'],['✊','FIST','Smash the mole!']].forEach(([ic,g,d],i)=>{
-    const lx=W/2+(i-1)*Math.min(W*.27,260);
-    ctx.fillStyle='rgba(255,255,255,.08)';
-    ctx.beginPath(); ctx.roundRect(lx-95,ly-55,190,118,14); ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.lineWidth=1; ctx.stroke();
-    ctx.textBaseline='middle';
-    ctx.font='2.4rem sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(ic,lx,ly-18);
-    ctx.font=`700 ${Math.min(W*.02,17)}px 'Nunito',sans-serif`; ctx.fillStyle='#ffd93d'; ctx.fillText(g,lx,ly+20);
-    ctx.font=`${Math.min(W*.016,14)}px 'Nunito',sans-serif`; ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillText(d,lx,ly+42);
+function renderBulbs(now) {
+  const cv = $('bulbs'), x = cv.getContext('2d'), t = Math.floor(now / 250);
+  x.clearRect(0, 0, cv.width, cv.height);
+  for (let k = 0; k < 40; k++) {
+    const per = 2 * (cv.width - 20) + 2 * (cv.height - 20), d = (k / 40) * per;
+    let px, py;
+    if (d < cv.width - 20) { px = 10 + d; py = 10; } else if (d < cv.width - 20 + cv.height - 20) { px = cv.width - 10; py = 10 + d - (cv.width - 20); }
+    else if (d < 2 * (cv.width - 20) + cv.height - 20) { px = cv.width - 10 - (d - (cv.width - 20) - (cv.height - 20)); py = cv.height - 10; } else { px = 10; py = cv.height - 10 - (d - 2 * (cv.width - 20) - (cv.height - 20)); }
+    x.fillStyle = (k + t) % 3 ? '#ffcc2e' : '#fff6dc'; x.beginPath(); x.arc(px, py, 6, 0, 7); x.fill();
+  }
+}
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+let hintShown = null;
+function updateHud(now) {
+  let text = statusText;
+  if (!text && !hand.present && now - hand.lastSeen > 1200 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  if (text !== hintShown) { hintShown = text; $('hint').textContent = text; $('hint').hidden = !text; }
+  setOnce('hs', hand.present ? (hand.closed ? 'c' : 'o') : 'n', (v) => {
+    $('handstate').textContent = v === 'c' ? 'Fist: SMASH!' : v === 'o' ? 'Hand open: aiming' : 'No hand seen';
+    $('handstate').classList.toggle('closed', v === 'c');
   });
-  ctx.textBaseline='alphabetic';
-  ctx.font=`${Math.min(W*.022,19)}px 'Nunito',sans-serif`; ctx.fillStyle='rgba(255,255,255,.85)';
-  ['🐹  Moles pop out of the holes — smash them with a fist for 10 points.',
-   '❤️  You have 3 lives: every mole that gets away costs one.',
-   '⏱️  The round lasts 60 seconds, and the moles speed up as it goes.'].forEach((t,i)=>ctx.fillText(t,W/2,H*.58+i*H*.06));
-  if(loading){
-    ctx.font=`${Math.min(W*.022,18)}px 'Nunito',sans-serif`; ctx.fillStyle='rgba(255,255,255,.55)';
-    ctx.fillText('🎥  Starting the camera — allow access when asked',W/2,H*.87);
-  }
-  ctx.restore();
-  if(!loading){ drawBtns(); drawCursor(); }
+  if (screen !== 'play' || !round) return;
+  ['open', 'close'].forEach((k) => setOnce('ck' + k, checks[k], (v) => { $('ck-' + k).classList.toggle('ok', v); $('ck-' + k).querySelector('i').textContent = v ? '✓' : ''; }));
+  setOnce('score', round.score, (v) => { $('hd-score').textContent = v; $('hd-bar').style.width = Math.min(100, (v / round.cfg.goal) * 100) + '%'; });
+  setOnce('goal', round.cfg.goal, (v) => { $('hd-goal').textContent = `Goal: ${v} points`; });
+  setOnce('time', Math.max(0, Math.ceil(round.cfg.time - round.t)), (v) => { $('hd-time').textContent = `Time ${v}s`; });
+  setOnce('lives', round.lives, (v) => { $('hd-lives').textContent = '♥'.repeat(Math.max(0, v)) + '♡'.repeat(G.LIVES - Math.max(0, v)); });
+  setOnce('combo', round.combo, (v) => { $('combo').textContent = v >= 10 ? `x2 POINTS! ${v} in a row` : v >= 3 ? `${v} in a row!` : ''; });
 }
-
-function drawMenu(){
-  const W=canvas.width,H=canvas.height;
-  drawBG();
-  moles.forEach(m=>drawHole(m));
-  moles.forEach(m=>drawMole(m));
-  ctx.save(); ctx.textAlign='center';
-  ctx.font=`bold ${Math.min(W*.09,74)}px 'Fredoka One',cursive`;
-  ctx.fillStyle='#ffd93d'; ctx.shadowColor='#ff6b6b'; ctx.shadowBlur=24;
-  ctx.fillText('WHACK-A-MOLE',W/2,H*.18); ctx.shadowBlur=0;
-  ctx.font=`${Math.min(W*.024,18)}px 'Nunito',sans-serif`;
-  ctx.fillStyle='rgba(255,255,255,.6)';
-  ctx.fillText('✋  Hold your hand on a button to select',W/2,H*.26);
-  ctx.restore();
-  drawBtns(); drawCursor();
-}
-
-function drawPlay(){
-  drawBG();
-  moles.forEach(m=>drawHole(m));
-  moles.forEach(m=>drawMole(m));
-  drawParts();
-  drawHammer();
-}
-
-function drawOver(){
-  const W=canvas.width,H=canvas.height;
-  drawBG();
-  moles.forEach(m=>drawHole(m));
-  ctx.fillStyle='rgba(8,4,18,.65)'; ctx.fillRect(0,0,W,H);
-  ctx.save(); ctx.textAlign='center';
-  ctx.fillStyle='rgba(255,255,255,.09)';
-  ctx.beginPath(); ctx.roundRect(W/2-210,H/2-170,420,350,24); ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.roundRect(W/2-210,H/2-170,420,350,24); ctx.stroke();
-  ctx.font=`bold ${Math.min(W*.085,64)}px 'Fredoka One',cursive`;
-  ctx.fillStyle='#ff6b6b'; ctx.shadowColor='#ff6b6b'; ctx.shadowBlur=18;
-  ctx.fillText('GAME OVER',W/2,H/2-88); ctx.shadowBlur=0;
-  ctx.font=`${Math.min(W*.034,26)}px 'Fredoka One',cursive`;
-  ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillText('Final Score',W/2,H/2-28);
-  ctx.font=`bold ${Math.min(W*.09,68)}px 'Fredoka One',cursive`;
-  ctx.fillStyle='#ffd93d'; ctx.fillText(score,W/2,H/2+52);
-  ctx.font=`${Math.min(W*.02,15)}px 'Nunito',sans-serif`;
-  ctx.fillStyle='rgba(255,255,255,.45)';
-  ctx.fillText('✋  Hold your hand on the button to play again',W/2,H/2+102);
-  ctx.restore();
-  drawBtns(); drawCursor();
-}
-
-// ── hover logic ────────────────────────────────────────
-function updateHover(){
-  if(!hVis||gest==='fist'){selB=-1;hovC={};return;}
-  const W=canvas.width,H=canvas.height;
-  const px=hPos.x*W, py=hPos.y*H;
-  let found=-1;
-  mBtns.forEach((b,i)=>{
-    if(Math.abs(px-b.x)<b.w/2+8&&Math.abs(py-b.y)<b.h/2+8) found=i;
-  });
-  if(performance.now()<btnArmedAt) found=-1;
-  if(found!==selB){selB=found;hovC={};}
-  if(found>=0){
-    hovC[found]=(hovC[found]||0)+1;
-    if(hovC[found]>=HF){
-      hovC={};
-      const a=mBtns[found].action;
-      if(a==='play') startGame();
-      else if(a==='exit') window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
-      else if(a==='how'){ st=ST.HOW; buildBtns(); }
-      else if(a==='menu'){ st=ST.MENU; buildBtns(); }
-    }
+function renderBones() {
+  const x = bctx, w = bones.width, h = bones.height;
+  x.clearRect(0, 0, w, h);
+  const lm = hand.present && hand.lm;
+  if (!lm) return;
+  const Pt = (i) => [(1 - lm[i].x) * w, lm[i].y * h];
+  x.strokeStyle = hand.closed ? '#c8202f' : '#ffcc2e'; x.lineWidth = 3;
+  for (const f of [[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14, 15, 16], [0, 17, 18, 19, 20], [5, 9, 13, 17]]) {
+    x.beginPath(); f.forEach((i, k) => { const [px, py] = Pt(i); k ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
   }
 }
-
-// ── hammer update ──────────────────────────────────────
-function updateHammer(){
-  if(!hVis) return;
-  const tx=hPos.x*canvas.width, ty=hPos.y*canvas.height;
-  ham.x+=(tx-ham.x)*.22;
-  ham.y+=(ty-ham.y)*.22;
-  const isFist=gest==='fist';
-  if(isFist&&!lastFist&&swCD<=0){
-    ham.sw=true; swCD=22; tryHit(ham.x,ham.y);
+// During a level the hammer is the cursor; on menus the platform cursor (or a ring) is.
+function renderInk() {
+  ictx.clearRect(0, 0, W, H);
+  if (playing && aim) {
+    const p = boardXY(aim.bx, aim.by), s = toScreen(p.x, p.y);
+    ictx.save(); ictx.translate(s.x, s.y); ictx.scale(K, K);
+    drawHammerTo(ictx, swing);
+    ictx.restore();
+    return;
   }
-  if(!isFist) ham.sw=false;
-  lastFist=isFist;
-  if(swCD>0) swCD--;
-  if(swCD<12) ham.sw=false;
+  if ((kfShared && kfInMenu()) || !hand.present) return;
+  ictx.fillStyle = 'rgba(255,255,255,0.95)'; ictx.beginPath(); ictx.arc(hand.x, hand.y, 9, 0, 7); ictx.fill();
+  ictx.strokeStyle = '#ffcc2e'; ictx.lineWidth = 5; ictx.beginPath(); ictx.arc(hand.x, hand.y, 22, 0, 7); ictx.stroke();
+}
+function drawHammerTo(x, sw) {
+  x.save(); x.translate(30, -30); x.rotate(-0.7 + sw * 1.2);
+  x.fillStyle = '#a0703a'; x.fillRect(-6, -10, 12, 110);
+  x.fillStyle = '#c8202f'; x.beginPath(); x.roundRect(-46, -50, 92, 46, 12); x.fill();
+  x.fillStyle = '#ffcc2e'; x.fillRect(-46, -40, 10, 26); x.fillRect(36, -40, 10, 26);
+  x.restore();
 }
 
-// ── preview ────────────────────────────────────────────
-function drawPreview(){
-  if(!prevOK) return;
-  try{ pCtx.drawImage(video,0,0,pCan.width,pCan.height); }catch(e){}
-}
-
-// ── main loop ──────────────────────────────────────────
-function loop(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  if     (st===ST.LOAD){ drawHow(true); }
-  else if(st===ST.HOW){ drawHow(false); updateHover(); }
-  else if(st===ST.MENU){ updateMoles(); drawMenu(); updateHover(); }
-  else if(st===ST.PLAY){ updateMoles(); updateHammer(); drawPlay(); }
-  else if(st===ST.OVER){ drawOver(); updateHover(); }
-
-  drawPreview();
-  requestAnimationFrame(loop);
-}
-loop();
-
-// ── mediapipe ──────────────────────────────────────────
-const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.7,minTrackingConfidence:.5});
-hands.onResults(res=>{
-  if(res.multiHandLandmarks&&res.multiHandLandmarks.length){
-    const lm=res.multiHandLandmarks[0];
-    hPos.x=kfInMenu()?kfShared.x:1-lm[8].x; hPos.y=kfInMenu()?kfShared.y:lm[8].y;
-    gest=detectGest(lm); hVis=true;
-  } else { hVis=false; gest='none'; }
-  const icons={point:'☝️',open:'✋',fist:'✊',none:'🤚'};
-  const names={point:'POINTING',open:'OPEN PALM',fist:'FIST — SMASH!',none:'NO HAND'};
-  document.getElementById('gi').textContent=icons[gest]||'🤚';
-  document.getElementById('gn').textContent=names[gest]||'';
-  const dotC={point:'#ffd93d',open:'#4d96ff',fist:'#ff4444',none:'#555'};
-  const dot=document.getElementById('gdot'), c=dotC[gest]||'#555';
-  dot.style.background=c; dot.style.boxShadow=`0 0 6px ${c}`;
-});
-
-// ── camera (auto on load) ──────────────────────────────
-(async()=>{
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{width:1280,height:720,facingMode:'user'}});
-    video.srcObject=stream;
-    await video.play();
-    prevOK=true;
-    document.getElementById('camBox').style.display='block';
-    const cam=new Camera(video,{onFrame:async()=>{await hands.send({image:video});},width:1280,height:720});
-    cam.start();
-    st=ST.HOW; buildBtns();
-  } catch(e){
-    document.getElementById('gn').textContent='CAMERA DENIED – RELOAD';
-    console.error(e);
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  updateAim();
+  if (playing && round && !round.over) {
+    for (let left = dt; left > 1e-6; left -= 1 / 30) G.step(round, Math.min(left, 1 / 30));
+    for (const e of round.events.splice(0)) handleEvent(e);
   }
-})();
+  swing = Math.max(0, swing - dt * 5);
+  renderBoard(now);
+  if (screen === 'menu') renderBulbs(now);
+  updateDwell(now);
+  updateHud(now);
+  renderBones();
+  renderInk();
+}
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
 </script>
 </body>
 </html>
