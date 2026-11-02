@@ -110,6 +110,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-11-02] Sunset Rally (ADR-081).** Hand-steered road racer, 8 roads, highway-sign look. **Next:** try it with a live hand on the Pi, apply the updated `supabase/seed_circuit_racer.sql` to the AWS RDS database.
 - [x] **[2026-10-30] Bubble Bath Bakery (ADR-078).** Hand-made bakery, 10 days, cosy-bakery style. **Next:** apply `supabase/seed_bubble_bath_bakery.sql` to the AWS RDS database, then check kneading, rolling and the oven fist on the Pi.
 - [x] **[2026-10-30] Ice Rink Skater (ADR-077).** Hand-steered figure skating, 15 events, retro poster style. **Next:** apply `supabase/seed_ice_rink_skater.sql` to the AWS RDS database, then check the glide and fist-to-jump on the Pi.
 - [x] **[2026-10-30] Star Painter (ADR-076).** Fingertip constellation game, 10 skies, observatory style. **Next:** apply `supabase/seed_star_painter.sql` to the AWS RDS database, then check fingertip picking on the Pi from the sofa.

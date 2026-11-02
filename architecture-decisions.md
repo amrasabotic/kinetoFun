@@ -1790,3 +1790,12 @@ The platform's Back button no longer draws a ring at the raw fingertip for games
 **Verification.** All five type-check and build; a Node run of the bridge with synthetic hands checks the mapping, smoothing and hand-lost state. Not yet tried with a live hand.
 
 **Follow-up [2026-11-02] — rolled out to every game.** All games with menu buttons now use the platform cursor on those screens. Where the hand is part of play (aim, paddle, brush, net, sponge, hammer, dragged piece), the game keeps its own cursor during play. Air Painting and Happy Glass keep their own cursor everywhere, because it shows the hand or gesture itself, and report it through `__kfPointer`. Games with no pointer (Dino Runner, Monster Dodge, Mirror Me, Green Red Light, Road Builder, Handcell) are unchanged. Several menus that needed a pointing finger or a pinch now press with any resting hand, as on the platform.
+
+## ADR-081 — Sunset Rally: the car sits where the hand is
+
+**Date:** 2026-11-02
+**Status:** Accepted
+
+**Decision.** Replace Circuit Racer with Sunset Rally, a road-ahead racer, in the same `circuit-racer` slot (same id, so catalog row and scores carry over) instead of reworking its top-down steering. The hand sets the car's spot across the road directly (palm centre, middle 60% of the camera width covers the whole road) rather than a turn rate, so left on the hand is always left on screen and holding still keeps the car where it is. The car accelerates by itself; the only other gesture is a fist for nitro, which allows one stray finger. The palm, not the fingertip, drives steering, so closing the hand for nitro does not move the car. Bends push the car outwards a little and grass caps speed, so steering still matters. The race pauses when the hand is lost and the start lights wait for a hand. A live panel shows the hand marker against the car marker and a nitro lamp, and the camera preview draws the tracked hand. After a bump the car passes through traffic for 1.5 s so a player is never pinned behind a slow car. Physics runs in 1/60 s sub-steps so a slow TV box cannot skip past cars or coins.
+
+**Verification.** `games/circuit-racer/rally.test.cjs`: a centred hand stays on the road on all 8 roads; a bot at human pace (0.3 s late, jittery) reaches the podium on every road; a hand held still finishes last. A headless Chrome run drives a full race to the result screen with no errors; the TV size audit passes at 1.5x. Not yet tried with a live hand.

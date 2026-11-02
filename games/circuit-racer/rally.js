@@ -65,7 +65,7 @@
     }
     return {
       level, length: lv.length, road, t: 0, started: false, done: false,
-      player: { z: 0, x: 0, speed: 0, nitro: 0.5, boosting: false, offroad: false, bumpUntil: 0, finishedAt: null },
+      player: { z: 0, x: 0, speed: 0, nitro: 0.5, boosting: false, offroad: false, bumpUntil: 0, ghostUntil: 0, finishedAt: null },
       rivals, traffic, pickups, coins: 0, bumps: 0, events: [],
     };
   }
@@ -113,13 +113,15 @@
       if (rv.z >= race.length) rv.finishedAt = race.t;
     }
 
-    if (p.finishedAt == null && race.t >= p.bumpUntil) {
+    // After a bump the car passes through traffic for a moment, so a player is never pinned behind a slow car.
+    if (p.finishedAt == null && race.t >= p.ghostUntil) {
       for (const c of race.traffic.concat(race.rivals)) {
         const dz = c.z - p.z;
         if (dz > 0 && dz < 1.6 && Math.abs(c.x - p.x) < 0.42) {
-          p.speed = Math.min(p.speed, c.speed * 0.75);
-          p.x += p.x >= c.x ? 0.25 : -0.25;
-          p.bumpUntil = race.t + 0.5;
+          p.speed *= 0.35;
+          p.x += p.x >= c.x ? 0.2 : -0.2;
+          p.bumpUntil = race.t + 0.7;
+          p.ghostUntil = race.t + 1.5;
           race.bumps++;
           race.events.push({ type: 'bump' });
           break;

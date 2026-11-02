@@ -1,4 +1,4 @@
-// Run with: node games/sunset-rally/rally.test.cjs
+// Run with: node games/circuit-racer/rally.test.cjs
 require('./rally.js');
 const R = globalThis.Rally;
 const assert = require('assert');
