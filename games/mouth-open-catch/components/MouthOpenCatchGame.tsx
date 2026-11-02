@@ -12,6 +12,17 @@ import {
   AchievementToast, DwellCursor, ALL_CHARACTERS,
 } from './UI';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Screen =
@@ -553,12 +564,14 @@ export default function MouthOpenCatchGame() {
   // ── Poll hand cursor position for UI screens ──────────────────────────────
   useEffect(() => {
     if (needsFaceInput(screen)) return;
+    // UI screens use the platform's cursor while they are open; play is face-driven.
+    kfMenu(true);
     const id = setInterval(() => {
       const h = handDataRef.current;
-      setDwellPos({ x: h.x, y: h.y });
-      setHandDetected(h.detected);
+      setDwellPos(kfShared ? { x: kfShared.x, y: kfShared.y } : { x: h.x, y: h.y });
+      setHandDetected(kfShared ? kfShared.visible : h.detected);
     }, 50);
-    return () => clearInterval(id);
+    return () => { clearInterval(id); kfMenu(false); };
   }, [screen]);
 
   // ─── Game Loop ─────────────────────────────────────────────────────────────
@@ -853,7 +866,7 @@ export default function MouthOpenCatchGame() {
 
       {/* Hand cursor — only during UI screens, never during gameplay */}
       {showHandCursor && (
-        <DwellCursor x={dwellPos.x} y={dwellPos.y} detected={handDetected} />
+        <DwellCursor x={dwellPos.x} y={dwellPos.y} detected={handDetected && !kfShared} />
       )}
 
       {/* Status badge: shows which input mode is active */}

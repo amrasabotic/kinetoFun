@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import type { HandPosition } from '../types/gestures';
-import { useDwellNav } from '../hooks/useDwellNav';
+import { kfShared, useDwellNav } from '../hooks/useDwellNav';
 import { DwellButton } from './DwellButton';
 
 interface PauseOverlayProps {
@@ -56,7 +56,7 @@ export function PauseOverlay({ handPositions, onResume, onSettings, onHome }: Pa
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/75 backdrop-blur-sm">
       {/* Hand cursor */}
-      {primaryHand && (
+      {primaryHand && !kfShared && (
         <div
           className="fixed pointer-events-none z-50 w-8 h-8 rounded-full border-4 border-[#00ffcc]"
           style={{

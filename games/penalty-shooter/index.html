@@ -213,14 +213,24 @@ function onResults(results){
   S.gesture = classifyHand(lm);
 
   // Mirror: MediaPipe x=0 is camera-right, we flip to match mirrored video
-  S.ftX = 1 - lm[8].x;
-  S.ftY = lm[8].y;
+  S.ftX = kfInMenu() ? kfShared.x : 1 - lm[8].x;
+  S.ftY = kfInMenu() ? kfShared.y : lm[8].y;
 
   // Reset fire lock when hand goes non-palm
   if(S.gesture !== 'palm') S.palmFired = false;
 
   processGestures();
   updateGbar();
+}
+
+// On the platform the bridge supplies one cursor for every game and the platform draws it; the start and game-over
+// screens follow it and only their hold progress is drawn here.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+function kfInMenu(){
+  const menu = S.phase === 'start' || S.phase === 'gameover';
+  if(kfShared && menu !== kfMenuOn){ kfMenuOn = menu; if(window.__kfMenu) window.__kfMenu(menu); }
+  return menu && !!kfShared;
 }
 
 function processGestures(){
@@ -230,7 +240,7 @@ function processGestures(){
   if(phase !== 'start' && phase !== 'gameover') dwellPhase = null;
   if(phase === 'start' || phase === 'gameover'){
     if(dwellPhase !== phase){ dwellPhase = phase; dwellArmedAt = performance.now() + DWELL_ARM_MS; }
-    if(gesture === 'point' && performance.now() >= dwellArmedAt){
+    if((kfInMenu() ? kfShared.visible : gesture === 'point') && performance.now() >= dwellArmedAt){
       const W=gc.width, H=gc.height;
       const px=ftX*W, py=ftY*H;
       const ids = phase==='start' ? (EMBEDDED ? ['start','exit'] : ['start']) : ['restart'];
@@ -467,7 +477,7 @@ function drawScene(){
   drawFlash(W,H);
 
   // Finger cursor dot on menu screens
-  if((ph==='start'||ph==='gameover') && S.gesture==='point'){
+  if((ph==='start'||ph==='gameover') && (kfShared || S.gesture==='point')){
     drawFingerCursor(W,H);
   }
 }
@@ -612,10 +622,12 @@ function drawFlash(W,H){
 function drawFingerCursor(W,H){
   const px=S.ftX*W, py=S.ftY*H;
   ctx.save();
+  if(!kfShared){
   ctx.beginPath(); ctx.arc(px,py,18,0,Math.PI*2);
   ctx.fillStyle='rgba(247,201,72,0.18)'; ctx.fill();
   ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2);
   ctx.fillStyle='#f7c948'; ctx.fill();
+  }
   if(S.dwellTarget && S.dwellFrames>0){
     const pct=S.dwellFrames/DWELL_FRAMES;
     ctx.beginPath();

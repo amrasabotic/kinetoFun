@@ -97,3 +97,15 @@ export function startingGridPositions(track: Track, count: number): TrackPoint[]
   }
   return positions;
 }
+
+/** Distance from the track centreline at a waypoint, plus the travel direction there. */
+export function trackOffset(track: Track, x: number, y: number): { dist: number; tangent: number } {
+  const n = track.waypoints.length;
+  const i = nearestWaypointIndex(track, x, y);
+  const a = track.waypoints[i];
+  const b = track.waypoints[(i + 1) % n];
+  const tangent = Math.atan2(b.y - a.y, b.x - a.x);
+  const nx = -Math.sin(tangent);
+  const ny = Math.cos(tangent);
+  return { dist: Math.abs((x - a.x) * nx + (y - a.y) * ny), tangent };
+}

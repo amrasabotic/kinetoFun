@@ -45,15 +45,19 @@ export function updateCar(
   boost: boolean,
   params: CarPhysicsParams,
   dt: number,
+  onGrass = false,
 ): void {
-  const maxSpeed = boost ? params.maxSpeed * params.boostMultiplier : params.maxSpeed;
+  // Grass caps speed hard so cutting corners never pays off.
+  const grassCap = onGrass ? 0.4 : 1;
+  const maxSpeed = (boost ? params.maxSpeed * params.boostMultiplier : params.maxSpeed) * grassCap;
   const accel = boost ? params.accel * params.boostMultiplier : params.accel;
 
   car.speed += throttle * accel * dt;
   if (Math.abs(throttle) < 0.05) {
     car.speed *= Math.max(0, 1 - params.friction * dt);
   }
-  car.speed = Math.max(-maxSpeed * 0.4, Math.min(maxSpeed, car.speed));
+  if (car.speed > maxSpeed) car.speed = Math.max(maxSpeed, car.speed - params.accel * 2 * dt);
+  car.speed = Math.max(-maxSpeed * 0.4, car.speed);
 
   // Steering authority ramps in as the car gets moving, and reverses
   // direction when reversing (matches real driving intuition).

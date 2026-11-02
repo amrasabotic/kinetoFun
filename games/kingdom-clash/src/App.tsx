@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HandProvider, useHand } from "@/contexts/HandContext";
+import { HandProvider, useHand, kfShared, kfMenu } from "@/contexts/HandContext";
 import GestureCursor from "@/components/GestureCursor";
 import MainMenu from "@/pages/MainMenu";
 import LevelSelect from "@/pages/LevelSelect";
@@ -21,6 +21,8 @@ function AppContent() {
 
   const [currentLevel, setCurrentLevel] = useState(1);
   const { cursor, isPinching }          = useHand();
+  // The platform draws the pointer; while pinching, the game's grab cursor shows at the same spot instead.
+  useEffect(() => { kfMenu(!isPinching); }, [isPinching]);
 
 
   function startLevel(level: number) {
@@ -65,7 +67,7 @@ function AppContent() {
           onRetry={() => setScreen("game")}
         />
       )}
-      <GestureCursor cursor={cursor} isPinching={isPinching} />
+      <GestureCursor cursor={kfShared && !isPinching ? null : cursor} isPinching={isPinching} />
     </div>
   );
 }

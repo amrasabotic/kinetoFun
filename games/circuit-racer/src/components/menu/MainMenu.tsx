@@ -50,7 +50,7 @@ export default function MainMenu({ onSelect }: { onSelect: (a: MainMenuAction) =
       </div>
 
       <p className="mt-8 text-sm text-white/50 max-w-md text-center">
-        Move your hand left/right to steer, raise it to accelerate, lower it to brake, and make a fist to boost.
+        Move your hand left/right to steer, the car drives while your hand is up, drop it low to brake, and make a fist to boost.
       </p>
       <p className="mt-3 text-xs text-white/30">Hover over a tile with your fingertip to select it</p>
     </div>

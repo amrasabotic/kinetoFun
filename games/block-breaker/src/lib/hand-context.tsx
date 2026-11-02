@@ -2,6 +2,17 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode } from "react";
 import { getHandLandmarker } from "@/lib/hand-tracker";
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 /*
  * One camera + hand tracker for the whole game, started as soon as it loads.
  * The game is played on TVs with no mouse, so menus are hand-controlled too:
@@ -171,12 +182,15 @@ export function DwellCursor({ visible }: { visible: boolean }) {
         release();
         return;
       }
+      const menu = visibleRef.current;
+      kfMenu(menu);
+      const sh = menu ? kfShared : undefined;
       kf.__kfPointer?.(tipX, tipY);
-      const x = tipX * window.innerWidth;
-      const y = tipY * window.innerHeight;
+      const x = (sh ? sh.x : tipX) * window.innerWidth;
+      const y = (sh ? sh.y : tipY) * window.innerHeight;
       dot.style.transform = `translate(${x}px, ${y}px)`;
-      // Faded rather than hidden in play, so the player can find the platform's Back button.
-      dot.style.opacity = visibleRef.current ? "1" : "0.45";
+      // Faded rather than hidden in play, so the player can find the platform's Back button; on menus the platform draws it.
+      dot.style.opacity = sh ? "0" : menu ? "1" : "0.45";
 
       const now = performance.now();
       const hit = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-dwell]") ?? null;

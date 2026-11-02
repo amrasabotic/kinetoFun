@@ -1,6 +1,17 @@
 import { useEffect, useRef } from 'react';
 import type { HandState } from './types';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+export const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+export function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 declare global {
   interface Window {
     Hands: any;
@@ -104,8 +115,9 @@ export function useHandTracking(
           const middleTip = lm[12];
 
           // Mirror x-axis so cursor matches natural hand movement, then expand to full screen
-          const cursorX = expand(1 - indexTip.x, MX);
-          const cursorY = expand(indexTip.y, MY);
+          // On the platform every screen follows the platform's cursor, so the game reacts where it is drawn.
+          const cursorX = kfShared?.visible ? kfShared.x : expand(1 - indexTip.x, MX);
+          const cursorY = kfShared?.visible ? kfShared.y : expand(indexTip.y, MY);
 
           // Two-finger gesture: index + middle finger tips close together
           const dx = indexTip.x - middleTip.x;

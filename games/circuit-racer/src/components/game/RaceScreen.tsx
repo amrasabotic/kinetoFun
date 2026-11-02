@@ -3,11 +3,12 @@ import { courseById } from '../../data/courses';
 import { useRaceStore } from '../../stores/raceStore';
 import { useGesture } from '../../mediaPipe/GestureProvider';
 import HoverButton from '../common/HoverButton';
-import { buildOvalTrack, startingGridPositions, trackProgress, nearestWaypointIndex, type Track } from '../../game/track';
+import { buildOvalTrack, startingGridPositions, trackProgress, nearestWaypointIndex, trackOffset, type Track } from '../../game/track';
 import { createCar, updateCar, DEFAULT_CAR_PARAMS, type CarKinematic, type CarPhysicsParams } from '../../game/carKinematics';
 import { createAIDriver, driveAI, type AIDriver } from '../../game/aiRacer';
 import { createLapTracker, addCar, updateCarPosition, type LapTrackerState } from '../../game/lapTracker';
 import { playFanfare } from '../../audio/sound';
+import { mapHandToInput } from '../../game/playerInput';
 
 interface Props {
   courseId: string;
@@ -52,6 +53,7 @@ export default function RaceScreen({ courseId, onExit }: Props) {
   const raceStartedRef = useRef(false);
   const finishedRef = useRef(false);
   const countdownRef = useRef(3);
+  const steerRef = useRef(0);
 
   // Canvas fills the window; internal pixel buffer matches CSS size 1:1 so
   // camera math (world px -> screen px) doesn't need extra scale factors.
@@ -133,22 +135,26 @@ export default function RaceScreen({ courseId, onExit }: Props) {
       const cars = carsRef.current;
 
       if (track && tracker && cars.player && !finishedRef.current && raceStartedRef.current) {
-        const hf = frameRef.current;
-        const steer = hf.detected ? Math.max(-1, Math.min(1, (hf.cursorX - 0.5) * 3.2)) : 0;
-        let throttle = 0;
-        if (hf.detected) {
-          if (hf.cursorY < 0.38) throttle = 1;
-          else if (hf.cursorY > 0.72) throttle = -1;
-        }
-        const boost = hf.detected && hf.isFist;
+        const input = mapHandToInput(frameRef.current, steerRef.current, dt);
+        steerRef.current = input.steer;
 
-        updateCar(cars.player, throttle, steer, boost, paramsRef.current.player, dt);
+        const pOff = trackOffset(track, cars.player.x, cars.player.y);
+        const pGrass = pOff.dist > track.width / 2;
+        updateCar(cars.player, input.throttle, input.steer, input.boost, paramsRef.current.player, dt, pGrass);
+        // Light lane-assist when the hand is centred, so the car follows bends instead of drifting off.
+        if (Math.abs(input.steer) < 0.15 && cars.player.speed > 40) {
+          let diff = pOff.tangent - cars.player.heading;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          if (Math.abs(diff) < Math.PI / 2) cars.player.heading += diff * Math.min(1, 2.5 * dt);
+        }
 
         for (const id of CAR_IDS) {
           if (id === 'player') continue;
           const driver = aiDriversRef.current[id];
-          const input = driveAI(driver, cars[id], track);
-          updateCar(cars[id], input.throttle, input.steer, false, paramsRef.current[id], dt);
+          const ai = driveAI(driver, cars[id], track);
+          const grass = trackOffset(track, cars[id].x, cars[id].y).dist > track.width / 2;
+          updateCar(cars[id], ai.throttle, ai.steer, false, paramsRef.current[id], dt, grass);
         }
 
         const now = performance.now();
@@ -188,11 +194,11 @@ export default function RaceScreen({ courseId, onExit }: Props) {
       ctx.fillStyle = ENV_COLORS[course.environment] ?? '#222';
       ctx.fillRect(0, 0, w, h);
 
-      const camX = cars.player.x - w / 2;
-      const camY = cars.player.y - h / 2;
-
+      // Chase camera: the car always points up, so hand-left is always turn-left.
       ctx.save();
-      ctx.translate(-camX, -camY);
+      ctx.translate(w / 2, h * 0.68);
+      ctx.rotate(-Math.PI / 2 - cars.player.heading);
+      ctx.translate(-cars.player.x, -cars.player.y);
 
       // Track surface
       ctx.lineJoin = 'round';
@@ -295,7 +301,7 @@ export default function RaceScreen({ courseId, onExit }: Props) {
       </div>
 
       <div className="absolute bottom-8 left-8 text-xs text-white/60 z-10">
-        Hand-X to steer &bull; Raise hand to accelerate &bull; Lower hand to brake &bull; Fist to boost
+        Show your hand to drive &bull; Move it left/right to steer &bull; Drop it low to brake &bull; Fist to boost
       </div>
 
       {raceOver && (

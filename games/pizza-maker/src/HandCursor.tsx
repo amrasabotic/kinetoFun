@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { kfShared, kfMenu } from './useHandTracking';
 
 /** Hand position in screen space, 0..1 on each axis, already mirrored. */
 export type HandPoint = { x: number; y: number } | null;
@@ -65,6 +66,7 @@ export default function HandCursor({ getPoint, enabled = true }: {
       if (!cursor) return;
 
       const hasButtons = document.querySelector('button:not([disabled])') !== null;
+      kfMenu(hasButtons);
       if (!hand && target && hasButtons && performance.now() - lastOnTarget <= GRACE_MS) return;
       if (!hand || !hasButtons) {
         cursor.style.opacity = '0';
@@ -73,8 +75,8 @@ export default function HandCursor({ getPoint, enabled = true }: {
         return;
       }
 
-      x += (hand.x - x) * SMOOTHING;
-      y += (hand.y - y) * SMOOTHING;
+      if (kfShared) { x = hand.x; y = hand.y; }
+      else { x += (hand.x - x) * SMOOTHING; y += (hand.y - y) * SMOOTHING; }
       const px = x * window.innerWidth;
       const py = y * window.innerHeight;
       cursor.style.opacity = '1';
@@ -123,8 +125,9 @@ export default function HandCursor({ getPoint, enabled = true }: {
       aria-hidden
     >
       <svg width="52" height="52" viewBox="0 0 52 52">
-        <circle cx="26" cy="26" r="9" fill="rgba(255,255,255,0.9)" stroke="#7C3AED" strokeWidth="3" />
-        <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="4" />
+        {/* With the platform cursor only the press progress is drawn here. */}
+        {!kfShared && <circle cx="26" cy="26" r="9" fill="rgba(255,255,255,0.9)" stroke="#7C3AED" strokeWidth="3" />}
+        {!kfShared && <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="4" />}
         <circle
           ref={ringRef}
           cx="26" cy="26" r="22" fill="none" stroke="#5EED7A" strokeWidth="4" strokeLinecap="round"

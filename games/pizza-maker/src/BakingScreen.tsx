@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { IngredientType, PizzaOrder, HandState } from './types';
 import { INGREDIENT_COLORS, INGREDIENT_LABELS } from './types';
-import { useHandTracking } from './useHandTracking';
+import { useHandTracking, kfMenu } from './useHandTracking';
 import { PizzaPreview } from './OrderScreen';
 import WebcamPreview from './WebcamPreview';
 
@@ -79,6 +79,10 @@ export default function BakingScreen({ order, level, onBake }: BakingScreenProps
 
   const [placed, setPlaced] = useState<PlacedIngredient[]>([]);
   const [score, setScore] = useState(0);
+  // Baking draws its own cursor because it shows the placing gesture; it sits where the platform's would be.
+  useEffect(() => {
+    kfMenu(false);
+  }, []);
   const [handState, setHandState] = useState<HandState>({
     cursorX: -1, cursorY: -1, isPinching: false, isTracking: false,
   });

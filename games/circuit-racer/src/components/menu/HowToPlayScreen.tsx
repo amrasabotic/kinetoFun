@@ -5,7 +5,7 @@ import HoverButton from '../common/HoverButton';
 const STEPS: { icon: string; title: string; desc: string }[] = [
   { icon: '🏁', title: 'Pick a track', desc: 'Hover a track tile to choose it. Each track shows how many laps you race.' },
   { icon: '↔️', title: 'Steer', desc: 'Move your hand left or right to turn the car.' },
-  { icon: '⬆️', title: 'Speed up', desc: 'Raise your hand toward the top of the screen to accelerate.' },
+  { icon: '✋', title: 'Drive', desc: 'Show your hand to the camera and the car drives forward on its own.' },
   { icon: '⬇️', title: 'Brake', desc: 'Lower your hand toward the bottom of the screen to slow down.' },
   { icon: '✊', title: 'Boost', desc: 'Make a fist for a burst of extra speed.' },
   { icon: '🥇', title: 'Win the race', desc: 'Wait for 3-2-1-GO, then beat three rivals to the finish line to earn coins.' },

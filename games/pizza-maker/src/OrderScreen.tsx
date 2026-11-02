@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { PizzaOrder, HandState } from './types';
 import { INGREDIENT_LABELS, INGREDIENT_COLORS } from './types';
-import { useHandTracking } from './useHandTracking';
+import { useHandTracking, kfShared, kfMenu } from './useHandTracking';
 import WebcamPreview from './WebcamPreview';
 import { CheckCircle } from 'lucide-react';
 
@@ -27,6 +27,10 @@ export default function OrderScreen({
   maxLevel,
 }: OrderScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // The order screen is buttons only, so the platform draws the pointer.
+  useEffect(() => {
+    kfMenu(true);
+  }, []);
   const [handState, setHandState] = useState<HandState>({
     cursorX: -1, cursorY: -1, isPinching: false, isTracking: false,
   });
@@ -239,7 +243,7 @@ export default function OrderScreen({
       </div>
 
       {/* ── Cursor ── */}
-      {handState.isTracking && (
+      {handState.isTracking && !kfShared && (
         <div className="fixed pointer-events-none z-50"
           style={{ left: cursorScreenX - 18, top: cursorScreenY - 18, transition: 'left 0.04s linear, top 0.04s linear' }}>
           <div className={`w-9 h-9 rounded-full border-[3px] flex items-center justify-center transition-all duration-75 ${

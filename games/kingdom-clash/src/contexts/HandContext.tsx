@@ -1,6 +1,17 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+export const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+export function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 const PINCH_ENTER = 0.20;
 const PINCH_EXIT  = 0.28;
 
@@ -134,8 +145,9 @@ export function HandProvider({ children }: { children: React.ReactNode }) {
       const wrist    = landmarks[0];
       const indexMCP = landmarks[5];
 
-      const cx = (1 - idx.x) * vw;
-      const cy = idx.y * vh;
+      // On the platform the game points with the platform's cursor, so it reacts where that cursor is drawn.
+      const cx = kfShared?.visible ? kfShared.x * vw : (1 - idx.x) * vw;
+      const cy = kfShared?.visible ? kfShared.y * vh : idx.y * vh;
       setCursor({ x: cx, y: cy });
       cursorRef.current = { x: cx, y: cy };
 

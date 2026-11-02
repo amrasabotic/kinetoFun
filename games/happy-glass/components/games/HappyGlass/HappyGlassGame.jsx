@@ -245,6 +245,13 @@ export default function HappyGlassGame() {
     // ── Gesture ──────────────────────────────────────────────────────────
     const gesture = processLandmarks(landmarksRef.current, gestureRef.current, W, H);
     gestureRef.current = gesture;
+    // The cursor here shows the gesture itself, so the platform is told where it is instead of drawing its own.
+    const kfPointer = window.__kfPointer;
+    if (kfPointer && canvasRef.current) {
+      const r = canvasRef.current.getBoundingClientRect();
+      if (landmarksRef.current?.length) kfPointer((r.left + gesture.smoothX * r.width / W) / innerWidth, (r.top + gesture.smoothY * r.height / H) / innerHeight);
+      else kfPointer(null);
+    }
 
     // ── Thumbs-up debounce ────────────────────────────────────────────────
     if (gs.thumbsUpCooldown > 0) gs.thumbsUpCooldown--;

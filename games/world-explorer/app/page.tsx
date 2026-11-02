@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { GestureState } from '@/lib/gestures';
+import { GestureState, kfShared } from '@/lib/gestures';
 import { useGameStore } from '@/store/gameStore';
 
 const Camera = dynamic(() => import('@/components/Camera'), { ssr: false });
@@ -103,7 +103,7 @@ export default function WorldExplorer() {
         gesture={gestureState.gesture}
         pinchStrength={gestureState.pinchStrength}
         dwellProgress={0}
-        visible={gestureState.handPresent}
+        visible={gestureState.handPresent && !kfShared}
       />
 
       {/* Game screens */}

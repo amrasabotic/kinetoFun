@@ -3,6 +3,17 @@ import type { HandData } from '../hooks/useMediaPipe';
 import { MENU_DWELL_MS } from '../hooks/useGestureControl';
 import * as audio from '../game/audio';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 interface DwellState {
   active: string | null;
   progress: number;
@@ -28,9 +39,15 @@ export default function GestureDetector({ handRef, children }: Props) {
   const activeRef = useRef<string | null>(null);
   const rafRef = useRef(0);
 
+  // Menu screens mount this layer, so it switches the platform's cursor on and off.
+  useEffect(() => {
+    kfMenu(true);
+    return () => kfMenu(false);
+  }, []);
+
   const loop = useCallback(
     (ts: number) => {
-      const hand = handRef.current;
+      const hand = kfShared ? { detected: kfShared.visible, x: kfShared.x, y: kfShared.y } : handRef.current;
       if (!hand || !hand.detected) {
         if (activeRef.current !== null) {
           activeRef.current = null;
@@ -82,7 +99,7 @@ export default function GestureDetector({ handRef, children }: Props) {
   return (
     <div className="relative w-full h-full">
       {children(dwell)}
-      {cursor.visible && (
+      {cursor.visible && !kfShared && (
         <div
           className="pointer-events-none fixed z-[60]"
           style={{ left: cursor.x * window.innerWidth - CURSOR_R, top: cursor.y * window.innerHeight - CURSOR_R, width: CURSOR_R * 2, height: CURSOR_R * 2 }}

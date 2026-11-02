@@ -1,3 +1,14 @@
+
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+export const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
 export type GestureType =
   | 'NONE'
   | 'OPEN_PALM'
@@ -63,8 +74,10 @@ export function detectGesture(landmarks: Landmark[]): GestureState {
   const mirrorX = (v: number) => 1 - v;
 
   // Cursor follows index tip (mirrored)
-  const cursorX = mirrorX(indexTip.x);
-  const cursorY = indexTip.y;
+  // On the platform the game points with the platform's cursor everywhere, so it reacts where that cursor is drawn.
+  kfMenu(true);
+  const cursorX = kfShared?.visible ? kfShared.x : mirrorX(indexTip.x);
+  const cursorY = kfShared?.visible ? kfShared.y : indexTip.y;
 
   // Finger extension checks
   const indexExt = isFingerExtended(indexTip, indexPIP, indexMCP);
