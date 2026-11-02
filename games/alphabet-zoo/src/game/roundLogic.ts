@@ -1,5 +1,6 @@
-import type { BinDef, RoundPrompt } from '../types';
+import type { BinDef, LetterGameMode, RoundPrompt } from '../types';
 import { LETTERS, randomLetter } from '../data/letters';
+import { randomAnimalLetter } from '../data/animals';
 
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
@@ -17,11 +18,13 @@ export function binCountForRound(roundIndex: number): number {
   return 4;
 }
 
-export function generateRound(roundIndex: number, prevPrompt: RoundPrompt | null): { prompt: RoundPrompt; bins: BinDef[] } {
+export function generateRound(roundIndex: number, prevPrompt: RoundPrompt | null, mode: LetterGameMode = 'letter'): { prompt: RoundPrompt; bins: BinDef[] } {
   const binCount = binCountForRound(roundIndex);
   const allLetters = LETTERS.map((l) => l.letter);
 
-  const letter = randomLetter(prevPrompt ? [prevPrompt.letter] : undefined);
+  const exclude = prevPrompt ? [prevPrompt.letter] : undefined;
+  // Animal Sounds only asks about animals that have a call; the other modes use the whole alphabet.
+  const letter = mode === 'animal' ? randomAnimalLetter(exclude) : randomLetter(exclude);
   const prompt: RoundPrompt = { letter };
 
   const distractors = shuffle(allLetters.filter((l) => l !== letter)).slice(0, binCount - 1);
