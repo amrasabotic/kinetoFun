@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bridge Builder</title>
+<style>
+:root { --paper:#1d4f8c; --paper-dark:#123766; --line:rgba(255,255,255,0.13); --chalk:#f4f8ff; --amber:#ffc94a; --ink:#0d2240; --ok:#5ee08a; --bad:#ff7a6a; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:var(--paper-dark); color:var(--chalk); font-family:'Courier New',Consolas,monospace; overflow:hidden; user-select:none; }
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#world { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Blueprint tags: white outline, dashed inner border; an amber bar fills while the hand rests on one. */
+.sb { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer; overflow:hidden;
+  background:var(--c, rgba(13,34,64,0.75)); border:4px solid var(--chalk); border-radius:6px; outline:2px dashed rgba(255,255,255,0.45); outline-offset:-12px;
+  color:var(--chalk); font-size:28px; font-weight:bold; letter-spacing:1px; line-height:1.1; box-shadow:6px 6px 0 rgba(0,0,0,0.35); }
+.sb::after { content:''; position:absolute; left:0; bottom:0; height:12px; width:calc(var(--p, 0) * 100%); background:var(--amber); }
+.sb.hot { background:rgba(255,201,74,0.25); }
+.sb.sel { background:var(--chalk); color:var(--ink); outline-color:rgba(13,34,64,0.4); }
+.sb.off { opacity:0.4; cursor:default; }
+.sb[hidden] { display:none; }
+.sb small { font-size:18px; font-weight:normal; letter-spacing:0; }
+
+.sheet { position:absolute; background:rgba(13,34,64,0.88); border:3px solid var(--chalk); border-radius:4px; padding:16px 22px; box-shadow:8px 8px 0 rgba(0,0,0,0.3); }
+#title { position:absolute; left:80px; top:50px; font-size:84px; font-weight:bold; letter-spacing:6px; color:var(--chalk); text-shadow:4px 4px 0 var(--ink); }
+#subtitle { position:absolute; left:86px; top:150px; font-size:26px; color:var(--amber); letter-spacing:2px; }
+#menu .how { left:80px; top:220px; width:600px; }
+#menu .how h3 { font-size:28px; color:var(--amber); }
+#menu .how p { font-size:22px; line-height:1.35; margin-top:8px; }
+#menu .how b { color:var(--amber); }
+#menu .go { left:780px; top:230px; width:320px; height:150px; font-size:44px; }
+#menu .snd { left:780px; top:420px; width:150px; height:110px; font-size:22px; }
+#menu .exit { left:950px; top:420px; width:150px; height:110px; font-size:21px; }
+
+#levels h2 { position:absolute; left:60px; top:26px; font-size:46px; letter-spacing:3px; }
+#tabs .sb { top:22px; width:170px; height:70px; font-size:24px; }
+#lvgrid { position:absolute; left:60px; top:130px; width:1160px; display:grid; grid-template-columns:repeat(5, 1fr); gap:28px 26px; }
+#lvgrid .sb { position:relative; width:210px; height:190px; font-size:46px; }
+#lvgrid .name { font-size:18px; margin-top:4px; }
+#lvgrid .stars { display:flex; gap:2px; margin-top:6px; }
+#lvgrid .stars svg { width:26px; height:26px; }
+#levels .back { left:60px; top:600px; width:160px; height:100px; }
+
+#bar { position:absolute; left:0; top:0; width:1280px; height:104px; background:rgba(13,34,64,0.82); border-bottom:3px solid var(--chalk); }
+#bar .sb { top:12px; height:80px; font-size:22px; box-shadow:none; }
+#bar .m-road { left:12px; width:120px; } #bar .m-wood { left:140px; width:120px; } #bar .m-steel { left:268px; width:120px; }
+#bar .undo { left:410px; width:110px; } #bar .clear { left:528px; width:110px; }
+#bar .go { left:1130px; width:138px; font-size:32px; --c:rgba(46,140,80,0.85); }
+#bar .stop { left:1130px; width:138px; font-size:26px; --c:rgba(170,60,50,0.85); }
+#bar .example { left:646px; width:130px; }
+#money { position:absolute; left:790px; top:10px; width:330px; height:84px; }
+#money .lv { font-size:20px; color:var(--amber); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#money .row { display:flex; align-items:baseline; gap:10px; font-size:24px; margin-top:2px; }
+#money .cost { font-size:30px; font-weight:bold; }
+#money .cost.over { color:var(--bad); }
+#money .track { position:relative; height:12px; background:rgba(255,255,255,0.15); margin-top:6px; }
+#money .track i { position:absolute; left:0; top:0; bottom:0; background:var(--ok); }
+#money .track b { position:absolute; top:-5px; width:3px; height:22px; background:var(--amber); }
+#camwrap { position:absolute; right:12px; bottom:12px; width:184px; height:138px; border:3px solid var(--chalk); overflow:hidden; background:#000; }
+#cam { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+#bones { position:absolute; inset:0; width:100%; height:100%; }
+
+#intro { position:absolute; inset:0; background:rgba(13,34,64,0.7); }
+#intro[hidden] { display:none; }
+#intro .sheet { left:120px; top:90px; width:720px; }
+#intro h2 { font-size:36px; color:var(--amber); }
+#intro p { font-size:23px; line-height:1.35; margin-top:8px; }
+.check { display:flex; align-items:center; gap:12px; font-size:22px; margin-top:12px; }
+.check i { width:36px; height:36px; border-radius:50%; border:4px solid var(--ok); flex:none; display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:bold; }
+.check.ok i { background:var(--ok); color:var(--ink); }
+#intro .start { left:920px; top:200px; width:260px; height:150px; font-size:44px; --c:rgba(46,140,80,0.85); }
+#intro .back { left:950px; top:420px; width:200px; height:100px; }
+
+#result .sheet { left:330px; top:60px; width:620px; text-align:center; }
+#result h2 { font-size:44px; color:var(--amber); }
+#result .stars svg { width:66px; height:66px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:4px 40px; font-size:24px; justify-content:center; margin-top:8px; text-align:left; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#rs-buttons .sb { top:500px; width:210px; height:120px; }
+#rs-buttons .b0 { left:300px; --c:rgba(46,140,80,0.85); } #rs-buttons .b1 { left:535px; } #rs-buttons .b2 { left:770px; }
+.stars { display:flex; gap:4px; justify-content:center; }
+#hint { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); font-size:24px; padding:8px 22px; background:var(--ink); border:3px solid var(--amber); color:var(--amber); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint[hidden] { display:none; }
+#say { position:absolute; left:50%; top:122px; transform:translateX(-50%); font-size:26px; font-weight:bold; padding:8px 22px; background:var(--chalk); color:var(--ink); white-space:nowrap; pointer-events:none; z-index:5; }
+#say[hidden] { display:none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="world" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div id="title">BRIDGE BUILDER</div>
+    <div id="subtitle">30 crossings to engineer</div>
+    <div class="sheet how">
+      <h3>How to play</h3>
+      <p>A truck needs to cross the gap. <b>Pinch</b> your thumb and finger on a joint, <b>move</b> and <b>let go</b> to lay a beam.</p>
+      <p><b>Road</b> beams carry the truck. <b>Wood</b> and <b>steel</b> hold the road up: build <b>triangles</b>, they do not bend.</p>
+      <p>Press <b>GO</b> to test it. Stay under the budget; spend less for more stars. Rest your hand on a button to press it.</p>
+    </div>
+    <div class="sb go" data-dwell="play">START</div>
+    <div class="sb snd" data-dwell="sound" id="btn-sound">Sound on</div>
+    <div class="sb exit" data-dwell="exit" id="btn-exit" hidden>Back to games</div>
+  </section>
+
+  <section class="screen" id="levels">
+    <h2>CROSSINGS</h2>
+    <div id="tabs"></div>
+    <div id="lvgrid"></div>
+    <div class="sb back" data-dwell="menu">Menu</div>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="bar">
+      <div class="sb m-road" data-dwell="mat" data-mat="road">Road<small>$120</small></div>
+      <div class="sb m-wood" data-dwell="mat" data-mat="wood">Wood<small>$60</small></div>
+      <div class="sb m-steel" data-dwell="mat" data-mat="steel" id="btn-steel">Steel<small>$150</small></div>
+      <div class="sb undo" data-dwell="undo">Undo</div>
+      <div class="sb clear" data-dwell="clear">Clear</div>
+      <div class="sb example" data-dwell="example" id="btn-example">Example<small>2 stars max</small></div>
+      <div id="money">
+        <div class="lv" id="hd-level"></div>
+        <div class="row"><span class="cost" id="hd-cost">$0</span><span>of $<span id="hd-budget"></span></span></div>
+        <div class="track"><i id="hd-fill"></i><b id="hd-three"></b><b id="hd-two"></b></div>
+      </div>
+      <div class="sb go" data-dwell="go" id="btn-go">GO!</div>
+      <div class="sb stop" data-dwell="stop" id="btn-stop" hidden>Edit</div>
+    </div>
+    <div id="intro">
+      <div class="sheet">
+        <h2 id="in-title"></h2>
+        <p id="in-text"></p>
+        <div class="check" id="ck-pinch"><i></i>Pinch your thumb and first finger together</div>
+        <div class="check" id="ck-open"><i></i>Open them again to let go</div>
+      </div>
+      <div class="sb start" data-dwell="begin">BUILD</div>
+      <div class="sb back" data-dwell="levels">Crossings</div>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="sheet"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <div id="camwrap"><video id="cam" autoplay muted playsinline></video><canvas id="bones" width="184" height="138"></canvas></div>
+  <div id="say" hidden></div>
+  <div id="hint" hidden></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="bridge.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const G = window.BRIDGE;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), world = $('world'), ink = $('ink'), video = $('cam'), bones = $('bones');
+const c = world.getContext('2d'), ictx = ink.getContext('2d'), bctx = bones.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+function fit() {
+  W = innerWidth; H = innerHeight; ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+const toScreen = (x, y) => ({ x: x * K + OX, y: y * K + OY });
+
+// ---------- save ----------
+const SAVE_KEY = 'bridge-builder-v1';
+const N = G.LEVELS.length;
+const progress = (() => {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s) return { ...base, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)), sound: s.sound !== false, stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0) };
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+})();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+// Points from every crossing since the game was opened; reported once, when the player leaves or clears the last one.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null;
+function tone(f, dur, type = 'sine', vol = 0.08, f2 = 0, delay = 0) {
+  if (!progress.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.05);
+  } catch (e) { /* audio is optional */ }
+}
+const SFX = {
+  select() { tone(660, 0.08, 'triangle'); tone(990, 0.1, 'triangle', 0.07, 0, 0.07); },
+  grab() { tone(500, 0.06, 'square', 0.04); },
+  place() { tone(220, 0.08, 'triangle', 0.1); tone(330, 0.1, 'triangle', 0.06, 0, 0.05); },
+  nope() { tone(180, 0.18, 'square', 0.05, 140); },
+  undo() { tone(500, 0.1, 'sine', 0.06, 300); },
+  engine() { tone(90, 0.6, 'sawtooth', 0.04, 120); },
+  creak() { tone(140, 0.25, 'sawtooth', 0.04, 90); },
+  snap() { tone(900, 0.05, 'square', 0.08, 200); tone(120, 0.4, 'sawtooth', 0.06, 60, 0.04); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.08, 0, i * 0.11)); },
+  splash() { for (let k = 0; k < 6; k++) tone(300 + Math.random() * 400, 0.12, 'sine', 0.04, 100, k * 0.05); },
+};
+function sfx(n) { try { SFX[n](); } catch (e) { /* audio is optional */ } }
+
+// ---------- screens ----------
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffc94a' : 'rgba(255,255,255,0.18)'}" stroke="${on ? '#7a5400' : 'rgba(255,255,255,0.4)'}"/></svg>`;
+}
+const SCREENS = ['menu', 'levels', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name; stage.dataset.screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  armedAt = performance.now() + ARM_MS; resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = progress.sound ? 'Sound on' : 'Sound off'; }
+updateSoundLabel();
+let page = 0;
+function openLevels(p = Math.floor((progress.unlocked - 1) / 10)) {
+  page = Math.max(0, Math.min(2, p)); build = null; mode = 'idle';
+  $('tabs').innerHTML = [0, 1, 2].map((k) => `<div class="sb${k === page ? ' sel' : ''}" data-dwell="page" data-page="${k}" style="left:${560 + k * 190}px">${k * 10 + 1}-${k * 10 + 10}</div>`).join('');
+  $('lvgrid').innerHTML = G.LEVELS.slice(page * 10, page * 10 + 10).map((lv, j) => {
+    const i = page * 10 + j, locked = i + 1 > progress.unlocked;
+    return `<div class="sb${locked ? ' off' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>${i + 1}<span class="name">${locked ? 'Locked' : lv.name}</span><div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>`;
+  }).join('');
+  show('levels');
+}
+
+// ---------- a crossing ----------
+// mode: 'idle' off the build screen, 'intro', 'build', 'drive', 'fall' after a collapse.
+let build = null, mode = 'idle', run = null, drv = null, fall = null, checks = { pinch: false, open: false };
+const designs = new Map();
+// The reference bridge per level, built once, shown when the player asks for the example.
+let showExample = false;
+const examples = new Map();
+function example(cfg) { if (!examples.has(cfg)) examples.set(cfg, G.reference(cfg)); return examples.get(cfg); }
+const TIPS = {
+  0: 'Pinch on a joint at the cliff edge, move across and let go to lay a road. Road beams alone sag, so add wood above them.',
+  2: 'Triangles never change shape. Join the road to joints above it with wood to make a row of triangles.',
+  3: 'You can also hang supports from the joints down the cliff faces.',
+  4: 'A rock in the middle! Build down to it: resting the road on the rock saves a lot of money.',
+  5: 'A heavier van today. Watch how the beams turn red when they work hard.',
+  8: 'Boats sail below: no joints in the water. Build your supports above the road.',
+  10: 'Steel unlocked: dearer, but stronger and stiffer than wood. Long spans need it.',
+  15: 'Three rocks: use them all and the bridge gets much cheaper.',
+  16: 'A bus is the heaviest thing on the road. Make it strong.',
+};
+function openLevel(i) {
+  build = designs.get(i) || G.createBuild(i);
+  designs.set(i, build);
+  mode = 'intro'; run = null; fall = null; drag = null; showExample = false;
+  checks = { pinch: false, open: false };
+  const cfg = build.cfg, v = G.VEHICLES[cfg.vehicle];
+  $('hd-level').textContent = `${i + 1}. ${cfg.name}: ${v.name}`;
+  $('in-title').textContent = `${i + 1}. ${cfg.name}`;
+  const tip = TIPS[i] || 'Get the ' + v.name.toLowerCase() + ' across for as little money as you can.';
+  $('in-text').textContent = `${tip} Vehicle: ${v.name}. Budget: $${build.budget.toLocaleString()}.`;
+  $('btn-steel').classList.toggle('off', !cfg.steel);
+  if (!cfg.steel && build.material === 'steel') build.material = 'wood';
+  $('intro').hidden = false;
+  setDriving(false);
+  hud = {};
+  show('play');
+}
+function setDriving(on) { $('btn-go').hidden = on; $('btn-stop').hidden = !on; }
+function startDrive() {
+  if (mode !== 'build') return;
+  run = G.drive(build);
+  drv = { s: 40, t0: performance.now(), snapped: 0, last: 0 };
+  mode = 'drive'; drag = null;
+  setDriving(true);
+  sfx('engine');
+  if (run.reason === 'noroad') say('The road does not reach the other side!');
+}
+function stopDrive() { mode = 'build'; run = null; fall = null; setDriving(false); }
+function finishLevel(won) {
+  const i = build.level, r = G.result(build, { won }), last = i === N - 1;
+  mode = 'idle';
+  if (won) {
+    sessionScore += r.score;
+    progress.stars[i] = Math.max(progress.stars[i], r.stars);
+    progress.best[i] = progress.best[i] ? Math.min(progress.best[i], r.cost) : r.cost;
+    progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+    save();
+  }
+  $('rs-title').textContent = !won ? 'The bridge fell down' : r.stars === 3 ? 'Master engineer!' : 'It made it across!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  const lines = [['Bridge cost', `$${r.cost.toLocaleString()}`], ...(r.peeked && won ? [['Example used', '2 stars max']] : []), ['Budget', `$${r.budget.toLocaleString()}`], ['3 stars at', `$${r.three.toLocaleString()} or less`], ['2 stars at', `$${r.two.toLocaleString()} or less`]];
+  if (progress.best[i]) lines.push(['Cheapest so far', `$${progress.best[i].toLocaleString()}`]);
+  $('rs-lines').innerHTML = lines.map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const canNext = won && !last;
+  $('rs-buttons').innerHTML = (canNext ? '<div class="sb b0" data-dwell="next">NEXT</div>' : '<div class="sb b0" data-dwell="edit">FIX IT</div>')
+    + (canNext ? '<div class="sb b1" data-dwell="edit">Improve</div>' : '') + '<div class="sb b2" data-dwell="levels">Crossings</div>';
+  show('result');
+  if (won && last) reportScore();
+}
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openLevels(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': show('menu'); break;
+    case 'levels': openLevels(); break;
+    case 'page': openLevels(Number(el.dataset.page)); break;
+    case 'level': openLevel(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; mode = 'build'; resetDwell(); break;
+    case 'mat': if (build && (el.dataset.mat !== 'steel' || build.cfg.steel)) build.material = el.dataset.mat; break;
+    case 'undo': if (mode === 'build' && G.undo(build)) sfx('undo'); break;
+    case 'clear': if (mode === 'build') { G.clear(build); sfx('undo'); } break;
+    case 'example':
+      if (mode !== 'build') break;
+      showExample = !showExample;
+      if (showExample && !build.peeked) { build.peeked = true; say('Trace the example: this bridge can earn 2 stars'); }
+      break;
+    case 'go': startDrive(); break;
+    case 'stop': stopDrive(); break;
+    case 'next': openLevel(Math.min(N - 1, build.level + 1)); break;
+    case 'edit': { const i = build.level; openLevel(i); $('intro').hidden = true; mode = 'build'; break; }
+  }
+}
+// The platform's Back button: out of a crossing to the list, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { openLevels(); return true; }
+  if (screen === 'levels') { show('menu'); return true; }
+  return reportScore();
+};
+let sayTimer = 0;
+function say(text) { $('say').textContent = text; $('say').hidden = false; clearTimeout(sayTimer); sayTimer = setTimeout(() => { $('say').hidden = true; }, 2200); }
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, nx: 0.5, ny: 0.5, pinch: false, lm: null, track: null };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 300;
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream; await video.play();
+  } catch (e) { statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.'; return; }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1, minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) { console.error('hand tracking failed', e); statusText = 'Hand tracking could not start. Reload to try again.'; }
+}
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (!lm) return;
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  if (fresh) hand.track = G.createPinch();
+  // Aim with the point between thumb and finger tips; the tracker smooths it and remembers where it was before a pinch.
+  const px = (lm[4].x + lm[8].x) / 2, py = (lm[4].y + lm[8].y) / 2;
+  const e = G.trackPinch(hand.track, reach(1 - px, 0.15, 0.85) * 1280, reach(py, 0.12, 0.8) * 720, G.pinchGap(lm, res.worldLandmarks && res.worldLandmarks[0]), now);
+  hand.nx = hand.track.x / 1280; hand.ny = hand.track.y / 720;
+  hand.lastSeen = now; hand.present = true; hand.lm = lm; hand.pinch = hand.track.on;
+  if (e) {
+    if (mode === 'intro') { if (e.type === 'down') checks.pinch = true; else if (checks.pinch) checks.open = true; }
+    e.type === 'down' ? pinchDown(e) : pinchUp(e);
+  }
+  if (window.__kfPointer) window.__kfPointer(hand.nx, hand.ny);
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.lm = null; hand.pinch = false;
+    const e = hand.track && G.losePinch(hand.track);
+    if (e) pinchUp(e);
+    if (window.__kfPointer) window.__kfPointer(null);
+  }
+}
+const mouse = { x: null, y: null };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerdown', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; if (!e.target.closest('[data-dwell]') && !hand.present) pinchDown(); });
+addEventListener('pointerup', () => { if (!hand.present) pinchUp(); });
+addEventListener('click', (e) => { const el = e.target.closest('[data-dwell]'); if (el && el.closest('.screen.on') && !el.closest('[hidden]') && !el.classList.contains('off')) { resetDwell(); dwell.at = { x: e.clientX, y: e.clientY }; act(el); } });
+// The build point in stage pixels.
+function aim() {
+  if (hand.present) return { x: hand.nx * 1280, y: hand.ny * 720 };
+  if (mouse.x !== null) return toStage(mouse.x, mouse.y);
+  return null;
+}
+
+// ---------- laying beams ----------
+let drag = null;
+// at: where the tracker says the hand aimed before the fingers moved; a mouse uses its own position.
+function pinchDown(at) {
+  const p = at || aim();
+  if (mode !== 'build' || !p || p.y < 110) return;
+  const j = G.jointNear(build, p.x, p.y);
+  if (j < 0) { say('Start a beam on a joint'); sfx('nope'); return; }
+  drag = { from: j };
+  sfx('grab');
+}
+const NOPE = { budget: 'Over budget!', locked: 'Steel is not unlocked yet', exists: 'There is a beam there already', nowhere: 'No room for a beam there' };
+function pinchUp(at) {
+  if (!drag || mode !== 'build') { drag = null; return; }
+  const p = at || aim(), from = drag.from;
+  drag = null;
+  if (!p) return;
+  const r = G.addBeam(build, from, p.x, p.y);
+  if (r === 'ok') sfx('place');
+  else { const end = G.endFor(build, from, p.x, p.y); if (!(r === 'nowhere' && end && end.x === build.nodes[from].x && end.y === build.nodes[from].y)) say(NOPE[r] || 'Try again'); sfx('nope'); }
+}
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null, at: null };
+const BUTTON_MS = 1000;
+function resetDwell() { if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); } dwell.el = null; dwell.p = 0; }
+// On the platform the bridge supplies one cursor for menus; on the building site the game draws its own pencil.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => mode !== 'build' && mode !== 'drive' && mode !== 'fall';
+function menuPoint() {
+  if (kfShared && kfInMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  if (hand.present) return toScreen(hand.nx * 1280, hand.ny * 720);
+  return mouse.x !== null ? { x: mouse.x, y: mouse.y } : null;
+}
+function updateDwell(now) {
+  let target = null;
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = menuPoint();
+  if (dwell.at && pt && Math.hypot(pt.x - dwell.at.x, pt.y - dwell.at.y) > 60 * K) dwell.at = null;
+  // While a beam is being dragged the toolbar is out of play, so a beam end near the top cannot press Clear.
+  if (pt && now >= armedAt && !dwell.at && !drag && !(hand.present && hand.pinch)) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.hidden || el.closest('[hidden]') || el.classList.contains('off') || el.classList.contains('sel')) continue;
+      if (screen === 'play' && !$('intro').hidden !== !!el.closest('#intro')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (pt.x >= r.left - 8 && pt.x <= r.right + 8 && pt.y >= r.top - 8 && pt.y <= r.bottom + 8) { target = el; break; }
+    }
+  }
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) { resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot'); }
+  else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; dwell.at = pt; act(el); }
+}
+
+// ---------- drawing ----------
+const MAT_COL = { road: '#3a3a44', wood: '#c8894a', steel: '#9aa8ba' };
+const BLUE_COL = { road: '#ffffff', wood: '#ffc94a', steel: '#9ad8ff' };
+function blueprint() {
+  c.fillStyle = '#1d4f8c'; c.fillRect(0, 0, 1280, 720);
+  c.strokeStyle = 'rgba(255,255,255,0.07)'; c.lineWidth = 1;
+  for (let x = 0; x <= 1280; x += 20) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 720); c.stroke(); }
+  for (let y = 0; y <= 720; y += 20) { c.beginPath(); c.moveTo(0, y); c.lineTo(1280, y); c.stroke(); }
+  c.strokeStyle = 'rgba(255,255,255,0.16)';
+  for (let x = 0; x <= 1280; x += 60) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 720); c.stroke(); }
+  for (let y = 0; y <= 720; y += 60) { c.beginPath(); c.moveTo(0, y); c.lineTo(1280, y); c.stroke(); }
+}
+function daylight(cfg) {
+  const g = c.createLinearGradient(0, 0, 0, 720); g.addColorStop(0, '#8fd0f4'); g.addColorStop(1, '#e8f6ff');
+  c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = '#b8d8c8'; c.beginPath(); c.moveTo(0, 360); c.quadraticCurveTo(320, 200, 640, 330); c.quadraticCurveTo(960, 240, 1280, 340); c.lineTo(1280, 720); c.lineTo(0, 720); c.fill();
+}
+function terrain(cfg, blue) {
+  const water = cfg.water || 640;
+  c.fillStyle = blue ? 'rgba(120,200,255,0.18)' : '#3a8ad8'; c.fillRect(0, water, 1280, 720 - water);
+  if (!blue) { c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 3; for (let x = 0; x < 1280; x += 80) { c.beginPath(); c.arc(x + ((performance.now() / 40) % 80), water + 12, 16, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); } }
+  for (const s of G.solids(cfg)) {
+    c.fillStyle = blue ? 'rgba(13,34,64,0.75)' : '#8a6a4a';
+    c.fillRect(s.x0, s.y0, s.x1 - s.x0, 720 - s.y0);
+    if (blue) {
+      c.strokeStyle = 'rgba(255,255,255,0.75)'; c.lineWidth = 3; c.strokeRect(s.x0, s.y0, s.x1 - s.x0, 760 - s.y0);
+      c.save(); c.beginPath(); c.rect(s.x0, s.y0, s.x1 - s.x0, 720 - s.y0); c.clip(); c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 2;
+      for (let k = -720; k < 1280; k += 18) { c.beginPath(); c.moveTo(k, 720); c.lineTo(k + 720, 0); c.stroke(); }
+      c.restore();
+    } else { c.fillStyle = '#5aa04a'; c.fillRect(s.x0, s.y0 - 6, s.x1 - s.x0, 12); }
+  }
+  // Flags at the start and the goal.
+  c.strokeStyle = blue ? '#fff' : '#333'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(cfg.right + 120, cfg.y); c.lineTo(cfg.right + 120, cfg.y - 80); c.stroke();
+  c.fillStyle = '#ff6a4a'; c.beginPath(); c.moveTo(cfg.right + 120, cfg.y - 80); c.lineTo(cfg.right + 170, cfg.y - 66); c.lineTo(cfg.right + 120, cfg.y - 52); c.fill();
+}
+function vehicle(x, cx, cy, ang, kind, blue) {
+  const v = G.VEHICLES[kind], wb = v.wheelbase, r = v.r;
+  x.save(); x.translate(cx, cy); x.rotate(ang);
+  const body = { car: '#e8402a', van: '#2a8ae8', truck: '#f0a020', bus: '#f0d020' }[kind];
+  x.fillStyle = blue ? 'rgba(255,255,255,0.2)' : body; x.strokeStyle = blue ? '#fff' : '#222'; x.lineWidth = 3;
+  const len = wb + r * 2 + 16, h = kind === 'bus' ? 52 : kind === 'van' ? 44 : kind === 'truck' ? 46 : 30;
+  x.beginPath(); x.roundRect(-r - 8, -r - h, len, h, 8); x.fill(); x.stroke();
+  x.fillStyle = blue ? 'transparent' : '#bfe6ff';
+  if (kind === 'car') { x.beginPath(); x.roundRect(wb * 0.3, -r - h - 16, wb * 0.5, 20, 6); x.fillStyle = blue ? 'rgba(255,255,255,0.2)' : body; x.fill(); x.stroke(); }
+  else for (let k = 0; k < (kind === 'bus' ? 4 : 2); k++) { x.beginPath(); x.rect(-r + k * (len / (kind === 'bus' ? 4.4 : 2.6)), -r - h + 8, 18, 14); x.fillStyle = blue ? 'rgba(255,255,255,0.3)' : '#bfe6ff'; x.fill(); }
+  for (const wx of [0, wb]) { x.fillStyle = blue ? 'transparent' : '#222'; x.beginPath(); x.arc(wx, 0, r, 0, 7); x.fill(); x.stroke(); x.fillStyle = '#aaa'; x.beginPath(); x.arc(wx, 0, r * 0.4, 0, 7); x.fill(); }
+  x.restore();
+}
+// Load colour: calm green to orange to red as a beam nears its limit.
+function loadCol(l) {
+  const k = Math.min(1, l);
+  return k < 0.5 ? `rgb(${Math.round(90 + 330 * k)},${Math.round(200 - 20 * k)},90)` : `rgb(${Math.round(255)},${Math.round(190 - 300 * (k - 0.5))},${Math.round(90 - 120 * (k - 0.5))})`;
+}
+const EXAG = 6;
+function renderWorld(now) {
+  const t = now / 1000;
+  if (screen !== 'play' || !build) { blueprint(); renderMenuArt(t); return; }
+  const cfg = build.cfg, blue = mode === 'build' || mode === 'intro';
+  if (blue) blueprint(); else daylight(cfg);
+  terrain(cfg, blue);
+  if (blue) {
+    // The example bridge, faint and dashed, for the player to trace.
+    if (showExample && mode === 'build') {
+      const ex = example(cfg);
+      c.setLineDash([10, 8]); c.lineCap = 'round';
+      for (const e of ex.beams) {
+        const A = ex.nodes[e.a], B = ex.nodes[e.b];
+        c.strokeStyle = e.mat === 'road' ? 'rgba(255,255,255,0.45)' : e.mat === 'steel' ? 'rgba(154,216,255,0.55)' : 'rgba(255,201,74,0.55)';
+        c.lineWidth = e.mat === 'road' ? 14 : 10;
+        c.beginPath(); c.moveTo(A.x, A.y); c.lineTo(B.x, B.y); c.stroke();
+      }
+      c.setLineDash([]);
+    }
+    // Grid joints where beams may go.
+    c.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let x = cfg.left; x <= cfg.right; x += 60) for (let y = 120; y <= 660; y += 60) if (G.canPlace(cfg, x, y)) { c.beginPath(); c.arc(x, y, 3, 0, 7); c.fill(); }
+  }
+  const pos = positions(), brokenSet = currentBroken(), force = currentForce();
+  build.beams.forEach((e, k) => {
+    if (brokenSet.has(k) && mode !== 'fall') return;
+    const A = pos[e.a], B = pos[e.b];
+    if (!A || !B) return;
+    const w = e.mat === 'road' ? 10 : 7;
+    c.lineCap = 'round';
+    if (blue) { c.strokeStyle = BLUE_COL[e.mat]; c.lineWidth = w; }
+    else { c.strokeStyle = MAT_COL[e.mat]; c.lineWidth = w + 3; c.beginPath(); c.moveTo(A.x, A.y); c.lineTo(B.x, B.y); c.stroke(); c.strokeStyle = force ? loadCol(Math.abs(force[k]) / G.MATERIALS[e.mat].strength) : MAT_COL[e.mat]; c.lineWidth = w - 3; }
+    c.beginPath(); c.moveTo(A.x, A.y); c.lineTo(B.x, B.y); c.stroke();
+  });
+  build.nodes.forEach((n, i) => {
+    const p = pos[i];
+    if (!p) return;
+    c.fillStyle = n.fixed ? '#ff6a4a' : blue ? '#fff' : '#555';
+    c.beginPath(); c.arc(p.x, p.y, n.fixed ? 9 : 6, 0, 7); c.fill();
+    if (n.fixed) { c.strokeStyle = '#fff'; c.lineWidth = 2; c.stroke(); }
+  });
+  renderTruck(now, blue);
+  // Beam being laid.
+  if (drag && mode === 'build') {
+    const p = aim(), a = build.nodes[drag.from], end = p && G.endFor(build, drag.from, p.x, p.y);
+    if (end) {
+      const len = Math.hypot(end.x - a.x, end.y - a.y), price = G.beamCost(len, build.material), over = G.cost(build) + price > build.budget;
+      c.setLineDash([14, 8]); c.strokeStyle = over ? '#ff7a6a' : BLUE_COL[build.material]; c.lineWidth = 8;
+      c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(end.x, end.y); c.stroke(); c.setLineDash([]);
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(end.x, end.y, 8, 0, 7); c.fill();
+      c.font = 'bold 22px Courier New'; c.textAlign = 'center'; c.lineWidth = 5; c.strokeStyle = '#0d2240'; c.fillStyle = over ? '#ff7a6a' : '#ffc94a';
+      c.strokeText(`$${price}`, (a.x + end.x) / 2, (a.y + end.y) / 2 - 16); c.fillText(`$${price}`, (a.x + end.x) / 2, (a.y + end.y) / 2 - 16);
+    }
+  }
+  // Joint under the pencil, ready to start a beam.
+  if (mode === 'build' && !drag) {
+    const p = aim(), j = p && p.y > 110 ? G.jointNear(build, p.x, p.y) : -1;
+    if (j >= 0) { const n = build.nodes[j]; c.strokeStyle = '#ffc94a'; c.lineWidth = 4; c.beginPath(); c.arc(n.x, n.y, 18, 0, 7); c.stroke(); }
+  }
+}
+function renderMenuArt(t) {
+  // A little truss drawn in chalk under the menus.
+  c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 4;
+  const y = 640;
+  c.beginPath(); c.moveTo(60, y); c.lineTo(1220, y); c.stroke();
+  for (let x = 60; x < 1220; x += 116) { c.beginPath(); c.moveTo(x, y); c.lineTo(x + 58, y - 58); c.lineTo(x + 116, y); c.stroke(); }
+  c.beginPath(); c.moveTo(118, y - 58); c.lineTo(1162, y - 58); c.stroke();
+}
+// Joint positions now: as built, bent by the solved loads while driving (drawn larger so the bending shows), or falling.
+function positions() {
+  if (mode === 'fall' && fall) return fall.nodes;
+  const smp = sample();
+  return build.nodes.map((n, i) => (smp ? { x: n.x + smp.u[i][0] * EXAG, y: n.y + smp.u[i][1] * EXAG } : { x: n.x, y: n.y }));
+}
+function sample() {
+  if (!run || !run.samples.length || mode !== 'drive') return null;
+  let best = run.samples[0];
+  for (const smp of run.samples) { if (smp.s <= drv.s) best = smp; else break; }
+  return best;
+}
+function currentBroken() { const smp = sample(); return smp ? smp.broken : fall ? fall.broken : new Set(); }
+function currentForce() { const smp = sample(); return smp ? smp.force : null; }
+function axle(s) {
+  const p = G.pointOn(run.route, s), smp = sample();
+  if (!smp || !p) return p;
+  const ua = p.a >= 0 ? smp.u[p.a] : [0, 0], ub = p.b >= 0 ? smp.u[p.b] : [0, 0];
+  return { x: p.x + EXAG * (ua[0] * (1 - p.t) + ub[0] * p.t), y: p.y + EXAG * (ua[1] * (1 - p.t) + ub[1] * p.t) };
+}
+function renderTruck(now, blue) {
+  const v = G.VEHICLES[build.cfg.vehicle];
+  if (mode === 'fall' && fall) { vehicle(c, fall.truck.x, fall.truck.y, fall.truck.a, build.cfg.vehicle, false); return; }
+  if (mode === 'drive' && run) {
+    const back = axle(drv.s), front = axle(drv.s + v.wheelbase);
+    vehicle(c, back.x, back.y - v.r, Math.atan2(front.y - back.y, front.x - back.x), build.cfg.vehicle, false);
+    return;
+  }
+  vehicle(c, 60, build.cfg.y - v.r, 0, build.cfg.vehicle, blue);
+}
+
+// The drive: the truck rolls along the solved samples; at the failure point everything loose starts to fall.
+function updateDrive(dt) {
+  if (mode === 'drive' && run) {
+    const v = G.VEHICLES[build.cfg.vehicle];
+    drv.s += v.speed * dt;
+    const snaps = run.events.filter((e) => e.s <= drv.s).length;
+    if (snaps > drv.snapped) { drv.snapped = snaps; sfx('snap'); }
+    if (!run.won && drv.s >= run.failS) startFall(v);
+    else if (run.won && drv.s >= run.route[run.route.length - 2].s + 60) { mode = 'idle'; sfx('win'); setTimeout(() => finishLevel(true), 700); }
+  } else if (mode === 'fall' && fall) stepFall(dt);
+}
+function startFall(v) {
+  const pos = positions(), broken = new Set(currentBroken());
+  // The beam that failed goes too, and so does every road beam if the road sank.
+  if (run.reason === 'sag') build.beams.forEach((e, k) => { if (e.mat === 'road') broken.add(k); });
+  const back = run.reason === 'noroad' ? { x: build.cfg.left - v.wheelbase / 2, y: build.cfg.y } : axle(drv.s), front = run.reason === 'noroad' ? { x: build.cfg.left + v.wheelbase / 2, y: build.cfg.y } : axle(drv.s + v.wheelbase);
+  fall = {
+    nodes: pos.map((p, i) => ({ x: p.x, y: p.y, px: p.x, py: p.y, fixed: build.nodes[i].fixed })),
+    broken, t: 0, splashed: false,
+    truck: { x: back.x, y: back.y - v.r, vx: v.speed / 60 * 0.6, vy: 0, a: Math.atan2(front.y - back.y, front.x - back.x), va: 0.02 },
+  };
+  mode = 'fall';
+  sfx('creak');
+}
+function stepFall(dt) {
+  const f = fall, g = 900 * dt * dt;
+  f.t += dt;
+  for (const n of f.nodes) { if (n.fixed) continue; const vx = n.x - n.px, vy = n.y - n.py; n.px = n.x; n.py = n.y; n.x += vx * 0.99; n.y += vy + g; }
+  for (let it = 0; it < 6; it++) build.beams.forEach((e, k) => {
+    if (f.broken.has(k)) return;
+    const A = f.nodes[e.a], B = f.nodes[e.b], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1, rest = G.beamLen(build, e);
+    const wa = A.fixed ? 0 : 1, wb = B.fixed ? 0 : 1, w = wa + wb;
+    if (!w) return;
+    const k2 = (d - rest) / d / w;
+    A.x += dx * k2 * wa; A.y += dy * k2 * wa; B.x -= dx * k2 * wb; B.y -= dy * k2 * wb;
+  });
+  const tr = f.truck;
+  tr.vy += 900 * dt; tr.x += tr.vx; tr.y += tr.vy * dt; tr.a += tr.va;
+  const water = build.cfg.water || 640;
+  if (!f.splashed && tr.y > water) { f.splashed = true; sfx('splash'); }
+  if (f.t > 2.2) { fall = null; finishLevel(false); }
+}
+
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+let hintShownText = null;
+function updateHud(now) {
+  let text = statusText;
+  if (!text && !hand.present && now - hand.lastSeen > 1200 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  if (text !== hintShownText) { hintShownText = text; $('hint').textContent = text; $('hint').hidden = !text; }
+  if (screen !== 'play' || !build) return;
+  ['pinch', 'open'].forEach((k) => setOnce('ck' + k, checks[k], (v) => { $('ck-' + k).classList.toggle('ok', v); $('ck-' + k).querySelector('i').textContent = v ? '✓' : ''; }));
+  const cost = G.cost(build), [three, two] = G.starLines(build.cfg);
+  setOnce('cost', cost, (v) => {
+    $('hd-cost').textContent = `$${v.toLocaleString()}`;
+    $('hd-cost').classList.toggle('over', v > two);
+    $('hd-fill').style.width = `${Math.min(100, (100 * v) / build.budget)}%`;
+    $('hd-fill').style.background = v <= three ? '#5ee08a' : v <= two ? '#ffc94a' : '#ff7a6a';
+  });
+  setOnce('budget', build.budget, (v) => {
+    $('hd-budget').textContent = v.toLocaleString();
+    $('hd-three').style.left = `${(100 * three) / v}%`; $('hd-two').style.left = `${(100 * two) / v}%`;
+  });
+  setOnce('mat', build.material, (m) => { for (const el of document.querySelectorAll('[data-mat]')) el.classList.toggle('sel', el.dataset.mat === m); });
+  setOnce('ex', showExample, (on) => { $('btn-example').innerHTML = on ? 'Hide<small>example</small>' : 'Example<small>2 stars max</small>'; });
+}
+function renderBones() {
+  const x = bctx, w = bones.width, h = bones.height;
+  x.clearRect(0, 0, w, h);
+  const lm = hand.present && hand.lm;
+  if (!lm) return;
+  const Pt = (i) => [(1 - lm[i].x) * w, lm[i].y * h];
+  x.strokeStyle = hand.pinch ? '#ffc94a' : '#fff'; x.lineWidth = 3;
+  for (const f of [[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14, 15, 16], [0, 17, 18, 19, 20], [5, 9, 13, 17]]) {
+    x.beginPath(); f.forEach((i, k) => { const [px, py] = Pt(i); k ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+  }
+}
+// On the building site the cursor is a drafting pencil point; on menus the platform cursor, or a ring, is.
+function renderInk() {
+  ictx.clearRect(0, 0, W, H);
+  const building = mode === 'build' || mode === 'drive' || mode === 'fall';
+  if (building) {
+    const p = aim();
+    if (!p) return;
+    const s = toScreen(p.x, p.y), pinched = hand.present ? hand.pinch : !!drag, level = hand.present && hand.track ? G.pinchLevel(hand.track.gap) : pinched ? 1 : 0;
+    ictx.save(); ictx.translate(s.x, s.y); ictx.scale(K, K);
+    // The ring closes as the fingers come together, so the player can see how near the pinch is.
+    ictx.strokeStyle = '#0d2240'; ictx.lineWidth = 8; ictx.beginPath(); ictx.arc(0, 0, pinched ? 12 : 26 - 10 * level, 0, 7); ictx.stroke();
+    ictx.strokeStyle = pinched ? '#ffc94a' : '#fff'; ictx.lineWidth = 4; ictx.stroke();
+    ictx.beginPath(); ictx.moveTo(-34, 0); ictx.lineTo(-26, 0); ictx.moveTo(26, 0); ictx.lineTo(34, 0); ictx.moveTo(0, -34); ictx.lineTo(0, -26); ictx.moveTo(0, 26); ictx.lineTo(0, 34); ictx.stroke();
+    ictx.restore();
+    return;
+  }
+  if ((kfShared && kfInMenu()) || !hand.present) return;
+  const p = menuPoint();
+  if (!p) return;
+  ictx.fillStyle = '#fff'; ictx.beginPath(); ictx.arc(p.x, p.y, 9, 0, 7); ictx.fill();
+  ictx.strokeStyle = '#ffc94a'; ictx.lineWidth = 5; ictx.beginPath(); ictx.arc(p.x, p.y, 22, 0, 7); ictx.stroke();
+}
+
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  updateDrive(dt);
+  renderWorld(now);
+  updateDwell(now);
+  updateHud(now);
+  renderBones();
+  renderInk();
+}
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>

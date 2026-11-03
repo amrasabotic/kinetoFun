@@ -8,8 +8,7 @@ const EMPTY_FRAME: HandFrame = {
   indexZ: 0, isPalmOpen: false, isFist: false, isPinching: false,
 };
 
-// Thumb-tip-to-index-tip distance threshold (normalized coords), tuned identically to
-// the pinch-drag mechanic proven in games/gesture-love-balls.
+// Thumb-tip-to-index-tip distance threshold (normalized coords).
 const PINCH_THRESHOLD = 0.07;
 
 function dist(a: NormalizedLandmark, b: NormalizedLandmark): number {

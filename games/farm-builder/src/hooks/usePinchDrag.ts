@@ -29,8 +29,7 @@ function hitTest<T>(entries: RectEntry<T>[], px: number, py: number): RectEntry<
 
 // isPinching (like isFist/isPalmOpen) is computed fresh per-frame with no smoothing, so a raw
 // pinch can flicker for a frame or two on landmark jitter. Require it to sustain for this long
-// before treating it as a real grab — same fix gesture-love-balls uses for its pinch-to-draw
-// mechanic (PINCH_CONFIRM_MS). Release stays instant so letting go feels responsive.
+// before treating it as a real grab. Release stays instant so letting go feels responsive.
 const PINCH_CONFIRM_MS = 100;
 
 export function usePinchDrag({ getGrabbables, getDropzones, onDrop, onCancel }: UsePinchDragOptions) {

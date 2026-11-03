@@ -34,7 +34,6 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-piano':         { folder: 'gesture-piano',         indexPath: '/games/gesture-piano/index.html' },
   'gesture-volleyball':    { folder: 'gesture-volleyball',    indexPath: '/games/gesture-volleyball/index.html' },
   'gesture-basketball':    { folder: 'gesture-basketball',    indexPath: '/games/gesture-basketball/index.html' },
-  'gesture-love-balls':   { folder: 'gesture-love-balls',   indexPath: '/games/gesture-love-balls/index.html' },
   'the-sniper-code':       { folder: 'the-sniper-code',       indexPath: '/games/the-sniper-code/index.html' },
   'spear-stickman':        { folder: 'spear-stickman',        indexPath: '/games/spear-stickman/index.html' },
   'gesture-hill-adventure':{ folder: 'gesture-hill-adventure', indexPath: '/games/gesture-hill-adventure/index.html' },
@@ -140,6 +139,7 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-tower-defense':    { folder: 'gesture-tower-defense',    indexPath: '/games/gesture-tower-defense/index.html' },
   'gesture-trivia-arena':     { folder: 'gesture-trivia-arena',     indexPath: '/games/gesture-trivia-arena/index.html' },
   'fire-brigade':             { folder: 'fire-brigade',             indexPath: '/games/fire-brigade/index.html' },
+  'bridge-builder':           { folder: 'bridge-builder',           indexPath: '/games/bridge-builder/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */
