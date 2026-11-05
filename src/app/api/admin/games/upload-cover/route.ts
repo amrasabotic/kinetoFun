@@ -41,17 +41,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Image must be 5MB or smaller." }, { status: 413 });
   }
 
-  const key = `game-covers/${randomUUID()}.${ext}`;
-  const s3 = new S3Client({ region: process.env.AWS_REGION });
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: Buffer.from(await file.arrayBuffer()),
-      ContentType: file.type,
-      CacheControl: "public, max-age=31536000, immutable",
-    }),
-  );
+  const region = process.env.AWS_REGION;
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+  if (!region || !accessKeyId || !secretAccessKey) {
+    return NextResponse.json({ error: "Cover storage credentials are not configured." }, { status: 503 });
+  }
 
-  return NextResponse.json({ url: `${publicBaseUrl.replace(/\/$/, "")}/${key}` }, { status: 201 });
+  const key = `game-covers/${randomUUID()}.${ext}`;
+  const s3 = new S3Client({
+    region,
+    credentials: { accessKeyId, secretAccessKey },
+  });
+
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: Buffer.from(await file.arrayBuffer()),
+        ContentType: file.type,
+        CacheControl: "public, max-age=31536000, immutable",
+      }),
+    );
+  } catch (err) {
+    console.error("[api] POST /api/admin/games/upload-cover:", err);
+    return NextResponse.json({ error: "Failed to upload image." }, { status: 500 });
+  }
+
+  return NextResponse.json(
+    { url: `${publicBaseUrl.replace(/\/$/, "")}/${key}`, path: key },
+    { status: 201 },
+  );
 }
