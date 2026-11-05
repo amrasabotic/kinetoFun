@@ -6,7 +6,8 @@ interface TubeProps {
   index: number;
   colors: number[]; // bottom-to-top
   isHovered: boolean;
-  isGrabbed: boolean; // currently pinched — tilts slightly, as if lifted and ready to pour
+  isGrabbed: boolean; // lifted and ready to pour — tilts slightly
+  holdProgress: number;
   isHintSource: boolean;
   isHintTarget: boolean;
   isRejecting: boolean; // brief shake+red-glow when an illegal pour was attempted here
@@ -20,6 +21,7 @@ export function Tube({
   colors,
   isHovered,
   isGrabbed,
+  holdProgress,
   isHintSource,
   isHintTarget,
   isRejecting,
@@ -76,6 +78,11 @@ export function Tube({
         <div className="lp-tube__glass-highlight" />
         <div className="lp-tube__glass-rim" />
       </motion.div>
+      {holdProgress > 0 && (
+        <div className="lp-tube__hold">
+          <div className="lp-tube__hold-fill" style={{ width: `${holdProgress * 100}%` }} />
+        </div>
+      )}
     </div>
   );
 }

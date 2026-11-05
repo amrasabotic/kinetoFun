@@ -528,3 +528,6 @@ html, body, #root {
   line-height: 1.4;
   color: #b8c4e0;
 }
+
+.lp-tube__hold { position: absolute; left: -6px; right: -6px; bottom: -18px; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; }
+.lp-tube__hold-fill { height: 100%; background: #38bdf8; }

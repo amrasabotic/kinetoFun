@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMediaPipe } from '../../hooks/useMediaPipe';
-import { useDwellNav } from '../../hooks/useDwellNav';
+import { kfShared, useDwellNav } from '../../hooks/useDwellNav';
 import { DwellButton } from '../../components/DwellButton';
 import { CameraError } from '../../components/CameraError';
 import { HowToPlayOverlay, HOWTO_CONTINUE_ID, claimHomeHowTo, markHowToSeen } from '../../components/HowToPlayOverlay';
@@ -139,7 +139,7 @@ export default function HomePage() {
   return (
     <div className="fixed inset-0 bg-[#000818] flex">
       {/* Hand cursor */}
-      {primaryHand && typeof window !== 'undefined' && (
+      {primaryHand && !kfShared && typeof window !== 'undefined' && (
         <div
           className="fixed pointer-events-none z-[110] w-8 h-8 rounded-full border-4 border-[#00ffcc] transition-none"
           style={{

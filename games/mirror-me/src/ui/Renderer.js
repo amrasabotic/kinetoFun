@@ -188,7 +188,7 @@ export class Renderer {
       ctx.fillStyle = '#ccc';
       ctx.font = `${clamp(W * 0.024, 14, 30)}px "Inter", sans-serif`;
       ctx.fillText('A pose appears on screen — copy it with your body before time runs out!', W / 2, H * 0.47);
-      ctx.fillText('12 poses per round · match closely for a bigger score', W / 2, H * 0.52);
+      ctx.fillText(`${GAME_CONFIG.MAX_LEVEL} levels of ${GAME_CONFIG.POSES_PER_LEVEL} poses · match ${GAME_CONFIG.LEVEL_PASS_POSES} to reach the next level`, W / 2, H * 0.52);
       ctx.fillStyle = COLORS.PRIMARY;
       ctx.font = `${clamp(W * 0.028, 16, 36)}px "Inter", sans-serif`;
       ctx.fillText('Raise both hands above your head to START', W / 2, H * 0.60);
@@ -236,16 +236,17 @@ export class Renderer {
     ctx.fillStyle = barColor;
     ctx.fillRect(0, 0, W * progress, 10);
 
-    // Score top-left
+    // Score top-right: the platform's Back button takes the top-left corner.
     const sf = clamp(W * 0.025, 14, 32);
+    const sx = W - 196;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(16, 16, 180, 82);
+    ctx.fillRect(sx, 16, 180, 82);
     ctx.fillStyle = COLORS.PRIMARY;
     ctx.font = `bold ${sf}px "Inter", sans-serif`;
     ctx.textAlign = 'left';
-    ctx.fillText(`SCORE`, 24, 38);
+    ctx.fillText(`SCORE`, sx + 8, 38);
     ctx.font = `bold ${sf * 1.7}px "Inter", sans-serif`;
-    ctx.fillText(String(score), 24, 68);
+    ctx.fillText(String(score), sx + 8, 68);
 
     // Combo
     if (combo > 0) {
@@ -253,7 +254,7 @@ export class Renderer {
       const cidx = Math.min(combo, comboColors.length - 1);
       ctx.fillStyle = comboColors[cidx] || COLORS.SECONDARY;
       ctx.font = `bold ${sf * 1.1}px "Inter", sans-serif`;
-      ctx.fillText(`x${combo} COMBO`, 24, 92);
+      ctx.fillText(`x${combo} COMBO`, sx + 8, 92);
     }
 
     // Accuracy bar — bottom center
@@ -324,7 +325,7 @@ export class Renderer {
     }
   }
 
-  drawGameOver(score, bestStreak, avgAccuracy, records) {
+  drawGameOver(score, bestStreak, avgAccuracy, records, level = 0, won = false) {
     const ctx = this.uctx;
     const W = this.ui.width, H = this.ui.height;
 
@@ -339,8 +340,13 @@ export class Renderer {
     ctx.shadowColor = COLORS.PRIMARY;
     ctx.shadowBlur  = 30;
     ctx.font        = `900 ${clamp(W * 0.09, 40, 110)}px "Inter", sans-serif`;
-    ctx.fillText('GAME OVER', W / 2, H * 0.15);
+    ctx.fillText(won ? 'ALL LEVELS DONE!' : 'GAME OVER', W / 2, H * 0.15);
     ctx.shadowBlur  = 0;
+    if (level) {
+      ctx.fillStyle = COLORS.ACCENT;
+      ctx.font = `bold ${clamp(W * 0.028, 16, 34)}px "Inter", sans-serif`;
+      ctx.fillText(`Reached level ${level} of ${GAME_CONFIG.MAX_LEVEL}`, W / 2, H * 0.205);
+    }
 
     // Score panel
     const panelW = Math.min(W * 0.7, 580);
@@ -376,6 +382,37 @@ export class Renderer {
     ctx.fillStyle = '#666';
     ctx.font = `${clamp(W * 0.02, 12, 24)}px "Inter", sans-serif`;
     ctx.fillText(`All-time: ${records.gamesPlayed} games played  ·  avg accuracy ${records.avgAccuracy}%  ·  best streak ${records.bestStreak}`, W / 2, H - 30);
+  }
+
+  drawLevelBadge(level, maxLevel, detail = '') {
+    const ctx = this.uctx;
+    const W = this.ui.width;
+    const fs = clamp(W * 0.024, 16, 30);
+    const text = detail ? `LEVEL ${level}/${maxLevel}  ·  POSE ${detail}` : `LEVEL ${level}/${maxLevel}`;
+    ctx.font = `bold ${fs}px "Inter", sans-serif`;
+    const w = ctx.measureText(text).width + 32;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.roundRect(W / 2 - w / 2, 20, w, fs + 18, 12); ctx.fill();
+    ctx.fillStyle = COLORS.ACCENT;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, W / 2, 20 + fs + 4);
+  }
+
+  drawLevelEnd(level, passed, matched, total, score) {
+    const ctx = this.uctx;
+    const W = this.ui.width, H = this.ui.height;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = passed ? COLORS.SUCCESS : COLORS.WARNING;
+    ctx.font = `900 ${clamp(W * 0.08, 40, 100)}px "Inter", sans-serif`;
+    ctx.fillText(passed ? `LEVEL ${level} COMPLETE!` : 'ALMOST!', W / 2, H * 0.36);
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${clamp(W * 0.032, 18, 40)}px "Inter", sans-serif`;
+    ctx.fillText(`${matched} of ${total} poses matched  ·  Score ${score}`, W / 2, H * 0.48);
+    ctx.fillStyle = COLORS.PRIMARY;
+    ctx.font = `${clamp(W * 0.028, 16, 36)}px "Inter", sans-serif`;
+    ctx.fillText(passed ? `Get ready for level ${level + 1}…` : `Match ${GAME_CONFIG.LEVEL_PASS_POSES} poses to go on — one more try!`, W / 2, H * 0.58);
   }
 
   drawPausedOverlay(freezeProgress) {

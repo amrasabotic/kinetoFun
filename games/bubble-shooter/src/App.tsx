@@ -11,6 +11,11 @@ import { playShoot, playBounce, playPop, playLevelUp, playGameOver } from './aud
 // ─── Constants ────────────────────────────────────────────────────────────────
 const DWELL_MS = 900;
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menus follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kf = window as unknown as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const usesSharedCursor = !!kf.__kfCursor;
+
 // ─── useMenuGesture: wrist tracking + dwell — fully reactive ─────────────────
 interface MenuGestureState {
   detected: boolean;
@@ -30,6 +35,12 @@ function useMenuGesture(videoRef: React.RefObject<HTMLVideoElement>): MenuGestur
   const lastTRef   = useRef<number>(-1);
   const dwellRef   = useRef<{ id: string | null; start: number }>({ id: null, start: 0 });
 
+  // Menu screens mount this hook, so it switches the platform's cursor on and off.
+  useEffect(() => {
+    kf.__kfMenu?.(true);
+    return () => kf.__kfMenu?.(false);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -46,8 +57,8 @@ function useMenuGesture(videoRef: React.RefObject<HTMLVideoElement>): MenuGestur
 
         if (res.landmarks?.length > 0) {
           const wrist = res.landmarks[0][0] as { x: number; y: number };
-          const hx = 1 - wrist.x;
-          const hy = wrist.y;
+          const hx = kf.__kfCursor ? kf.__kfCursor.x : 1 - wrist.x;
+          const hy = kf.__kfCursor ? kf.__kfCursor.y : wrist.y;
           const cx = hx * window.innerWidth;
           const cy = hy * window.innerHeight;
 
@@ -152,7 +163,7 @@ function GestureBtn({
 
 // ─── HandCursor ───────────────────────────────────────────────────────────────
 function HandCursor({ x, y, detected }: { x: number; y: number; detected: boolean }) {
-  if (!detected) return null;
+  if (!detected || usesSharedCursor) return null;
   return (
     <div
       className="pointer-events-none fixed z-50 w-5 h-5 rounded-full border-2 border-violet-400 bg-violet-400/20 -translate-x-1/2 -translate-y-1/2"

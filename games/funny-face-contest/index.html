@@ -608,19 +608,28 @@ function isOneFingerPointing(lm) {
   return indexExtended && middleFolded && ringFolded && pinkyFolded;
 }
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; the start overlay follows it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+
 function processGesture() {
   if (!handLandmarks) return;
   const indexTip = handLandmarks[8];
   const mirrored = { x: 1 - indexTip.x, y: indexTip.y };
+  const menu = !screenOverlay.classList.contains('hidden');
+  if (kfShared && menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const shared = menu && kfShared;
+  // The game sits in a 640x480 box, so the platform's screen position is converted into it.
+  const box = document.getElementById('game-container').getBoundingClientRect();
 
-  const cx = mirrored.x * 640;
-  const cy = mirrored.y * 480;
+  const cx = shared ? (kfShared.x * innerWidth - box.left) * 640 / box.width : mirrored.x * 640;
+  const cy = shared ? (kfShared.y * innerHeight - box.top) * 480 / box.height : mirrored.y * 480;
 
-  handCursor.style.display = 'block';
+  handCursor.style.display = shared ? 'none' : 'block';
   handCursor.style.left = cx + 'px';
   handCursor.style.top = cy + 'px';
 
-  if (!isOneFingerPointing(handLandmarks)) {
+  if (shared ? !kfShared.visible : !isOneFingerPointing(handLandmarks)) {
     resetHoldBtn();
     holdActive = false;
     return;

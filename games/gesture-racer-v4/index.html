@@ -172,9 +172,22 @@ const DWELL_ARM_MS=1500;
 let dwellArmedAt=performance.now()+DWELL_ARM_MS, dwellScreen=null;
 const DWELL=900;
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menus follow it and only
+// their hold progress is drawn here, while racing keeps the game's own gesture dot.
+const kfShared=window.__kfCursor;
+let kfMenuOn=null;
+function kfInMenu(){
+  const menu=gs==='menu'||gs==='dead';
+  if(kfShared&&menu!==kfMenuOn){kfMenuOn=menu;if(window.__kfMenu)window.__kfMenu(menu);}
+  return menu&&!!kfShared;
+}
+
 function drawCursor(){
   if(!handVisible){curEl.style.display='none';return;}
   curEl.style.display='block';
+  const kfHide=kfInMenu()?'hidden':'';
+  document.getElementById('cr-dot').style.visibility=kfHide;
+  document.getElementById('cr-ring').style.visibility=kfHide;
   curEl.style.left=curPX+'px';
   curEl.style.top=curPY+'px';
   // colour dot by gesture
@@ -525,8 +538,8 @@ function loop(ts){
   if(handVisible){
     smX+=(rawX-smX)*LRP*60*dt/60;
     smY+=(rawY-smY)*LRP*60*dt/60;
-    curPX=smX*W;
-    curPY=smY*H;
+    curPX=kfInMenu()?kfShared.x*W:smX*W;
+    curPY=kfInMenu()?kfShared.y*H:smY*H;
   }
 
   // ── dwell for menus ──

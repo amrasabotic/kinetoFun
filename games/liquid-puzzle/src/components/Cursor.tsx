@@ -1,4 +1,8 @@
+import { useEffect } from 'react';
 import type { GestureState } from '../types';
+import { menuCursorOn } from '../sharedCursor';
+
+type Platform = { __kfPointer?: (x: number | null, y?: number) => void };
 
 interface CursorProps {
   gesture: GestureState;
@@ -16,7 +20,14 @@ interface CursorProps {
  * (see Tube.tsx) gives the same magnetic *feel* without that honesty cost.
  */
 export function Cursor({ gesture }: CursorProps) {
-  if (!gesture.isHovering) return null;
+  const own = gesture.isHovering && !menuCursorOn();
+  // While the game draws its own cursor, the platform must know where it is, or it adds a ring of its own.
+  useEffect(() => {
+    if (own) (window as Platform).__kfPointer?.(gesture.cursorX, gesture.cursorY);
+  }, [own, gesture.cursorX, gesture.cursorY]);
+  useEffect(() => () => (window as Platform).__kfPointer?.(null), []);
+
+  if (!own) return null;
 
   const pose = gesture.isPinching
     ? 'pinch'

@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useGesture } from '../../mediaPipe/GestureProvider';
+import { kf, usesSharedCursor } from '../../mediaPipe/handTrackingCore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
 export default function GestureCursorDot() {
@@ -6,7 +8,13 @@ export default function GestureCursorDot() {
   const largerCursor = useSettingsStore((s) => s.largerCursor);
   const highContrast = useSettingsStore((s) => s.highContrast);
 
-  if (!frame.detected) return null;
+  // Mounted exactly while the hand points at things, so it switches the platform's cursor on and off.
+  useEffect(() => {
+    kf.__kfMenu?.(true);
+    return () => kf.__kfMenu?.(false);
+  }, []);
+
+  if (!frame.detected || usesSharedCursor) return null;
 
   const size = largerCursor ? 44 : 26;
   const left = frame.cursorX * window.innerWidth;

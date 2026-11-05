@@ -1,5 +1,5 @@
 import type { HandData, NormalizedLandmark } from '@/types';
-import { detectPinch, detectPalm, detectFist, detectThumbsUp } from './GestureDetector';
+import { detectPinch, detectPalm, detectFist, detectThumbsUp, handSize } from './GestureDetector';
 
 /* Landmark index used for smoothed hand position (middle-finger base) */
 const POS_LM = 9;
@@ -14,11 +14,19 @@ function resetHand(h: HandData): void {
   h.x = -1; h.y = -1; h.vx = 0; h.vy = 0;
   h.visible = false; h.lm = null; h.hist = [];
   h.pinch = false; h.lastPinch = false; h.palm = false; h.fist = false; h.thumbUp = false;
+  pinchOpenSince.delete(h);
 }
 
+// The camera loses a hand at its edges, so the middle of its view is stretched over the whole screen.
+const reach = (v: number, lo: number, hi: number) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+
+// A pinch survives a camera frame or two of open fingers, so a held item is not dropped by a flicker.
+const PINCH_RELEASE_MS = 140;
+const pinchOpenSince = new Map<HandData, number>();
+
 function updateHand(h: HandData, lm: NormalizedLandmark[], W: number, H: number): void {
-  const rx = (1 - lm[POS_LM].x) * W;
-  const ry = lm[POS_LM].y * H;
+  const rx = reach(1 - lm[POS_LM].x, 0.12, 0.88) * W;
+  const ry = reach(lm[POS_LM].y, 0.1, 0.75) * H;
   if (h.x < 0) { h.x = rx; h.y = ry; }
   const ox = h.x, oy = h.y;
   h.x = ox * SMOOTH + rx * (1 - SMOOTH);
@@ -27,9 +35,15 @@ function updateHand(h: HandData, lm: NormalizedLandmark[], W: number, H: number)
   h.lm = lm; h.visible = true;
   h.hist.push({ x: h.x, y: h.y, t: performance.now() });
   if (h.hist.length > MAX_HIST) h.hist.shift();
-  h.lastPinch = h.pinch;
-  h.pinch = detectPinch(lm);
-  h.palm = detectPalm(lm);
+  // lastPinch is advanced once per drawn frame by the game loop, so a pinch edge fires exactly once.
+  const now = performance.now();
+  if (detectPinch(lm, h.pinch)) { h.pinch = true; pinchOpenSince.delete(h); }
+  else if (h.pinch) {
+    const since = pinchOpenSince.get(h) ?? now;
+    pinchOpenSince.set(h, since);
+    if (now - since >= PINCH_RELEASE_MS) { h.pinch = false; pinchOpenSince.delete(h); }
+  }
+  h.palm = !h.pinch && detectPalm(lm);
   h.fist = detectFist(lm);
   h.thumbUp = detectThumbsUp(lm);
 }
@@ -45,6 +59,7 @@ export class HandTracker {
   private cameraInstance: unknown = null;
   private running = false;
   private callbacks: HandResultsCallback[] = [];
+  private reported = false;
 
   onUpdate(cb: HandResultsCallback): () => void {
     this.callbacks.push(cb);
@@ -116,9 +131,14 @@ export class HandTracker {
 
     const detected = new Set<number>();
 
-    if (res.multiHandLandmarks?.length > 0) {
-      res.multiHandLandmarks.forEach((lm: NormalizedLandmark[], i: number) => {
-        if (i >= 2) return;
+    let found: NormalizedLandmark[][] = (res.multiHandLandmarks ?? []).slice(0, 2);
+    // The model sometimes reports one hand twice; two cursors on one hand confuse players.
+    if (found.length === 2 && Math.hypot(found[0][9].x - found[1][9].x, found[0][9].y - found[1][9].y) < handSize(found[0]) * 0.6) {
+      found = [found[0]];
+    }
+
+    if (found.length > 0) {
+      found.forEach((lm: NormalizedLandmark[], i: number) => {
         const col = ['rgba(255,120,30,.9)', 'rgba(100,200,255,.9)'][i];
         if (typeof (window as any).drawConnectors !== 'undefined') {
           (window as any).drawConnectors(ctx, lm, (window as any).HAND_CONNECTIONS, { color: col, lineWidth: 1.5 });
@@ -133,6 +153,13 @@ export class HandTracker {
     // Keeping x/y/hist between frames is critical for velocity and gesture detection.
     if (!detected.has(0)) resetHand(this.hands[0]);
     if (!detected.has(1)) resetHand(this.hands[1]);
+
+    // Report the game's own cursor so the platform's Back button follows it instead of drawing a second ring.
+    const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
+    const lead = this.bestHand();
+    if (lead) kf.__kfPointer?.(lead.x / W, lead.y / H);
+    else if (this.reported) kf.__kfPointer?.(null);
+    this.reported = !!lead;
 
     this.callbacks.forEach(cb => cb(this.hands));
   }

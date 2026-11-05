@@ -1,5 +1,5 @@
 import { STATES, GAME_CONFIG } from './constants.js';
-import { buildRoundSequence } from './PoseLibrary.js';
+import { buildLevelSequence } from './PoseLibrary.js';
 import { comparePose, personInFrame } from './PoseComparator.js';
 import { GestureRecognizer } from './GestureRecognizer.js';
 import { ScoreManager } from './ScoreManager.js';
@@ -23,6 +23,11 @@ export class GameEngine {
     this.poseSequence = [];
     this.poseIndex    = 0;
     this.currentPose  = null;
+    this.level        = 1;
+    this._levelPassed = 0;
+    this._retried     = false;
+    this._levelEndStart = null;
+    this._levelWon    = false;
 
     // Challenge phase state
     this._challengeStart    = null;
@@ -93,6 +98,10 @@ export class GameEngine {
         this._handleFeedback(events, now);
         break;
 
+      case STATES.LEVEL_END:
+        this._handleLevelEnd(events, now);
+        break;
+
       case STATES.GAME_OVER:
         this._handleGameOver(events, now);
         break;
@@ -122,8 +131,15 @@ export class GameEngine {
 
   _startRound() {
     this.score.reset();
-    this.poseSequence = buildRoundSequence();
+    this.level    = 1;
+    this._retried = false;
+    this._startLevel();
+  }
+
+  _startLevel() {
+    this.poseSequence = buildLevelSequence(this.level);
     this.poseIndex    = 0;
+    this._levelPassed = 0;
     this.gestures.reset();
     this._buildProgressDots();
     this._beginCountdown();
@@ -174,7 +190,7 @@ export class GameEngine {
     if (this.landmarks) this.renderer.drawPlayerSkeleton(this.landmarks);
 
     if (remaining > 0) {
-      this.renderer.drawCountdown(remaining, 'GET READY!');
+      this.renderer.drawCountdown(remaining, `LEVEL ${this.level}`);
     } else if (remaining === 0) {
       this.renderer.drawCountdown(0, 'GO!');
     } else {
@@ -184,13 +200,15 @@ export class GameEngine {
 
   _beginChallenge() {
     if (this.poseIndex >= this.poseSequence.length) {
-      this._endGame();
+      this._endLevel();
       return;
     }
     this.currentPose       = this.poseSequence[this.poseIndex];
     this.state             = STATES.CHALLENGE;
     this._challengeStart   = performance.now();
-    this._challengeAllowed = GAME_CONFIG.POSE_TIME_BY_DIFFICULTY[this.currentPose.difficulty] * 1000;
+    // Early levels give extra time; it shrinks to none by level 5.
+    const extra = Math.max(0, 2 - (this.level - 1) * 0.5);
+    this._challengeAllowed = (GAME_CONFIG.POSE_TIME_BY_DIFFICULTY[this.currentPose.difficulty] + extra) * 1000;
     this._lastAccuracy     = 0;
     this._updateProgressDots();
   }
@@ -221,6 +239,7 @@ export class GameEngine {
       this.score.combo,
       this._lastAccuracy,
     );
+    this.renderer.drawLevelBadge(this.level, GAME_CONFIG.MAX_LEVEL, `${this.poseIndex + 1} / ${this.poseSequence.length}`);
 
     // Time up
     if (elapsed >= this._challengeAllowed) {
@@ -237,6 +256,7 @@ export class GameEngine {
     const accuracy   = this._lastAccuracy;
     const result     = this.score.addPoseResult(accuracy, elapsed, this._challengeAllowed);
     this._lastPoseResult = { accuracy, ...result };
+    if (accuracy >= GAME_CONFIG.LEVEL_PASS_ACCURACY) this._levelPassed++;
 
     if (accuracy >= GAME_CONFIG.ACCURACY_THRESHOLDS.PERFECT) {
       this.sound.perfect();
@@ -266,11 +286,32 @@ export class GameEngine {
 
     if (elapsed >= GAME_CONFIG.FEEDBACK_DURATION_MS) {
       if (this.poseIndex >= this.poseSequence.length) {
-        this._endGame();
+        this._endLevel();
       } else {
         this._beginChallenge();
       }
     }
+  }
+
+  // A failed level gets one more try; a second miss ends the run.
+  _endLevel() {
+    const passed = this._levelPassed >= GAME_CONFIG.LEVEL_PASS_POSES;
+    if (passed && this.level >= GAME_CONFIG.MAX_LEVEL) { this._levelWon = true; this._endGame(); return; }
+    if (!passed && this._retried) { this._levelWon = false; this._endGame(); return; }
+    this._levelWon      = passed;
+    this._retried       = !passed;
+    this.state          = STATES.LEVEL_END;
+    this._levelEndStart = performance.now();
+    if (passed) this.sound.perfect(); else this.sound.miss();
+    if (this._dotsEl) this._dotsEl.innerHTML = '';
+  }
+
+  _handleLevelEnd(events, now) {
+    if (this.landmarks) this.renderer.drawPlayerSkeleton(this.landmarks);
+    this.renderer.drawLevelEnd(this.level, this._levelWon, this._levelPassed, this.poseSequence.length, this.score.totalScore);
+    if (now - this._levelEndStart < GAME_CONFIG.LEVEL_END_MS) return;
+    if (this._levelWon) { this.level++; this._retried = false; }
+    this._startLevel();
   }
 
   _endGame() {
@@ -289,6 +330,8 @@ export class GameEngine {
       this.score.bestStreak,
       this.score.avgAccuracy,
       this.score.records,
+      this.level,
+      this._levelWon,
     );
 
     if (events.startGesture || events.clapGesture) {
@@ -333,6 +376,8 @@ export class GameEngine {
           this.score.bestStreak,
           this.score.avgAccuracy,
           this.score.records,
+          this.level,
+          this._levelWon,
         );
       }
     }

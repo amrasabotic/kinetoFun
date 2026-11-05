@@ -11,6 +11,7 @@ import type { Difficulty, GameMode } from './types';
 import { DIFFICULTY_CONFIG } from './types';
 import { sfx } from './systems/audio';
 import { recordCompletion, hasDailyCompletedToday } from './systems/save';
+import { useMenuCursor, usesSharedCursor } from './sharedCursor';
 import { useGestureContext } from './mediaPipe/GestureProvider';
 
 // Only inside the KinetoFun platform is there somewhere to go back to.
@@ -64,7 +65,7 @@ function HowToScreen({ onDone, gestureCursor }: { onDone: () => void; gestureCur
       </div>
       <p className="wsh-menu__hint">Hover a button with your finger and hold still to press it.</p>
       <MenuButton label="Let's Play" onActivate={onDone} />
-      {gestureCursor && (
+      {gestureCursor && !usesSharedCursor && (
         <div className="wsh-cursor-dot" style={{ left: `${gestureCursor.x * 100}%`, top: `${gestureCursor.y * 100}%` }} />
       )}
     </div>
@@ -113,7 +114,7 @@ function MenuScreen({
         {embedded && <MenuButton label="Back to games" onActivate={exitToPlatform} />}
       </div>
 
-      {gestureCursor && (
+      {gestureCursor && !usesSharedCursor && (
         <div className="wsh-cursor-dot" style={{ left: `${gestureCursor.x * 100}%`, top: `${gestureCursor.y * 100}%` }} />
       )}
     </div>
@@ -316,6 +317,7 @@ export default function App() {
   }, [screen]);
 
   const gesture = useGesture();
+  useMenuCursor(!screen);
   const cursorNorm = gesture.isHovering ? { x: gesture.cursorX, y: gesture.cursorY } : null;
 
   return (

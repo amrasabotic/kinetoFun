@@ -5,9 +5,9 @@ import type { GestureState } from '../types';
 
 // Only inside the KinetoFun platform is there somewhere to go back to.
 const embedded = window.parent !== window;
-const exitToPlatform = () => window.parent.postMessage({ type: 'GAME_EXIT' }, '*');
 
 interface MainMenuProps {
+  onExitToPlatform: () => void;
   onPlay: () => void;
   onLevelSelect: () => void;
   onEndless: () => void;
@@ -20,13 +20,13 @@ interface MainMenuProps {
   gesture: GestureState;
 }
 
-export function MainMenu({ onPlay, onLevelSelect, onEndless, onDaily, onStatistics, onSettings, onCredits, onHowToPlay, dailyDone, gesture }: MainMenuProps) {
+export function MainMenu({ onExitToPlatform, onPlay, onLevelSelect, onEndless, onDaily, onStatistics, onSettings, onCredits, onHowToPlay, dailyDone, gesture }: MainMenuProps) {
   return (
     <div className="lp-screen">
       <AnimatedBackground />
       <div className="lp-menu">
         <h1 className="lp-menu__title">Liquid Puzzle</h1>
-        <p className="lp-menu__subtitle">Sort every color into its own tube — pinch to grab a tube, drag it over another to pour.</p>
+        <p className="lp-menu__subtitle">Sort every color into its own tube — hold on a tube to lift it, then hold on another to pour.</p>
 
         <div className="lp-menu__grid">
           <DwellButton label="Play" onActivate={onPlay} className="lp-menu-btn lp-menu-btn--primary" />
@@ -37,7 +37,7 @@ export function MainMenu({ onPlay, onLevelSelect, onEndless, onDaily, onStatisti
           <DwellButton label="Statistics" onActivate={onStatistics} className="lp-menu-btn" />
           <DwellButton label="Settings" onActivate={onSettings} className="lp-menu-btn" />
           <DwellButton label="Credits" onActivate={onCredits} className="lp-menu-btn" />
-          {embedded && <DwellButton label="Back to games" onActivate={exitToPlatform} className="lp-menu-btn" />}
+          {embedded && <DwellButton label="Back to games" onActivate={onExitToPlatform} className="lp-menu-btn" />}
         </div>
       </div>
       <Cursor gesture={gesture} />

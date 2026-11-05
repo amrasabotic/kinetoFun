@@ -3,6 +3,7 @@
 // /tvsetup/games — the TV's home screen: pick a tab, page through games, open one.
 
 import { Suspense, useMemo } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, LoaderCircle, Ticket } from "lucide-react";
 import type { Game, GameCategory } from "@/types";
@@ -85,10 +86,15 @@ function TvGamesHome() {
     <div className="flex h-[calc(100vh_-_var(--spacing)*24)] flex-col gap-7">
       <header className="flex items-center justify-between">
         <h1 className="text-5xl font-black tracking-tight">Hi, {firstName}!</h1>
-        <p className="flex items-center gap-3 rounded-full bg-white/10 px-6 py-3 text-2xl font-bold text-accent">
+        <Link
+          href="/tvsetup/shop"
+          data-focusable
+          className="flex h-16 items-center gap-3 rounded-full bg-amber-400 px-7 text-2xl font-black text-amber-950"
+        >
           <Ticket className="h-7 w-7" />
           {user?.tickets ?? 0}
-        </p>
+          <span className="ml-1 rounded-full bg-amber-950/15 px-4 py-1">Shop</span>
+        </Link>
       </header>
 
       <nav className="flex flex-wrap gap-4" aria-label="Game lists">

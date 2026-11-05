@@ -9,7 +9,8 @@ import HoverButton from '../common/HoverButton';
 import { getLetterEntry } from '../../data/letters';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useProgressStore } from '../../stores/progressStore';
-import { playCorrect, playTryAgain, speak } from '../../audio/sound';
+import { playAnimalCall, playCorrect, playTryAgain, speak } from '../../audio/sound';
+import { getAnimalEntry } from '../../data/animals';
 
 const ROUNDS_PER_SESSION = 10;
 
@@ -32,7 +33,7 @@ export default function GameplayScreen({ mode, onExit, onSessionComplete }: Prop
   const prevPromptRef = useRef<RoundPrompt | null>(null);
 
   useEffect(() => {
-    const next = generateRound(roundIndex, prevPromptRef.current);
+    const next = generateRound(roundIndex, prevPromptRef.current, mode);
     prevPromptRef.current = next.prompt;
     setRound(next);
     setWrongThisRound(false);
@@ -43,12 +44,19 @@ export default function GameplayScreen({ mode, onExit, onSessionComplete }: Prop
     const promptLetter = next.prompt.letter;
     updateLettersSeen(promptLetter);
 
-    if (audioNarration) {
+    if (mode === 'animal') {
+      const animal = getAnimalEntry(promptLetter);
+      // The call always plays, it is what the mode is about; the spoken line follows once it ends.
+      if (animal) {
+        const t1 = window.setTimeout(() => playAnimalCall(animal.word), 450);
+        const t2 = window.setTimeout(() => speak(`The ${animal.word.toLowerCase()} says ${animal.says.toLowerCase()}!`, audioNarration), 2600);
+        return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+      }
+    } else if (audioNarration) {
       const entry = getLetterEntry(promptLetter);
       if (entry) {
         let text = '';
         if (mode === 'letter') text = `Letter ${promptLetter}`;
-        else if (mode === 'animal') text = `${promptLetter} is for ${entry.word}`;
         else text = `${entry.word}, ${promptLetter}`;
         window.setTimeout(() => speak(text, true), 400);
       }

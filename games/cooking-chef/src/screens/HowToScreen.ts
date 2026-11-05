@@ -1,86 +1,76 @@
 import type { HandData, GameAction } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawHandCursor, card, shd, nshd } from '@/game/drawHelpers';
+import { drawPointer, leadHand } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
+import { drawStartBg, drawIcon, recipeCard, dwellButton, unit, font, INK, TOMATO, BASIL, type IconName } from './startUi';
 
-const howtoDwell = new DwellSystem(1100);
+export const howtoDwell = new DwellSystem(1100);
 
-const GESTURES = [
-  { icon: '✌', name: 'Pinch',          desc: 'Thumb + index close together' },
-  { icon: '🖐', name: 'Open Palm',      desc: 'All fingers spread wide open' },
-  { icon: '✊', name: 'Fist',           desc: 'All fingers curled in' },
-  { icon: '👍', name: 'Thumbs Up',      desc: 'Thumb up, fingers closed' },
-  { icon: '⬆', name: 'Swipe Up',       desc: 'Fast upward flick of wrist' },
-  { icon: '⬇', name: 'Chop Down',      desc: 'Fast downward karate chop' },
-  { icon: '⬅', name: 'Swipe Left',     desc: 'Fast leftward flick' },
-  { icon: '➡', name: 'Swipe Right',    desc: 'Fast rightward flick' },
-  { icon: '🔄', name: 'Circular Stir', desc: 'Move wrist in large circles' },
-  { icon: '🤝', name: 'Two-Hand Fold', desc: 'Both hands pinch toward center' },
+const STEPS: { icon: IconName; title: string; lines: string[] }[] = [
+  { icon: 'hand',  title: 'Point',  lines: ['Move your hand', 'and the ring follows'] },
+  { icon: 'pinch', title: 'Pinch',  lines: ['Touch thumb and finger', 'to grab food'] },
+  { icon: 'hold',  title: 'Hold',   lines: ['Rest on a button', 'to press it'] },
 ];
 
-const MINIGAME_TIPS = [
-  { icon: '🥕', name: 'Vegetable Chop', tip: 'Move hand DOWN quickly over each vegetable — chop it twice to slice!' },
-  { icon: '🍲', name: 'Stir the Soup',  tip: 'Draw big CIRCLES with your hand over the pot to fill the Flavor Meter!' },
-  { icon: '🥞', name: 'Flip Pancake',   tip: 'Wait for the ring to glow GREEN, then SWIPE UP fast to flip!' },
-];
+const MOVES = ['Chop down fast', 'Stir in circles', 'Swipe up to flip', 'Open palm to grill'];
+
+let pinches = 0;
+let wasPinching = false;
 
 export function updateHowTo(dt: number, hands: HandData[], dispatch: Dispatch<GameAction>): void {
   void dt;
-  const bh = hands.find(h => h.visible) ?? null;
-  const fired = howtoDwell.tick(bh);
-  if (fired === 'back') { audioSynth.select(); dispatch({ type: 'NAVIGATE', screen: 'menu' }); }
+  const h = leadHand(hands);
+  if (h?.pinch && !wasPinching) { pinches++; audioSynth.catch_(); }
+  wasPinching = !!h?.pinch;
+  const fired = howtoDwell.tick(h);
+  if (fired === 'go') { audioSynth.select(); dispatch({ type: 'NAVIGATE', screen: 'menu' }); }
 }
 
 export function drawHowTo(ctx: CanvasRenderingContext2D, W: number, H: number, hands: HandData[]): void {
-  drawKitchenBg(ctx, W, H);
-  ctx.save(); shd(ctx, '#cc88ff', 28);
-  ctx.font = `bold ${Math.round(H * 0.065)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#cc88ff';
-  ctx.fillText('📖 HOW TO PLAY', W / 2, H * 0.1); nshd(ctx); ctx.restore();
+  const u = unit(W, H);
+  drawStartBg(ctx, W, H);
+  const h = leadHand(hands);
 
-  ctx.font = '14px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText('All navigation uses hand gestures — no mouse or keyboard needed!', W / 2, H * 0.17);
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = font(84 * u, 900); ctx.lineWidth = 12 * u; ctx.strokeStyle = '#fff6e6'; ctx.lineJoin = 'round';
+  ctx.strokeText('How to Cook', W / 2, H * 0.1); ctx.fillStyle = TOMATO; ctx.fillText('How to Cook', W / 2, H * 0.1);
+  ctx.restore();
 
-  // Gesture reference grid
-  const cols = 2, bw = Math.min(300, W * 0.35), bh = 54, gap = 8;
-  const totalW = cols * bw + (cols - 1) * gap;
-  const sx = W / 2 - totalW / 2, sy = H * 0.21;
-  GESTURES.forEach((g, i) => {
-    const col = i % cols, row = Math.floor(i / cols);
-    const x = sx + col * (bw + gap), y = sy + row * (bh + gap);
-    card(ctx, x, y, bw, bh, 12, 'rgba(0,0,0,0.5)', 'rgba(204,136,255,0.3)', 1.5);
-    ctx.font = '24px system-ui'; ctx.textAlign = 'left'; ctx.fillText(g.icon, x + 12, y + 36);
-    ctx.font = 'bold 13px system-ui'; ctx.fillStyle = '#cc88ff'; ctx.fillText(g.name, x + 46, y + 24);
-    ctx.font = '12px system-ui'; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillText(g.desc, x + 46, y + 43);
+  const gap = 40 * u, cw = Math.min(520 * u, (W - 120 * u - gap * 2) / 3), ch = 440 * u;
+  const x0 = W / 2 - (cw * 3 + gap * 2) / 2, y0 = H * 0.19;
+  STEPS.forEach((s, i) => {
+    const x = x0 + i * (cw + gap);
+    const live = s.icon === 'pinch' && !!h?.pinch;
+    const col = live ? BASIL : TOMATO;
+    ctx.save();
+    recipeCard(ctx, x, y0, cw, ch, u, live ? BASIL : undefined, live ? '#eaf7ea' : undefined);
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + 56 * u, y0 + 56 * u, 32 * u, 0, Math.PI * 2); ctx.fill();
+    ctx.font = font(38 * u, 900); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(i + 1), x + 56 * u, y0 + 58 * u);
+    drawIcon(ctx, s.icon, x + cw / 2, y0 + 150 * u, 150 * u, col);
+    ctx.font = font(56 * u, 900); ctx.fillStyle = INK; ctx.fillText(s.title, x + cw / 2, y0 + 280 * u);
+    ctx.font = font(32 * u, 600); ctx.fillStyle = 'rgba(59,35,20,0.85)';
+    s.lines.forEach((l, j) => ctx.fillText(l, x + cw / 2, y0 + 336 * u + j * 42 * u));
+    if (s.icon === 'pinch') {
+      // Live feedback: the card answers the player's own pinch.
+      ctx.font = font(30 * u, 900); ctx.fillStyle = live ? BASIL : 'rgba(59,35,20,0.6)';
+      ctx.fillText(!h ? 'Show your hand to try' : live ? 'Pinching!' : pinches ? `Nice! ${pinches} pinch${pinches > 1 ? 'es' : ''}` : 'Try it now', x + cw / 2, y0 + 50 * u);
+    }
+    ctx.restore();
   });
 
-  // Minigame-specific tips section
-  const tipY = sy + Math.ceil(GESTURES.length / cols) * (bh + gap) + 14;
-  ctx.font = 'bold 15px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ff7c2e';
-  ctx.fillText('🍳 MINIGAME TIPS', W / 2, tipY);
+  const my = y0 + ch + 60 * u;
+  ctx.save();
+  ctx.font = font(34 * u, 800); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK;
+  ctx.fillText('In the kitchen you will also:  ' + MOVES.join('   ·   '), W / 2, my);
+  ctx.restore();
 
-  const tipW = Math.min(W * 0.8, 820), tipH = 50, tipX = W / 2 - tipW / 2;
-  MINIGAME_TIPS.forEach((t, i) => {
-    const ty = tipY + 10 + i * (tipH + 6);
-    card(ctx, tipX, ty, tipW, tipH, 10, 'rgba(0,0,0,0.45)', 'rgba(255,124,46,0.3)', 1.5);
-    ctx.font = '22px system-ui'; ctx.textAlign = 'left'; ctx.fillText(t.icon, tipX + 10, ty + 34);
-    ctx.font = 'bold 13px system-ui'; ctx.fillStyle = '#ff7c2e'; ctx.fillText(t.name, tipX + 42, ty + 22);
-    ctx.font = '12px system-ui'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillText(t.tip, tipX + 42, ty + 40);
-  });
+  const bw = 520 * u, bh = 120 * u, bx = W / 2 - bw / 2, by = H * 0.8;
+  howtoDwell.setRegions([{ id: 'go', x: bx, y: by, w: bw, h: bh }]);
+  const { id, p } = howtoDwell.progress();
+  dwellButton(ctx, bx, by, bw, bh, u, "Let's cook!", BASIL, id === 'go', p);
 
-  ctx.font = '13px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,200,100,0.75)';
-  ctx.fillText('💡 Dwell (hover) over any button for 1 second to activate it', W / 2, H * 0.9);
-
-  const backR = [{ id: 'back', x: W / 2 - 110, y: H * 0.93, w: 220, h: 50 }];
-  howtoDwell.setRegions(backR);
-  const { id: hovId, p } = howtoDwell.progress();
-  const hov = hovId === 'back';
-  ctx.save(); if (hov) shd(ctx, '#ff7c2e', 18);
-  card(ctx, backR[0].x, backR[0].y, 220, 50, 14, hov ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.07)', hov ? '#ff7c2e' : 'rgba(255,255,255,0.2)', hov ? 3 : 2);
-  if (hov && p > 0) { ctx.beginPath(); (ctx as unknown as { roundRect?(x: number, y: number, w: number, h: number, r: number): void }).roundRect?.(backR[0].x, backR[0].y + 44, 220 * p, 6, 3); ctx.fillStyle = '#ff7c2e'; ctx.fill(); }
-  ctx.font = 'bold 17px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = hov ? '#ff7c2e' : '#fff';
-  ctx.fillText('← MAIN MENU', W / 2, backR[0].y + 31);
-  nshd(ctx); ctx.restore();
-
-  hands.forEach(h => drawHandCursor(ctx, h));
+  drawPointer(ctx, hands);
 }

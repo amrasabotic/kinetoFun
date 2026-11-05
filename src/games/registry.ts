@@ -34,7 +34,6 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'gesture-piano':         { folder: 'gesture-piano',         indexPath: '/games/gesture-piano/index.html' },
   'gesture-volleyball':    { folder: 'gesture-volleyball',    indexPath: '/games/gesture-volleyball/index.html' },
   'gesture-basketball':    { folder: 'gesture-basketball',    indexPath: '/games/gesture-basketball/index.html' },
-  'gesture-love-balls':   { folder: 'gesture-love-balls',   indexPath: '/games/gesture-love-balls/index.html' },
   'the-sniper-code':       { folder: 'the-sniper-code',       indexPath: '/games/the-sniper-code/index.html' },
   'spear-stickman':        { folder: 'spear-stickman',        indexPath: '/games/spear-stickman/index.html' },
   'gesture-hill-adventure':{ folder: 'gesture-hill-adventure', indexPath: '/games/gesture-hill-adventure/index.html' },
@@ -102,6 +101,16 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'space-defender':         { folder: 'space-defender',         indexPath: '/games/space-defender/index.html' },
   'whack-a-mole-hand':      { folder: 'whack-a-mole-hand',      indexPath: '/games/whack-a-mole-hand/index.html' },
   'wizard-academy':         { folder: 'wizard-academy',         indexPath: '/games/wizard-academy/index.html' },
+  'pottery-studio':         { folder: 'pottery-studio',         indexPath: '/games/pottery-studio/index.html' },
+  'shadow-puppets':         { folder: 'shadow-puppets',         indexPath: '/games/shadow-puppets/index.html' },
+  'prize-claw':             { folder: 'prize-claw',             indexPath: '/games/prize-claw/index.html' },
+  'lighthouse-keeper':      { folder: 'lighthouse-keeper',      indexPath: '/games/lighthouse-keeper/index.html' },
+  'orchestra-conductor':    { folder: 'orchestra-conductor',    indexPath: '/games/orchestra-conductor/index.html' },
+  'weather-garden':         { folder: 'weather-garden',         indexPath: '/games/weather-garden/index.html' },
+  'paper-plane-pilot':      { folder: 'paper-plane-pilot',      indexPath: '/games/paper-plane-pilot/index.html' },
+  'star-painter':           { folder: 'star-painter',           indexPath: '/games/star-painter/index.html' },
+  'ice-rink-skater':        { folder: 'ice-rink-skater',        indexPath: '/games/ice-rink-skater/index.html' },
+  'bubble-bath-bakery':     { folder: 'bubble-bath-bakery',     indexPath: '/games/bubble-bath-bakery/index.html' },
   'tic-tac-toe':            { folder: 'tic-tac-toe',            indexPath: '/games/tic-tac-toe/index.html' },
   'air-hockey':             { folder: 'air-hockey',             indexPath: '/games/air-hockey/index.html' },
   'connect-4':              { folder: 'connect-4',              indexPath: '/games/connect-4/index.html' },
@@ -129,6 +138,8 @@ export const GAME_REGISTRY: Record<string, GameEntry> = {
   'liquid-puzzle':            { folder: 'liquid-puzzle',            indexPath: '/games/liquid-puzzle/index.html' },
   'gesture-tower-defense':    { folder: 'gesture-tower-defense',    indexPath: '/games/gesture-tower-defense/index.html' },
   'gesture-trivia-arena':     { folder: 'gesture-trivia-arena',     indexPath: '/games/gesture-trivia-arena/index.html' },
+  'fire-brigade':             { folder: 'fire-brigade',             indexPath: '/games/fire-brigade/index.html' },
+  'bridge-builder':           { folder: 'bridge-builder',           indexPath: '/games/bridge-builder/index.html' },
 };
 
 /** Returns the registry entry for a game, or null if it is not yet registered. */

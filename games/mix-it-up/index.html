@@ -1,12 +1,684 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mix It Up!</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mix It Up</title>
+<style>
+:root { --wall:#123c3a; --wall-dark:#0a2220; --wood:#8a5530; --wood-dark:#4e2c14; --brass:#e8b84a; --parch:#fbf1d6; --ink:#2b1a10; --mint:#3fd0a0; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:var(--wall-dark); color:var(--ink); font-family:Georgia,'Times New Roman',serif; overflow:hidden; user-select:none; }
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#shop { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Hanging wooden signs; a brass bar fills along the bottom while the hand rests on one. */
+.sb { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer; overflow:hidden;
+  border-radius:20px; background:linear-gradient(180deg, color-mix(in srgb, var(--c, #8a5530) 85%, #fff), var(--c, #8a5530) 45%, color-mix(in srgb, var(--c, #8a5530) 65%, #000));
+  border:6px solid var(--brass); box-shadow:0 10px 0 var(--wood-dark), 0 16px 24px rgba(0,0,0,0.5); color:var(--parch); font-size:30px; font-weight:bold; text-shadow:0 3px 0 rgba(0,0,0,0.4); line-height:1.1; }
+.sb::after { content:''; position:absolute; left:0; bottom:0; height:12px; width:calc(var(--p, 0) * 100%); background:var(--brass); }
+.sb.hot { filter:brightness(1.18); transform:translateY(-3px); }
+.sb.off { filter:grayscale(1) brightness(0.55); cursor:default; }
+.sb[hidden] { display:none; }
+.sb small { font-size:17px; font-weight:normal; }
+
+.panel { position:absolute; background:var(--parch); border-radius:16px; border:5px solid var(--brass); box-shadow:0 8px 0 var(--wood-dark); padding:16px 20px; }
+#title { position:absolute; left:0; right:0; top:36px; text-align:center; font-size:96px; font-weight:bold; color:var(--brass); text-shadow:0 6px 0 var(--wood-dark), 0 0 30px rgba(232,184,74,0.4); font-style:italic; }
+#subtitle { position:absolute; left:0; right:0; top:150px; text-align:center; font-size:28px; color:var(--parch); }
+#menu .how { left:120px; top:220px; width:620px; }
+#menu .how h3 { font-size:28px; color:var(--wood); }
+#menu .how p { font-size:22px; line-height:1.35; margin-top:8px; }
+#menu .how b { color:#9a3a20; }
+#menu .go { left:820px; top:230px; width:300px; height:150px; font-size:46px; --c:#2f8a5a; }
+#menu .snd { left:820px; top:430px; width:140px; height:110px; font-size:22px; --c:#3a5a8a; }
+#menu .exit { left:980px; top:430px; width:140px; height:110px; font-size:21px; --c:#6a6070; }
+
+#levels h2 { position:absolute; left:50%; top:24px; transform:translateX(-50%); font-size:52px; color:var(--brass); text-shadow:0 4px 0 var(--wood-dark); }
+#lvgrid { position:absolute; left:120px; top:120px; width:1040px; display:grid; grid-template-columns:repeat(5, 1fr); gap:30px 26px; }
+#lvgrid .sb { position:relative; width:186px; height:186px; font-size:46px; }
+#lvgrid .name { font-size:18px; margin-top:2px; }
+#lvgrid .stars { display:flex; gap:2px; margin-top:6px; }
+#lvgrid .stars svg { width:26px; height:26px; }
+#levels .back { left:40px; top:590px; width:150px; height:100px; --c:#6a6070; }
+
+#hud { left:16px; top:16px; width:270px; }
+#hud .lv { font-size:19px; font-weight:bold; color:var(--wood); }
+#hud .coins { display:flex; align-items:center; gap:10px; font-size:46px; font-weight:bold; line-height:1.15; }
+#hud .coins i { width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #fff3a8, #e8b84a 50%, #a07418); border:3px solid #7a5410; }
+#hud .row { display:flex; justify-content:space-between; font-size:21px; margin-top:6px; font-weight:bold; }
+#hud .hearts { color:#c8302a; font-size:28px; letter-spacing:2px; }
+#handstate { position:absolute; left:16px; top:232px; width:270px; text-align:center; font-size:22px; padding:8px; border-radius:14px; background:var(--parch); border:4px solid var(--brass); pointer-events:none; }
+#handstate.closed { background:#9a3a20; color:#fff; }
+#camwrap { position:absolute; right:16px; top:16px; width:220px; height:165px; border-radius:14px; border:5px solid var(--brass); overflow:hidden; background:#000; }
+#cam { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+#bones { position:absolute; inset:0; width:100%; height:100%; }
+
+#intro { position:absolute; inset:0; background:rgba(6,20,18,0.78); }
+#intro[hidden] { display:none; }
+#intro .panel { left:250px; top:90px; width:640px; }
+#intro h2 { font-size:38px; color:var(--wood); }
+#intro p { font-size:23px; line-height:1.35; margin-top:8px; }
+#intro .learn { display:flex; flex-wrap:wrap; gap:10px 18px; margin-top:12px; font-size:20px; }
+#intro .learn span { display:flex; align-items:center; gap:6px; }
+#intro .learn i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(0,0,0,0.35); display:inline-block; }
+.check { display:flex; align-items:center; gap:12px; font-size:22px; margin-top:10px; }
+.check i { width:36px; height:36px; border-radius:50%; border:4px solid #2f8a5a; flex:none; display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:bold; }
+.check.ok i { background:#2f8a5a; color:#fff; }
+#intro .start { left:940px; top:200px; width:260px; height:150px; font-size:46px; --c:#2f8a5a; }
+#intro .back { left:970px; top:420px; width:200px; height:100px; --c:#6a6070; }
+
+#result .panel { left:340px; top:50px; width:600px; text-align:center; }
+#result h2 { font-size:48px; color:var(--wood); }
+#result .stars svg { width:68px; height:68px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:4px 40px; font-size:24px; justify-content:center; margin-top:8px; text-align:left; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#rs-buttons .sb { top:500px; width:200px; height:120px; }
+#rs-buttons .b0 { left:310px; --c:#2f8a5a; } #rs-buttons .b1 { left:540px; --c:#a8742a; } #rs-buttons .b2 { left:770px; --c:#6a6070; }
+.stars { display:flex; gap:4px; justify-content:center; }
+#hint { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); font-size:24px; padding:8px 22px; border-radius:30px; background:var(--parch); border:3px solid var(--brass); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint[hidden] { display:none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="shop" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div id="title">Mix It Up</div>
+    <div id="subtitle">The Potion Shop</div>
+    <div class="panel how">
+      <h3>How to play</h3>
+      <p>Customers come to your shop and ask for a potion of a certain colour. <b>Mix it from the colour jars</b> and hand it over before they get tired of waiting.</p>
+      <p><b>Open hand</b> to move. <b>Make a fist</b> over a jar to scoop, <b>open your hand</b> over the pot to drop it in. Fist over the pot fills a bottle; open over the customer to serve it.</p>
+      <p>Red and yellow make orange, yellow and blue make green... Rest your hand on a sign to press it.</p>
+    </div>
+    <div class="sb go" data-dwell="play">OPEN SHOP</div>
+    <div class="sb snd" data-dwell="sound" id="btn-sound">Sound on</div>
+    <div class="sb exit" data-dwell="exit" id="btn-exit" hidden>Back to games</div>
+  </section>
+
+  <section class="screen" id="levels">
+    <h2>Choose a day</h2>
+    <div id="lvgrid"></div>
+    <div class="sb back" data-dwell="menu">Menu</div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="panel" id="hud">
+      <div class="lv" id="hd-level"></div>
+      <div class="coins"><i></i><span id="hd-coins">0</span></div>
+      <div class="row"><span id="hd-served"></span><span class="hearts" id="hd-hearts"></span></div>
+    </div>
+    <div id="handstate">Hand open</div>
+    <div id="intro">
+      <div class="panel">
+        <h2 id="in-title"></h2>
+        <p id="in-text"></p>
+        <div class="learn" id="in-learn"></div>
+        <div class="check" id="ck-open"><i></i>Show your open hand: the spoon follows it</div>
+        <div class="check" id="ck-close"><i></i>Make a fist: that is how you grab</div>
+      </div>
+      <div class="sb start" data-dwell="begin">START</div>
+      <div class="sb back" data-dwell="levels">Days</div>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="panel"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <div id="camwrap"><video id="cam" autoplay muted playsinline></video><canvas id="bones" width="220" height="165"></canvas></div>
+  <div id="hint" hidden></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="mixit.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const G = window.MIX;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), shop = $('shop'), ink = $('ink'), video = $('cam'), bones = $('bones');
+const c = shop.getContext('2d'), ictx = ink.getContext('2d'), bctx = bones.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+function fit() {
+  W = innerWidth; H = innerHeight; ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+const toScreen = (x, y) => ({ x: x * K + OX, y: y * K + OY });
+
+// ---------- save ----------
+const SAVE_KEY = 'mix-it-up-v2';
+const N = G.LEVELS.length;
+const progress = (() => {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s) return { ...base, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)), sound: s.sound !== false, stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0) };
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+})();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+// Coins from every day played since the game was opened; reported once, when the player leaves or clears the last day.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null;
+function tone(f, dur, type = 'sine', vol = 0.08, f2 = 0, delay = 0) {
+  if (!progress.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.05);
+  } catch (e) { /* audio is optional */ }
+}
+const SFX = {
+  select() { tone(660, 0.08, 'triangle'); tone(990, 0.1, 'triangle', 0.07, 0, 0.07); },
+  scoop() { tone(300, 0.12, 'sine', 0.08, 520); },
+  plop() { tone(700, 0.15, 'sine', 0.1, 180); tone(1200, 0.06, 'sine', 0.04, 0, 0.08); },
+  bottle() { tone(400, 0.2, 'triangle', 0.07, 900); },
+  pour() { for (let k = 0; k < 5; k++) tone(500 - k * 60, 0.08, 'sine', 0.05, 0, k * 0.05); },
+  spill() { tone(250, 0.2, 'sawtooth', 0.04, 90); },
+  served() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.14, 'triangle', 0.08, 0, i * 0.07)); },
+  wrong() { tone(220, 0.3, 'square', 0.07, 150); tone(160, 0.4, 'square', 0.06, 100, 0.18); },
+  gone() { tone(400, 0.4, 'triangle', 0.05, 200); },
+  bell() { tone(1568, 0.5, 'sine', 0.06); tone(2093, 0.4, 'sine', 0.04, 0, 0.05); },
+  go() { tone(523, 0.15, 'triangle'); tone(784, 0.25, 'triangle', 0.08, 0, 0.15); },
+  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.08, 0, i * 0.12)); },
+};
+function sfx(n) { try { SFX[n](); } catch (e) { /* audio is optional */ } }
+
+// ---------- art ----------
+const rgbStr = (a) => `rgb(${a.join(',')})`;
+const jarColor = (k) => rgbStr(G.PIGMENTS[k].rgb);
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#e8b84a' : 'rgba(255,255,255,0.25)'}" stroke="${on ? '#7a5410' : 'rgba(0,0,0,0.3)'}"/></svg>`;
+}
+function flask(x, cx, cy, s, fill, level = 1) {
+  x.save(); x.translate(cx, cy); x.scale(s, s);
+  x.beginPath(); x.moveTo(-9, -40); x.lineTo(-9, -18); x.arc(0, 8, 28, -1.904, -1.237, true); x.lineTo(9, -40); x.closePath();
+  x.fillStyle = 'rgba(255,255,255,0.35)'; x.fill();
+  x.save(); x.clip(); x.fillStyle = fill; x.fillRect(-30, 36 - 64 * level, 60, 64 * level); x.restore();
+  x.strokeStyle = '#2b1a10'; x.lineWidth = 3; x.stroke();
+  x.fillStyle = '#a0703a'; x.fillRect(-11, -50, 22, 12);
+  x.fillStyle = 'rgba(255,255,255,0.6)'; x.beginPath(); x.ellipse(-12, 4, 4, 9, 0.3, 0, 7); x.fill();
+  x.restore();
+}
+function dots(x, cx, cy, mix, r = 9) {
+  const list = [];
+  for (const k of G.KEYS) for (let n = 0; n < (mix[k] || 0); n++) list.push(k);
+  list.forEach((k, i) => {
+    x.fillStyle = jarColor(k); x.beginPath(); x.arc(cx + (i - (list.length - 1) / 2) * (r * 2 + 6), cy, r, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 2; x.stroke();
+  });
+}
+// Six regulars: wizard, knight, frog, cat, ghost, fairy.
+const LOOKS = [
+  { body: '#5a3a9a', skin: '#f2c8a0' }, { body: '#8a8f9a', skin: '#c8ccd4' }, { body: '#3f8a3a', skin: '#6cc05a' },
+  { body: '#d8782a', skin: '#f0a050' }, { body: '#d8dce8', skin: '#f4f6fc' }, { body: '#d85a9a', skin: '#f6d0b8' },
+];
+function customer(x, cx, cy, look, mood, t) {
+  const L = LOOKS[look], bob = Math.sin(t * 2 + look) * 3;
+  x.save(); x.translate(cx, cy + bob);
+  if (look === 5) { x.fillStyle = 'rgba(200,240,255,0.6)'; x.beginPath(); x.ellipse(-46, 40, 30, 46, -0.5, 0, 7); x.ellipse(46, 40, 30, 46, 0.5, 0, 7); x.fill(); }
+  x.fillStyle = L.body;
+  if (look === 4) { x.beginPath(); x.moveTo(-50, 100); x.quadraticCurveTo(-56, -10, 0, -12); x.quadraticCurveTo(56, -10, 50, 100); x.fill(); }
+  else { x.beginPath(); x.roundRect(-52, 30, 104, 90, 40); x.fill(); }
+  x.fillStyle = L.skin; x.beginPath(); x.arc(0, 0, 44, 0, 7); x.fill();
+  if (look === 0) { x.fillStyle = '#3a2470'; x.beginPath(); x.moveTo(-50, -26); x.lineTo(50, -26); x.lineTo(10, -110); x.fill(); x.fillStyle = '#e8b84a'; x.beginPath(); x.arc(4, -64, 6, 0, 7); x.fill(); x.fillStyle = '#eee'; x.beginPath(); x.moveTo(-26, 22); x.quadraticCurveTo(0, 90, 26, 22); x.fill(); }
+  if (look === 1) { x.fillStyle = '#6a707c'; x.beginPath(); x.arc(0, -6, 48, Math.PI, 0); x.fill(); x.fillStyle = '#c8302a'; x.beginPath(); x.ellipse(0, -60, 8, 22, 0, 0, 7); x.fill(); }
+  if (look === 2) { x.fillStyle = L.skin; x.beginPath(); x.arc(-24, -36, 16, 0, 7); x.arc(24, -36, 16, 0, 7); x.fill(); }
+  if (look === 3) { x.fillStyle = L.skin; for (const s of [-1, 1]) { x.beginPath(); x.moveTo(s * 40, -16); x.lineTo(s * 30, -60); x.lineTo(s * 8, -38); x.fill(); } }
+  if (look === 5) { x.fillStyle = '#f0d040'; x.beginPath(); x.arc(0, -44, 22, Math.PI, 0); x.fill(); }
+  const ey = look === 2 ? -36 : -6;
+  x.fillStyle = '#2b1a10'; x.beginPath(); x.arc(-15, ey, 6, 0, 7); x.arc(15, ey, 6, 0, 7); x.fill();
+  if (look === 2) { x.fillStyle = '#fff'; x.beginPath(); x.arc(-13, ey - 2, 2, 0, 7); x.arc(17, ey - 2, 2, 0, 7); x.fill(); }
+  x.strokeStyle = '#2b1a10'; x.lineWidth = 4; x.beginPath();
+  if (mood > 0) x.arc(0, 10, 14, 0.2, Math.PI - 0.2); else if (mood < 0) x.arc(0, 30, 14, Math.PI + 0.3, -0.3); else { x.moveTo(-10, 20); x.lineTo(10, 20); }
+  x.stroke();
+  x.restore();
+}
+function coin(x, cx, cy, r) {
+  const g = x.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 1, cx, cy, r);
+  g.addColorStop(0, '#fff3a8'); g.addColorStop(0.5, '#e8b84a'); g.addColorStop(1, '#a07418');
+  x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); x.strokeStyle = '#7a5410'; x.lineWidth = 2; x.stroke();
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'levels', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name; stage.dataset.screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  armedAt = performance.now() + ARM_MS; resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = progress.sound ? 'Sound on' : 'Sound off'; }
+updateSoundLabel();
+const LV_COL = ['#2f8a5a', '#2f8a5a', '#3a6a9a', '#3a6a9a', '#b86a9a', '#a8742a', '#5a4a6a', '#b8502a', '#7a3a9a', '#9a2a3a'];
+function openLevels() {
+  round = null; playing = false;
+  $('lvgrid').innerHTML = G.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    return `<div class="sb${locked ? ' off' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`} style="--c:${LV_COL[i]}">${i + 1}<span class="name">${locked ? 'Locked' : lv.name}</span><div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>`;
+  }).join('');
+  show('levels');
+}
+
+// ---------- a day in the shop ----------
+let round = null, playing = false, fx = [], checks = { open: false, close: false };
+const NEWS = [
+  'Customers want plain red, yellow or blue. Scoop one jar into the pot, bottle it and serve!',
+  'Now they want mixes. Two colours make a new one: red + yellow = orange, yellow + blue = green, red + blue = purple.',
+  'The recipe is hidden now! Work it out from the colour. If you wait, it appears. Serving before the hint earns a tip.',
+  'Stronger shades: two scoops of one colour and one of another. Red, red, yellow makes red-orange.',
+  'A new jar: white. Add white to make soft pastel colours like pink and sky blue.',
+  'A busy day! Up to three customers at once. Serve whoever has waited longest first.',
+  'A new jar: black. It makes dark shades. And all three colours together make brown!',
+  'Rush hour: customers are in a hurry today.',
+  'Master mixes use three or four scoops. Count carefully!',
+  'The royal ball! Everyone wants a potion. Show them what you have learned.',
+];
+function openLevel(i) {
+  round = G.createRound(i); playing = false; fx = [];
+  checks = { open: false, close: false };
+  const cfg = G.LEVELS[i];
+  $('hd-level').textContent = `Day ${i + 1}: ${cfg.name}`;
+  $('in-title').textContent = `Day ${i + 1}: ${cfg.name}`;
+  $('in-text').textContent = `${NEWS[i]} Serve ${cfg.customers} customers. A wrong potion or a customer who leaves costs a heart.`;
+  const newOnes = G.RECIPES.filter((r) => cfg.tiers.includes(r.tier));
+  $('in-learn').innerHTML = newOnes.map((r) => `<span><i style="background:${G.css(r.mix)}"></i>${r.name}</span>`).join('');
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishLevel() {
+  const i = round.level, r = G.result(round), last = i === N - 1;
+  playing = false;
+  sessionScore += r.coins;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.coins);
+  if (r.stars >= 1) progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  $('rs-title').textContent = !r.passed ? 'The shop had to close early' : r.stars === 3 ? 'Master potion maker!' : 'Shop closed: well done!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Coins', r.coins], ['Happy customers', `${r.served} / ${r.customers}`], ['Wrong potions', r.wrong], ['Hearts left', r.hearts], ['Best this day', progress.best[i]]]
+    .map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const canNext = r.stars >= 1 && !last;
+  $('rs-buttons').innerHTML = (canNext ? '<div class="sb b0" data-dwell="next">NEXT DAY</div>' : '<div class="sb b0" data-dwell="again">TRY AGAIN</div>')
+    + (canNext ? '<div class="sb b1" data-dwell="again">Replay</div>' : '') + '<div class="sb b2" data-dwell="levels">Days</div>';
+  show('result');
+  sfx('done');
+  if (last && r.stars >= 1) reportScore();
+}
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openLevels(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': show('menu'); break;
+    case 'levels': openLevels(); break;
+    case 'level': openLevel(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; resetDwell(); sfx('go'); break;
+    case 'next': openLevel(Math.min(N - 1, round.level + 1)); break;
+    case 'again': openLevel(round.level); break;
+  }
+}
+// The platform's Back button: out of a day to the day list, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { openLevels(); return true; }
+  if (screen === 'levels') { show('menu'); return true; }
+  return reportScore();
+};
+
+function doGrab() {
+  if (!playing || !round || round.over || !aim) return;
+  G.grab(round, aim.x, aim.y);
+  drainEvents();
+}
+function doRelease() {
+  if (!playing || !round || !aim) return;
+  G.release(round, aim.x, aim.y);
+  drainEvents();
+}
+function drainEvents() { for (const e of round.events.splice(0)) handleEvent(e); }
+function say(x, y, text, col = '#fff') { fx.push({ kind: 'text', x, y, text, col, t: performance.now() }); }
+function handleEvent(e) {
+  const s = e.slot != null ? G.SLOTS[e.slot] : null, C = G.CAULDRON;
+  switch (e.type) {
+    case 'scoop': sfx('scoop'); break;
+    case 'add': sfx('plop'); fx.push({ kind: 'splash', x: C.x, y: C.y - 30, col: jarColor(e.key), t: performance.now() }); break;
+    case 'full': sfx('spill'); say(C.x, C.y - 120, 'The pot is full! Pour it away', '#ffd0a0'); break;
+    case 'spill': sfx('spill'); break;
+    case 'bottle': sfx('bottle'); break;
+    case 'pour': sfx('pour'); say(G.SINK.x, G.SINK.y - 90, 'Poured away', '#cfe8ff'); break;
+    case 'back': break;
+    case 'arrive': sfx('bell'); break;
+    case 'served': sfx('served'); say(s.x, s.y - 40, `+${e.pay}`, '#ffe070'); fx.push({ kind: 'coins', x: s.x, y: s.y, t: performance.now() }); leaving.push({ look: e.look, x: s.x, y: s.y, mood: 1, t: performance.now() }); break;
+    case 'wrong': {
+      sfx('wrong');
+      const want = G.RECIPES.find((r) => r.id === e.want);
+      say(s.x, s.y - 40, `Yuck! I wanted ${want.name}`, '#ffb0a0');
+      leaving.push({ look: e.look, x: s.x, y: s.y, mood: -1, t: performance.now() });
+      break;
+    }
+    case 'gone': sfx('gone'); say(s.x, s.y - 40, 'Too slow!', '#ffb0a0'); leaving.push({ look: e.look, x: s.x, y: s.y, mood: -1, t: performance.now() }); break;
+    case 'over': setTimeout(finishLevel, 1100); break;
+  }
+}
+// Customers walking off after they leave the counter.
+let leaving = [];
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, nx: 0.5, ny: 0.5, closed: false, raw: null, rawSince: 0, reported: false, lm: null };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 300;
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream; await video.play();
+  } catch (e) { statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.'; return; }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1, minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) { console.error('hand tracking failed', e); statusText = 'Hand tracking could not start. Reload to try again.'; }
+}
+// Fingers judged by distance from the wrist, so a tilted hand and either hand work the same.
+function straightFingers(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  return [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+}
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (!lm) return;
+  // The palm centre steers: it barely moves when the fingers close, so a grab lands where the hand was pointing.
+  const nx = reach(1 - lm[9].x, 0.18, 0.82), ny = reach(lm[9].y, 0.15, 0.8);
+  const fresh = now - hand.lastSeen > SLIP_MS, a = fresh ? 1 : 0.55;
+  hand.nx += (nx - hand.nx) * a; hand.ny += (ny - hand.ny) * a;
+  hand.x = hand.nx * W; hand.y = hand.ny * H;
+  hand.lastSeen = now; hand.present = true; hand.lm = lm;
+  // Closed at one straight finger or fewer, open at three or more; two keeps the last state so the edge never flickers.
+  const n = straightFingers(lm);
+  const raw = n <= 1 ? true : n >= 3 ? false : hand.closed;
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (raw !== hand.closed && (fresh || now - hand.rawSince >= 80)) {
+    hand.closed = raw;
+    if (screen === 'play' && !$('intro').hidden && raw) checks.close = true;
+    updateAim();
+    if (!fresh) raw ? doGrab() : doRelease();
+  }
+  if (!hand.closed && screen === 'play' && !$('intro').hidden) checks.open = true;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.lm = null;
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+const mouse = { x: null, y: null };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-dwell]') && !hand.present) { mouse.x = e.clientX; mouse.y = e.clientY; updateAim(); doGrab(); } });
+addEventListener('pointerup', () => { if (!hand.present) { updateAim(); doRelease(); } });
+addEventListener('click', (e) => { const el = e.target.closest('[data-dwell]'); if (el && el.closest('.screen.on') && !el.closest('[hidden]') && !el.classList.contains('off')) act(el); });
+// The spoon in stage pixels; the hand maps across the whole shop so every jar is reachable from a sofa.
+let aim = null;
+function updateAim() {
+  if (hand.present) aim = { x: hand.nx * 1280, y: hand.ny * 720 };
+  else if (mouse.x !== null) aim = toStage(mouse.x, mouse.y);
+  else aim = null;
+}
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null, at: null };
+const BUTTON_MS = 1000;
+function resetDwell() { if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); } dwell.el = null; dwell.p = 0; }
+// On the platform the bridge supplies one cursor for menus; in the shop the game draws its own spoon.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => !playing;
+function menuPoint() {
+  if (kfShared && kfInMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  if (hand.present) return { x: hand.x, y: hand.y };
+  return mouse.x !== null ? { x: mouse.x, y: mouse.y } : null;
+}
+function updateDwell(now) {
+  let target = null;
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = menuPoint();
+  // After a press the hand must move off that spot, so a resting hand cannot press what appears under it next.
+  if (dwell.at && pt && Math.hypot(pt.x - dwell.at.x, pt.y - dwell.at.y) > 60 * K) dwell.at = null;
+  if (pt && now >= armedAt && menu && !dwell.at) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.hidden || el.closest('[hidden]') || el.classList.contains('off')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (pt.x >= r.left - 10 && pt.x <= r.right + 10 && pt.y >= r.top - 10 && pt.y <= r.bottom + 10) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) { resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot'); }
+  else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; dwell.at = pt; act(el); }
+}
+
+// ---------- drawing ----------
+function renderWall(t) {
+  const g = c.createLinearGradient(0, 0, 0, 720); g.addColorStop(0, '#174a46'); g.addColorStop(1, '#0a2220');
+  c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
+  c.strokeStyle = 'rgba(255,255,255,0.04)'; c.lineWidth = 2;
+  for (let y = 40; y < 720; y += 48) for (let x = (y / 48) % 2 ? 0 : 60; x < 1280; x += 120) c.strokeRect(x, y, 120, 48);
+  // Candle glows.
+  for (const [x, y] of [[300, 90], [980, 90]]) {
+    const r = c.createRadialGradient(x, y, 2, x, y, 160 + Math.sin(t * 7 + x) * 6);
+    r.addColorStop(0, 'rgba(255,200,110,0.28)'); r.addColorStop(1, 'rgba(255,200,110,0)');
+    c.fillStyle = r; c.fillRect(x - 170, y - 170, 340, 340);
+  }
+}
+function renderMenuShelf(t) {
+  c.fillStyle = '#4e2c14'; c.fillRect(0, 640, 1280, 80);
+  c.fillStyle = '#8a5530'; c.fillRect(0, 628, 1280, 18);
+  const mixes = G.RECIPES.filter((_, i) => i % 2 === 0);
+  mixes.forEach((r, i) => flask(c, 60 + i * 85, 590 + Math.sin(t * 1.5 + i) * 2, 0.9, G.css(r.mix), 0.75));
+}
+function renderShop(now) {
+  const t = now / 1000;
+  renderWall(t);
+  if (screen !== 'play' || !round) { renderMenuShelf(t); return; }
+  const g = round, hot = playing && aim ? G.targetAt(g, aim.x, aim.y) : null;
+  // Customers behind the counter, with their orders.
+  g.slots.forEach((cu, i) => {
+    if (!cu) return;
+    const s = G.SLOTS[i], left = 1 - cu.t / cu.patience, enter = Math.min(1, cu.t * 2.5);
+    c.save(); c.globalAlpha = enter;
+    customer(c, s.x, s.y + 20 + (1 - enter) * 40, cu.look, left > 0.5 ? 1 : left > 0.25 ? 0 : -1, t);
+    c.restore();
+    const bx = s.x, by = s.y - 150;
+    c.fillStyle = '#fbf1d6'; c.strokeStyle = '#2b1a10'; c.lineWidth = 3;
+    c.beginPath(); c.roundRect(bx - 95, by - 58, 190, 116, 18); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(bx - 12, by + 57); c.lineTo(bx, by + 76); c.lineTo(bx + 12, by + 57); c.fill(); c.stroke();
+    flask(c, bx - 52, by + 8, 0.95, G.css(cu.recipe.mix), 0.8);
+    c.fillStyle = '#2b1a10'; c.textAlign = 'center'; c.font = 'bold 22px Georgia';
+    c.fillText(cu.recipe.name, bx + 30, by - 18);
+    if (G.hintShown(g, cu)) dots(c, bx + 30, by + 18, cu.recipe.mix, 9);
+    else { c.font = 'italic 17px Georgia'; c.fillStyle = '#7a6040'; c.fillText('Guess the mix!', bx + 30, by + 22); }
+    // Patience bar.
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(bx - 80, by + 42, 160, 9);
+    c.fillStyle = left > 0.5 ? '#2f8a5a' : left > 0.25 ? '#d8a020' : '#c8302a'; c.fillRect(bx - 80, by + 42, 160 * Math.max(0, left), 9);
+    if (hot && hot.kind === 'customer' && hot.slot === i && g.held && g.held.type === 'bottle') {
+      c.strokeStyle = '#fff'; c.lineWidth = 5; c.setLineDash([12, 8]); c.beginPath(); c.arc(s.x, s.y + 20, 90, 0, 7); c.stroke(); c.setLineDash([]);
+    }
+  });
+  leaving = leaving.filter((l) => now - l.t < 900);
+  for (const l of leaving) { const k = (now - l.t) / 900; c.globalAlpha = 1 - k; customer(c, l.x + (l.x < 640 ? -1 : 1) * k * 160, l.y + 20, l.look, l.mood, t); c.globalAlpha = 1; }
+  // Counter.
+  c.fillStyle = '#4e2c14'; c.fillRect(0, 330, 1280, 60);
+  c.fillStyle = '#a06a3a'; c.fillRect(0, 318, 1280, 20);
+  c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(0, 318, 1280, 4);
+  // Shelf floor.
+  c.fillStyle = '#0d2a27'; c.fillRect(0, 390, 1280, 330);
+  // Sink barrel.
+  const S = G.SINK;
+  c.fillStyle = '#6a4424'; c.beginPath(); c.roundRect(S.x - 62, S.y - 50, 124, 110, 20); c.fill();
+  c.fillStyle = '#3a2410'; for (const dy of [-24, 34]) c.fillRect(S.x - 64, S.y + dy, 128, 8);
+  c.fillStyle = '#1a3a4a'; c.beginPath(); c.ellipse(S.x, S.y - 50, 60, 16, 0, 0, 7); c.fill();
+  c.fillStyle = '#fbf1d6'; c.font = 'bold 20px Georgia'; c.textAlign = 'center'; c.fillText('Pour', S.x, S.y + 2); c.fillText('away', S.x, S.y + 26);
+  if (hot && hot.kind === 'sink' && g.held && g.held.type === 'bottle') ring(S.x, S.y, 84);
+  // Jars.
+  for (const k of g.cfg.jars) {
+    const p = G.JAR_SPOTS[k];
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.roundRect(p.x - 52, p.y - 64, 104, 120, 22); c.fill();
+    c.fillStyle = jarColor(k); c.beginPath(); c.roundRect(p.x - 46, p.y - 30, 92, 80, 18); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 4; c.beginPath(); c.roundRect(p.x - 52, p.y - 64, 104, 120, 22); c.stroke();
+    c.fillStyle = '#a0703a'; c.fillRect(p.x - 40, p.y - 78, 80, 18);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(p.x - 38, p.y - 52, 10, 60);
+    c.fillStyle = '#fbf1d6'; c.beginPath(); c.roundRect(p.x - 42, p.y + 4, 84, 30, 8); c.fill();
+    c.fillStyle = '#2b1a10'; c.font = 'bold 20px Georgia'; c.fillText(G.PIGMENTS[k].name, p.x, p.y + 26);
+    if (hot && hot.kind === 'jar' && hot.key === k && !g.held) ring(p.x, p.y, 80);
+  }
+  // Cauldron over a fire.
+  const C = G.CAULDRON, mix = g.cauldron, n = G.scoops(mix);
+  for (let k = 0; k < 6; k++) { const f = Math.sin(t * 9 + k * 1.7); c.fillStyle = k % 2 ? '#ffb030' : '#ff6a20'; c.beginPath(); c.ellipse(C.x - 75 + k * 30, C.y + 120, 16, 30 + f * 8, 0, 0, 7); c.fill(); }
+  c.fillStyle = '#1e1a22'; c.beginPath(); c.ellipse(C.x, C.y + 20, 150, 110, 0, 0, Math.PI); c.lineTo(C.x - 150, C.y - 30); c.lineTo(C.x + 150, C.y - 30); c.fill();
+  c.beginPath(); c.ellipse(C.x, C.y + 20, 150, 100, 0, Math.PI, 0); c.fill();
+  c.fillStyle = '#34303a'; c.beginPath(); c.ellipse(C.x, C.y - 40, 160, 36, 0, 0, 7); c.fill();
+  c.fillStyle = n ? G.css(mix) : '#2a2440'; c.beginPath(); c.ellipse(C.x, C.y - 40, 136, 26, 0, 0, 7); c.fill();
+  if (n) { c.fillStyle = 'rgba(255,255,255,0.35)'; for (let k = 0; k < 5; k++) { const ph = (t * 0.8 + k * 0.37) % 1; c.beginPath(); c.arc(C.x - 90 + k * 45, C.y - 40 - ph * 14, 5 + ph * 5, 0, 7); c.fill(); } }
+  c.fillStyle = '#fbf1d6'; c.beginPath(); c.roundRect(C.x - 110, C.y + 24, 220, 50, 14); c.fill();
+  if (n) dots(c, C.x - 30, C.y + 49, mix, 10);
+  c.fillStyle = '#2b1a10'; c.font = 'bold 18px Georgia'; c.textAlign = n ? 'right' : 'center';
+  c.fillText(n ? `${n}/${G.MAX_SCOOPS}` : 'Empty pot', n ? C.x + 100 : C.x, C.y + 56);
+  c.textAlign = 'center';
+  if (hot && hot.kind === 'cauldron' && (g.held ? g.held.type === 'scoop' : n)) ring(C.x, C.y - 40, 170);
+  // Floating text and splashes.
+  fx = fx.filter((f) => now - f.t < 1300);
+  for (const f of fx) {
+    const k = (now - f.t) / 1300;
+    if (f.kind === 'text') { c.globalAlpha = Math.min(1, 2 - 2 * k); c.font = 'bold 30px Georgia'; c.lineWidth = 6; c.strokeStyle = '#2b1a10'; c.fillStyle = f.col; c.strokeText(f.text, f.x, f.y - k * 50); c.fillText(f.text, f.x, f.y - k * 50); c.globalAlpha = 1; }
+    else if (f.kind === 'splash') { c.fillStyle = f.col; for (let a = 0; a < 8; a++) { const kk = Math.min(1, k * 2.5); c.globalAlpha = 1 - kk; c.beginPath(); c.arc(f.x + Math.cos(a * 0.785) * kk * 90, f.y - Math.sin(a * 0.4) * kk * 60, 8 * (1 - kk) + 2, 0, 7); c.fill(); } c.globalAlpha = 1; }
+    else if (f.kind === 'coins') { for (let a = 0; a < 6; a++) { c.globalAlpha = 1 - k; coin(c, f.x - 60 + a * 24 + Math.sin(a) * 10, f.y - k * 120 - a * 6, 12); } c.globalAlpha = 1; }
+  }
+}
+function ring(x, y, r) { c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 5; c.setLineDash([12, 8]); c.beginPath(); c.arc(x, y, r, 0, 7); c.stroke(); c.setLineDash([]); }
+
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+let hintShownText = null;
+function updateHud(now) {
+  let text = statusText;
+  if (!text && !hand.present && now - hand.lastSeen > 1200 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  if (text !== hintShownText) { hintShownText = text; $('hint').textContent = text; $('hint').hidden = !text; }
+  const held = round && round.held;
+  setOnce('hs', hand.present ? (hand.closed ? (held ? held.type : 'c') : 'o') : 'n', (v) => {
+    $('handstate').textContent = v === 'scoop' ? 'Holding a scoop: open over the pot' : v === 'bottle' ? 'Holding a bottle: open over a customer' : v === 'c' ? 'Fist' : v === 'o' ? 'Hand open' : 'No hand seen';
+    $('handstate').classList.toggle('closed', v !== 'o' && v !== 'n');
+  });
+  if (screen !== 'play' || !round) return;
+  ['open', 'close'].forEach((k) => setOnce('ck' + k, checks[k], (v) => { $('ck-' + k).classList.toggle('ok', v); $('ck-' + k).querySelector('i').textContent = v ? '✓' : ''; }));
+  setOnce('coins', round.coins, (v) => { $('hd-coins').textContent = v; });
+  setOnce('served', `${round.served}/${round.cfg.customers}`, () => { $('hd-served').textContent = `Served ${round.served} of ${round.cfg.customers}`; });
+  setOnce('hearts', round.hearts, (v) => { $('hd-hearts').textContent = '♥'.repeat(Math.max(0, v)) + '♡'.repeat(G.HEARTS - Math.max(0, v)); });
+}
+function renderBones() {
+  const x = bctx, w = bones.width, h = bones.height;
+  x.clearRect(0, 0, w, h);
+  const lm = hand.present && hand.lm;
+  if (!lm) return;
+  const Pt = (i) => [(1 - lm[i].x) * w, lm[i].y * h];
+  x.strokeStyle = hand.closed ? '#e85a3a' : '#e8b84a'; x.lineWidth = 3;
+  for (const f of [[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14, 15, 16], [0, 17, 18, 19, 20], [5, 9, 13, 17]]) {
+    x.beginPath(); f.forEach((i, k) => { const [px, py] = Pt(i); k ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+  }
+}
+// In the shop the spoon (or what it carries) is the cursor; on menus the platform cursor, or a ring, is.
+function renderInk() {
+  ictx.clearRect(0, 0, W, H);
+  if (playing && aim) {
+    const s = toScreen(aim.x, aim.y), held = round && round.held, closed = hand.present ? hand.closed : mouseDown;
+    ictx.save(); ictx.translate(s.x, s.y); ictx.scale(K, K);
+    if (held && held.type === 'bottle') flask(ictx, 0, 0, 1.3, G.css(held.mix), 0.85);
+    else {
+      ictx.save(); ictx.rotate(-0.6);
+      ictx.fillStyle = '#c89a5a'; ictx.fillRect(-5, 10, 10, 70);
+      ictx.fillStyle = '#d8b070'; ictx.beginPath(); ictx.ellipse(0, 0, 26, 20, 0, 0, 7); ictx.fill();
+      if (held) { ictx.fillStyle = jarColor(held.key); ictx.beginPath(); ictx.ellipse(0, -2, 20, 14, 0, 0, 7); ictx.fill(); }
+      ictx.restore();
+      ictx.strokeStyle = closed ? '#e85a3a' : '#fff'; ictx.lineWidth = 4; ictx.beginPath(); ictx.arc(0, 0, closed ? 30 : 38, 0, 7); ictx.stroke();
+    }
+    ictx.restore();
+    return;
+  }
+  if ((kfShared && kfInMenu()) || !hand.present) return;
+  ictx.fillStyle = 'rgba(255,255,255,0.95)'; ictx.beginPath(); ictx.arc(hand.x, hand.y, 9, 0, 7); ictx.fill();
+  ictx.strokeStyle = '#e8b84a'; ictx.lineWidth = 5; ictx.beginPath(); ictx.arc(hand.x, hand.y, 22, 0, 7); ictx.stroke();
+}
+let mouseDown = false;
+addEventListener('pointerdown', () => { mouseDown = true; });
+addEventListener('pointerup', () => { mouseDown = false; });
+
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  updateAim();
+  if (playing && round && !round.over) {
+    for (let left = dt; left > 1e-6; left -= 1 / 30) G.step(round, Math.min(left, 1 / 30));
+    drainEvents();
+  }
+  renderShop(now);
+  updateDwell(now);
+  updateHud(now);
+  renderBones();
+  renderInk();
+}
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
 </html>

@@ -22,6 +22,8 @@ export const HAND_HOVER_ATTR = "data-hand-hover";
 
 // Elements with this attribute fire again on a continued hold (paging tiles).
 const REPEAT_ATTR = "data-dwell-repeat";
+// Optional longer hold in ms, for actions that spend something (shop Buy).
+const HOLD_ATTR = "data-dwell-ms";
 
 export interface DwellFrame {
   target: HTMLElement | null;
@@ -106,7 +108,8 @@ export class DwellEngine {
     if (!target || target === this.spent) return { target, progress: 0 };
 
     const countFrom = Math.max(this.hoverStartedAt, this.armedAt, this.cooldownUntil);
-    const progress = Math.min(1, Math.max(0, (now - countFrom) / DWELL_MS));
+    const holdMs = Number(target.getAttribute(HOLD_ATTR)) || DWELL_MS;
+    const progress = Math.min(1, Math.max(0, (now - countFrom) / holdMs));
 
     if (progress >= 1) {
       if (target.hasAttribute(REPEAT_ATTR)) this.hoverStartedAt = now;

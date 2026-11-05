@@ -1,5 +1,16 @@
 import { useEffect, useRef } from 'react';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 /** Hand position in screen space, 0..1 on each axis, already mirrored. */
 export type HandPoint = { x: number; y: number } | null;
 
@@ -68,9 +79,13 @@ export default function HandCursor({ getPoint, enabled = true }: {
       const hand = raw && { x: reach(raw.x), y: reach(raw.y) };
       if (!cursor) return;
       const kf = window as unknown as { __kfPointer?: (x: number | null, y?: number) => void };
+      // On menus the platform draws the pointer, so only the press progress ring stays; in play the faint cursor is the game's.
+      const ownHidden = on && !!kfShared;
+      cursor.querySelectorAll<SVGElement>('.kf-own').forEach((el) => { el.style.visibility = ownHidden ? 'hidden' : ''; });
 
       // In play the hand steers the game, so the cursor is only shown faintly to find the platform's Back button.
       if (!on) {
+        kfMenu(false);
         target = null;
         setRing(0);
         if (!hand) { cursor.style.opacity = '0'; kf.__kfPointer?.(null); return; }
@@ -83,6 +98,7 @@ export default function HandCursor({ getPoint, enabled = true }: {
       }
 
       const hasButtons = document.querySelector('button:not([disabled])') !== null;
+      kfMenu(hasButtons);
       if (!hand && target && hasButtons && performance.now() - lastOnTarget <= GRACE_MS) return;
       if (!hand || !hasButtons) {
         cursor.style.opacity = '0';
@@ -92,8 +108,8 @@ export default function HandCursor({ getPoint, enabled = true }: {
         return;
       }
 
-      x += (hand.x - x) * SMOOTHING;
-      y += (hand.y - y) * SMOOTHING;
+      if (kfShared) { x = kfShared.x; y = kfShared.y; }
+      else { x += (hand.x - x) * SMOOTHING; y += (hand.y - y) * SMOOTHING; }
       kf.__kfPointer?.(x, y);
       const px = x * window.innerWidth;
       const py = y * window.innerHeight;
@@ -143,8 +159,8 @@ export default function HandCursor({ getPoint, enabled = true }: {
       aria-hidden
     >
       <svg width="52" height="52" viewBox="0 0 52 52">
-        <circle cx="26" cy="26" r="9" fill="rgba(255,255,255,0.9)" stroke="#7C3AED" strokeWidth="3" />
-        <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="4" />
+        <circle className="kf-own" cx="26" cy="26" r="9" fill="rgba(255,255,255,0.9)" stroke="#7C3AED" strokeWidth="3" />
+        <circle className="kf-own" cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="4" />
         <circle
           ref={ringRef}
           cx="26" cy="26" r="22" fill="none" stroke="#5EED7A" strokeWidth="4" strokeLinecap="round"

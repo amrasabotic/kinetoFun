@@ -412,6 +412,10 @@ function setCursorProgress(p){
     ?`conic-gradient(rgba(34,197,94,.85) ${p*360}deg, rgba(6,182,212,.25) 0deg)`
     :'';
 }
+// On the platform the bridge supplies one cursor for every game and the platform draws it. While a piece is carried,
+// the game's own cursor shows at the same spot because it carries the drop progress.
+const kfShared=window.__kfCursor;
+let kfMenuOn=null;
 function onHandResults(res){
   hctx.clearRect(0,0,hCanvas.width,hCanvas.height);
   if(!res.multiHandLandmarks||res.multiHandLandmarks.length===0){
@@ -425,9 +429,12 @@ function onHandResults(res){
   skeleton(lm);
   // The middle knuckle stays put whatever shape the hand makes, so the cursor does not jump.
   const p=toPage(lm[9]);
-  smX=sm(p.x,smX);smY=sm(p.y,smY);
+  if(kfShared){smX=kfShared.x*window.innerWidth;smY=kfShared.y*window.innerHeight;}
+  else{smX=sm(p.x,smX);smY=sm(p.y,smY);}
+  const menu=!dragPiece;
+  if(kfShared&&menu!==kfMenuOn){kfMenuOn=menu;if(window.__kfMenu)window.__kfMenu(menu);}
   if(window.__kfPointer)window.__kfPointer(smX/window.innerWidth,smY/window.innerHeight);
-  cursor.style.display='block';
+  cursor.style.display=kfShared&&menu?'none':'block';
   cursor.className=dragPiece?'grab':'';
   cursor.style.left=smX+'px';cursor.style.top=smY+'px';
   badge.classList.add('lit');

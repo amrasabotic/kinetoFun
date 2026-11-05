@@ -170,7 +170,11 @@ export const cursor = {
 let cursorEl    = null;
 let dwellRingEl = null;
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; only the press ring is drawn here.
+const kfShared = window.__kfCursor;
+
 export function initCursor() {
+  if (window.__kfMenu) window.__kfMenu(true);
   cursorEl = document.createElement('div');
   cursorEl.id = 'finger-cursor';
   cursorEl.innerHTML = `
@@ -181,9 +185,15 @@ export function initCursor() {
     <div class="cursor-dot"></div>`;
   document.getElementById('app').appendChild(cursorEl);
   dwellRingEl = cursorEl.querySelector('.dwell-fill');
+  if (kfShared) cursorEl.querySelectorAll('.cursor-dot, .dwell-track').forEach((el) => { el.style.display = 'none'; });
 }
 
 export function lerpCursor() {
+  if (kfShared) {
+    cursor.x = kfShared.x * window.innerWidth;
+    cursor.y = kfShared.y * window.innerHeight;
+    return;
+  }
   cursor.x += (cursor.targetX - cursor.x) * cursor.lerpFactor;
   cursor.y += (cursor.targetY - cursor.y) * cursor.lerpFactor;
 }

@@ -1,12 +1,778 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shape &amp; Color Sorter</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sunset Rally</title>
+<style>
+:root { --sign:#0b6b3a; --sign-dark:#06492a; --white:#f7f7f2; --warn:#ffcc1a; --ink:#1b1b1b; --dusk:#2b1748; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:var(--dusk); color:var(--white); font-family:'Arial Narrow','Roboto Condensed','Helvetica Neue',Arial,sans-serif; overflow:hidden; user-select:none; }
+
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#road { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Green highway signs; a white bar fills along the bottom while the hand rests on one. */
+.sign { position:absolute; background:var(--sign); border:5px solid var(--white); outline:4px solid var(--sign); border-radius:16px; color:var(--white);
+  box-shadow:0 14px 0 rgba(0,0,0,0.3); font-weight:bold; letter-spacing:0.5px; }
+.btn { display:flex; align-items:center; justify-content:center; gap:14px; cursor:pointer; font-size:34px; overflow:hidden; text-align:center; line-height:1.1; }
+.btn::after { content:''; position:absolute; left:0; bottom:0; height:12px; width:calc(var(--p, 0) * 100%); background:var(--warn); }
+.btn.hot { background:#108a4c; }
+.btn[hidden] { display:none; }
+.btn .arrow { font-size:40px; }
+.post { position:absolute; width:16px; background:linear-gradient(90deg, #9aa0a6, #d7dbdf, #8a9096); }
+
+#menu .title { left:80px; top:60px; width:640px; padding:24px 34px; }
+#menu .title small { display:block; font-size:24px; opacity:0.9; letter-spacing:3px; }
+#menu .title h1 { font-size:86px; line-height:1; }
+#menu .title p { font-size:24px; margin-top:10px; font-weight:normal; line-height:1.3; }
+#menu .p1 { left:200px; top:300px; height:420px; } #menu .p2 { left:590px; top:300px; height:420px; }
+#menu .go { left:110px; top:390px; width:330px; height:120px; font-size:46px; }
+#menu .snd { left:470px; top:400px; width:230px; height:100px; font-size:28px; }
+#menu .exit { left:110px; top:550px; width:330px; height:90px; font-size:28px; }
+
+.warns { position:absolute; right:50px; top:50px; display:flex; flex-direction:column; gap:22px; }
+.warn { display:flex; gap:18px; align-items:center; width:450px; padding:14px 18px; background:rgba(20,10,35,0.82); border-radius:14px; border-left:10px solid var(--warn); }
+.warn canvas { width:96px; height:96px; flex:none; }
+.warn b { display:block; font-size:28px; color:var(--warn); }
+.warn span { font-size:22px; line-height:1.3; }
+
+#stages h2 { position:absolute; left:50%; top:26px; transform:translateX(-50%); font-size:44px; padding:10px 34px; }
+#exits { position:absolute; left:80px; top:130px; width:1120px; display:grid; grid-template-columns:repeat(4, 1fr); gap:26px; }
+#exits .btn { position:relative; height:200px; flex-direction:column; gap:6px; font-size:28px; padding:12px; }
+#exits .btn .no { font-size:20px; background:var(--white); color:var(--sign); padding:2px 12px; border-radius:6px; }
+#exits .btn.locked { background:#55605a; cursor:default; }
+#stages .back { left:80px; bottom:28px; width:220px; height:86px; font-size:28px; }
+.stars { display:flex; gap:4px; justify-content:center; }
+.stars svg { width:30px; height:30px; }
+
+#hud { position:absolute; left:20px; top:16px; display:flex; gap:14px; pointer-events:none; }
+#hud .box { background:rgba(15,8,28,0.75); border-radius:12px; padding:8px 18px; font-size:22px; }
+#hud .box b { display:block; font-size:36px; line-height:1; color:var(--warn); }
+#prog { position:absolute; left:340px; right:340px; top:24px; height:16px; background:rgba(15,8,28,0.75); border-radius:8px; pointer-events:none; }
+#prog i { position:absolute; top:-6px; width:10px; height:28px; border-radius:4px; transform:translateX(-50%); }
+#prog .flag { position:absolute; right:-4px; top:-12px; font-size:22px; }
+#banner { position:absolute; left:50%; top:200px; transform:translateX(-50%); font-size:120px; font-weight:bold; color:var(--warn); text-shadow:0 8px 0 rgba(0,0,0,0.35); pointer-events:none; }
+#banner.small { font-size:44px; top:120px; background:rgba(15,8,28,0.8); padding:14px 30px; border-radius:16px; color:var(--white); text-shadow:none; }
+#banner[hidden] { display:none; }
+
+/* Live gesture panel: what the camera sees right now. */
+#pad { position:absolute; left:20px; bottom:16px; width:470px; padding:12px 16px; background:rgba(15,8,28,0.8); border-radius:14px; pointer-events:none; }
+#pad .row { display:flex; justify-content:space-between; align-items:center; font-size:22px; margin-bottom:8px; }
+#seen { padding:2px 12px; border-radius:10px; background:#7a2230; }
+#seen.ok { background:#1d7a46; }
+#lamp { padding:2px 12px; border-radius:10px; background:#3a3350; }
+#lamp.on { background:#1aa6ff; color:#04122a; font-weight:bold; }
+#lamp.empty { background:#3a3350; opacity:0.6; }
+#bar { position:relative; height:34px; border-radius:17px; background:linear-gradient(90deg, #6a9a4a 0 12%, #444 12% 88%, #6a9a4a 88%); }
+#bar .lane { position:absolute; top:7px; width:4px; height:20px; background:rgba(255,255,255,0.5); }
+#bar .hand { position:absolute; top:-6px; width:26px; height:46px; border-radius:13px; border:4px solid var(--warn); transform:translateX(-50%); }
+#bar .car { position:absolute; top:6px; width:30px; height:22px; border-radius:6px; background:#ff4d6d; transform:translateX(-50%); }
+#nitro { margin-top:8px; height:14px; border-radius:7px; background:#2a2440; overflow:hidden; }
+#nitro i { display:block; height:100%; width:50%; background:linear-gradient(90deg, #1aa6ff, #8fe3ff); }
+
+#camwrap { position:absolute; right:16px; bottom:16px; width:224px; height:168px; border-radius:14px; border:4px solid var(--white); overflow:hidden; background:#000; }
+#cam { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+#bones { position:absolute; inset:0; width:100%; height:100%; }
+
+#intro { position:absolute; inset:0; background:rgba(20,10,35,0.6); }
+#intro[hidden] { display:none; }
+#intro .card { position:absolute; left:110px; top:60px; width:760px; padding:24px 30px; }
+#intro h2 { font-size:46px; }
+#intro p { font-size:24px; font-weight:normal; line-height:1.35; margin-top:8px; }
+#checks { margin-top:14px; display:flex; flex-direction:column; gap:10px; }
+.check { display:flex; align-items:center; gap:14px; font-size:26px; font-weight:normal; }
+.check i { width:36px; height:36px; border-radius:50%; border:4px solid var(--white); flex:none; display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:bold; }
+.check.ok i { background:var(--warn); color:var(--ink); border-color:var(--warn); }
+#intro .start { left:920px; top:110px; width:300px; height:130px; font-size:44px; }
+#intro .back { left:950px; top:290px; width:240px; height:90px; font-size:28px; }
+
+#result .card { left:300px; top:50px; width:680px; padding:26px 34px; text-align:center; }
+#result h2 { font-size:64px; color:var(--warn); }
+#result .stars svg { width:64px; height:64px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:6px 40px; font-size:28px; font-weight:normal; justify-content:center; margin-top:12px; text-align:left; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#rs-buttons .btn { top:480px; height:110px; }
+#rs-buttons .b0 { left:180px; width:320px; font-size:36px; } #rs-buttons .b1 { left:530px; width:260px; font-size:30px; } #rs-buttons .b2 { left:820px; width:280px; font-size:30px; }
+
+#hint { position:absolute; left:50%; top:330px; transform:translateX(-50%); font-size:26px; padding:10px 24px; border-radius:30px; background:rgba(15,8,28,0.9); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint[hidden] { display:none; }
+#toast { position:absolute; left:50%; top:80px; transform:translateX(-50%); font-size:24px; font-weight:bold; padding:12px 22px; border-radius:14px; background:var(--sign); border:3px solid var(--white);
+  opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:6; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="road" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div class="post p1"></div><div class="post p2"></div>
+    <div class="sign title"><small>NEXT EXIT</small><h1>Sunset Rally</h1><p>Race five rivals down the coast road at sunset. Your hand is the steering wheel.</p><p>Rest your hand on a green sign to press it.</p></div>
+    <div class="sign btn go" data-dwell="play"><span class="arrow">&#8593;</span>Drive</div>
+    <div class="sign btn snd" data-dwell="sound" id="btn-sound">Sound on</div>
+    <div class="sign btn exit" data-dwell="exit" id="btn-exit" hidden>Back to games</div>
+    <div class="warns">
+      <div class="warn"><canvas width="96" height="96" data-icon="steer"></canvas><div><b>Move your hand: steer</b><span>Hold your open hand up. The car goes where your hand goes, left or right.</span></div></div>
+      <div class="warn"><canvas width="96" height="96" data-icon="auto"></canvas><div><b>No pedals needed</b><span>The car drives itself. Just steer around traffic and grab coins.</span></div></div>
+      <div class="warn"><canvas width="96" height="96" data-icon="fist"></canvas><div><b>Make a fist: nitro</b><span>Squeeze a fist for a speed boost. Pick up blue cans to refill it.</span></div></div>
+    </div>
+  </section>
+
+  <section class="screen" id="stages">
+    <h2 class="sign">Choose your road</h2>
+    <div id="exits"></div>
+    <div class="sign btn back" data-dwell="menu">&#8592; Menu</div>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="hud">
+      <div class="box">Place<b id="hd-pos">6th</b></div>
+      <div class="box">Coins<b id="hd-coins">0</b></div>
+    </div>
+    <div id="prog"><span class="flag">&#9873;</span></div>
+    <div id="banner" hidden></div>
+    <div id="pad">
+      <div class="row"><span id="seen">Hand not seen</span><span id="lamp">Fist = nitro</span></div>
+      <div id="bar"><div class="lane" style="left:37.5%"></div><div class="lane" style="left:62.5%"></div><div class="car" id="bar-car"></div><div class="hand" id="bar-hand"></div></div>
+      <div id="nitro"><i id="nitro-fill"></i></div>
+    </div>
+    <div id="intro">
+      <div class="sign card">
+        <h2 id="in-title"></h2>
+        <p id="in-text"></p>
+        <div id="checks">
+          <div class="check" id="ck-hand"><i></i>Hold up your open hand so the camera sees it</div>
+          <div class="check" id="ck-move"><i></i>Move it left and right: watch the red car below follow it</div>
+          <div class="check" id="ck-fist"><i></i>Squeeze a fist: the nitro lamp lights up blue</div>
+        </div>
+      </div>
+      <div class="sign btn start" data-dwell="begin">Start race</div>
+      <div class="sign btn back" data-dwell="stages">Roads</div>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="sign card"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <div id="camwrap"><video id="cam" autoplay muted playsinline></video><canvas id="bones" width="224" height="168"></canvas></div>
+  <div id="hint" hidden></div>
+  <div id="toast"></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="rally.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const R = window.Rally;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), roadCv = $('road'), ink = $('ink'), video = $('cam'), bones = $('bones');
+const rctx = roadCv.getContext('2d'), ictx = ink.getContext('2d'), bctx = bones.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+
+function fit() {
+  W = innerWidth; H = innerHeight;
+  ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+
+// ---------- saved progress ----------
+const SAVE_KEY = 'sunset-rally-v1';
+const N = R.LEVELS.length;
+const progress = loadProgress();
+function loadProgress() {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      return { ...base, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)), sound: s.sound !== false,
+        stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0) };
+    }
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+
+// Points from every race since the game was opened; reported once, when the player leaves or wins the last road.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null, engine = null;
+function audio() {
+  if (!progress.sound) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function tone(f, dur, type = 'sine', vol = 0.1, f2 = 0, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+// Engine drone runs during a race; only its pitch and volume change.
+function engineLevel(speedFrac, on) {
+  const a = on && progress.sound ? audio() : null;
+  if (!engine) {
+    if (!a) return;
+    const o = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain();
+    o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 600; g.gain.value = 0;
+    o.connect(f).connect(g).connect(a.destination); o.start();
+    engine = { o, g, a };
+  }
+  const t = engine.a.currentTime;
+  engine.o.frequency.setTargetAtTime(55 + speedFrac * 90, t, 0.08);
+  engine.g.gain.setTargetAtTime(on && progress.sound ? 0.035 : 0, t, 0.1);
+}
+const SFX = {
+  select() { tone(660, 0.1, 'triangle'); tone(990, 0.12, 'triangle', 0.08, 0, 0.07); },
+  coin() { tone(1320, 0.08, 'square', 0.04); tone(1760, 0.1, 'square', 0.04, 0, 0.05); },
+  nitro() { tone(300, 0.35, 'sawtooth', 0.06, 1200); },
+  boost() { tone(200, 0.5, 'sawtooth', 0.05, 900); },
+  bump() { tone(120, 0.18, 'square', 0.09, 60); },
+  beep() { tone(520, 0.18, 'square', 0.07); },
+  go() { tone(1040, 0.4, 'square', 0.08); },
+  finish() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, 0, i * 0.1)); },
+};
+function sfx(name) { try { SFX[name](); } catch (e) { /* audio is optional */ } }
+
+// ---------- road themes ----------
+const THEMES = {
+  coast: { sky: ['#2b1748', '#c2457a', '#ffb05c'], sun: '#ffe08a', hills: '#5a2a5e', grass: ['#3f8f5a', '#37804f'], kerb: ['#ffffff', '#d63b3b'], road: ['#5a5560', '#55505a'], prop: 'palm' },
+  desert: { sky: ['#3b1c3f', '#e0603a', '#ffcf6b'], sun: '#fff1b0', hills: '#8a3f2c', grass: ['#d9a55a', '#cc9a50'], kerb: ['#ffffff', '#e08a2a'], road: ['#6a5f58', '#645952'], prop: 'cactus' },
+  forest: { sky: ['#1f2a4a', '#8a5aa0', '#ffb37a'], sun: '#ffd9a0', hills: '#2c3d4f', grass: ['#2f6b3a', '#295f33'], kerb: ['#ffffff', '#2a6ad6'], road: ['#4f5257', '#4a4d52'], prop: 'pine' },
+  night: { sky: ['#05081a', '#1c2152', '#4b3a7a'], sun: '#f2f0ff', hills: '#141a3a', grass: ['#1d2a3a', '#192533'], kerb: ['#ffd84d', '#2a2a2a'], road: ['#2e2e36', '#2a2a32'], prop: 'lamp' },
+  snow: { sky: ['#3a3f6b', '#b08ab8', '#ffd0b0'], sun: '#fff4e0', hills: '#e8ecf5', grass: ['#e6edf5', '#dbe3ee'], kerb: ['#ffffff', '#d63b3b'], road: ['#5c6068', '#575b63'], prop: 'snowpine' },
+  canyon: { sky: ['#2a1230', '#b23a3a', '#ff9a4a'], sun: '#ffe0a0', hills: '#7a2a1a', grass: ['#b5552e', '#a84d29'], kerb: ['#ffffff', '#3a3a3a'], road: ['#5e4f4a', '#594a45'], prop: 'rock' },
+  meadow: { sky: ['#2c2058', '#a76bc8', '#ffc2a0'], sun: '#fff0c0', hills: '#4a3a7a', grass: ['#6a9a4a', '#5f8e42'], kerb: ['#ffffff', '#8a4ad6'], road: ['#55525e', '#504d59'], prop: 'lavender' },
+};
+
+// ---------- vector art ----------
+function drawCarBack(c, x, y, w, color, glow) {
+  const h = w * 0.55;
+  c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); c.ellipse(x, y, w * 0.6, h * 0.12, 0, 0, 7); c.fill();
+  c.fillStyle = '#1a1a1a'; c.fillRect(x - w * 0.48, y - h * 0.3, w * 0.18, h * 0.3); c.fillRect(x + w * 0.3, y - h * 0.3, w * 0.18, h * 0.3);
+  c.fillStyle = color; c.beginPath(); c.roundRect(x - w / 2, y - h * 0.75, w, h * 0.5, w * 0.08); c.fill();
+  c.beginPath(); c.roundRect(x - w * 0.34, y - h, w * 0.68, h * 0.32, w * 0.1); c.fill();
+  c.fillStyle = 'rgba(160,210,255,0.8)'; c.beginPath(); c.roundRect(x - w * 0.28, y - h * 0.95, w * 0.56, h * 0.22, w * 0.06); c.fill();
+  c.fillStyle = glow ? '#ff2a2a' : '#a01818';
+  c.fillRect(x - w * 0.46, y - h * 0.62, w * 0.18, h * 0.12); c.fillRect(x + w * 0.28, y - h * 0.62, w * 0.18, h * 0.12);
+  c.fillStyle = '#eee'; c.fillRect(x - w * 0.12, y - h * 0.48, w * 0.24, h * 0.1);
+}
+function drawProp(c, kind, x, y, s, t) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  if (kind === 'palm') {
+    c.strokeStyle = '#6b4a2e'; c.lineWidth = 16; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(30, -150, 10, -300); c.stroke();
+    c.fillStyle = '#1f5a3a'; for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3; c.beginPath(); c.ellipse(10 + Math.cos(a) * 60, -300 + Math.sin(a) * 25, 75, 16, a, 0, 7); c.fill(); }
+  } else if (kind === 'cactus') {
+    c.fillStyle = '#3f7a3a'; c.beginPath(); c.roundRect(-18, -200, 36, 200, 18); c.roundRect(-70, -140, 52, 26, 13); c.roundRect(-70, -200, 26, 86, 13);
+    c.roundRect(18, -110, 50, 26, 13); c.roundRect(42, -170, 26, 86, 13); c.fill();
+  } else if (kind === 'pine' || kind === 'snowpine') {
+    c.fillStyle = '#4a3420'; c.fillRect(-12, -40, 24, 40);
+    c.fillStyle = kind === 'pine' ? '#1d4a2c' : '#2a5a4a';
+    for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(-90 + k * 20, -40 - k * 80); c.lineTo(0, -160 - k * 80); c.lineTo(90 - k * 20, -40 - k * 80); c.fill(); }
+    if (kind === 'snowpine') { c.fillStyle = '#fff'; for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(-30 + k * 7, -120 - k * 80); c.lineTo(0, -160 - k * 80); c.lineTo(30 - k * 7, -120 - k * 80); c.fill(); } }
+  } else if (kind === 'lamp') {
+    c.fillStyle = '#555a66'; c.fillRect(-6, -320, 12, 320); c.fillRect(-6, -320, 70, 10);
+    c.fillStyle = 'rgba(255,220,120,0.25)'; c.beginPath(); c.arc(58, -305, 60, 0, 7); c.fill();
+    c.fillStyle = '#ffe9a0'; c.beginPath(); c.arc(58, -305, 16, 0, 7); c.fill();
+  } else if (kind === 'rock') {
+    c.fillStyle = '#8a3a22'; c.beginPath(); c.moveTo(-80, 0); c.lineTo(-60, -260); c.lineTo(-10, -300); c.lineTo(50, -250); c.lineTo(80, 0); c.fill();
+    c.fillStyle = '#a9502e'; c.fillRect(-60, -200, 120, 14); c.fillRect(-70, -110, 140, 14);
+  } else if (kind === 'lavender') {
+    for (let k = -2; k <= 2; k++) { c.fillStyle = '#7a4ac8'; c.beginPath(); c.ellipse(k * 30, -40 - Math.abs(k) * -6, 22, 50, 0, 0, 7); c.fill(); }
+    c.fillStyle = '#3f6a2e'; c.fillRect(-80, -12, 160, 12);
+  }
+  c.restore();
+}
+function drawCoin(c, x, y, r, t) {
+  const sq = Math.abs(Math.cos(t * 4));
+  c.fillStyle = '#b8860b'; c.beginPath(); c.ellipse(x, y - r, r * Math.max(0.2, sq), r, 0, 0, 7); c.fill();
+  c.fillStyle = '#ffd23f'; c.beginPath(); c.ellipse(x, y - r, r * 0.8 * Math.max(0.2, sq), r * 0.8, 0, 0, 7); c.fill();
+}
+function drawNitro(c, x, y, r) {
+  c.fillStyle = '#1aa6ff'; c.beginPath(); c.roundRect(x - r * 0.6, y - r * 2.2, r * 1.2, r * 2, r * 0.3); c.fill();
+  c.fillStyle = '#e8f7ff'; c.fillRect(x - r * 0.6, y - r * 1.5, r * 1.2, r * 0.4);
+  c.fillStyle = '#0a4a7a'; c.fillRect(x - r * 0.25, y - r * 2.5, r * 0.5, r * 0.35);
+}
+function iconCanvas(cv, kind) {
+  const c = cv.getContext('2d'), w = cv.width;
+  c.fillStyle = '#ffcc1a'; c.beginPath(); c.moveTo(w / 2, 4); c.lineTo(w - 4, w / 2); c.lineTo(w / 2, w - 4); c.lineTo(4, w / 2); c.fill();
+  c.strokeStyle = '#1b1b1b'; c.lineWidth = 3; c.stroke();
+  c.fillStyle = '#1b1b1b'; c.strokeStyle = '#1b1b1b'; c.lineWidth = 5; c.lineCap = 'round';
+  if (kind === 'steer') {
+    c.beginPath(); c.roundRect(w / 2 - 12, w / 2 - 10, 24, 26, 6); c.fill();
+    for (let k = 0; k < 4; k++) { c.beginPath(); c.roundRect(w / 2 - 12 + k * 6.5, w / 2 - 28, 5, 20, 2); c.fill(); }
+    c.beginPath(); c.moveTo(20, w / 2); c.lineTo(30, w / 2 - 8); c.moveTo(20, w / 2); c.lineTo(30, w / 2 + 8);
+    c.moveTo(w - 20, w / 2); c.lineTo(w - 30, w / 2 - 8); c.moveTo(w - 20, w / 2); c.lineTo(w - 30, w / 2 + 8); c.stroke();
+  } else if (kind === 'fist') {
+    c.beginPath(); c.roundRect(w / 2 - 18, w / 2 - 14, 36, 30, 10); c.fill();
+    c.strokeStyle = '#ffcc1a'; c.lineWidth = 2; for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(w / 2 - 18 + k * 9, w / 2 - 14); c.lineTo(w / 2 - 18 + k * 9, w / 2 - 2); c.stroke(); }
+  } else {
+    c.beginPath(); c.roundRect(w / 2 - 20, w / 2 - 6, 40, 16, 4); c.fill(); c.beginPath(); c.roundRect(w / 2 - 12, w / 2 - 16, 24, 12, 4); c.fill();
+    c.fillStyle = '#ffcc1a'; c.beginPath(); c.arc(w / 2 - 12, w / 2 + 12, 5, 0, 7); c.arc(w / 2 + 12, w / 2 + 12, 5, 0, 7); c.fill();
+  }
+}
+document.querySelectorAll('canvas[data-icon]').forEach((cv) => iconCanvas(cv, cv.dataset.icon));
+
+// ---------- road renderer ----------
+// CAM_BACK puts the camera far enough behind the car that the car sits at the bottom of the screen.
+const SEG = 200, ROADW = 1800, CAMH = 1100, DEPTH = 0.84, DRAW = 120, CURVE_SCALE = 4.5, HILL_SCALE = 25, CAM_BACK = 8.7;
+let skyShift = 0;
+function renderRoad(now, dt) {
+  const c = rctx, t = now / 1000;
+  const lv = race ? R.LEVELS[race.level] : R.LEVELS[0];
+  const th = THEMES[lv.theme];
+  const g = c.createLinearGradient(0, 0, 0, 360);
+  g.addColorStop(0, th.sky[0]); g.addColorStop(0.6, th.sky[1]); g.addColorStop(1, th.sky[2]);
+  c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = th.sun; c.beginPath(); c.arc(640 - skyShift * 0.3 % 1280, 330, 90, 0, 7); c.fill();
+  c.fillStyle = th.hills;
+  c.beginPath(); c.moveTo(0, 365);
+  for (let x = 0; x <= 1280; x += 40) c.lineTo(x, 362 - Math.abs(Math.sin((x + skyShift) / 160)) * 70 - Math.sin((x + skyShift) / 57) * 14);
+  c.lineTo(1280, 365); c.fill();
+  c.fillStyle = th.grass[0]; c.fillRect(0, 360, 1280, 360);
+
+  const z0 = race ? race.player.z - CAM_BACK : (now / 1000) * 20;
+  const px = race ? race.player.x : Math.sin(t * 0.5) * 0.3;
+  const road = race ? race.road : demoRoad;
+  const len = road.curve.length;
+  const base = Math.floor(z0), frac = z0 - base;
+  const idx = (i) => race ? Math.max(0, Math.min(len - 1, i)) : ((i % len) + len) % len;
+  const hillAt = (i) => road.hill[idx(i)] * HILL_SCALE;
+  const curveOf = (i) => race && (i < 0 || i >= len) ? 0 : road.curve[idx(i)];
+  const camY = CAMH + hillAt(base);
+  const pts = [];
+  let x = 0, dx = -curveOf(base) * CURVE_SCALE * frac;
+  let maxY = 720;
+  for (let n = 0; n <= DRAW; n++) {
+    const i = base + n, wz = (n - frac) * SEG + 1;
+    const s = DEPTH / Math.max(1, wz) * 640;
+    pts.push({ i, s, X: 640 + s * (x - px * ROADW), Y: 360 - s * (hillAt(i) - camY), w: s * ROADW, clip: 720 });
+    x += dx; dx += curveOf(i) * CURVE_SCALE;
+  }
+  for (let n = 1; n < pts.length; n++) {
+    const a = pts[n - 1], b = pts[n];
+    a.clip = maxY;
+    if (b.Y >= maxY || b.Y >= a.Y) continue;
+    const alt = ((Math.floor(a.i / 3) % 2) + 2) % 2;
+    c.fillStyle = th.grass[alt]; c.fillRect(0, b.Y, 1280, a.Y - b.Y + 1);
+    quad(c, a.X, a.Y, a.w * 1.12, b.X, b.Y, b.w * 1.12, th.kerb[alt]);
+    quad(c, a.X, a.Y, a.w, b.X, b.Y, b.w, th.road[alt]);
+    if (alt) for (const l of [-1 / 3, 1 / 3]) quad(c, a.X + a.w * l, a.Y, a.w * 0.012, b.X + b.w * l, b.Y, b.w * 0.012, 'rgba(255,255,255,0.75)');
+    if (race && (a.i === race.length || a.i === race.length + 1)) quad(c, a.X, a.Y, a.w, b.X, b.Y, b.w, a.i % 2 ? '#fff' : '#111');
+    maxY = b.Y;
+  }
+  const at = (zz) => { const n = Math.floor(zz) - base; return n >= 1 && n < pts.length ? pts[n] : null; };
+  const sprites = [];
+  for (let n = DRAW - 1; n >= 1; n--) {
+    const p = pts[n];
+    if (((p.i % 6) + 6) % 6 === 0) for (const side of [-1, 1]) sprites.push({ n, kind: 'prop', ox: side * (1.35 + ((p.i * 7) % 5) * 0.12) });
+  }
+  if (race) {
+    for (const k of race.pickups) if (!k.taken) { const n = Math.floor(k.z) - base; if (n >= 1 && n < DRAW) sprites.push({ n, kind: k.kind, ox: k.x, zf: k.z - Math.floor(k.z) }); }
+    for (const car of race.traffic) { const n = Math.floor(car.z) - base; if (n >= 1 && n < DRAW) sprites.push({ n, kind: 'car', ox: car.x, color: '#c9c9c9' }); }
+    race.rivals.forEach((rv, idx) => { const n = Math.floor(rv.z) - base; if (n >= 1 && n < DRAW) sprites.push({ n, kind: 'car', ox: rv.x, color: RIVAL_COLORS[idx], glow: true }); });
+  }
+  sprites.sort((a, b) => b.n - a.n);
+  for (const sp of sprites) {
+    const p = pts[sp.n];
+    const sx = p.X + p.w * sp.ox, sy = p.Y;
+    c.save(); c.beginPath(); c.rect(0, 0, 1280, p.clip); c.clip();
+    if (sp.kind === 'prop') drawProp(c, th.prop, sx, sy, p.s * 4.5, t);
+    else if (sp.kind === 'car') drawCarBack(c, sx, sy, p.w * 0.45, sp.color, sp.glow);
+    else if (sp.kind === 'coin') drawCoin(c, sx, sy, p.w * 0.06, t);
+    else drawNitro(c, sx, sy, p.w * 0.06);
+    c.restore();
+  }
+  if (race) {
+    const p = race.player, shake = p.offroad ? Math.sin(t * 60) * 3 : 0;
+    if (p.boosting) {
+      c.fillStyle = 'rgba(26,166,255,0.6)';
+      for (let k = 0; k < 2; k++) { c.beginPath(); c.moveTo(600 + k * 80, 690); c.lineTo(620 + k * 40, 690 + 30 + Math.random() * 30); c.lineTo(640 + k * 0, 690); c.fill(); }
+    }
+    if (race.t < p.ghostUntil) c.globalAlpha = 0.55 + 0.3 * Math.sin(t * 30);
+    drawCarBack(c, 640 + shake, 700 + shake, 260, '#ff4d6d', true);
+    c.globalAlpha = 1;
+  }
+}
+function quad(c, x1, y1, w1, x2, y2, w2, color) {
+  c.fillStyle = color; c.beginPath();
+  c.moveTo(x1 - w1, y1); c.lineTo(x2 - w2, y2); c.lineTo(x2 + w2, y2); c.lineTo(x1 + w1, y1); c.fill();
+}
+const RIVAL_COLORS = ['#ffcc1a', '#33c27a', '#4a8cff', '#ff8a2a', '#b06bff'];
+const demoRoad = R.createRace(0).road;
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'stages', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Signs ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  armedAt = performance.now() + ARM_MS;
+  resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = progress.sound ? 'Sound on' : 'Sound off'; }
+updateSoundLabel();
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffcc1a' : 'rgba(255,255,255,0.2)'}"/></svg>`;
+}
+function openStages() {
+  race = null; phase = 'none';
+  $('exits').innerHTML = R.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    return `<div class="sign btn${locked ? ' locked' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`}>
+      <span class="no">EXIT ${i + 1}</span>${locked ? 'Locked' : lv.name}<div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>`;
+  }).join('');
+  show('stages');
+}
+
+// ---------- racing ----------
+let race = null, phase = 'none', phaseAt = 0, lastCount = 0, finishAt = 0;
+const checks = { hand: false, move: false, fist: false, minX: 1, maxX: 0 };
+function openRace(i) {
+  race = R.createRace(i); phase = 'intro'; finishAt = 0;
+  Object.assign(checks, { hand: false, move: false, fist: false, minX: 1, maxX: 0 });
+  const lv = R.LEVELS[i];
+  $('in-title').textContent = `Exit ${i + 1}: ${lv.name}`;
+  $('in-text').textContent = `Beat five rivals to the chequered line. ${i === 0 ? 'The road is gentle here, a good place to practise.' : 'Bends push your car outwards, so lean your hand into them.'} Try the three checks below, then rest your hand on Start.`;
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function beginRace() {
+  $('intro').hidden = true;
+  phase = 'count'; phaseAt = performance.now(); lastCount = 0;
+}
+function finishRace() {
+  const i = race.level, r = R.result(race), last = i === N - 1;
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  phase = 'none';
+  $('rs-title').textContent = r.position === 1 ? 'You won!' : `${ordinal(r.position)} place`;
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Time', r.seconds + ' s'], ['Coins', r.coins], ['Bumps', r.bumps], ['Score', r.score]].map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  $('rs-buttons').innerHTML = (last ? '<div class="sign btn b0" data-dwell="stages">All roads</div>' : '<div class="sign btn b0" data-dwell="next">Next road &#8594;</div>')
+    + '<div class="sign btn b1" data-dwell="again">Race again</div>'
+    + (last ? '' : '<div class="sign btn b2" data-dwell="stages">All roads</div>');
+  show('result');
+  engineLevel(0, false);
+  if (last && r.position === 1) reportScore();
+}
+const ordinal = (n) => n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th');
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': openStages(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); if (progress.sound) sfx('select'); else engineLevel(0, false); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': race = null; show('menu'); break;
+    case 'stages': openStages(); break;
+    case 'level': openRace(Number(el.dataset.level)); break;
+    case 'begin': beginRace(); break;
+    case 'next': openRace(Math.min(N - 1, race.level + 1)); break;
+    case 'again': openRace(race.level); break;
+  }
+}
+
+// The platform's Back button: out of a race to the roads, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { engineLevel(0, false); openStages(); return true; }
+  if (screen === 'stages') { show('menu'); return true; }
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, steer: 0.5, pose: 'none', raw: 'none', rawSince: 0, reported: false, lm: null };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 300;
+
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.';
+    return;
+  }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) {
+    console.error('hand tracking failed', e);
+    statusText = 'Hand tracking could not start. Reload to try again.';
+  }
+}
+
+// Fingers judged by distance from the wrist, so it works whichever way the hand is turned; one stray finger still counts as a fist.
+function poseOf(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  const straight = [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+  return straight <= 1 ? 'fist' : straight >= 3 ? 'open' : 'other';
+}
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (lm) handleLandmarks(lm, now);
+}
+function handleLandmarks(lm, now) {
+  const fresh = now - hand.lastSeen > SLIP_MS;
+  const tx = reach(1 - lm[9].x, 0.12, 0.88) * W, ty = reach(lm[9].y, 0.10, 0.75) * H;
+  const a = fresh ? 1 : 0.6;
+  hand.x += (tx - hand.x) * a; hand.y += (ty - hand.y) * a;
+  // Steering reads the palm, which barely moves when the fingers curl, so a fist never jerks the car; the middle 60% of the frame covers the whole road.
+  const sx = reach(1 - lm[9].x, 0.2, 0.8);
+  hand.steer += (sx - hand.steer) * (fresh ? 1 : 0.5);
+  hand.lastSeen = now; hand.present = true; hand.lm = lm;
+  const raw = poseOf(lm);
+  if (raw !== hand.raw) { hand.raw = raw; hand.rawSince = now; }
+  if (fresh || now - hand.rawSince >= 120) hand.pose = raw;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.pose = 'none'; hand.lm = null;
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+
+const mouse = { x: null, y: null, down: false, at: -1e9 };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.at = performance.now(); });
+addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-dwell]')) mouse.down = true; });
+addEventListener('pointerup', () => { mouse.down = false; });
+addEventListener('click', (e) => {
+  const el = e.target.closest('[data-dwell]');
+  if (el && el.closest('.screen.on') && !el.closest('[hidden]')) act(el);
+});
+// Hand first; a mouse only drives when no hand is in view.
+function controlInput() {
+  if (hand.present) return { x: hand.steer, fist: hand.pose === 'fist', src: 'hand' };
+  if (mouse.x !== null && performance.now() - mouse.at < 4000) {
+    const sx = Math.min(1, Math.max(0, ((mouse.x - OX) / K) / 1280));
+    return { x: sx, fist: mouse.down, src: 'mouse' };
+  }
+  return null;
+}
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null };
+const BUTTON_MS = 1100;
+function resetDwell() {
+  if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); }
+  dwell.el = null; dwell.p = 0;
+}
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menu signs follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const racing = () => screen === 'play' && phase !== 'intro' && phase !== 'none';
+const kfInMenu = () => !racing();
+const kfSharedMenu = () => !!kfShared && kfInMenu();
+function kfPoint() {
+  if (kfSharedMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  return hand.present ? { x: hand.x, y: hand.y } : null;
+}
+function updateDwell(now) {
+  let target = null;
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = kfPoint();
+  if (pt && now >= armedAt && !racing()) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.closest('[hidden]') || el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (pt.x >= r.left - 12 && pt.x <= r.right + 12 && pt.y >= r.top - 12 && pt.y <= r.bottom + 12) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) {
+    resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot');
+  } else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; act(el); }
+}
+
+// ---------- HUD ----------
+let hud = {}, toastTimer = 0;
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+}
+function banner(text, small) {
+  setOnce('banner', text + (small ? '|s' : ''), () => { $('banner').textContent = text; $('banner').hidden = !text; $('banner').classList.toggle('small', !!small); });
+}
+function updateHud(now, input) {
+  let text = statusText;
+  if (!text && !hand.present && screen !== 'play' && now - hand.lastSeen > 1000 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  setOnce('hint', text, (v) => { $('hint').textContent = v; $('hint').hidden = !v; });
+  if (screen !== 'play' || !race) return;
+  const p = race.player;
+  setOnce('seen', input ? (input.src === 'hand' ? 'h' : 'm') : 'n', (v) => {
+    $('seen').textContent = v === 'h' ? 'Hand seen' : v === 'm' ? 'Mouse driving' : 'Hand not seen';
+    $('seen').classList.toggle('ok', v !== 'n');
+  });
+  const lamp = input && input.fist ? (p.nitro > 0 ? 'on' : 'empty') : 'off';
+  setOnce('lamp', lamp, (v) => {
+    $('lamp').textContent = v === 'on' ? 'Fist: NITRO!' : v === 'empty' ? 'Fist: nitro empty' : 'Fist = nitro';
+    $('lamp').className = v === 'off' ? '' : v;
+  });
+  // Bar spans the same range the hand covers, so the hand ring and the car marker line up when the car has caught up.
+  const toBar = (rx) => (Math.max(-1.6, Math.min(1.6, rx)) / 1.6) * 38 + 50;
+  $('bar-hand').style.display = input ? '' : 'none';
+  if (input) $('bar-hand').style.left = toBar(R.handToRoad(input.x)) + '%';
+  $('bar-car').style.left = toBar(p.x) + '%';
+  $('nitro-fill').style.width = (p.nitro * 100).toFixed(0) + '%';
+  setOnce('pos', ordinal(R.position(race)), (v) => { $('hd-pos').textContent = v; });
+  setOnce('coins', race.coins, (v) => { $('hd-coins').textContent = v; });
+  setOnce('marks', race.level, () => {
+    $('prog').querySelectorAll('i').forEach((e) => e.remove());
+    for (let k = 0; k <= race.rivals.length; k++) { const e = document.createElement('i'); e.style.background = k === 0 ? '#ff4d6d' : RIVAL_COLORS[k - 1]; if (k === 0) e.style.zIndex = 2; $('prog').appendChild(e); }
+  });
+  const marks = $('prog').querySelectorAll('i');
+  [p, ...race.rivals].forEach((c, k) => { if (marks[k]) marks[k].style.left = Math.min(100, (c.z / race.length) * 100) + '%'; });
+  ['hand', 'move', 'fist'].forEach((k) => setOnce('ck' + k, checks[k], (v) => $('ck-' + k).classList.toggle('ok', v)));
+  ['hand', 'move', 'fist'].forEach((k) => setOnce('cki' + k, checks[k], (v) => { $('ck-' + k).querySelector('i').textContent = v ? '✓' : ''; }));
+}
+
+// The camera preview shows the dots the game reads, so the player can see their hand is being tracked.
+function renderBones() {
+  const c = bctx, w = bones.width, h = bones.height;
+  c.clearRect(0, 0, w, h);
+  const lm = hand.present && hand.lm;
+  if (!lm) return;
+  const P = (i) => [(1 - lm[i].x) * w, lm[i].y * h];
+  c.strokeStyle = hand.pose === 'fist' ? '#1aa6ff' : '#ffcc1a'; c.lineWidth = 3;
+  for (const f of [[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14, 15, 16], [0, 17, 18, 19, 20], [5, 9, 13, 17]]) {
+    c.beginPath(); f.forEach((i, k) => { const [x, y] = P(i); k ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke();
+  }
+  const [cx, cy] = P(9);
+  c.fillStyle = '#ff4d6d'; c.beginPath(); c.arc(cx, cy, 7, 0, 7); c.fill();
+}
+
+function renderInk() {
+  const c = ictx;
+  c.clearRect(0, 0, W, H);
+  if (!hand.present || kfSharedMenu() || racing()) return;
+  c.fillStyle = 'rgba(255,255,255,0.95)'; c.beginPath(); c.arc(hand.x, hand.y, 8, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#ffcc1a'; c.lineWidth = 4; c.beginPath(); c.arc(hand.x, hand.y, 20, 0, Math.PI * 2); c.stroke();
+}
+
+// ---------- main loop ----------
+let lastFrame = performance.now(), lostSince = 0, backSince = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  // Race time follows real frame time, capped so a long stall cannot skip ahead.
+  const dt = Math.min(0.12, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  const input = controlInput();
+
+  if (screen === 'play' && race) {
+    if (phase === 'intro' && input) {
+      checks.hand = checks.hand || input.src === 'hand' || input.src === 'mouse';
+      checks.minX = Math.min(checks.minX, input.x); checks.maxX = Math.max(checks.maxX, input.x);
+      checks.move = checks.move || checks.maxX - checks.minX > 0.4;
+      checks.fist = checks.fist || input.fist;
+      race.player.x += (R.handToRoad(input.x) - race.player.x) * Math.min(1, 7 * dt);
+    }
+    if (phase === 'count') {
+      // The lights only count down while the car has a driver.
+      if (!input) { phaseAt = now; banner('Show your hand to start', true); }
+      else {
+        const left = 3 - Math.floor((now - phaseAt) / 800);
+        if (left !== lastCount) { lastCount = left; if (left > 0) sfx('beep'); else sfx('go'); }
+        banner(left > 0 ? String(left) : 'GO!');
+        if (left <= 0) { phase = 'race'; phaseAt = now; }
+      }
+    } else if (phase === 'race' || phase === 'paused') {
+      if (now - phaseAt > 700 && phase === 'race') banner('');
+      if (!input) {
+        if (!lostSince) lostSince = now;
+        if (now - lostSince > 400) { phase = 'paused'; banner('Paused: show your hand to keep driving', true); }
+      } else lostSince = 0;
+      if (phase === 'paused' && input) {
+        if (!backSince) backSince = now;
+        if (now - backSince > 500) { phase = 'race'; phaseAt = now; backSince = 0; banner('GO!'); sfx('go'); }
+      } else backSince = 0;
+      if (phase === 'race' && !race.done) {
+        // Small fixed steps keep a slow TV box from skipping past cars and coins.
+        for (let left = dt; left > 1e-6 && !race.done; left -= 1 / 60) R.step(race, Math.min(left, 1 / 60), input || { x: null, fist: false });
+        for (const ev of race.events) {
+          if (ev.type === 'coin') sfx('coin');
+          else if (ev.type === 'nitro') { sfx('nitro'); toast('Nitro refilled!'); }
+          else if (ev.type === 'boost') sfx('boost');
+          else if (ev.type === 'bump') { sfx('bump'); toast('Bump! Steer around cars'); }
+          else if (ev.type === 'offroad') toast('On the grass: steer back to the road');
+          else if (ev.type === 'finish') { sfx('finish'); banner(ev.position === 1 ? 'You won!' : `${ordinal(ev.position)} place!`); finishAt = now + 1800; }
+        }
+        race.events.length = 0;
+        skyShift += R.curveAt(race, race.player.z) * race.player.speed * dt * 4;
+      }
+      engineLevel(race.player.speed / (R.MAX_SPEED * 1.35), phase === 'race');
+    }
+  } else engineLevel(0, false);
+  if (finishAt && now >= finishAt) { finishAt = 0; finishRace(); banner(''); }
+  renderRoad(now, dt);
+  updateDwell(now);
+  updateHud(now, input);
+  renderBones();
+  renderInk();
+}
+
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
 </html>

@@ -617,6 +617,7 @@ let cursorX = W() / 2, cursorY = H() / 2;
 let fingerCount = 0;
 
 function drawCursor(ctx) {
+  if (kfShared && kfMenuOn) return;
   if (fingerCount === 0) return;
   ctx.save();
   ctx.beginPath();
@@ -794,12 +795,24 @@ function resetDwell() {
 }
 
 // Called once per hand-tracking frame; handDetected is false when no hand is visible.
+// On the platform the bridge supplies one cursor for every game and the platform draws it; screens with buttons follow it,
+// while catching keeps the game's own cursor.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+
 function updateDwell(handDetected) {
   const cursorEl = document.getElementById('handCursor');
   const btns = activeDwellButtons().map(id => document.getElementById(id));
+  const menu = btns.length > 0;
+  if (kfShared && menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  if (menu && kfShared) {
+    cursorX = kfShared.x * innerWidth;
+    cursorY = kfShared.y * innerHeight;
+    handDetected = kfShared.visible;
+  }
   if (!btns.length) { cursorEl.style.display = 'none'; dwellStart = null; dwellTarget = null; return; }
 
-  cursorEl.style.display = handDetected ? 'block' : 'none';
+  cursorEl.style.display = handDetected && !kfShared ? 'block' : 'none';
   cursorEl.style.left = cursorX + 'px';
   cursorEl.style.top = cursorY + 'px';
 

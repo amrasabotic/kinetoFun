@@ -1,9 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { getLetterEntry } from '../../data/letters';
+import { getAnimalEntry } from '../../data/animals';
+import { playAnimalCall } from '../../audio/sound';
+import HoverButton from '../common/HoverButton';
 import type { LetterGameMode, RoundPrompt } from '../../types';
 
 export default function PromptDisplay({ mode, prompt }: { mode: LetterGameMode; prompt: RoundPrompt }) {
-  const entry = getLetterEntry(prompt.letter);
+  const animal = mode === 'animal' ? getAnimalEntry(prompt.letter) : undefined;
+  const entry = animal ?? getLetterEntry(prompt.letter);
   if (!entry) return null;
 
   const showLetter = mode === 'letter';
@@ -25,10 +29,15 @@ export default function PromptDisplay({ mode, prompt }: { mode: LetterGameMode; 
               {prompt.letter}
             </div>
           )}
-          {showAnimal && (
+          {showAnimal && animal && (
             <div className="flex flex-col items-center gap-3">
-              <div className="text-7xl drop-shadow-2xl">{entry.emoji}</div>
-              <p className="text-3xl font-extrabold text-white/90">{entry.word}</p>
+              <div className="text-7xl drop-shadow-2xl">{animal.emoji}</div>
+              <p className="text-3xl font-extrabold text-white/90">{animal.word}</p>
+              <p className="text-2xl font-bold text-yellow-200">says &ldquo;{animal.says}!&rdquo;</p>
+              <HoverButton onActivate={() => playAnimalCall(animal.word)} dwellMs={900} ringColor="#FFD54A"
+                className="mt-1 px-6 py-3 rounded-full bg-white/15 border-2 border-white/30 text-xl font-bold">
+                Hear it again
+              </HoverButton>
             </div>
           )}
           {mode === 'mixed' && (

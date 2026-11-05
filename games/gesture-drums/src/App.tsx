@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useHandTracking } from './useHandTracking';
-import { useMenuHand } from './useMenuHand';
+import { useMenuHand, usesSharedCursor } from './useMenuHand';
 import { useGameCanvas } from './useGameCanvas';
 import {
   initialGameState, stepGame, scoreHit, checkPadHit, accuracy,
@@ -139,7 +139,7 @@ function MenuGestureLayer({ children }: { children: (props: {
       {children({ hand, activeId, dwellProgress, registerButton })}
 
       {/* Floating cursor dot */}
-      {hand.detected && (
+      {hand.detected && !usesSharedCursor && (
         <div
           className="pointer-events-none fixed z-40"
           style={{

@@ -4,6 +4,18 @@ import { useEffect, useRef, useState } from 'react';
 import type { HandPosition } from '../types/gestures';
 import { DWELL_TIME } from '../utils/constants';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+export const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+let kfActive = 0;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 interface DwellButton {
   id: string;
   x: number;
@@ -40,10 +52,15 @@ export function useDwellNav(options: UseDwellNavOptions): {
     }
 
     const dwell = options.dwellTime ?? DWELL_TIME;
+    // Buttons are on screen while any dwell hook is enabled, so the platform shows its cursor.
+    kfActive++;
+    kfMenu(true);
 
     function tick() {
       const opts = optionsRef.current;
-      const hand = opts.handPositions.find((h) => h.visible) ?? null;
+      const hand = kfShared
+        ? (kfShared.visible ? { x: kfShared.x, y: kfShared.y } : null)
+        : opts.handPositions.find((h) => h.visible) ?? null;
 
       let currentHovered: string | null = null;
 
@@ -87,6 +104,8 @@ export function useDwellNav(options: UseDwellNavOptions): {
 
     rafRef.current = requestAnimationFrame(tick);
     return () => {
+      kfActive--;
+      if (kfActive === 0) kfMenu(false);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, [options.enabled, options.dwellTime]);

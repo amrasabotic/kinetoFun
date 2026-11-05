@@ -42,7 +42,7 @@ import { setCanvasSize } from '../game/camera/projection';
 import { renderScene } from '../game/rendering/SceneRenderer';
 import { setMusicEnvironment } from '../game/audio/musicSystem';
 import {
-  initAudio, playPause, playChargeActivate, playGatePick, playObstacleHit,
+  initAudio, playChargeActivate, playGatePick, playObstacleHit,
   playCombatClash, playBossHit, playVictory, playCastleHit, playCastleCollapse,
   playDefeat, playPowerUp,
 } from '../game/audio/audioSystem';
@@ -282,11 +282,6 @@ export function useGameEngine(
 
     const hand = handRef.current ?? { detected: false, palmX: 0.5, palmY: 0.5, wristX: 0.5, wristY: 0.5, isFist: false, isPinch: false, isOpen: false, confidence: 0, landmarks: [] };
     const gesture = processGesture(hand, settings.gestureSensitivity);
-
-    if (gesture.pauseToggled && gs.playerAlive) {
-      gs.paused = !gs.paused;
-      playPause();
-    }
 
     if (!gs.paused && gs.playerAlive) {
       // Charge mode

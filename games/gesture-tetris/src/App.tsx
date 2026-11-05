@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useHandTracking }   from './useHandTracking';
-import { useMenuHand }       from './useMenuHand';
+import { useMenuHand, usesSharedCursor } from './useMenuHand';
 import { useGameCanvas, CANVAS_W, CANVAS_H } from './useGameCanvas';
 import { deriveGesture, useGestureRefs } from './useGesture';
 import {
@@ -121,7 +121,7 @@ function MenuGestureLayer({ children }: {
 
       {children({ hand, activeId, dwellProgress })}
 
-      {hand.detected && (
+      {hand.detected && !usesSharedCursor && (
         <div className="pointer-events-none fixed z-40"
           style={{ left: hand.x * window.innerWidth - CURSOR_R, top: hand.y * window.innerHeight - CURSOR_R, width: CURSOR_R * 2, height: CURSOR_R * 2 }}>
           <svg width={CURSOR_R * 2} height={CURSOR_R * 2}>

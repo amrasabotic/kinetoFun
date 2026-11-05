@@ -720,6 +720,10 @@ function drawHand(lm){
   }
 }
 
+// On the platform the bridge supplies one cursor and draws it; menus (paused, game over) follow it. In play the game keeps
+// its own knuckle cursor, so closing the hand into a fist does not move the block.
+const kfShared=window.__kfCursor;
+let kfMenuOn=null;
 function onHandResults(res){
   hctx.clearRect(0,0,hCanvas.width,hCanvas.height);
 
@@ -739,10 +743,12 @@ function onHandResults(res){
   const p=toPage(lm[9]);
   smX=smX===null?p.x:smX+(p.x-smX)*SMOOTH;
   smY=smY===null?p.y:smY+(p.y-smY)*SMOOTH;
-  const vx=smX*window.innerWidth, vy=smY*window.innerHeight;
-  if(window.__kfPointer) window.__kfPointer(smX,smY);
+  const menu=!!kfShared&&(!alive||paused);
+  if(kfShared&&menu!==kfMenuOn){kfMenuOn=menu;if(window.__kfMenu)window.__kfMenu(menu);}
+  const vx=(menu?kfShared.x:smX)*window.innerWidth, vy=(menu?kfShared.y:smY)*window.innerHeight;
+  if(!menu&&window.__kfPointer) window.__kfPointer(smX,smY);
 
-  cursor.style.display='block';
+  cursor.style.display=menu?'none':'block';
   cursor.style.left=vx+'px';
   cursor.style.top=vy+'px';
   processDwell(btnAtPoint(vx,vy));

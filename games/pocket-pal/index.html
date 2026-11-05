@@ -1,12 +1,723 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shape &amp; Color Sorter</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pocket Pal Pet Show</title>
+<style>
+:root { --sky:#7cc8f2; --grass:#6cbf4f; --grass-dark:#4a9a36; --fence:#f4ead8; --red:#e2453c; --blue:#2f6fd0; --gold:#f6c33a; --ink:#2c2a35; --paper:#fffaf0; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#3a8ac0; color:var(--ink); font-family:'Trebuchet MS','Segoe UI',sans-serif; overflow:hidden; user-select:none; }
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#scene { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Rosette buttons: a pleated ring round a coloured centre, with two ribbon tails; the ring fills while the hand rests on it. */
+.rosette { position:absolute; width:170px; height:200px; cursor:pointer; display:flex; flex-direction:column; align-items:center; }
+.rosette .disc { position:relative; width:170px; height:170px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+  background:repeating-conic-gradient(var(--c) 0 10deg, color-mix(in srgb, var(--c) 70%, #fff) 10deg 20deg); box-shadow:0 8px 14px rgba(0,0,0,0.3); }
+.rosette .disc::before { content:''; position:absolute; inset:-10px; border-radius:50%; background:conic-gradient(#fff calc(var(--p, 0) * 360deg), transparent 0);
+  -webkit-mask:radial-gradient(circle, transparent 66%, #000 67%); mask:radial-gradient(circle, transparent 66%, #000 67%); }
+.rosette .core { position:relative; width:118px; height:118px; border-radius:50%; background:var(--paper); border:5px solid var(--c); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; font-weight:bold; font-size:22px; line-height:1.1; padding:6px; }
+.rosette .core small { font-size:16px; font-weight:normal; }
+.rosette .core canvas { width:52px; height:52px; }
+.rosette .tails { display:flex; gap:18px; margin-top:-20px; }
+.rosette .tails i { width:34px; height:56px; background:var(--c); clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); }
+.rosette.hot .disc { filter:brightness(1.1); }
+.rosette.off { filter:grayscale(1) opacity(0.6); cursor:default; }
+.rosette[hidden] { display:none; }
+.rosette.big { width:210px; height:240px; } .rosette.big .disc { width:210px; height:210px; } .rosette.big .core { width:150px; height:150px; font-size:28px; }
+.rosette.small { width:130px; height:150px; } .rosette.small .disc { width:130px; height:130px; } .rosette.small .core { width:90px; height:90px; font-size:18px; }
+.rosette.small .tails i { width:26px; height:40px; }
+
+.card { position:absolute; background:var(--paper); border-radius:20px; border:6px solid var(--fence); box-shadow:0 10px 0 rgba(0,0,0,0.15), 0 14px 24px rgba(0,0,0,0.25); padding:20px 26px; }
+.banner { position:absolute; left:50%; transform:translateX(-50%); background:var(--red); color:#fff; font-weight:bold; text-align:center; padding:10px 60px; font-size:40px;
+  clip-path:polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%); text-shadow:0 3px 0 rgba(0,0,0,0.25); white-space:nowrap; }
+
+#title .banner { top:40px; font-size:64px; padding:16px 90px; }
+#title .how { left:640px; top:170px; width:600px; }
+#title .how h3 { font-size:30px; color:var(--red); }
+#title .how p { font-size:21px; line-height:1.35; margin-top:8px; }
+#title .how ul { list-style:none; margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; font-size:20px; }
+#title .how li b { color:var(--blue); }
+#title .go { left:140px; top:390px; } #title .snd { left:400px; top:430px; } #title .exit { left:400px; top:560px; }
+
+#adopt .banner { top:30px; }
+#adopt .rosette { top:470px; }
+#adopt .r0 { left:120px; } #adopt .r1 { left:420px; } #adopt .r2 { left:720px; } #adopt .r3 { left:1020px; }
+#adopt .r0, #adopt .r1, #adopt .r2, #adopt .r3 { width:140px; height:170px; } #adopt .rosette .disc { width:140px; height:140px; } #adopt .rosette .core { width:96px; height:96px; font-size:20px; }
+
+#yard .skills { left:24px; top:24px; width:330px; }
+#yard .skills h3 { font-size:28px; }
+#yard .skills .s { margin-top:10px; font-size:20px; }
+#yard .skills .bar { height:16px; border-radius:8px; background:#e6dcc8; margin-top:4px; overflow:hidden; }
+#yard .skills .bar i { display:block; height:100%; border-radius:8px; }
+#yard .cab { left:24px; top:330px; width:330px; }
+#yard .cab h3 { font-size:24px; }
+#yard .cab .row { display:flex; justify-content:space-between; font-size:18px; margin-top:6px; }
+#yard .t-sprint { left:930px; top:6px; } #yard .t-hurdles { left:1100px; top:6px; } #yard .t-dance { left:930px; top:204px; } #yard .t-memory { left:1100px; top:204px; }
+#yard .tlabel { position:absolute; left:910px; top:404px; width:370px; text-align:center; font-size:22px; font-weight:bold; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,0.4); }
+#yard .showbtn { left:1000px; top:446px; }
+/* Three level badges under each training rosette: coloured with stars when open, grey with a padlock when locked. */
+.lvstrip { position:absolute; display:flex; gap:6px; pointer-events:none; }
+.lvstrip.s-sprint { left:919px; top:152px; } .lvstrip.s-hurdles { left:1089px; top:152px; } .lvstrip.s-dance { left:919px; top:350px; } .lvstrip.s-memory { left:1089px; top:350px; }
+.lv { width:46px; height:48px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:bold; font-size:20px; line-height:1;
+  background:var(--c); color:#fff; border:3px solid #fff; box-shadow:0 3px 0 rgba(0,0,0,0.25); }
+.lv .st { display:flex; gap:0; margin-top:2px; }
+.lv .st svg { width:13px; height:13px; }
+.lv.locked { background:#9a9aa6; }
+.lv.locked svg { width:22px; height:22px; }
+#levelhead { position:absolute; left:230px; top:424px; font-size:28px; font-weight:bold; color:#fff; text-shadow:0 3px 0 rgba(0,0,0,0.4); }
+#levelhead[hidden] { display:none; }
+#unlock { position:absolute; left:50%; top:24px; transform:translateX(-50%) rotate(-3deg); background:var(--gold); color:var(--ink); font-size:46px; font-weight:bold; padding:12px 50px;
+  border:6px solid #fff; border-radius:20px; box-shadow:0 10px 20px rgba(0,0,0,0.3); white-space:nowrap; animation:pop 0.6s ease-out; }
+#unlock[hidden] { display:none; }
+@keyframes pop { 0% { transform:translateX(-50%) rotate(-3deg) scale(0.3); } 70% { transform:translateX(-50%) rotate(-3deg) scale(1.15); } 100% { transform:translateX(-50%) rotate(-3deg) scale(1); } }
+#yard .home { left:390px; top:560px; }
+#yard .petname { position:absolute; left:400px; top:30px; width:480px; text-align:center; font-size:40px; font-weight:bold; color:#fff; text-shadow:0 3px 0 rgba(0,0,0,0.35); }
+
+#intro .card { left:190px; top:110px; width:640px; }
+#intro h2 { font-size:40px; color:var(--red); }
+#intro p { font-size:23px; line-height:1.35; margin-top:10px; }
+#intro .go { left:900px; top:200px; }
+#intro .back { left:940px; top:460px; }
+#levelpicks .rosette { top:466px; }
+#levelpicks .l0 { left:230px; } #levelpicks .l1 { left:440px; } #levelpicks .l2 { left:650px; }
+#levelpicks .stars svg { width:20px; height:20px; }
+#levelpicks .core .stars { margin-top:2px; gap:1px; }
+
+#hud { position:absolute; left:50%; top:14px; transform:translateX(-50%); background:var(--paper); border-radius:16px; border:5px solid var(--fence); padding:6px 24px; font-size:26px; font-weight:bold; white-space:nowrap; pointer-events:none; }
+#hud[hidden] { display:none; }
+#cue { position:absolute; left:50%; top:90px; transform:translateX(-50%); font-size:44px; font-weight:bold; color:#fff; text-shadow:0 4px 0 rgba(0,0,0,0.4); pointer-events:none; white-space:nowrap; }
+
+#after .card { left:340px; top:90px; width:600px; text-align:center; }
+#after h2 { font-size:46px; color:var(--red); }
+#after p { font-size:26px; margin-top:10px; }
+#after .stars svg { width:64px; height:64px; }
+#after .go { left:555px; top:430px; }
+
+#podium .banner { top:24px; }
+#podium .card { left:300px; top:390px; width:680px; }
+#podium table { width:100%; border-collapse:collapse; font-size:22px; }
+#podium td, #podium th { padding:4px 8px; text-align:center; }
+#podium tr.you { background:#fff0b8; font-weight:bold; }
+#podium .go { left:1040px; top:380px; }
+
+#camwrap { position:absolute; right:16px; bottom:16px; width:200px; height:150px; border-radius:16px; border:5px solid var(--fence); overflow:hidden; background:#000; }
+#stage[data-screen=yard] #camwrap { right:auto; left:390px; bottom:auto; top:400px; width:160px; height:120px; }
+#stage[data-screen=adopt] #camwrap { bottom:auto; top:120px; }
+#cam { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+#bones { position:absolute; inset:0; width:100%; height:100%; }
+#hint { position:absolute; left:50%; bottom:20px; transform:translateX(-50%); font-size:24px; padding:8px 22px; border-radius:30px; background:var(--paper); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint[hidden] { display:none; }
+.stars { display:flex; gap:4px; justify-content:center; margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="scene" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="title">
+    <div class="banner">Pocket Pal Pet Show</div>
+    <div class="card how">
+      <h3>Train your pet. Win the shows!</h3>
+      <p>Train your pet's four skills with hand games, then enter shows against rival pets. Win rosettes and trophies, all the way to Grand Champion.</p>
+      <ul>
+        <li><b>Sprint:</b> pump your hand up and down fast</li>
+        <li><b>Hurdles:</b> raise your hand to jump</li>
+        <li><b>Dance:</b> move your hand to the lit pad on the beat</li>
+        <li><b>Memory:</b> rest your hand on the pads in order</li>
+      </ul>
+      <p><b style="color:#e2453c">Every game has 3 levels.</b> Win 2 stars to unlock the next, harder level.</p>
+      <p>Rest your hand on a rosette to press it.</p>
+    </div>
+    <div class="rosette big go" data-dwell="play" style="--c:#e2453c"><div class="disc"><div class="core">Play</div></div><div class="tails"><i></i><i></i></div></div>
+    <div class="rosette small snd" data-dwell="sound" id="btn-sound" style="--c:#2f6fd0"><div class="disc"><div class="core" id="snd-label">Sound on</div></div><div class="tails"><i></i><i></i></div></div>
+    <div class="rosette small exit" data-dwell="exit" id="btn-exit" style="--c:#7a7a8a" hidden><div class="disc"><div class="core">Back to games</div></div><div class="tails"><i></i><i></i></div></div>
+  </section>
+
+  <section class="screen" id="adopt">
+    <div class="banner">Choose your pet</div>
+    <div id="adopt-r"></div>
+  </section>
+
+  <section class="screen" id="yard">
+    <div class="petname" id="petname"></div>
+    <div class="card skills"><h3>Skills</h3><div id="skillbars"></div></div>
+    <div class="card cab"><h3>Trophy cabinet</h3><div id="cabinet"></div></div>
+    <div id="trainbtns"></div>
+    <div id="lvstrips"></div>
+    <div class="tlabel">Train a skill: 3 levels each</div>
+    <div class="rosette big showbtn" data-dwell="show" id="btn-show" style="--c:#f6c33a"><div class="disc"><div class="core" id="show-label">Enter show</div></div><div class="tails"><i></i><i></i></div></div>
+    <div class="rosette small home" data-dwell="title" style="--c:#7a7a8a"><div class="disc"><div class="core">Menu</div></div><div class="tails"><i></i><i></i></div></div>
+  </section>
+
+  <section class="screen" id="intro">
+    <div class="card"><h2 id="in-title"></h2><p id="in-text"></p><p id="in-extra" style="color:#2f6fd0;font-weight:bold"></p></div>
+    <div id="levelhead" hidden>Choose a level:</div>
+    <div id="levelpicks"></div>
+    <div class="rosette big go" data-dwell="begin" id="btn-begin" style="--c:#e2453c"><div class="disc"><div class="core">Start</div></div><div class="tails"><i></i><i></i></div></div>
+    <div class="rosette small back" data-dwell="yard" id="btn-intro-back" style="--c:#7a7a8a"><div class="disc"><div class="core">Back</div></div><div class="tails"><i></i><i></i></div></div>
+  </section>
+
+  <section class="screen" id="event">
+    <div id="hud"></div>
+    <div id="cue"></div>
+  </section>
+
+  <section class="screen" id="after">
+    <div id="unlock" hidden></div>
+    <div class="card"><h2 id="af-title"></h2><div class="stars" id="af-stars"></div><p id="af-text"></p></div>
+    <div class="rosette big go" data-dwell="continue" style="--c:#2f6fd0"><div class="disc"><div class="core">OK</div></div><div class="tails"><i></i><i></i></div></div>
+  </section>
+
+  <section class="screen" id="podium">
+    <div class="banner" id="pd-title"></div>
+    <div class="card"><table id="pd-table"></table></div>
+    <div class="rosette big go" data-dwell="yard" style="--c:#2f6fd0"><div class="disc"><div class="core">Home</div></div><div class="tails"><i></i><i></i></div></div>
+  </section>
+
+  <div id="camwrap"><video id="cam" autoplay muted playsinline></video><canvas id="bones" width="200" height="150"></canvas></div>
+  <div id="hint" hidden></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="show.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const S = window.Show;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), scene = $('scene'), ink = $('ink'), video = $('cam'), bones = $('bones');
+const sctx = scene.getContext('2d'), ictx = ink.getContext('2d'), bctx = bones.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+function fit() {
+  W = innerWidth; H = innerHeight; ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+const toScreen = (x, y) => ({ x: x * K + OX, y: y * K + OY });
+
+// ---------- save ----------
+const SAVE_KEY = 'pocket-pal-show-v1';
+let pet = null, prefs = { sound: true }, sessionScore = 0;
+try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) { pet = s.pet ? S.upgrade(s.pet) : null; prefs = { ...prefs, ...(s.prefs || {}) }; } } catch (e) { /* storage blocked or corrupt: start fresh */ }
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ pet, prefs })); } catch (e) { /* storage blocked */ } }
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { save(); if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null;
+function tone(f, dur, type = 'triangle', vol = 0.08, f2 = 0, delay = 0) {
+  if (!prefs.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.05);
+  } catch (e) { /* audio is optional */ }
+}
+const SFX = {
+  select() { tone(660, 0.1); tone(990, 0.12, 'triangle', 0.07, 0, 0.07); },
+  pump() { tone(300 + Math.random() * 80, 0.05, 'square', 0.04); },
+  jump() { tone(400, 0.2, 'sine', 0.08, 900); }, clear() { tone(1046, 0.1, 'sine', 0.07); }, knock() { tone(160, 0.2, 'square', 0.07, 90); },
+  beat() { tone(220, 0.06, 'square', 0.05); }, hit() { tone(880, 0.08, 'triangle', 0.08); tone(1320, 0.08, 'triangle', 0.06, 0, 0.06); }, miss() { tone(200, 0.12, 'sawtooth', 0.04); },
+  pad(i) { tone([392, 523, 659, 784][i], 0.3, 'sine', 0.09); }, wrong() { tone(180, 0.4, 'sawtooth', 0.07, 110); },
+  cheer() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.25, 'triangle', 0.08, 0, i * 0.1)); }, bark() { tone(500, 0.08, 'square', 0.06, 300); tone(520, 0.08, 'square', 0.06, 320, 0.14); },
+  whistle() { tone(1800, 0.4, 'sine', 0.06, 2400); },
+};
+function sfx(n, a) { try { SFX[n](a); } catch (e) { /* audio is optional */ } }
+
+// ---------- pets ----------
+const LOOK = {
+  puppy: { body: '#d9a066', dark: '#8a5a2e', belly: '#f6dcb4' }, kitten: { body: '#9aa3b3', dark: '#5a6070', belly: '#e6e9ef' },
+  bunny: { body: '#f4f0ec', dark: '#c9b8b0', belly: '#ffffff' }, dragon: { body: '#6cc070', dark: '#3a7a3e', belly: '#d8f0a8' },
+};
+// pose: { run: phase or null, air: 0..1, lean: -1..1 for dance, happy }
+function drawPet(c, kind, x, y, s, pose = {}, t = 0) {
+  const L = LOOK[kind];
+  c.save(); c.translate(x, y); c.scale(s, s);
+  const bob = pose.run != null ? Math.abs(Math.sin(pose.run)) * -6 : Math.sin(t * 2.5) * 2;
+  c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.ellipse(0, 4, 60 - (pose.air || 0) * 20, 10, 0, 0, 7); c.fill();
+  c.translate(0, -(pose.air || 0) * 120 + bob);
+  c.rotate((pose.lean || 0) * 0.25);
+  // Legs swing while running, tuck in the air.
+  const leg = (lx, ph) => {
+    const sw = pose.run != null ? Math.sin(pose.run + ph) * 14 : 0, tuck = pose.air ? 8 : 0;
+    c.strokeStyle = L.dark; c.lineWidth = 12; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(lx, -30); c.lineTo(lx + sw, -4 - tuck); c.stroke();
+  };
+  leg(-30, 0); leg(26, Math.PI);
+  // Tail.
+  c.strokeStyle = L.dark; c.lineWidth = kind === 'bunny' ? 0 : 10;
+  if (kind === 'bunny') { c.fillStyle = '#fff'; c.beginPath(); c.arc(-52, -50, 14, 0, 7); c.fill(); }
+  else if (kind === 'dragon') { c.fillStyle = L.dark; c.beginPath(); c.moveTo(-44, -44); c.quadraticCurveTo(-90, -40 + Math.sin(t * 5) * 8, -96, -70); c.lineTo(-84, -60); c.quadraticCurveTo(-76, -50, -44, -56); c.fill(); }
+  else { c.beginPath(); c.moveTo(-44, -50); c.quadraticCurveTo(-72, -60, -66, -92 + Math.sin(t * (pose.happy ? 12 : 4)) * 10); c.stroke(); }
+  // Body.
+  c.fillStyle = L.body; c.beginPath(); c.ellipse(-2, -48, 52, 32, 0, 0, 7); c.fill();
+  c.fillStyle = L.belly; c.beginPath(); c.ellipse(4, -38, 34, 16, 0, 0, 7); c.fill();
+  leg(-16, Math.PI); leg(40, 0);
+  if (kind === 'dragon') { c.fillStyle = '#9a6ad6'; c.beginPath(); c.moveTo(-10, -70); c.lineTo(-40, -120 + Math.sin(t * 8) * 10); c.lineTo(-2, -96); c.lineTo(20, -116 + Math.sin(t * 8) * 10); c.lineTo(14, -72); c.fill(); }
+  // Head.
+  c.translate(48, -84);
+  if (kind === 'puppy') { c.fillStyle = L.dark; c.beginPath(); c.ellipse(-26, 0, 12, 26, 0.3, 0, 7); c.ellipse(26, 0, 12, 26, -0.3, 0, 7); c.fill(); }
+  if (kind === 'kitten') { c.fillStyle = L.body; c.beginPath(); c.moveTo(-30, -14); c.lineTo(-22, -46); c.lineTo(-6, -24); c.moveTo(30, -14); c.lineTo(22, -46); c.lineTo(6, -24); c.fill(); }
+  if (kind === 'bunny') { c.fillStyle = L.body; c.strokeStyle = '#f4a3b8'; c.lineWidth = 6; for (const dx of [-12, 12]) { c.beginPath(); c.ellipse(dx, -54, 10, 32, dx / 60, 0, 7); c.fill(); c.beginPath(); c.moveTo(dx, -74); c.lineTo(dx, -38); c.stroke(); } }
+  if (kind === 'dragon') { c.fillStyle = '#f6c33a'; c.beginPath(); c.moveTo(-16, -22); c.lineTo(-22, -46); c.lineTo(-6, -26); c.moveTo(16, -22); c.lineTo(22, -46); c.lineTo(6, -26); c.fill(); }
+  c.fillStyle = L.body; c.beginPath(); c.arc(0, 0, 32, 0, 7); c.fill();
+  c.fillStyle = L.belly; c.beginPath(); c.ellipse(10, 10, 18, 12, 0, 0, 7); c.fill();
+  c.fillStyle = '#2c2a35';
+  if (pose.happy) { c.lineWidth = 4; c.strokeStyle = '#2c2a35'; c.beginPath(); c.arc(-10, -4, 6, Math.PI, 0); c.arc(14, -4, 6, Math.PI, 0); c.stroke(); }
+  else { c.beginPath(); c.arc(-10, -4, 5, 0, 7); c.arc(14, -4, 5, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(-8, -6, 1.8, 0, 7); c.arc(16, -6, 1.8, 0, 7); c.fill(); }
+  c.fillStyle = kind === 'bunny' || kind === 'kitten' ? '#f48aa8' : '#2c2a35'; c.beginPath(); c.ellipse(20, 8, 6, 4, 0, 0, 7); c.fill();
+  c.strokeStyle = '#2c2a35'; c.lineWidth = 3; c.beginPath(); c.arc(16, 12, 6, 0.2, Math.PI - 0.6); c.stroke();
+  c.restore();
+}
+function drawFair(c, t, ground = 470) {
+  const g = c.createLinearGradient(0, 0, 0, ground); g.addColorStop(0, '#7cc8f2'); g.addColorStop(1, '#c8ecff');
+  c.fillStyle = g; c.fillRect(0, 0, 1280, ground);
+  c.fillStyle = '#ffffff'; for (const [x, y, r] of [[160, 120, 40], [210, 110, 50], [260, 125, 36], [900, 90, 44], [950, 80, 54], [1010, 96, 38]]) { c.beginPath(); c.arc(x + Math.sin(t / 8) * 10, y, r, 0, 7); c.fill(); }
+  // Striped tent and bunting.
+  c.fillStyle = '#e2453c'; c.beginPath(); c.moveTo(560, ground - 120); c.lineTo(720, ground - 230); c.lineTo(880, ground - 120); c.fill();
+  for (let k = 0; k < 8; k++) { c.fillStyle = k % 2 ? '#fffaf0' : '#e2453c'; c.fillRect(580 + k * 35, ground - 120, 35, 120); }
+  c.strokeStyle = '#8a6a4a'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, 40); c.quadraticCurveTo(640, 110, 1280, 40); c.stroke();
+  const cols = ['#e2453c', '#f6c33a', '#2f6fd0', '#6cbf4f'];
+  for (let k = 0; k < 26; k++) { const x = k * 50 + 20, y = 40 + Math.sin((x / 1280) * Math.PI) * 35; c.fillStyle = cols[k % 4]; c.beginPath(); c.moveTo(x - 14, y); c.lineTo(x + 14, y); c.lineTo(x, y + 26); c.fill(); }
+  c.fillStyle = '#6cbf4f'; c.fillRect(0, ground, 1280, 720 - ground);
+  c.fillStyle = '#f4ead8'; for (let x = 0; x < 1280; x += 90) c.fillRect(x, ground - 60, 14, 70); c.fillRect(0, ground - 50, 1280, 10); c.fillRect(0, ground - 24, 1280, 10);
+}
+
+// ---------- screens ----------
+const SCREENS = ['title', 'adopt', 'yard', 'intro', 'event', 'after', 'podium'];
+let screen = 'title', armedAt = 0;
+// Rosettes ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name; stage.dataset.screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  armedAt = performance.now() + ARM_MS; resetDwell(); dwell.done = null;
+}
+const rosette = (act, label, color, cls = '', extra = '') => `<div class="rosette ${cls}" data-dwell="${act}"${extra} style="--c:${color}"><div class="disc"><div class="core">${label}</div></div><div class="tails"><i></i><i></i></div></div>`;
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('snd-label').textContent = prefs.sound ? 'Sound on' : 'Sound off'; }
+updateSoundLabel();
+const NAMES = ['Max', 'Luna', 'Coco', 'Milo', 'Bella', 'Ollie', 'Daisy', 'Teddy', 'Ruby', 'Leo'];
+const SKILL_COLOR = { speed: '#e2453c', agility: '#2f6fd0', style: '#d65ab0', smarts: '#f6a01a' };
+const EVENT_NAME = { sprint: 'Sprint', hurdles: 'Hurdles', dance: 'Dance', memory: 'Memory' };
+const EVENT_HOW = {
+  sprint: 'Pump your hand up and down as fast as you can. Every pump pushes your pet on. Reach the finish flag before the whistle!',
+  hurdles: 'Your pet runs by itself. Raise your hand high just before each hurdle to jump it, then bring your hand back down, ready for the next one.',
+  dance: 'Four pads sit round your pet. Move your hand onto the pad that lights up, and be there when its ring closes on the beat.',
+  memory: 'Watch the pads light up one after another. Then rest your hand on them in the same order. Each round adds one more!',
+};
+function openYard() {
+  if (!pet) { openAdopt(); return; }
+  $('petname').textContent = `${pet.name} the ${S.PETS[pet.kind].name}`;
+  $('skillbars').innerHTML = S.SKILLS.map((k) => `<div class="s">${k[0].toUpperCase() + k.slice(1)} <b style="float:right">${Math.floor(pet.skills[k])}</b><div class="bar"><i style="width:${pet.skills[k]}%;background:${SKILL_COLOR[k]}"></i></div></div>`).join('');
+  $('cabinet').innerHTML = S.SHOWS.map((sh, i) => `<div class="row"><span>${i + 1 > pet.unlocked ? 'Locked' : sh.name}</span><span>${['-', 'Bronze', 'Silver', 'Gold'][pet.trophies[i]]}</span></div>`).join('');
+  const LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2" fill="#fff"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="#fff" stroke-width="2.5" fill="none"/></svg>';
+  $('lvstrips').innerHTML = S.EVENTS.map((e) => `<div class="lvstrip s-${e}">${[0, 1, 2].map((lv) => lv < pet.levels[e]
+    ? `<div class="lv" style="--c:${['#6cbf4f', '#f6a01a', '#e2453c'][lv]}">${lv + 1}<div class="st">${[0, 1, 2].map((k) => starSVG(k < pet.stars[e][lv])).join('')}</div></div>`
+    : `<div class="lv locked">${LOCK}</div>`).join('')}</div>`).join('');
+  $('trainbtns').innerHTML = S.SKILLS.map((k) => rosette('train', `${EVENT_NAME[S.EVENT_OF[k]]}<small>${k}</small>`, SKILL_COLOR[k], `small t-${S.EVENT_OF[k]}`, ` data-skill="${k}"`)).join('');
+  const next = nextShow();
+  $('show-label').innerHTML = `Enter show<small style="display:block;font-size:16px;font-weight:normal">${S.SHOWS[next].name}</small>`;
+  show('yard');
+}
+const nextShow = () => Math.min(pet.unlocked - 1, S.SHOWS.length - 1);
+function openAdopt() {
+  $('adopt-r').innerHTML = Object.keys(S.PETS).map((k, i) => rosette('adopt', S.PETS[k].name, ['#e2453c', '#2f6fd0', '#d65ab0', '#6cbf4f'][i], `r${i}`, ` data-kind="${k}"`)).join('');
+  show('adopt');
+}
+
+// ---------- events ----------
+// run: { kind: 'train' | 'show', event, skill, level, index, perfs }
+let run = null, ev = null, evStart = 0, memo = null;
+function startIntro() {
+  const e = run.event;
+  $('in-title').textContent = run.kind === 'show' ? `${S.SHOWS[run.level].name}: event ${run.index + 1} of 3, ${EVENT_NAME[e]}` : `Training: ${EVENT_NAME[e]}`;
+  $('in-text').textContent = EVENT_HOW[e];
+  $('in-extra').textContent = run.kind === 'show' ? 'Judges score how well you do now plus how well trained your pet is.' : `Trains ${run.skill}. The better you do, the more it grows.`;
+  $('btn-intro-back').hidden = run.kind === 'show';
+  // Training picks one of the opened levels; a show event is played at the show's level.
+  $('btn-begin').hidden = run.kind !== 'show';
+  if (run.kind === 'show') {
+    run.lv = S.SHOW_LEVEL[run.level];
+    $('in-extra').textContent += ` This show plays level ${run.lv + 1}.`;
+    $('levelpicks').innerHTML = '';
+    $('levelhead').hidden = true;
+  } else {
+    $('in-extra').textContent += ' Get 2 stars to open the next level; harder levels train faster.';
+    $('levelhead').hidden = false;
+    $('levelpicks').innerHTML = [0, 1, 2].map((lv) => {
+      const open = lv < pet.levels[e];
+      const stars = `<div class="stars">${[0, 1, 2].map((k) => starSVG(k < pet.stars[e][lv])).join('')}</div>`;
+      return rosette('level', open ? `Level ${lv + 1}${stars}` : `Level ${lv + 1}<small>Locked</small>`, ['#6cbf4f', '#f6a01a', '#e2453c'][lv], `small l${lv}${open ? '' : ' off'}`, ` data-level="${lv}"`);
+    }).join('');
+  }
+  show('intro');
+}
+function beginEvent() {
+  const e = run.event;
+  const lv = run.lv || 0;
+  ev = e === 'sprint' ? S.createSprint(null, lv) : e === 'hurdles' ? S.createHurdles(null, lv) : e === 'dance' ? S.createDance(null, lv) : S.createMemory(null, lv);
+  memo = e === 'memory' ? { phase: 'watch', at: performance.now() + 900, i: 0, lit: null, dwellPad: null, dwellAt: 0, flash: null } : null;
+  evStart = performance.now();
+  hand.wasHigh = false;
+  show('event');
+  sfx('whistle');
+}
+const perfOf = () => run.event === 'sprint' ? S.sprintPerf(ev) : run.event === 'hurdles' ? S.hurdlesPerf(ev) : run.event === 'dance' ? S.dancePerf(ev) : S.memoryPerf(ev);
+const starsOf = (p) => (p >= 0.85 ? 3 : p >= 0.6 ? 2 : p >= 0.3 ? 1 : 0);
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#f6c33a' : 'rgba(0,0,0,0.15)'}" stroke="${on ? '#b0821a' : 'rgba(0,0,0,0.2)'}"/></svg>`;
+}
+function endEvent() {
+  const p = perfOf();
+  const st = starsOf(p);
+  $('af-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < st)).join('');
+  if (run.kind === 'train') {
+    const gain = S.train(pet, run.skill, p, run.lv);
+    const opened = S.recordLevel(pet, run.event, run.lv, p);
+    sessionScore += Math.round(gain * 5);
+    save();
+    $('af-title').textContent = st >= 3 ? 'Superstar!' : st === 2 ? 'Great training!' : st === 1 ? 'Good try!' : 'Keep practising!';
+    $('af-text').textContent = `Level ${run.lv + 1}: ${run.skill[0].toUpperCase() + run.skill.slice(1)} +${gain.toFixed(1)} (now ${Math.floor(pet.skills[run.skill])})`;
+    $('unlock').hidden = !opened;
+    if (opened) $('unlock').textContent = `${EVENT_NAME[run.event]} level ${run.lv + 2} unlocked!`;
+  } else {
+    $('unlock').hidden = true;
+    run.perfs.push(p);
+    $('af-title').textContent = `${EVENT_NAME[run.event]}: ${S.eventScore(p, pet.skills[S.SKILL_FOR[run.event]])} points`;
+    $('af-text').textContent = run.index < 2 ? 'On to the next event!' : 'Time for the judges...';
+  }
+  sfx(st >= 2 ? 'cheer' : 'bark');
+  show('after');
+}
+function afterContinue() {
+  if (run.kind === 'train') { openYard(); return; }
+  if (run.index < 2) { run.index++; run.event = S.SHOWS[run.level].events[run.index]; startIntro(); return; }
+  const r = S.judge(pet, run.level, run.perfs);
+  sessionScore += r.medal * 100;
+  save();
+  podium = r;
+  $('pd-title').textContent = r.place === 1 ? 'Champion! 1st place' : `${['', '1st', '2nd', '3rd', '4th'][r.place]} place`;
+  $('pd-table').innerHTML = '<tr><th>Place</th><th>Pet</th>' + S.SHOWS[run.level].events.map((e) => `<th>${EVENT_NAME[e]}</th>`).join('') + '<th>Total</th></tr>'
+    + r.table.map((row, i) => `<tr class="${row.you ? 'you' : ''}"><td>${i + 1}</td><td>${row.name}</td>${row.scores.map((v) => `<td>${v}</td>`).join('')}<td>${row.total}</td></tr>`).join('');
+  sfx(r.place <= 2 ? 'cheer' : 'bark');
+  show('podium');
+}
+let podium = null;
+
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': pet ? openYard() : openAdopt(); break;
+    case 'sound': prefs.sound = !prefs.sound; save(); updateSoundLabel(); break;
+    case 'exit': leaveGame(); break;
+    case 'title': save(); show('title'); break;
+    case 'adopt': pet = S.newPet(el.dataset.kind, NAMES[Math.floor(Math.random() * NAMES.length)]); save(); sfx('bark'); openYard(); break;
+    case 'train': { const k = el.dataset.skill; run = { kind: 'train', skill: k, event: S.EVENT_OF[k] }; startIntro(); break; }
+    case 'show': { const lv = nextShow(); run = { kind: 'show', level: lv, index: 0, event: S.SHOWS[lv].events[0], perfs: [] }; startIntro(); break; }
+    case 'begin': beginEvent(); break;
+    case 'level': run.lv = Number(el.dataset.level); beginEvent(); break;
+    case 'yard': openYard(); break;
+    case 'continue': afterContinue(); break;
+  }
+}
+// The platform's Back button: out of an event or show to the yard, from the yard to the title; from the title, leave.
+window.__kfBack = () => {
+  if (['intro', 'event', 'after', 'podium', 'adopt'].includes(screen)) { if (pet) openYard(); else show('title'); return true; }
+  if (screen === 'yard') { save(); show('title'); return true; }
+  save();
+  return reportScore();
+};
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+const hand = { present: false, lastSeen: -1e9, x: W / 2, y: H / 2, ny: 0.5, reported: false, lm: null };
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 300;
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream; await video.play();
+  } catch (e) { statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.'; return; }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 1, minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) { console.error('hand tracking failed', e); statusText = 'Hand tracking could not start. Reload to try again.'; }
+}
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const lm = res && res.landmarks && res.landmarks[0];
+  if (!lm) return;
+  // The palm centre, stretched so the middle of the camera frame covers the screen; Sprint reads its height unsmoothed so quick pumps are not flattened.
+  const nx = reach(1 - lm[9].x, 0.15, 0.85), ny = reach(lm[9].y, 0.12, 0.8);
+  const a = now - hand.lastSeen > SLIP_MS ? 1 : 0.55;
+  hand.x += (nx * W - hand.x) * a; hand.y += (ny * H - hand.y) * a; hand.ny = ny;
+  hand.lastSeen = now; hand.present = true; hand.lm = lm;
+  if (window.__kfPointer) window.__kfPointer(hand.x / W, hand.y / H);
+  hand.reported = true;
+}
+function updatePresence(now) {
+  if (hand.present && now - hand.lastSeen > SLIP_MS) {
+    hand.present = false; hand.lm = null;
+    if (hand.reported && window.__kfPointer) window.__kfPointer(null);
+    hand.reported = false;
+  }
+}
+const mouse = { x: null, y: null };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('click', (e) => { const el = e.target.closest('[data-dwell]'); if (el && el.closest('.screen.on')) act(el); });
+// Where the hand is on the stage, and its height 0..1 for Sprint and Hurdles.
+function handPoint() {
+  if (hand.present) return { ...toStage(hand.x, hand.y), ny: hand.ny };
+  if (mouse.x !== null) { const p = toStage(mouse.x, mouse.y); return { ...p, ny: Math.max(0, Math.min(1, p.y / 720)) }; }
+  return null;
+}
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null, at: null };
+const BUTTON_MS = 1000;
+function resetDwell() { if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); } dwell.el = null; dwell.p = 0; }
+// On the platform the bridge supplies one cursor for menus; during an event the game draws its own paw.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => screen !== 'event';
+function menuPoint() {
+  if (kfShared && kfInMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  if (hand.present) return { x: hand.x, y: hand.y };
+  return mouse.x !== null ? { x: mouse.x, y: mouse.y } : null;
+}
+function updateDwell(now) {
+  let target = null;
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = menuPoint();
+  // After a press the hand must move off that spot, so a resting hand cannot press whatever appears under it next.
+  if (dwell.at && pt && Math.hypot(pt.x - dwell.at.x, pt.y - dwell.at.y) > 60 * K) dwell.at = null;
+  if (pt && now >= armedAt && menu && !dwell.at) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.hidden || el.closest('[hidden]') || el.classList.contains('off')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (pt.x >= r.left - 8 && pt.x <= r.right + 8 && pt.y >= r.top - 8 && pt.y <= r.bottom + 8) { target = el; break; }
+    }
+  }
+  // After a press, the same target waits until the hand leaves it, so holding never repeats.
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) { resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot'); }
+  else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; dwell.at = pt; act(el); }
+}
+
+// ---------- events: play and draw ----------
+const PAD_POS = { left: [250, 420], up: [640, 200], right: [1030, 420], down: [640, 600] };
+const PAD_COL = { left: '#e2453c', up: '#2f6fd0', right: '#6cbf4f', down: '#f6c33a' };
+const padAt = (p) => { if (!p) return null; for (const [k, [x, y]] of Object.entries(PAD_POS)) if (Math.hypot(p.x - x, p.y - y) < 110) return k; return null; };
+let hudText = '', cueText = '';
+function setHud(h, c) { if (h !== hudText) { hudText = h; $('hud').textContent = h; $('hud').hidden = !h; } if (c !== cueText) { cueText = c; $('cue').textContent = c; } }
+function heightMeter(c, ny, line, label) {
+  c.fillStyle = 'rgba(255,250,240,0.9)'; c.beginPath(); c.roundRect(1180, 160, 60, 380, 20); c.fill();
+  if (line != null) { c.fillStyle = '#e2453c'; c.fillRect(1176, 160 + line * 380 - 3, 68, 6); }
+  if (ny != null) { c.fillStyle = '#2f6fd0'; c.beginPath(); c.arc(1210, 160 + ny * 380, 20, 0, 7); c.fill(); }
+  c.fillStyle = '#2c2a35'; c.font = 'bold 20px Trebuchet MS'; c.textAlign = 'center'; c.fillText(label, 1210, 150);
+}
+function stepEvent(now, dt, hp) {
+  const e = run.event, t = now / 1000;
+  const c = sctx;
+  if (e === 'sprint') {
+    S.stepSprint(ev, dt, hp ? hp.ny : null);
+    for (const x of ev.events) if (x.type === 'pump') sfx('pump');
+    drawFair(c, t, 360);
+    for (let k = 0; k < 4; k++) { c.fillStyle = k % 2 ? '#c96a3a' : '#d97a4a'; c.fillRect(0, 380 + k * 80, 1280, 80); c.fillStyle = '#fff'; c.fillRect(0, 380 + k * 80, 1280, 4); }
+    const scroll = ev.dist * 40;
+    for (let x = -(scroll % 200); x < 1280; x += 200) { c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(x, 380, 6, 320); }
+    const finishX = 300 + (ev.goal - ev.dist) * 40;
+    if (finishX < 1300) { for (let k = 0; k < 16; k++) { c.fillStyle = k % 2 ? '#000' : '#fff'; c.fillRect(finishX, 380 + k * 20, 20, 20); } }
+    ['puppy', 'kitten', 'bunny'].filter((k) => k !== pet.kind).concat(['dragon']).slice(0, 3).forEach((k, i) => {
+      const rx = 300 + (ev.t * (5.2 + i * 0.6) - ev.dist) * 40;
+      drawPet(c, k, rx, 450 + i * 80 + (i >= 1 ? 80 : 0), 0.6, { run: t * 12 + i }, t);
+    });
+    drawPet(c, pet.kind, 300, 530, 0.75, { run: ev.dist * 1.6, happy: ev.speed > 6 }, t);
+    heightMeter(c, hp ? hp.ny : null, null, 'Hand');
+    setHud(`Sprint level ${ev.level + 1}  ${Math.max(0, Math.ceil(S.SPRINT.time - ev.t))}s   ${Math.min(ev.goal, Math.round(ev.dist))} / ${ev.goal} m`, ev.speed < 2 ? 'Pump your hand up and down!' : ev.speed > 8 ? 'Super fast!' : 'Faster!');
+  } else if (e === 'hurdles') {
+    S.stepHurdles(ev, dt, hp ? hp.ny : null);
+    for (const x of ev.events) sfx(x.type === 'jump' ? 'jump' : x.type === 'clear' ? 'clear' : x.type === 'knock' ? 'knock' : 'whistle');
+    drawFair(c, t, 420);
+    c.fillStyle = '#c96a3a'; c.fillRect(0, 520, 1280, 60);
+    for (const h of ev.hurdles) {
+      const hx = 300 + (h.x - ev.x) * 18;
+      if (hx < -60 || hx > 1340) continue;
+      c.save(); c.translate(hx, 540); if (h.hit) c.rotate(0.9);
+      c.fillStyle = '#fff'; c.fillRect(-6, -70, 8, 70); c.fillRect(34, -70, 8, 70);
+      c.fillStyle = '#e2453c'; c.fillRect(-10, -76, 56, 14); c.fillStyle = '#fff'; c.fillRect(8, -76, 14, 14);
+      c.restore();
+    }
+    const air = ev.air > 0 ? Math.sin((1 - ev.air / ev.airTime) * Math.PI) : 0;
+    drawPet(c, pet.kind, 300, 560, 0.75, { run: t * 14, air }, t);
+    const next = ev.hurdles.find((h) => !h.done);
+    const close = next && next.x - ev.x < 8 && next.x - ev.x > 0;
+    heightMeter(c, hp ? hp.ny : null, S.HURDLES.raise, 'Jump line');
+    setHud(`Hurdles level ${ev.level + 1}  cleared ${ev.cleared} of ${ev.hurdles.length}`, close ? 'JUMP! Raise your hand' : ev.armed ? '' : 'Bring your hand down');
+  } else if (e === 'dance') {
+    S.stepDance(ev, dt, padAt(hp));
+    for (const x of ev.events) sfx(x.type === 'hit' ? 'hit' : x.type === 'miss' ? 'miss' : 'cheer');
+    c.fillStyle = '#3a2a5a'; c.fillRect(0, 0, 1280, 720);
+    for (let k = 0; k < 12; k++) { c.fillStyle = `hsla(${(k * 30 + t * 60) % 360},80%,60%,0.18)`; c.beginPath(); c.moveTo(640, -40); c.lineTo(k * 120 - 100, 720); c.lineTo(k * 120 - 20, 720); c.fill(); }
+    const step = ev.steps.find((s) => !s.result);
+    for (const [k, [x, y]] of Object.entries(PAD_POS)) {
+      const lit = step && step.pad === k && step.at - ev.t < S.DANCE.lead;
+      c.fillStyle = lit ? PAD_COL[k] : 'rgba(255,255,255,0.15)'; c.beginPath(); c.arc(x, y, 90, 0, 7); c.fill();
+      c.strokeStyle = PAD_COL[k]; c.lineWidth = 8; c.stroke();
+      if (lit) { const left = Math.max(0, step.at - ev.t); c.strokeStyle = '#fff'; c.lineWidth = 6; c.beginPath(); c.arc(x, y, 92 + left * 80, 0, 7); c.stroke(); }
+    }
+    const last = ev.steps.filter((s) => s.result === 'hit').pop();
+    drawPet(c, pet.kind, 640, 470, 0.9, { lean: last ? ({ left: -1, right: 1, up: 0, down: 0 })[last.pad] * Math.sin(t * 8) : Math.sin(t * 4) * 0.3, happy: !!last, air: last && last.pad === 'up' ? Math.abs(Math.sin(t * 6)) * 0.3 : 0 }, t);
+    setHud(`Dance level ${ev.level + 1}  ${ev.hits} hits`, step ? 'Hand on the lit pad when the ring closes' : '');
+  } else if (e === 'memory') {
+    c.fillStyle = '#2f5a8a'; c.fillRect(0, 0, 1280, 720);
+    const m = memo;
+    if (m.phase === 'watch') {
+      // Show the sequence: each pad lights for 0.6s with a short gap.
+      if (now >= m.at) {
+        if (m.lit) { m.lit = null; m.at = now + 250; m.i++; }
+        else if (m.i < ev.len) { m.lit = ev.seq[m.i]; m.at = now + 600; sfx('pad', S.PADS.indexOf(m.lit)); }
+        else { m.phase = 'repeat'; m.dwellPad = null; }
+      }
+    } else if (m.phase === 'repeat' && !ev.over) {
+      // Rest the hand on a pad for half a second to press it.
+      const p = padAt(hp);
+      if (p !== m.dwellPad) { m.dwellPad = p; m.dwellAt = now; }
+      if (p && now - m.dwellAt > 500 && (!m.flash || now > m.flash.until)) {
+        const len = ev.len, ok = S.pressMemory(ev, p);
+        m.flash = { pad: p, until: now + 400, ok }; m.dwellPad = null;
+        sfx(ok ? 'pad' : 'wrong', S.PADS.indexOf(p));
+        if (ok && ev.len > len && !ev.over) { m.phase = 'watch'; m.i = 0; m.at = now + 1200; }
+      }
+    }
+    for (const [k, [x, y]] of Object.entries(PAD_POS)) {
+      const lit = m.lit === k || (m.flash && m.flash.pad === k && now < m.flash.until);
+      c.fillStyle = lit ? PAD_COL[k] : 'rgba(255,255,255,0.12)'; c.beginPath(); c.arc(x, y, 90, 0, 7); c.fill();
+      c.strokeStyle = PAD_COL[k]; c.lineWidth = 8; c.stroke();
+      if (m.phase === 'repeat' && m.dwellPad === k) { c.strokeStyle = '#fff'; c.lineWidth = 8; c.beginPath(); c.arc(x, y, 104, -Math.PI / 2, -Math.PI / 2 + Math.min(1, (now - m.dwellAt) / 500) * Math.PI * 2); c.stroke(); }
+    }
+    drawPet(c, pet.kind, 640, 470, 0.9, { happy: m.flash && m.flash.ok && now < m.flash.until }, t);
+    setHud(`Memory level ${ev.level + 1}  round ${ev.len - ev.start + 1}`, m.phase === 'watch' ? 'Watch carefully...' : `Your turn: ${m.flash && !m.flash.ok ? 'oops!' : `${ev.pos} of ${ev.len}`}`);
+    if (ev.over && (!m.flash || now > m.flash.until + 400)) ev.done = true;
+  }
+  ev.events.length = 0;
+  if ((ev.over && run.event !== 'memory') || ev.done) { if (!ev.endAt) ev.endAt = now + 900; if (now >= ev.endAt) endEvent(); }
+}
+
+// ---------- background scenes ----------
+function renderScene(now) {
+  const c = sctx, t = now / 1000;
+  if (screen === 'event') return;
+  drawFair(c, t);
+  if (screen === 'title') { drawPet(c, 'puppy', 200, 640, 0.9, { happy: true }, t); drawPet(c, 'bunny', 1100, 660, 0.8, {}, t); }
+  if (screen === 'adopt') Object.keys(S.PETS).forEach((k, i) => drawPet(c, k, 190 + i * 300, 440, 1.0, { happy: Math.sin(t * 2 + i) > 0.6 }, t + i));
+  if (screen === 'yard' || screen === 'after') drawPet(c, pet.kind, 640, 640, 1.4, { happy: screen === 'after' }, t);
+  if (screen === 'podium' && podium) {
+    const order = podium.table.slice(0, 3);
+    [[640, 300, 0], [420, 340, 1], [860, 360, 2]].forEach(([x, y, i]) => {
+      const row = order[i];
+      c.fillStyle = ['#f6c33a', '#c9ccd4', '#d08a4a'][i]; c.fillRect(x - 100, y, 200, 420 - y + 300);
+      c.fillStyle = '#2c2a35'; c.font = 'bold 40px Trebuchet MS'; c.textAlign = 'center'; c.fillText(String(i + 1), x, y + 50);
+      drawPet(c, row.kind, x, y, 0.8, { happy: true }, t + i);
+      c.font = 'bold 22px Trebuchet MS'; c.fillText(row.name, x, y - 180);
+    });
+  }
+}
+
+function renderBones() {
+  const c = bctx, w = bones.width, h = bones.height;
+  c.clearRect(0, 0, w, h);
+  const lm = hand.present && hand.lm;
+  if (!lm) return;
+  const Pt = (i) => [(1 - lm[i].x) * w, lm[i].y * h];
+  c.strokeStyle = '#f6c33a'; c.lineWidth = 3;
+  for (const f of [[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14, 15, 16], [0, 17, 18, 19, 20], [5, 9, 13, 17]]) {
+    c.beginPath(); f.forEach((i, k) => { const [x, y] = Pt(i); k ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke();
+  }
+}
+// During Dance and Memory a paw shows where the hand is; on menus the platform cursor (or a ring) does.
+function renderInk() {
+  const c = ictx; c.clearRect(0, 0, W, H);
+  const hp = handPoint();
+  if (screen === 'event' && hp && (run.event === 'dance' || run.event === 'memory')) {
+    const p = toScreen(hp.x, hp.y);
+    c.save(); c.translate(p.x, p.y); c.scale(K, K);
+    c.fillStyle = 'rgba(255,255,255,0.95)'; c.strokeStyle = '#2c2a35'; c.lineWidth = 4;
+    c.beginPath(); c.ellipse(0, 10, 26, 22, 0, 0, 7); c.fill(); c.stroke();
+    for (const [dx, dy] of [[-24, -18], [-8, -30], [8, -30], [24, -18]]) { c.beginPath(); c.arc(dx, dy, 10, 0, 7); c.fill(); c.stroke(); }
+    c.restore();
+    return;
+  }
+  if (screen === 'event' || (kfShared && kfInMenu()) || !hand.present) return;
+  c.fillStyle = 'rgba(255,255,255,0.95)'; c.beginPath(); c.arc(hand.x, hand.y, 9, 0, 7); c.fill();
+  c.strokeStyle = '#e2453c'; c.lineWidth = 5; c.beginPath(); c.arc(hand.x, hand.y, 22, 0, 7); c.stroke();
+}
+let hintShown = null;
+function updateHint(now) {
+  let text = statusText;
+  if (!text && !hand.present && now - hand.lastSeen > 1200 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  if (text !== hintShown) { hintShown = text; $('hint').textContent = text; $('hint').hidden = !text; }
+}
+
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  if (screen === 'event' && ev) {
+    // Fixed small steps so a slow TV box does not skip a hurdle or a beat.
+    const hp = handPoint();
+    let left = dt;
+    while (left > 1e-6 && screen === 'event') { const h = Math.min(left, 1 / 30); left -= h; stepEvent(now, h, hp); }
+  }
+  renderScene(now);
+  updateDwell(now);
+  updateHint(now);
+  renderBones();
+  renderInk();
+}
+show('title');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
 </html>

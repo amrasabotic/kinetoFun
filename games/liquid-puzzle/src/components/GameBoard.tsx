@@ -7,6 +7,7 @@ interface GameBoardProps {
   board: Board;
   hoveredIndex: number | null;
   grabbedIndex: number | null;
+  holdProgress: number;
   hintMove: Move | null;
   rejectingIndex: number | null;
   colorblindMode: boolean;
@@ -20,6 +21,7 @@ export function GameBoard({
   board,
   hoveredIndex,
   grabbedIndex,
+  holdProgress,
   hintMove,
   rejectingIndex,
   colorblindMode,
@@ -39,6 +41,7 @@ export function GameBoard({
           colors={tube.colors}
           isHovered={hoveredIndex === i}
           isGrabbed={grabbedIndex === i}
+          holdProgress={hoveredIndex === i ? holdProgress : 0}
           isHintSource={hintMove?.from === i}
           isHintTarget={hintMove?.to === i}
           isRejecting={rejectingIndex === i}

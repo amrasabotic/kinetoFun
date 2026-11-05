@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fire Brigade</title>
+<style>
+:root { --sky:#7cc4f0; --red:#d8282a; --red-dark:#8a1214; --yellow:#ffd23a; --chrome:#e8eef4; --ink:#1c1c24; --cream:#fff8ea; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body { background:#2a5a80; color:var(--ink); font-family:'Trebuchet MS','Segoe UI',Verdana,sans-serif; overflow:hidden; user-select:none; }
+#stage { position:fixed; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; }
+#city { position:absolute; inset:0; width:1280px; height:720px; }
+#ink { position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; }
+.screen { position:absolute; inset:0; display:none; }
+.screen.on { display:block; }
+
+/* Fire-engine panels; a hazard stripe fills along the bottom while the hand rests on one. */
+.sb { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer; overflow:hidden;
+  border-radius:14px; background:linear-gradient(180deg, color-mix(in srgb, var(--c, #d8282a) 80%, #fff) 0%, var(--c, #d8282a) 30%, color-mix(in srgb, var(--c, #d8282a) 70%, #000) 100%);
+  border:5px solid var(--chrome); box-shadow:0 8px 0 #4a4e58, 0 14px 22px rgba(0,0,0,0.45); color:#fff; font-size:30px; font-weight:bold; letter-spacing:1px; text-shadow:0 3px 0 rgba(0,0,0,0.35); line-height:1.1; }
+.sb::after { content:''; position:absolute; left:0; bottom:0; height:14px; width:calc(var(--p, 0) * 100%);
+  background:repeating-linear-gradient(-45deg, var(--yellow) 0 14px, #1c1c24 14px 28px); }
+.sb.hot { filter:brightness(1.15); transform:translateY(-3px); }
+.sb.off { filter:grayscale(1) brightness(0.6); cursor:default; }
+.sb[hidden] { display:none; }
+.sb small { font-size:18px; font-weight:normal; letter-spacing:0; }
+
+.card { position:absolute; background:var(--cream); border-radius:12px; border:4px solid var(--ink); box-shadow:8px 8px 0 rgba(0,0,0,0.3); padding:16px 22px; }
+#title { position:absolute; left:340px; top:62px; width:600px; height:92px; text-align:center; font-size:72px; font-weight:900; letter-spacing:3px; color:#fff; background:var(--red); border:6px solid var(--yellow); border-radius:10px; text-shadow:0 5px 0 var(--red-dark); line-height:80px; }
+#menu .how { left:60px; top:200px; width:560px; transform:rotate(-1.5deg); }
+#menu .how h3 { font-size:28px; color:var(--red); }
+#menu .how p { font-size:22px; line-height:1.35; margin-top:8px; }
+#menu .how b { color:var(--red-dark); }
+#menu .go { left:700px; top:200px; width:300px; height:140px; font-size:40px; }
+#menu .go2 { top:370px; --c:#2a6ab0; }
+#menu .snd { left:1030px; top:210px; width:190px; height:110px; font-size:22px; --c:#2a6ab0; }
+#menu .exit { left:1030px; top:350px; width:190px; height:110px; font-size:21px; --c:#5a5e6a; }
+
+#levels h2 { position:absolute; left:50%; top:22px; transform:translateX(-50%); font-size:48px; color:#fff; background:var(--red); padding:4px 30px; border:5px solid var(--yellow); border-radius:10px; white-space:nowrap; }
+#lvgrid { position:absolute; left:100px; top:120px; width:1080px; display:grid; grid-template-columns:repeat(5, 1fr); gap:26px 24px; }
+#lvgrid .sb { position:relative; width:196px; height:196px; font-size:50px; border-radius:50% 50% 14px 14px; }
+#lvgrid .name { font-size:19px; margin-top:2px; }
+#lvgrid .stars { display:flex; gap:2px; margin-top:6px; }
+#lvgrid .stars svg { width:26px; height:26px; }
+#levels .back { left:24px; top:600px; width:150px; height:100px; --c:#5a5e6a; }
+
+#hud { left:12px; top:12px; width:270px; padding:12px 16px; }
+#hud .lv { font-size:19px; font-weight:bold; color:var(--red); }
+#hud .score { font-size:44px; font-weight:900; line-height:1.1; }
+#hud .lbl { font-size:19px; font-weight:bold; margin-top:6px; }
+#hud .bar { height:18px; border-radius:9px; background:#d8d0c0; border:3px solid var(--ink); overflow:hidden; margin-top:3px; }
+#hud .bar i { display:block; height:100%; width:100%; background:#2fa35a; }
+#hud .pets { font-size:21px; font-weight:bold; margin-top:6px; }
+#camwrap { position:absolute; right:12px; top:12px; width:220px; height:165px; border-radius:10px; border:5px solid var(--ink); overflow:hidden; background:#000; }
+#cam { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+#bones { position:absolute; inset:0; width:100%; height:100%; }
+
+#intro { position:absolute; inset:0; background:rgba(20,30,50,0.72); }
+#intro[hidden] { display:none; }
+#intro .card { left:150px; top:80px; width:700px; }
+#intro h2 { font-size:38px; color:var(--red); }
+#intro p { font-size:23px; line-height:1.35; margin-top:8px; }
+.check { display:flex; align-items:center; gap:12px; font-size:22px; margin-top:10px; }
+.check i { width:36px; height:36px; border-radius:50%; border:4px solid #2fa35a; flex:none; display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:bold; }
+.check.ok i { background:#2fa35a; color:#fff; }
+#intro .start { left:920px; top:200px; width:280px; height:150px; font-size:46px; --c:#2fa35a; }
+#intro .back { left:960px; top:420px; width:200px; height:100px; --c:#5a5e6a; }
+
+#result .card { left:330px; top:40px; width:620px; text-align:center; }
+#result h2 { font-size:46px; color:var(--red); }
+#result .stars svg { width:68px; height:68px; }
+#result .lines { display:grid; grid-template-columns:auto auto; gap:4px 40px; font-size:24px; justify-content:center; margin-top:8px; text-align:left; }
+#result .lines .v { font-weight:bold; text-align:right; }
+#rs-buttons .sb { top:510px; width:210px; height:120px; }
+#rs-buttons .b0 { left:300px; --c:#2fa35a; } #rs-buttons .b1 { left:535px; --c:#d8282a; } #rs-buttons .b2 { left:770px; --c:#5a5e6a; }
+.stars { display:flex; gap:4px; justify-content:center; }
+#hint { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); font-size:24px; padding:8px 22px; border-radius:10px; background:var(--yellow); border:3px solid var(--ink); white-space:nowrap; pointer-events:none; z-index:5; }
+#hint[hidden] { display:none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="city" width="1280" height="720"></canvas>
+
+  <section class="screen on" id="menu">
+    <div id="title">FIRE BRIGADE</div>
+    <div class="card how">
+      <h3>How to play</h3>
+      <p>Fires break out in the building. <b>Point your hand</b> at a burning room to aim the hose. <b>Open your hand</b> to spray, <b>make a fist</b> to stop and refill the tank.</p>
+      <p>Pets wave from windows. Put out their fire, then <b>hold the hose on the pet</b> until the ladder brings it down.</p>
+      <p>Two players each get a fire engine: the left hand on screen drives the left one. Rest your hand on a button to press it.</p>
+    </div>
+    <div class="sb go" data-dwell="play" data-players="1">1 PLAYER<small>One fire engine</small></div>
+    <div class="sb go go2" data-dwell="play" data-players="2">2 PLAYERS<small>Two fire engines</small></div>
+    <div class="sb snd" data-dwell="sound" id="btn-sound">Sound on</div>
+    <div class="sb exit" data-dwell="exit" id="btn-exit" hidden>Back to games</div>
+  </section>
+
+  <section class="screen" id="levels">
+    <h2>Choose a shift</h2>
+    <div id="lvgrid"></div>
+    <div class="sb back" data-dwell="menu">Menu</div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="card" id="hud">
+      <div class="lv" id="hd-level"></div>
+      <div class="score" id="hd-score">0</div>
+      <div class="lbl">Building safe</div>
+      <div class="bar"><i id="hd-safe"></i></div>
+      <div class="pets" id="hd-pets"></div>
+    </div>
+    <div id="intro">
+      <div class="card">
+        <h2 id="in-title"></h2>
+        <p id="in-text"></p>
+        <div class="check" id="ck-open"><i></i>Open your hand: water sprays</div>
+        <div class="check" id="ck-close"><i></i>Make a fist: water stops, the tank refills</div>
+      </div>
+      <div class="sb start" data-dwell="begin">GO!</div>
+      <div class="sb back" data-dwell="levels">Shifts</div>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="card"><h2 id="rs-title"></h2><div class="stars" id="rs-stars"></div><div class="lines" id="rs-lines"></div></div>
+    <div id="rs-buttons"></div>
+  </section>
+
+  <div id="camwrap"><video id="cam" autoplay muted playsinline></video><canvas id="bones" width="220" height="165"></canvas></div>
+  <div id="hint" hidden></div>
+</div>
+<canvas id="ink"></canvas>
+
+<script src="brigade.js"></script>
+<script type="module">
+import { HandLandmarker, FilesetResolver } from "/mediapipe/tasks-vision-0.10.35/vision_bundle.mjs";
+
+const G = window.BRIGADE;
+const $ = (id) => document.getElementById(id);
+const embedded = window.parent !== window;
+const stage = $('stage'), city = $('city'), ink = $('ink'), video = $('cam'), bones = $('bones');
+const c = city.getContext('2d'), ictx = ink.getContext('2d'), bctx = bones.getContext('2d');
+let W = innerWidth, H = innerHeight, K = 1, OX = 0, OY = 0;
+function fit() {
+  W = innerWidth; H = innerHeight; ink.width = W; ink.height = H;
+  K = Math.min(W / 1280, H / 720); OX = (W - 1280 * K) / 2; OY = (H - 720 * K) / 2;
+  stage.style.transform = `translate(${OX}px, ${OY}px) scale(${K})`;
+}
+fit();
+addEventListener('resize', fit);
+const toStage = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+const toScreen = (x, y) => ({ x: x * K + OX, y: y * K + OY });
+
+// ---------- save ----------
+const SAVE_KEY = 'fire-brigade-v1';
+const N = G.LEVELS.length;
+const progress = (() => {
+  const base = { unlocked: 1, stars: Array(N).fill(0), best: Array(N).fill(0), sound: true };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (s) return { ...base, unlocked: Math.min(N, Math.max(1, s.unlocked | 0)), sound: s.sound !== false, stars: base.stars.map((_, i) => (s.stars && s.stars[i]) | 0), best: base.best.map((_, i) => (s.best && s.best[i]) | 0) };
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+  return base;
+})();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ } }
+// Points from every shift played since the game was opened; reported once, when the player leaves or clears the last shift.
+let sessionScore = 0;
+function reportScore() {
+  if (sessionScore <= 0) return false;
+  window.parent.postMessage({ type: 'GAME_COMPLETE', score: Math.round(sessionScore) }, '*');
+  sessionScore = 0;
+  return true;
+}
+function leaveGame() { if (!reportScore()) window.parent.postMessage({ type: 'GAME_EXIT' }, '*'); }
+
+// ---------- sound ----------
+let actx = null, hiss = null;
+function audio() {
+  if (!progress.sound) return null;
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; } catch (e) { return null; }
+}
+function tone(f, dur, type = 'sine', vol = 0.08, f2 = 0, delay = 0) {
+  const a = audio();
+  if (!a) return;
+  try {
+    const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+  } catch (e) { /* audio is optional */ }
+}
+// Water noise: filtered white noise whose volume follows how many hoses are spraying.
+function setHiss(level) {
+  const a = audio();
+  if (!a) { if (hiss) hiss.g.gain.value = 0; return; }
+  try {
+    if (!hiss) {
+      const buf = a.createBuffer(1, a.sampleRate, a.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+      src.buffer = buf; src.loop = true; f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 0.6; g.gain.value = 0;
+      src.connect(f).connect(g).connect(a.destination); src.start();
+      hiss = { g };
+    }
+    hiss.g.gain.setTargetAtTime(level * 0.05, a.currentTime, 0.05);
+  } catch (e) { /* audio is optional */ }
+}
+const SFX = {
+  select() { tone(660, 0.08, 'triangle'); tone(990, 0.1, 'triangle', 0.07, 0, 0.07); },
+  ignite() { tone(120, 0.35, 'sawtooth', 0.04, 260); },
+  out() { tone(900, 0.12, 'sine', 0.05, 400); },
+  pet() { tone(1200, 0.08, 'square', 0.03); tone(1500, 0.08, 'square', 0.03, 0, 0.12); },
+  saved() { [659, 784, 988, 1319].forEach((f, i) => tone(f, 0.15, 'triangle', 0.08, 0, i * 0.08)); },
+  missed() { tone(500, 0.4, 'triangle', 0.05, 300); },
+  siren() { for (let k = 0; k < 3; k++) { tone(700, 0.3, 'triangle', 0.05, 950, k * 0.6); tone(950, 0.3, 'triangle', 0.05, 700, k * 0.6 + 0.3); } },
+  dry() { tone(300, 0.15, 'square', 0.04, 200); },
+  done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.08, 0, i * 0.12)); },
+  fail() { tone(300, 0.5, 'sawtooth', 0.05, 120); },
+};
+function sfx(n) { try { SFX[n](); } catch (e) { /* audio is optional */ } }
+
+// ---------- art ----------
+function starSVG(on) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="${on ? '#ffd23a' : 'rgba(255,255,255,0.3)'}" stroke="${on ? '#8a5a00' : 'rgba(0,0,0,0.35)'}"/></svg>`;
+}
+const WALLPAPER = ['#f2d8b0', '#c8e0d0', '#d8d0f0', '#f0c8c8', '#d0e4f4', '#f4ecc0'];
+function sky(t) {
+  const g = c.createLinearGradient(0, 0, 0, 720); g.addColorStop(0, '#5aaee8'); g.addColorStop(1, '#bfe4f8');
+  c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = 'rgba(255,255,255,0.85)';
+  for (const [x0, y, s] of [[120, 80, 1], [700, 50, 1.3], [1100, 120, 0.9]]) {
+    const x = ((x0 + t * 8 * s) % 1500) - 110;
+    c.beginPath(); c.arc(x, y, 26 * s, 0, 7); c.arc(x + 30 * s, y - 12 * s, 32 * s, 0, 7); c.arc(x + 64 * s, y, 24 * s, 0, 7); c.fill();
+  }
+  // Skyline behind.
+  c.fillStyle = '#8ab4d4';
+  for (const [x, w, h] of [[0, 120, 260], [130, 90, 330], [990, 110, 300], [1110, 170, 240]]) c.fillRect(x, 640 - h, w, h);
+  c.fillStyle = '#5a5e6a'; c.fillRect(0, 640, 1280, 80);
+  c.fillStyle = '#f2f2f2'; for (let x = 20; x < 1280; x += 120) c.fillRect(x, 676, 60, 8);
+}
+// Four pets: cat, dog, rabbit, parrot.
+function pet(x, cx, cy, kind, t, s = 1) {
+  const wave = Math.sin(t * 8) * 0.5;
+  x.save(); x.translate(cx, cy); x.scale(s, s);
+  const body = ['#f0a040', '#a87850', '#e8e8f0', '#38b858'][kind];
+  x.fillStyle = body; x.strokeStyle = '#1c1c24'; x.lineWidth = 3;
+  if (kind === 0) { for (const d of [-1, 1]) { x.beginPath(); x.moveTo(d * 22, -14); x.lineTo(d * 14, -38); x.lineTo(d * 4, -22); x.fill(); x.stroke(); } }
+  if (kind === 1) { for (const d of [-1, 1]) { x.beginPath(); x.ellipse(d * 24, -4, 10, 20, d * 0.3, 0, 7); x.fillStyle = '#6a4828'; x.fill(); x.stroke(); } x.fillStyle = body; }
+  if (kind === 2) { for (const d of [-1, 1]) { x.beginPath(); x.ellipse(d * 10, -40, 8, 24, d * 0.15, 0, 7); x.fill(); x.stroke(); } }
+  if (kind === 3) { x.fillStyle = '#e83a3a'; x.beginPath(); x.moveTo(-6, -28); x.lineTo(0, -44); x.lineTo(6, -28); x.fill(); x.fillStyle = body; }
+  x.beginPath(); x.arc(0, 0, 26, 0, 7); x.fill(); x.stroke();
+  x.fillStyle = '#1c1c24'; x.beginPath(); x.arc(-9, -4, 4, 0, 7); x.arc(9, -4, 4, 0, 7); x.fill();
+  if (kind === 3) { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(-6, 4); x.lineTo(0, 16); x.lineTo(6, 4); x.fill(); x.stroke(); }
+  else { x.fillStyle = kind === 1 ? '#1c1c24' : '#e87890'; x.beginPath(); x.arc(0, 6, 4, 0, 7); x.fill(); }
+  // A waving paw.
+  x.save(); x.translate(24, 6); x.rotate(0.7 + wave); x.fillStyle = body; x.beginPath(); x.ellipse(0, -16, 7, 16, 0, 0, 7); x.fill(); x.stroke(); x.restore();
+  x.restore();
+}
+function flames(cx, by, w, h, k, t) {
+  if (k <= 0) return;
+  const n = Math.max(2, Math.round(w / 34)), fh = h * (0.25 + 0.7 * k);
+  for (let layer = 0; layer < 3; layer++) {
+    c.fillStyle = ['#e8401a', '#ff8a1a', '#ffd84a'][layer];
+    const s = 1 - layer * 0.28;
+    for (let i = 0; i < n; i++) {
+      const x = cx - w / 2 + (i + 0.5) * (w / n), flick = Math.sin(t * 11 + i * 2.1 + layer) * 0.12 + 1;
+      const fw = (w / n) * 0.75 * s, top = by - fh * s * flick * (0.8 + 0.3 * Math.sin(i * 1.7));
+      c.beginPath(); c.moveTo(x - fw, by); c.quadraticCurveTo(x - fw * 0.9, by - (by - top) * 0.5, x, top); c.quadraticCurveTo(x + fw * 0.9, by - (by - top) * 0.5, x + fw, by); c.fill();
+    }
+  }
+}
+
+// ---------- screens ----------
+const SCREENS = ['menu', 'levels', 'play', 'result'];
+let screen = 'menu', armedAt = 0;
+// Buttons ignore the hand for a moment after each screen appears, so a hand already resting there cannot press through.
+const ARM_MS = 1300;
+function show(name) {
+  screen = name; stage.dataset.screen = name;
+  for (const s of SCREENS) $(s).classList.toggle('on', s === name);
+  armedAt = performance.now() + ARM_MS; resetDwell(); dwell.done = null;
+}
+if (embedded) $('btn-exit').hidden = false;
+function updateSoundLabel() { $('btn-sound').textContent = progress.sound ? 'Sound on' : 'Sound off'; if (!progress.sound) setHiss(0); }
+updateSoundLabel();
+const LV_COL = ['#d8282a', '#d8282a', '#c84a1a', '#c84a1a', '#2a6ab0', '#b8622a', '#8a2a8a', '#1a7a9a', '#5a5e6a', '#1c1c24'];
+function openLevels() {
+  round = null; playing = false; setHiss(0);
+  $('lvgrid').innerHTML = G.LEVELS.map((lv, i) => {
+    const locked = i + 1 > progress.unlocked;
+    return `<div class="sb${locked ? ' off' : ''}"${locked ? '' : ` data-dwell="level" data-level="${i}"`} style="--c:${LV_COL[i]}">${i + 1}<span class="name">${locked ? 'Locked' : lv.name}</span><div class="stars">${[0, 1, 2].map((k) => starSVG(k < progress.stars[i])).join('')}</div></div>`;
+  }).join('');
+  show('levels');
+}
+
+// ---------- a shift ----------
+let round = null, playing = false, fx = [], checks = { open: false, close: false }, players = 1;
+const NEWS = [
+  'A small house is on fire. Point at a burning room and open your hand to spray it out.',
+  'A corner shop. Fires grow if you leave them, so pick the biggest one first.',
+  'An apartment block. A big fire can jump to the room next door!',
+  'The school is on fire. Keep an eye on your water tank: make a fist to let it fill up.',
+  'A windy day: fires jump between rooms quickly. Stop them before they spread.',
+  'The bakery ovens caught fire. More pets are stuck inside today.',
+  'A big hotel with lots of rooms. Two players can split the building.',
+  'The water pressure is low: the tank empties fast. Spray in short bursts.',
+  'A busy factory. Fires start quickly one after another.',
+  'The tallest building in town! Every firefighter is needed.',
+];
+function openLevel(i) {
+  round = G.createRound(i); playing = false; fx = []; burst = [];
+  checks = { open: false, close: false };
+  const cfg = G.LEVELS[i];
+  $('hd-level').textContent = `Shift ${i + 1}: ${cfg.name}`;
+  $('in-title').textContent = `Shift ${i + 1}: ${cfg.name}`;
+  const team = players === 2 ? ' Player 1 drives the left engine, player 2 the right one.' : '';
+  $('in-text').textContent = `${NEWS[i]} Put out every fire and rescue ${cfg.pets} ${cfg.pets === 1 ? 'pet' : 'pets'}. If the safety bar runs out, the shift is lost.${team}`;
+  $('intro').hidden = false;
+  hud = {};
+  show('play');
+}
+function finishLevel() {
+  const i = round.level, r = G.result(round), last = i === N - 1;
+  playing = false; setHiss(0);
+  sessionScore += r.score;
+  progress.stars[i] = Math.max(progress.stars[i], r.stars);
+  progress.best[i] = Math.max(progress.best[i], r.score);
+  if (r.stars >= 1) progress.unlocked = Math.max(progress.unlocked, Math.min(N, i + 2));
+  save();
+  $('rs-title').textContent = !r.passed ? 'The fire got too big' : r.stars === 3 ? 'Hero of the town!' : 'All fires out!';
+  $('rs-stars').innerHTML = [0, 1, 2].map((k) => starSVG(k < r.stars)).join('');
+  $('rs-lines').innerHTML = [['Points', r.score], ['Pets rescued', `${r.saved} / ${r.pets}`], ['Fires put out', r.out], ['Building safe', `${100 - r.damage}%`], ['Best this shift', progress.best[i]]]
+    .map(([k, v]) => `<div>${k}</div><div class="v">${v}</div>`).join('');
+  const canNext = r.stars >= 1 && !last;
+  $('rs-buttons').innerHTML = (canNext ? '<div class="sb b0" data-dwell="next">NEXT SHIFT</div>' : '<div class="sb b0" data-dwell="again">TRY AGAIN</div>')
+    + (canNext ? '<div class="sb b1" data-dwell="again">Replay</div>' : '') + '<div class="sb b2" data-dwell="levels">Shifts</div>';
+  show('result');
+  sfx(r.passed ? 'done' : 'fail');
+  if (last && r.stars >= 1) reportScore();
+}
+function act(el) {
+  sfx('select');
+  switch (el.dataset.dwell) {
+    case 'play': players = Number(el.dataset.players); openLevels(); break;
+    case 'sound': progress.sound = !progress.sound; save(); updateSoundLabel(); break;
+    case 'exit': leaveGame(); break;
+    case 'menu': show('menu'); break;
+    case 'levels': openLevels(); break;
+    case 'level': openLevel(Number(el.dataset.level)); break;
+    case 'begin': $('intro').hidden = true; playing = true; resetDwell(); sfx('siren'); break;
+    case 'next': openLevel(Math.min(N - 1, round.level + 1)); break;
+    case 'again': openLevel(round.level); break;
+  }
+}
+// The platform's Back button: out of a shift to the shift list, then to the menu; from the menu, leave.
+window.__kfBack = () => {
+  if (screen === 'play' || screen === 'result') { openLevels(); return true; }
+  if (screen === 'levels') { show('menu'); return true; }
+  return reportScore();
+};
+
+function roomCentre(i) { const r = G.roomRect(round.cfg, i); return { x: r.x + r.w / 2, y: r.y + r.h / 2 }; }
+function say(x, y, text, col = '#fff') { fx.push({ kind: 'text', x, y, text, col, t: performance.now() }); }
+let burst = [];
+function handleEvent(e) {
+  const p = e.room != null ? roomCentre(e.room) : null;
+  switch (e.type) {
+    case 'ignite': case 'spread': sfx('ignite'); break;
+    case 'out': sfx('out'); say(p.x, p.y, '+20', '#fff'); for (let k = 0; k < 10; k++) burst.push({ x: p.x, y: p.y, vx: (Math.random() - 0.5) * 120, vy: -40 - Math.random() * 80, t: performance.now() }); break;
+    case 'pet': sfx('pet'); say(p.x, p.y - 50, 'Help!', '#ffd23a'); break;
+    case 'saved': sfx('saved'); say(p.x, p.y - 40, 'Saved!', '#7cf0a0'); fx.push({ kind: 'ladder', room: e.room, kind2: e.kind, hose: e.hose, t: performance.now() }); break;
+    case 'missed': sfx('missed'); say(p.x, p.y - 40, 'It ran out the back door', '#ffd0b0'); break;
+    case 'over': setTimeout(finishLevel, 1200); break;
+  }
+}
+
+// ---------- hand tracking ----------
+let landmarker = null, lastVideoTime = -1, statusText = 'Starting camera...';
+// Hand loss shorter than this is a tracking slip, not the player leaving.
+const SLIP_MS = 300;
+const newHand = () => ({ present: false, lastSeen: -1e9, nx: 0.5, ny: 0.5, open: false, raw: null, rawSince: 0, lm: null });
+// hands[0] drives the left engine, hands[1] the right one; with one hand in view it always drives the left.
+const hands = [newHand(), newHand()];
+async function initTracking() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream; await video.play();
+  } catch (e) { statusText = 'Camera not available. Allow camera access and reopen the game. A mouse also works.'; return; }
+  statusText = 'Loading hand tracking...';
+  try {
+    const files = await FilesetResolver.forVisionTasks('/mediapipe/tasks-vision-0.10.35/wasm');
+    const make = (delegate) => HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: '/mediapipe/models/hand_landmarker-float16-v1.task', delegate },
+      runningMode: 'VIDEO', numHands: 2, minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+    });
+    landmarker = await make('GPU').catch(() => make('CPU'));
+    statusText = '';
+  } catch (e) { console.error('hand tracking failed', e); statusText = 'Hand tracking could not start. Reload to try again.'; }
+}
+// Fingers judged by distance from the wrist, so a tilted hand and either hand work the same.
+function straightFingers(lm) {
+  const d = (a) => Math.hypot(lm[a].x - lm[0].x, lm[a].y - lm[0].y);
+  return [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) => d(tip) > d(pip) * 1.1).length;
+}
+const reach = (v, lo, hi) => Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+function feed(h, lm, now) {
+  // The palm centre aims: it barely moves when the fingers close, so stopping the water does not jerk the hose.
+  const nx = reach(1 - lm[9].x, 0.15, 0.85), ny = reach(lm[9].y, 0.12, 0.78);
+  const fresh = now - h.lastSeen > SLIP_MS, a = fresh ? 1 : 0.5;
+  h.nx += (nx - h.nx) * a; h.ny += (ny - h.ny) * a;
+  h.lastSeen = now; h.present = true; h.lm = lm;
+  // Open at three straight fingers or more, closed at one or fewer; two keeps the last state so the water never flickers.
+  const n = straightFingers(lm);
+  const raw = n >= 3 ? true : n <= 1 ? false : h.open;
+  if (raw !== h.raw) { h.raw = raw; h.rawSince = now; }
+  if (raw !== h.open && (fresh || now - h.rawSince >= 80)) h.open = raw;
+  if (screen === 'play' && !$('intro').hidden) { if (h.open) checks.open = true; else checks.close = true; }
+}
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const list = (res && res.landmarks) || [];
+  if (!list.length) return;
+  if (players === 1 || screen !== 'play') {
+    // Solo, and on every menu, only the hand nearest the one already followed counts, so someone walking past cannot take over.
+    const lm = list.length === 1 || !hands[0].present ? list[0] : list.reduce((a, b) => (Math.abs(1 - a[9].x - hands[0].nx) <= Math.abs(1 - b[9].x - hands[0].nx) ? a : b));
+    feed(hands[0], lm, now);
+  } else if (list.length === 1) {
+    // One hand keeps whichever slot it was already in, so a second player stepping away does not swap the hoses.
+    const lm = list[0], x = 1 - lm[9].x;
+    const k = hands[1].present && !hands[0].present ? 1 : hands[0].present && hands[1].present ? (Math.abs(x - hands[0].nx) <= Math.abs(x - hands[1].nx) ? 0 : 1) : 0;
+    feed(hands[k], lm, now);
+  } else {
+    const [a, b] = list.slice(0, 2).sort((p, q) => (1 - p[9].x) - (1 - q[9].x));
+    feed(hands[0], a, now); feed(hands[1], b, now);
+  }
+  if (window.__kfPointer && hands[0].present) window.__kfPointer(hands[0].nx, hands[0].ny);
+}
+function updatePresence(now) {
+  for (const h of hands) if (h.present && now - h.lastSeen > SLIP_MS) { h.present = false; h.lm = null; h.open = false; }
+  if (!hands[0].present && !hands[1].present && window.__kfPointer && hand0Reported) { window.__kfPointer(null); hand0Reported = false; }
+  if (hands[0].present) hand0Reported = true;
+}
+let hand0Reported = false;
+const anyHand = () => hands[0].present || hands[1].present;
+const mouse = { x: null, y: null, down: false };
+addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+addEventListener('pointerdown', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; if (!e.target.closest('[data-dwell]')) mouse.down = true; });
+addEventListener('pointerup', () => { mouse.down = false; });
+addEventListener('click', (e) => { const el = e.target.closest('[data-dwell]'); if (el && el.closest('.screen.on') && !el.closest('[hidden]') && !el.classList.contains('off')) act(el); });
+// Each hose's aim in stage pixels; hands map across the whole stage so every room is reachable from a sofa.
+function aims() {
+  if (anyHand()) return hands.map((h) => (h.present ? { x: h.nx * 1280, y: h.ny * 720, on: h.open } : { on: false }));
+  if (mouse.x !== null) { const p = toStage(mouse.x, mouse.y); return [{ x: p.x, y: p.y, on: mouse.down }]; }
+  return [];
+}
+
+// ---------- hold-to-press ----------
+const dwell = { el: null, start: 0, last: 0, p: 0, done: null, at: null };
+const BUTTON_MS = 1000;
+function resetDwell() { if (dwell.el) { dwell.el.style.setProperty('--p', 0); dwell.el.classList.remove('hot'); } dwell.el = null; dwell.p = 0; }
+// On the platform the bridge supplies one cursor for menus; on a shift the game draws its own nozzles.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+const kfInMenu = () => !playing;
+function menuPoint() {
+  if (kfShared && kfInMenu()) return kfShared.visible ? { x: kfShared.x * W, y: kfShared.y * H } : null;
+  const h = hands[0].present ? hands[0] : hands[1].present ? hands[1] : null;
+  if (h) return toScreen(h.nx * 1280, h.ny * 720);
+  return mouse.x !== null ? { x: mouse.x, y: mouse.y } : null;
+}
+function updateDwell(now) {
+  let target = null;
+  const menu = kfInMenu();
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const pt = menuPoint();
+  // After a press the hand must move off that spot, so a resting hand cannot press what appears under it next.
+  if (dwell.at && pt && Math.hypot(pt.x - dwell.at.x, pt.y - dwell.at.y) > 60 * K) dwell.at = null;
+  if (pt && now >= armedAt && menu && !dwell.at) {
+    for (const el of $(screen).querySelectorAll('[data-dwell]')) {
+      if (el.hidden || el.closest('[hidden]') || el.classList.contains('off')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      if (pt.x >= r.left - 10 && pt.x <= r.right + 10 && pt.y >= r.top - 10 && pt.y <= r.bottom + 10) { target = el; break; }
+    }
+  }
+  if (target && target === dwell.done) target = null;
+  else if (target !== dwell.done) dwell.done = null;
+  if (target && target === dwell.el) dwell.last = now;
+  else if (target && (!dwell.el || now - dwell.last > SLIP_MS)) { resetDwell(); dwell.el = target; dwell.start = now; dwell.last = now; target.classList.add('hot'); }
+  else if (!target && dwell.el && now - dwell.last > SLIP_MS) resetDwell();
+  if (!dwell.el) return;
+  dwell.p = Math.min(1, (now - dwell.start) / BUTTON_MS);
+  dwell.el.style.setProperty('--p', dwell.p.toFixed(3));
+  if (dwell.p >= 1 && target === dwell.el) { const el = dwell.el; resetDwell(); dwell.done = el; dwell.at = pt; act(el); }
+}
+
+// ---------- drawing ----------
+const ENGINES = [{ x: 150, y: 640, face: 1 }, { x: 1130, y: 640, face: -1 }];
+function engine(e, tank, active, t) {
+  c.save(); c.translate(e.x, e.y); c.scale(e.face, 1);
+  c.globalAlpha = active ? 1 : 0.45;
+  c.fillStyle = '#d8282a'; c.strokeStyle = '#1c1c24'; c.lineWidth = 4;
+  c.beginPath(); c.roundRect(-120, -86, 200, 70, 10); c.fill(); c.stroke();
+  c.beginPath(); c.roundRect(40, -112, 80, 96, 12); c.fill(); c.stroke();
+  c.fillStyle = '#bfe4f8'; c.beginPath(); c.roundRect(60, -102, 46, 36, 6); c.fill(); c.stroke();
+  c.fillStyle = '#e8eef4'; c.fillRect(-112, -60, 140, 10);
+  c.fillStyle = '#ffd23a'; c.fillRect(-120, -34, 240, 8);
+  for (const wx of [-80, 70]) { c.fillStyle = '#1c1c24'; c.beginPath(); c.arc(wx, -12, 20, 0, 7); c.fill(); c.fillStyle = '#9aa0aa'; c.beginPath(); c.arc(wx, -12, 8, 0, 7); c.fill(); }
+  c.fillStyle = Math.sin(t * 10) > 0 ? '#3a8aff' : '#ff3a3a'; c.beginPath(); c.roundRect(60, -126, 30, 14, 4); c.fill();
+  c.restore();
+  if (tank == null) return;
+  const gx = e.x - 18, gy = e.y - 210;
+  c.fillStyle = 'rgba(255,255,255,0.85)'; c.strokeStyle = '#1c1c24'; c.lineWidth = 3;
+  c.beginPath(); c.roundRect(gx, gy, 36, 110, 8); c.fill(); c.stroke();
+  c.fillStyle = tank < 0.25 ? '#e8401a' : '#2a8ae8'; c.fillRect(gx + 5, gy + 5 + 100 * (1 - tank), 26, 100 * tank);
+  c.fillStyle = '#1c1c24'; c.font = 'bold 18px Trebuchet MS'; c.textAlign = 'center'; c.fillText('Water', e.x, gy - 8);
+}
+function renderCity(now) {
+  const t = now / 1000;
+  sky(t);
+  if (screen !== 'play' || !round) { renderStation(t); return; }
+  const g = round, A = G.AREA;
+  // Building shell with a roof; the front wall is cut away to show the rooms.
+  c.fillStyle = '#9a4a32'; c.fillRect(A.x - 20, A.y - 30, A.w + 40, A.h + 40);
+  c.fillStyle = '#5a5e6a'; c.fillRect(A.x - 34, A.y - 44, A.w + 68, 20);
+  for (let i = 0; i < g.fire.length; i++) {
+    const r = G.roomRect(g.cfg, i), v = g.fire[i];
+    c.fillStyle = WALLPAPER[(i * 7) % WALLPAPER.length]; c.fillRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8);
+    // Scorch builds up while a room burns and stays a little after.
+    c.fillStyle = `rgba(40,30,30,${Math.min(0.55, v * 0.6)})`; c.fillRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8);
+    c.fillStyle = '#8a6a48'; c.fillRect(r.x + 4, r.y + r.h - 14, r.w - 8, 10);
+    // Window on the back wall.
+    c.fillStyle = '#bfe4f8'; c.strokeStyle = '#6a4a32'; c.lineWidth = 3;
+    const ww = Math.min(60, r.w * 0.36), wh = Math.min(50, r.h * 0.4);
+    c.fillRect(r.x + r.w / 2 - ww / 2, r.y + r.h * 0.22, ww, wh); c.strokeRect(r.x + r.w / 2 - ww / 2, r.y + r.h * 0.22, ww, wh);
+    const p = g.pets.find((q) => q.room === i);
+    if (p) {
+      pet(c, r.x + r.w / 2, r.y + r.h * 0.62, p.kind, t, Math.min(1, r.h / 110));
+      // Waiting bar for the pet, and a ring that fills as the hose rests on it.
+      const left = 1 - p.t / G.PET_WAIT;
+      c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(r.x + 10, r.y + 8, r.w - 20, 8);
+      c.fillStyle = left > 0.35 ? '#2fa35a' : '#e8401a'; c.fillRect(r.x + 10, r.y + 8, (r.w - 20) * left, 8);
+      if (p.rescue > 0) { c.strokeStyle = '#ffd23a'; c.lineWidth = 7; c.beginPath(); c.arc(r.x + r.w / 2, r.y + r.h * 0.62, 38, -Math.PI / 2, -Math.PI / 2 + 6.283 * Math.min(1, p.rescue / G.RESCUE_S)); c.stroke(); }
+      else if (v > G.RESCUE_FIRE) { c.fillStyle = '#1c1c24'; c.font = 'bold 18px Trebuchet MS'; c.textAlign = 'center'; c.fillText('Fire first!', r.x + r.w / 2, r.y + 36); }
+    }
+    flames(r.x + r.w / 2, r.y + r.h - 12, r.w - 24, r.h - 20, v, t + i);
+    if (v > 0.5) { c.fillStyle = `rgba(60,60,70,${(v - 0.5) * 0.7})`; for (let k = 0; k < 3; k++) { const ph = (t * 0.6 + k / 3 + i * 0.13) % 1; c.beginPath(); c.arc(r.x + r.w * (0.3 + k * 0.2), r.y + 10 - ph * 40, 14 + ph * 20, 0, 7); c.fill(); } }
+  }
+  // Floors and walls between rooms.
+  c.strokeStyle = '#6a3222'; c.lineWidth = 8;
+  for (let i = 0; i < g.fire.length; i++) { const r = G.roomRect(g.cfg, i); c.strokeRect(r.x, r.y, r.w, r.h); }
+  // Engines, hoses and water.
+  const A2 = lastAims;
+  ENGINES.forEach((e, k) => {
+    if (k >= players) return;
+    const h = g.hoses[k], active = k === 0 || hands[1].present;
+    engine(e, h.tank, active, t);
+    const aim = A2[k];
+    if (!aim || aim.x == null) return;
+    const nz = { x: e.x + e.face * 60, y: e.y - 140 };
+    if (h.on) {
+      // A wobbling arc of drops from the engine's nozzle to the aim point.
+      const mx = (nz.x + aim.x) / 2, my = Math.min(nz.y, aim.y) - 120;
+      for (let s = 0; s < 26; s++) {
+        const u = ((s / 26) + t * 2.2) % 1, iu = 1 - u;
+        const x = iu * iu * nz.x + 2 * iu * u * mx + u * u * aim.x, y = iu * iu * nz.y + 2 * iu * u * my + u * u * aim.y;
+        c.fillStyle = `rgba(90,170,255,${0.5 + 0.4 * u})`; c.beginPath(); c.arc(x + Math.sin(s * 3 + t * 20) * 3, y, 6 + u * 6, 0, 7); c.fill();
+      }
+      c.fillStyle = 'rgba(220,240,255,0.7)';
+      for (let s = 0; s < 6; s++) { const a = t * 9 + s; c.beginPath(); c.arc(aim.x + Math.cos(a) * 22, aim.y + Math.sin(a * 1.3) * 16, 6, 0, 7); c.fill(); }
+    }
+  });
+  // Ladder bringing a pet down to the engine.
+  fx = fx.filter((f) => now - f.t < (f.kind === 'ladder' ? 1600 : 1300));
+  for (const f of fx) {
+    if (f.kind !== 'ladder') continue;
+    const k = (now - f.t) / 1600, from = roomCentre(f.room), e = ENGINES[f.hose];
+    c.strokeStyle = '#e8eef4'; c.lineWidth = 6;
+    c.beginPath(); c.moveTo(e.x, e.y - 90); c.lineTo(from.x, from.y + 30); c.stroke();
+    pet(c, from.x + (e.x - from.x) * k, from.y + 20 + (e.y - 120 - from.y) * k, f.kind2, t, 0.9);
+  }
+  burst = burst.filter((b) => now - b.t < 900);
+  for (const b of burst) { const k = (now - b.t) / 1000; c.fillStyle = `rgba(200,200,210,${0.7 - k * 0.7})`; c.beginPath(); c.arc(b.x + b.vx * k, b.y + b.vy * k, 10 + k * 20, 0, 7); c.fill(); }
+  for (const f of fx) {
+    if (f.kind !== 'text') continue;
+    const k = (now - f.t) / 1300;
+    c.globalAlpha = Math.min(1, 2 - 2 * k); c.font = 'bold 30px Trebuchet MS'; c.textAlign = 'center'; c.lineWidth = 6; c.strokeStyle = '#1c1c24'; c.fillStyle = f.col;
+    c.strokeText(f.text, f.x, f.y - k * 50); c.fillText(f.text, f.x, f.y - k * 50); c.globalAlpha = 1;
+  }
+}
+// The fire station behind the menus.
+function renderStation(t) {
+  c.fillStyle = '#b8452e'; c.fillRect(260, 180, 760, 460);
+  c.fillStyle = '#8a2e1e'; for (let y = 196; y < 640; y += 28) for (let x = (y / 28) % 2 ? 260 : 290; x < 1020; x += 60) c.fillRect(x, y, 4, 4);
+  c.fillStyle = '#5a5e6a'; c.fillRect(240, 166, 800, 22);
+  for (const dx of [300, 660]) {
+    c.fillStyle = '#e8eef4'; c.fillRect(dx, 400, 320, 240);
+    c.fillStyle = '#c0c8d2'; for (let y = 410; y < 640; y += 30) c.fillRect(dx + 8, y, 304, 6);
+  }
+  engine({ x: 1140, y: 650, face: -1 }, null, true, t);
+}
+
+let hud = {};
+function setOnce(key, value, apply) { if (hud[key] !== value) { hud[key] = value; apply(value); } }
+let hintShownText = null;
+function updateHud(now) {
+  let text = statusText;
+  if (!text && !anyHand() && now - Math.max(hands[0].lastSeen, hands[1].lastSeen) > 1200 && mouse.x === null) text = 'Raise your hand so the camera can see it';
+  if (!text && playing && round && round.hoses.some((h, k) => h.dry && (k === 0 || hands[1].present))) text = 'Tank empty! Make a fist to refill';
+  if (text !== hintShownText) { hintShownText = text; $('hint').textContent = text; $('hint').hidden = !text; }
+  if (screen !== 'play' || !round) return;
+  ['open', 'close'].forEach((k) => setOnce('ck' + k, checks[k], (v) => { $('ck-' + k).classList.toggle('ok', v); $('ck-' + k).querySelector('i').textContent = v ? '✓' : ''; }));
+  setOnce('score', round.score, (v) => { $('hd-score').textContent = v; });
+  const safe = Math.round(100 - round.damage);
+  setOnce('safe', safe, (v) => { const b = $('hd-safe'); b.style.width = `${v}%`; b.style.background = v > 60 ? '#2fa35a' : v > 30 ? '#e8a01a' : '#e8401a'; });
+  setOnce('pets', round.saved, (v) => { $('hd-pets').textContent = `Pets saved: ${v} / ${round.cfg.pets}`; });
+}
+function renderBones() {
+  const x = bctx, w = bones.width, h = bones.height;
+  x.clearRect(0, 0, w, h);
+  hands.forEach((hd, k) => {
+    const lm = hd.present && hd.lm;
+    if (!lm) return;
+    const Pt = (i) => [(1 - lm[i].x) * w, lm[i].y * h];
+    x.strokeStyle = hd.open ? (k ? '#3a8aff' : '#ffd23a') : '#e8401a'; x.lineWidth = 3;
+    for (const f of [[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14, 15, 16], [0, 17, 18, 19, 20], [5, 9, 13, 17]]) {
+      x.beginPath(); f.forEach((i, j) => { const [px, py] = Pt(i); j ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+    }
+  });
+}
+// On a shift each hose's aim is a nozzle ring; on menus the platform cursor, or a ring, is.
+function renderInk() {
+  ictx.clearRect(0, 0, W, H);
+  if (playing) {
+    lastAims.forEach((a, k) => {
+      if (!a || a.x == null) return;
+      const s = toScreen(a.x, a.y), col = k ? '#3a8aff' : '#ffd23a';
+      ictx.save(); ictx.translate(s.x, s.y); ictx.scale(K, K);
+      ictx.strokeStyle = '#1c1c24'; ictx.lineWidth = 9; ictx.beginPath(); ictx.arc(0, 0, a.on ? 30 : 36, 0, 7); ictx.stroke();
+      ictx.strokeStyle = a.on ? '#5aaaff' : col; ictx.lineWidth = 5; ictx.stroke();
+      ictx.beginPath(); for (const [dx, dy] of [[-48, 0], [48, 0], [0, -48], [0, 48]]) { ictx.moveTo(dx * 0.75, dy * 0.75); ictx.lineTo(dx, dy); } ictx.stroke();
+      ictx.fillStyle = col; ictx.font = 'bold 22px Trebuchet MS'; ictx.textAlign = 'center';
+      if (players === 2) { ictx.strokeStyle = '#1c1c24'; ictx.lineWidth = 5; ictx.strokeText(k ? 'P2' : 'P1', 0, -50); ictx.fillText(k ? 'P2' : 'P1', 0, -50); }
+      ictx.restore();
+    });
+    return;
+  }
+  if ((kfShared && kfInMenu()) || !anyHand()) return;
+  const p = menuPoint();
+  if (!p) return;
+  ictx.fillStyle = 'rgba(255,255,255,0.95)'; ictx.beginPath(); ictx.arc(p.x, p.y, 9, 0, 7); ictx.fill();
+  ictx.strokeStyle = '#d8282a'; ictx.lineWidth = 5; ictx.beginPath(); ictx.arc(p.x, p.y, 22, 0, 7); ictx.stroke();
+}
+
+let lastAims = [], lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  detect(now);
+  updatePresence(now);
+  lastAims = playing ? aims() : [];
+  if (playing && round && !round.over) {
+    const wasDry = round.hoses.map((h) => h.dry);
+    for (let left = dt; left > 1e-6; left -= 1 / 30) G.step(round, Math.min(left, 1 / 30), lastAims);
+    round.hoses.forEach((h, k) => { if (h.dry && !wasDry[k]) sfx('dry'); });
+    for (const e of round.events.splice(0)) handleEvent(e);
+  }
+  setHiss(playing && round && !round.over ? round.hoses.filter((h) => h.on).length : 0);
+  renderCity(now);
+  updateDwell(now);
+  updateHud(now);
+  renderBones();
+  renderInk();
+}
+show('menu');
+requestAnimationFrame(frame);
+initTracking();
+</script>
+</body>
+</html>

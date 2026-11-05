@@ -1,6 +1,6 @@
 import type { HandData, GameAction } from '@/types';
 import type { Dispatch } from 'react';
-import { drawKitchenBg, drawHandCursor, card, shd, nshd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawPointer, card, shd, nshd, leadHand } from '@/game/drawHelpers';
 import { DwellSystem } from '@/systems/DwellSystem';
 import { audioSynth } from '@/systems/AudioSynth';
 import { storage } from '@/storage/localStorage';
@@ -9,7 +9,7 @@ const lbDwell = new DwellSystem(1100);
 
 export function updateLeaderboard(dt: number, hands: HandData[], dispatch: Dispatch<GameAction>): void {
   void dt;
-  const bh = hands.find(h => h.visible) ?? null;
+  const bh = leadHand(hands);
   const fired = lbDwell.tick(bh);
   if (fired === 'back') { audioSynth.select(); dispatch({ type: 'NAVIGATE', screen: 'menu' }); }
 }
@@ -62,5 +62,5 @@ export function drawLeaderboard(ctx: CanvasRenderingContext2D, W: number, H: num
   ctx.fillText('← MAIN MENU', W / 2, backRegion[0].y + 33);
   nshd(ctx); ctx.restore();
 
-  hands.forEach(h => drawHandCursor(ctx, h));
+  drawPointer(ctx, hands);
 }

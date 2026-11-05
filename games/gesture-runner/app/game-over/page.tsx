@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMediaPipe } from '../../hooks/useMediaPipe';
-import { useDwellNav } from '../../hooks/useDwellNav';
+import { kfShared, useDwellNav } from '../../hooks/useDwellNav';
 import { DwellButton } from '../../components/DwellButton';
 import { CameraError } from '../../components/CameraError';
 import { GameStorage } from '../../storage/GameStorage';
@@ -96,7 +96,7 @@ export default function GameOverPage() {
   return (
     <div className="fixed inset-0 bg-[#000818] flex flex-col items-center justify-center" ref={containerRef}>
       {/* Hand cursor */}
-      {primaryHand && typeof window !== 'undefined' && (
+      {primaryHand && !kfShared && typeof window !== 'undefined' && (
         <div
           className="fixed pointer-events-none z-50 w-8 h-8 rounded-full border-4 border-[#00ffcc]"
           style={{

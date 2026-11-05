@@ -474,6 +474,12 @@ const BRUSH_SIZES = { XS:4, S:8, M:14, L:22, XL:34 };
 // ═══════════════════════════════════════════════════════════
 //  SECTION 3 — HAND TRACKER  (Layer 1 — raw landmarks only)
 // ═══════════════════════════════════════════════════════════
+// On the platform the bridge supplies one cursor for every game and the platform draws it.
+// While painting, the game's own ring shows the brush instead, at the same spot.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+function kfMenu(on) { if (kfShared && on !== kfMenuOn) { kfMenuOn = on; if (window.__kfMenu) window.__kfMenu(on); } }
+
 class HandTracker {
   constructor(videoEl, onFrame) {
     this._video = videoEl;
@@ -618,6 +624,7 @@ class GestureEngine {
     // Mirrored, and the middle of the camera frame covers the whole screen so the edges are reachable.
     const reach = v => Math.min(1, Math.max(0, (v - 0.12) / 0.76));
     const rx = reach(1 - lm[8].x), ry = reach(lm[8].y);
+    if (kfShared) { this.cursorX = kfShared.x; this.cursorY = kfShared.y; return; }
     this.cursorX += (rx - this.cursorX) * 0.20;
     this.cursorY += (ry - this.cursorY) * 0.20;
   }
@@ -972,6 +979,8 @@ const Renderer = (() => {
     // Cursor ring
     const cx=gs.cursorX*W, cy=gs.cursorY*H;
     const drawing = gs.gesture==='DRAW';
+    kfMenu(!drawing);
+    if (kfShared && !drawing) return;
     cursorCtx.save();
     cursorCtx.beginPath();
     cursorCtx.arc(cx, cy, drawing ? size/2+5 : 19, 0, Math.PI*2);
@@ -1231,6 +1240,7 @@ const GestureUI = (() => {
   function _updateCursor(cx, cy, gesture) {
     const el = document.getElementById('gesture-cursor');
     if (!el) return;
+    el.style.display = kfShared ? 'none' : '';
     el.style.left = (cx * window.innerWidth)  + 'px';
     el.style.top  = (cy * window.innerHeight) + 'px';
     el.className  = (gesture === 'DRAW') ? 'draw-active' : '';
@@ -1253,8 +1263,9 @@ const GestureUI = (() => {
     if (!activeScreen) return;
 
     // Smooth raw cursor to suppress jitter
-    smoothCX += (gs.cursorX - smoothCX) * LERP_C;
-    smoothCY += (gs.cursorY - smoothCY) * LERP_C;
+    kfMenu(true);
+    smoothCX = kfShared ? gs.cursorX : smoothCX + (gs.cursorX - smoothCX) * LERP_C;
+    smoothCY = kfShared ? gs.cursorY : smoothCY + (gs.cursorY - smoothCY) * LERP_C;
 
     _updateCursor(smoothCX, smoothCY, gs.gesture);
 

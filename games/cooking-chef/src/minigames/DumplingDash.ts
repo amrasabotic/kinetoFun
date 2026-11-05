@@ -1,7 +1,7 @@
 import type { MinigameModule, MinigameContext } from '@/types/minigame';
 import type { MinigameResult } from '@/types';
 import { detectTwoHandFold } from '@/mediapipe/GestureDetector';
-import { drawKitchenBg, drawTimerBar, drawGestureHint, drawHandCursor, card, shd, nshd, rnd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawTimerBar, drawGestureHint, card, shd, nshd, rnd } from '@/game/drawHelpers';
 
 interface Dumpling { x: number; y: number; state: 'raw' | 'folding' | 'done'; foldProgress: number; wobble: number; }
 
@@ -96,7 +96,6 @@ export const DumplingDashModule: MinigameModule = {
     drawTimerBar(ctx, mgTime, this.duration, W / 2 - 300, H * 0.12, 600, 16);
     drawGestureHint(ctx, W, this.hint, '🥟');
     score.drawHUD(ctx, W, H);
-    hands.forEach(h => drawHandCursor(ctx, h, '#ffcc88'));
     particles.draw(ctx); score.draw(ctx);
 
     if (dumplings.every(d => d.state === 'done')) return true;

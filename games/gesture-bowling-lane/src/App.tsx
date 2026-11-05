@@ -10,6 +10,7 @@ import { useSwing } from './hooks/useSwing';
 import type { Difficulty, GameMode, RollOutcome } from './types';
 import { sfx } from './systems/audio';
 import { recordGame, hasDailyCompletedToday } from './systems/save';
+import { useMenuCursor, usesSharedCursor } from './sharedCursor';
 import { useGestureContext } from './mediaPipe/GestureProvider';
 
 // Only inside the KinetoFun platform is there somewhere to go back to.
@@ -52,7 +53,7 @@ function HowToPlayScreen({ onDone, gestureCursor }: { onDone: () => void; gestur
         ))}
       </div>
       <MenuButton label="Let's Play" onActivate={onDone} />
-      {gestureCursor && (
+      {gestureCursor && !usesSharedCursor && (
         <div className="gbl-cursor-dot" style={{ left: `${gestureCursor.x * 100}%`, top: `${gestureCursor.y * 100}%` }} />
       )}
     </div>
@@ -105,7 +106,7 @@ function MenuScreen({
         </div>
       </div>
 
-      {gestureCursor && (
+      {gestureCursor && !usesSharedCursor && (
         <div className="gbl-cursor-dot" style={{ left: `${gestureCursor.x * 100}%`, top: `${gestureCursor.y * 100}%` }} />
       )}
     </div>
@@ -284,6 +285,7 @@ export default function App() {
   }, [screen]);
 
   const gesture = useGesture();
+  useMenuCursor(!screen);
   const cursorNorm = gesture.isHovering ? { x: gesture.cursorX, y: gesture.cursorY } : null;
 
   return (

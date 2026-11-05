@@ -4,7 +4,6 @@ import FlagCanvas, { type FlagCanvasHandle } from './FlagCanvas';
 import ColorPalette from './ColorPalette';
 import HUD from './HUD';
 import HoverButton from '../common/HoverButton';
-import { useGesture } from '../../mediaPipe/GestureProvider';
 import { comboMultiplier, finalizeLevel, mistakePenalty, regionScore, HINT_GLOW_AT_SEC, HINT_REGION_PULSE_AT_SEC, HINT_COLOR_PULSE_AT_SEC } from '../../game/scoring';
 import { colorLabel } from '../../flags/palette';
 
@@ -16,7 +15,6 @@ interface Props {
 }
 
 export default function GameplayScreen({ flag, mode, onExit, onLevelComplete }: Props) {
-  const { frameRef } = useGesture();
   const practiceMode = mode === 'practice';
   const canvasHandleRef = useRef<FlagCanvasHandle | null>(null);
 
@@ -30,59 +28,23 @@ export default function GameplayScreen({ flag, mode, onExit, onLevelComplete }: 
   const mistakesRef = useRef(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [hintStage, setHintStage] = useState(0);
   const [pulseColor, setPulseColor] = useState<ColorId | null>(null);
 
   const startRef = useRef(performance.now());
-  const pausedAccumRef = useRef(0);
-  const pauseStartRef = useRef<number | null>(null);
   const lastActivityRef = useRef(performance.now());
   const doneRef = useRef(false);
   const regionsCorrectFirstTryRef = useRef(0);
   const wrongOnFirstTryRef = useRef(new Set<string>());
-  const palmDwellRef = useRef<number | null>(null);
-  const fistDwellRef = useRef<number | null>(null);
-  const pausedRef = useRef(false);
 
-  useEffect(() => { pausedRef.current = paused; }, [paused]);
-
-  // Elapsed-time + pause-gesture + hint-stage loop. Reads live hand data via frameRef
-  // (not React state) so this RAF loop never has to restart on every detection tick.
+  // No pause gesture: an open palm while painting kept pausing the round by mistake.
   useEffect(() => {
     let raf = 0;
     function loop() {
       const now = performance.now();
-      const hand = frameRef.current;
-      const paused = pausedRef.current;
 
-      // Open-palm-held pauses, fist-held-while-paused resumes (consistent with other KinetoFun games).
-      if (!paused) {
-        if (hand.isPalmOpen) {
-          if (palmDwellRef.current === null) palmDwellRef.current = now;
-          else if (now - palmDwellRef.current > 650) {
-            palmDwellRef.current = null;
-            pausedRef.current = true;
-            setPaused(true);
-            pauseStartRef.current = now;
-          }
-        } else palmDwellRef.current = null;
-      } else {
-        if (hand.isFist) {
-          if (fistDwellRef.current === null) fistDwellRef.current = now;
-          else if (now - fistDwellRef.current > 650) {
-            fistDwellRef.current = null;
-            pausedRef.current = false;
-            setPaused(false);
-            if (pauseStartRef.current) pausedAccumRef.current += now - pauseStartRef.current;
-            pauseStartRef.current = null;
-            lastActivityRef.current = now;
-          }
-        } else fistDwellRef.current = null;
-      }
-
-      if (!pausedRef.current && !doneRef.current) {
-        const elapsed = (now - startRef.current - pausedAccumRef.current) / 1000;
+      if (!doneRef.current) {
+        const elapsed = (now - startRef.current) / 1000;
         setElapsedSec(elapsed);
 
         const idleSec = (now - lastActivityRef.current) / 1000;
@@ -113,7 +75,7 @@ export default function GameplayScreen({ flag, mode, onExit, onLevelComplete }: 
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [frameRef]);
+  }, []);
 
   function handleRegionComplete() {
     lastActivityRef.current = performance.now();
@@ -146,7 +108,7 @@ export default function GameplayScreen({ flag, mode, onExit, onLevelComplete }: 
     if (doneRef.current) return;
     doneRef.current = true;
     regionsCorrectFirstTryRef.current = flag.regions.length - wrongOnFirstTryRef.current.size;
-    const timeSec = (performance.now() - startRef.current - pausedAccumRef.current) / 1000;
+    const timeSec = (performance.now() - startRef.current) / 1000;
     const result = finalizeLevel({
       flag,
       score: scoreRef.current,
@@ -201,24 +163,6 @@ export default function GameplayScreen({ flag, mode, onExit, onLevelComplete }: 
         </HoverButton>
       </div>
 
-      {paused && (
-        <div className="fixed inset-0 z-40 bg-black/75 flex flex-col items-center justify-center gap-4">
-          <h2 className="text-3xl font-bold">Paused</h2>
-          <p className="text-white/50 text-sm mb-2">Make a fist to resume, or hover a button below</p>
-          <div className="flex gap-4">
-            <HoverButton
-              onActivate={() => { setPaused(false); const now = performance.now(); if (pauseStartRef.current) pausedAccumRef.current += now - pauseStartRef.current; pauseStartRef.current = null; lastActivityRef.current = now; }}
-              ringColor="#2FA35A"
-              className="px-6 py-3 rounded-full bg-emerald-500/20 border border-emerald-400/40 font-bold"
-            >
-              ▶ Resume
-            </HoverButton>
-            <HoverButton onActivate={onExit} ringColor="#E4362E" className="px-6 py-3 rounded-full bg-white/10 border border-white/15 font-bold">
-              Main Menu
-            </HoverButton>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

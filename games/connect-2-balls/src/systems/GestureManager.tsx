@@ -1,6 +1,11 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
 import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+
 export type GestureEvent =
   | 'cursorMove'
   | 'hoverStart'
@@ -250,11 +255,16 @@ export function GestureProvider({ children, settings: settingsOverride }: Gestur
 
     // Smooth
     const smoothFactor = mergedSettings.smoothing * mergedSettings.sensitivity;
-    smoothedCursor.current.x += (rawX * window.innerWidth - smoothedCursor.current.x) * smoothFactor;
-    smoothedCursor.current.y += (rawY * window.innerHeight - smoothedCursor.current.y) * smoothFactor;
+    if (kfShared?.visible) {
+      smoothedCursor.current.x = kfShared.x * window.innerWidth;
+      smoothedCursor.current.y = kfShared.y * window.innerHeight;
+    } else {
+      smoothedCursor.current.x += (rawX * window.innerWidth - smoothedCursor.current.x) * smoothFactor;
+      smoothedCursor.current.y += (rawY * window.innerHeight - smoothedCursor.current.y) * smoothFactor;
+    }
 
-    // Apply magnetism
-    const cursor = applyMagnetism({ ...smoothedCursor.current });
+    // Magnetism would move the game's point away from the platform's cursor, so it only applies to the game's own.
+    const cursor = kfShared ? { ...smoothedCursor.current } : applyMagnetism({ ...smoothedCursor.current });
 
     // Emit cursor move
     emit('cursorMove', cursor);

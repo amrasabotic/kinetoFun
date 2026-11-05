@@ -486,6 +486,7 @@ function processFrame(lm) {
     highlightGesture(null);
     drawOverlay(null, W, H, null, null, '#fff', 12);
     drawPalette(-9999, -9999);
+    if (window.__kfPointer) window.__kfPointer(null);
     return;
   }
 
@@ -494,6 +495,11 @@ function processFrame(lm) {
   const tip = lm[8];
   const X = (1 - tip.x) * W;
   const Y = tip.y * H;
+  // The live hand drawing is this game's pointer, so the platform is told where its fingertip ring is instead of drawing its own.
+  if (window.__kfPointer) {
+    const r = drawCanvas.getBoundingClientRect();
+    window.__kfPointer((r.left + X * r.width / W) / window.innerWidth, (r.top + Y * r.height / H) / window.innerHeight);
+  }
 
   // Palette hover only when not actively doing something else
   const checkHover = gesture === 'draw' || gesture === 'idle';

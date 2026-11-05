@@ -455,6 +455,9 @@ let screenArmedAt = performance.now() + SCREEN_ARM_MS;
 // Dwell tracking (context-sensitive)
 let dwellStart = null;
 let tipX = -1, tipY = -1;
+// On the platform the bridge supplies one cursor for every game and the platform draws it; the screens around a match follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
 
 // Only inside the KinetoFun platform is there somewhere to go back to.
 const exitBox = document.getElementById('exitBox');
@@ -612,8 +615,10 @@ function renderLoop() {
 
   currentGesture = detectGesture(lm0, gName);
   // The preview is mirrored, so the fingertip's screen x is flipped too.
-  tipX = lm0 ? (1 - lm0[8].x) * innerWidth : -1;
-  tipY = lm0 ? lm0[8].y * innerHeight : -1;
+  const kfMenu = currentScreen !== 'game';
+  if (kfShared && kfMenu !== kfMenuOn) { kfMenuOn = kfMenu; if (window.__kfMenu) window.__kfMenu(kfMenu); }
+  tipX = lm0 ? (kfShared ? kfShared.x : 1 - lm0[8].x) * innerWidth : -1;
+  tipY = lm0 ? (kfShared ? kfShared.y : lm0[8].y) * innerHeight : -1;
 
   // Badge (always visible)
   if (currentGesture !== 'none') {

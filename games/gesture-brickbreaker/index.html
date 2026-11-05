@@ -473,15 +473,35 @@ function drawGame() {
 }
 
 // ── Cursor overlay (menus + in-game finger dot) ───────────────
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menus follow it and only
+// their hold progress is drawn here, while play keeps the game's own crosshair.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+
 function drawCursor() {
   curs.clearRect(0,0,W,H);
   const tip = gestureState.indexTip;
+  const isMenu = ['menu','levelSelect','win','lose'].includes(gameState);
+  if (kfShared && isMenu !== kfMenuOn) { kfMenuOn = isMenu; if (window.__kfMenu) window.__kfMenu(isMenu); }
   if (!tip) return;
 
-  const x=(1-tip.x)*W, y=tip.y*H;
-  const isMenu = ['menu','levelSelect','win','lose'].includes(gameState);
+  let x=(1-tip.x)*W, y=tip.y*H;
 
-  if (isMenu) {
+  if (isMenu && kfShared) {
+    if (!kfShared.visible) return;
+    // The canvas is scaled to the screen, so the screen position is converted to canvas space.
+    const rect = cursorCanvas.getBoundingClientRect();
+    x = (kfShared.x*innerWidth - rect.left) * W / rect.width;
+    y = (kfShared.y*innerHeight - rect.top) * H / rect.height;
+    const holdPct = hoveredItem>=0 ? Math.min(1,(performance.now()-hoverTimer)/HOVER_SELECT_MS) : 0;
+    if (holdPct>0) {
+      curs.save();
+      curs.strokeStyle='#a78bfa'; curs.lineWidth=5; curs.lineCap='round';
+      curs.beginPath(); curs.arc(x,y,30,-Math.PI/2,-Math.PI/2+Math.PI*2*holdPct); curs.stroke();
+      curs.restore();
+    }
+    updateMenuHover(1 - x/W, y/H);
+  } else if (isMenu) {
     const holdPct = hoveredItem>=0 ? Math.min(1,(performance.now()-hoverTimer)/HOVER_SELECT_MS) : 0;
     const r=20;
     curs.save();

@@ -6,7 +6,7 @@ const STEPS: { icon: string; title: string; desc: string }[] = [
   { icon: '☝️', title: 'Point with one finger', desc: 'Raise your hand to the camera. The yellow dot follows your index fingertip.' },
   { icon: '⏳', title: 'Hover to choose', desc: 'Hold the dot over a tile until its ring fills up — that picks it. No clicking needed.' },
   { icon: '🔤', title: 'Letter Match', desc: 'A big letter appears. Pick the tile with the same letter.' },
-  { icon: '🦁', title: 'Animal Sounds', desc: 'An animal and its name appear. Pick the letter its name starts with — Lion starts with L.' },
+  { icon: '🦁', title: 'Animal Sounds', desc: 'Listen! An animal makes its sound. Pick the letter its name starts with — the lion roars, and Lion starts with L.' },
   { icon: '🎲', title: 'Mixed Mode', desc: 'Animal, name and letter together. Pick the matching letter tile.' },
   { icon: '⭐', title: 'Earn stars', desc: '10 rounds per game. Wrong picks just wobble — try again! Getting it right first time earns more stars.' },
 ];

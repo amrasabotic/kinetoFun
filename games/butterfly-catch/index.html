@@ -387,8 +387,18 @@ function roundRect(c, x, y, w, h, r) {
 // ════════════════════════════════════════════════════════════
 //  HAND CURSOR
 // ════════════════════════════════════════════════════════════
+// On the platform the bridge supplies one cursor for every game and the platform draws it; the start and game-over
+// buttons follow it, while catching keeps the game's own pinch cursor.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+function kfInMenu() {
+  const menu = screen !== 'playing';
+  if (kfShared && menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  return menu && !!kfShared;
+}
+
 function drawHandCursor() {
-  if (handX < -9000) return;
+  if (handX < -9000 || kfInMenu()) return;
   ctx.save();
   const r = pinching ? 14 : 20;
   ctx.beginPath();
@@ -731,8 +741,8 @@ function onHandResults(results) {
   const ix = (1 - lm[8].x) * canvas.width,  iy = lm[8].y * canvas.height;
   const tx = (1 - lm[4].x) * canvas.width,  ty = lm[4].y * canvas.height;
 
-  handX = (ix + tx) / 2;
-  handY = (iy + ty) / 2;
+  handX = kfInMenu() ? kfShared.x * canvas.width : (ix + tx) / 2;
+  handY = kfInMenu() ? kfShared.y * canvas.height : (iy + ty) / 2;
 
   const dist     = Math.hypot(ix-tx, iy-ty);
   const handSize = Math.hypot(

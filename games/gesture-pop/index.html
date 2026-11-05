@@ -271,14 +271,21 @@ function clearMenuTarget() {
   menuTarget = null;
 }
 
+// On the platform the bridge supplies one cursor for every game and the platform draws it; menu buttons follow it.
+const kfShared = window.__kfCursor;
+let kfMenuOn = null;
+
 function menuDwell() {
   const screen = document.querySelector('.screen:not(.hidden)');
   const buttons = screen ? [...screen.querySelectorAll('button.glow-btn:not([hidden])')] : [];
-  if (!cursor.visible || !buttons.length) { menuCursor.style.display = 'none'; clearMenuTarget(); return; }
+  const menu = buttons.length > 0;
+  if (menu !== kfMenuOn) { kfMenuOn = menu; if (window.__kfMenu) window.__kfMenu(menu); }
+  const visible = kfShared ? kfShared.visible : cursor.visible;
+  if (!visible || !buttons.length) { menuCursor.style.display = 'none'; clearMenuTarget(); return; }
   const now = performance.now();
   if (screen !== menuScreen) { menuScreen = screen; menuArmedAt = now + MENU_ARM_MS; }
-  const x = cursor.x * innerWidth, y = cursor.y * innerHeight;
-  menuCursor.style.display = 'block';
+  const x = (kfShared ? kfShared.x : cursor.x) * innerWidth, y = (kfShared ? kfShared.y : cursor.y) * innerHeight;
+  menuCursor.style.display = kfShared ? 'none' : 'block';
   menuCursor.style.transform = `translate(${x - 22}px, ${y - 22}px)`;
   const target = now < menuArmedAt ? null : buttons.find(b => {
     const r = b.getBoundingClientRect();

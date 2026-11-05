@@ -5,7 +5,8 @@
 
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, LoaderCircle, Play, Trophy } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Heart, LoaderCircle, Play, Ticket, Trophy } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { UnlockWorldButton } from "@/components/game/UnlockWorldButton";
 import { useSession } from "@/features/auth/session-context";
@@ -65,15 +66,27 @@ export default function TvGamePage() {
 
   return (
     <div className="flex h-[calc(100vh_-_var(--spacing)*24)] flex-col gap-8">
-      <Button
-        variant="secondary"
-        size="lg"
-        onClick={goBack}
-        className="h-16 self-start px-8 text-2xl! text-white!"
-      >
-        <ArrowLeft className="h-7 w-7" />
-        Back
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={goBack}
+          className="h-16 px-8 text-2xl! text-white!"
+        >
+          <ArrowLeft className="h-7 w-7" />
+          Back
+        </Button>
+        {/* Players come back here after every round, so this is where tickets just earned get spent. */}
+        <Link
+          href="/tvsetup/shop"
+          data-focusable
+          className="flex h-16 items-center gap-3 rounded-full bg-amber-400 px-7 text-2xl font-black text-amber-950"
+        >
+          <Ticket className="h-7 w-7" />
+          {user?.tickets ?? 0}
+          <span className="ml-1 rounded-full bg-amber-950/15 px-4 py-1">Shop</span>
+        </Link>
+      </div>
 
       <div className="flex min-h-0 flex-1 items-center gap-14">
         <div className="relative aspect-video w-[48%] shrink-0 overflow-hidden rounded-3xl bg-white/5">

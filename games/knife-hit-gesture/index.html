@@ -572,6 +572,9 @@ function getHit(x,y){
 }
 let lastPalm=false,lastFireT=0;
 const FIRE_GAP=420;
+// On the platform the bridge supplies one cursor for every game and the platform draws it; buttons follow it.
+const kfShared=window.__kfCursor;
+if(kfShared&&window.__kfMenu)window.__kfMenu(true);
 function onHandResults(res){
   hctx.clearRect(0,0,hCanvas.width,hCanvas.height);
   if(!res.multiHandLandmarks||!res.multiHandLandmarks.length){
@@ -603,8 +606,9 @@ function onHandResults(res){
     lastPalm=false;
   } else if(g.g==='point'){
     lastPalm=false;
-    smX=sm(g.fx,smX);smY=sm(g.fy,smY);
-    cursor.style.display='block';
+    if(kfShared){smX=kfShared.x*innerWidth;smY=kfShared.y*innerHeight;}
+    else{smX=sm(g.fx,smX);smY=sm(g.fy,smY);}
+    cursor.style.display=kfShared?'none':'block';
     cursor.style.left=smX+'px';cursor.style.top=smY+'px';
     const hit=getHit(smX,smY);
     if(hit&&hit.type==='gbtn'){processBtnDwell(hit.el);processLvlDwell(-1);processCtrlDwell(null);}

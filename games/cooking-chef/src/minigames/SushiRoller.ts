@@ -1,7 +1,6 @@
 import type { MinigameModule, MinigameContext } from '@/types/minigame';
 import type { MinigameResult } from '@/types';
-import { detectTwoHandFold } from '@/mediapipe/GestureDetector';
-import { drawKitchenBg, drawTimerBar, drawGestureHint, drawHandCursor, card, shd, nshd, rnd } from '@/game/drawHelpers';
+import { drawKitchenBg, drawTimerBar, drawGestureHint, card, shd, nshd, rnd } from '@/game/drawHelpers';
 
 const FILLINGS = ['🍣', '🥒', '🥑', '🦐', '🐟'];
 let rollProgress = 0;
@@ -15,7 +14,7 @@ let cutCooldown = 0;
 
 export const SushiRollerModule: MinigameModule = {
   id: 'sushi-roller', name: 'Sushi Roller!', icon: '🍣',
-  hint: 'Roll with both hands, then cut!', duration: 14, maxScore: 420,
+  hint: 'Wave a hand up and down to roll, then cut!', duration: 14, maxScore: 420,
 
   init({ W, H }) {
     rollProgress = 0; cutCount = 0; targetRolls = 3; phase = 'roll';
@@ -28,8 +27,10 @@ export const SushiRollerModule: MinigameModule = {
     const cx2 = W / 2, cy = H * 0.52;
 
     if (phase === 'roll') {
-      if (detectTwoHandFold(hands[0], hands[1])) {
-        rollProgress = Math.min(1, rollProgress + dt * 0.7);
+      // Any hand moving up or down rolls the mat; no pose needed, so the camera can always read it.
+      const travel = hands.reduce((m, h) => (h.visible && Math.abs(h.vy) > 1.5 ? Math.max(m, Math.abs(h.vy)) : m), 0);
+      if (travel > 0) {
+        rollProgress = Math.min(1, rollProgress + travel / (H * 2.5));
         rollAnim += 0.15;
         score.add(Math.round(dt * 30), cx2, cy - 60);
         score.addCombo(audio);
@@ -91,9 +92,8 @@ export const SushiRollerModule: MinigameModule = {
     ctx.restore();
 
     drawTimerBar(ctx, mgTime, this.duration, W / 2 - 300, H * 0.12, 600, 16);
-    drawGestureHint(ctx, W, phase === 'roll' ? 'Squeeze both hands toward center!' : 'Chop down to cut pieces!', '🍣');
+    drawGestureHint(ctx, W, phase === 'roll' ? 'Wave your hand up and down to roll!' : 'Chop down to cut pieces!', '🍣');
     score.drawHUD(ctx, W, H);
-    hands.forEach(h => drawHandCursor(ctx, h));
     particles.draw(ctx); score.draw(ctx);
 
     if (phase === 'cut' && cutCount >= 6) return true;

@@ -1,29 +1,23 @@
 import { useEffect, useRef } from 'react';
 import { useGestureRef } from './useGesture';
 
-const PAUSE_HOLD_MS = 2000;
-
 interface UseActionGesturesOptions {
   onUndo: () => void;
   onHint: () => void;
-  onPause: () => void;
   enabled: boolean;
 }
 
-/**
- * The three non-tube gestures, each edge-triggered or held so they can
- * never fire from a single noisy frame: thumbs-up fires undo the instant it
- * appears (it's already a deliberate, distinctive pose — no hold needed on
- * top of it), a victory sign fires a hint the same way, and an open palm
- * held continuously for a full 2 seconds anywhere on screen opens the pause
- * menu. None of these compete with tube grabbing, which requires a pinch.
- */
-export function useActionGestures({ onUndo, onHint, onPause, enabled }: UseActionGesturesOptions) {
+// A hand opening out of a pinch passes through a thumbs-up shape, which undid pours the instant it appeared.
+// So undo and hint need the pose held, and are ignored right after a pinch. Pause is an on-screen button.
+const HOLD_MS = 600;
+const AFTER_PINCH_MS = 800;
+
+export function useActionGestures({ onUndo, onHint, enabled }: UseActionGesturesOptions) {
   const gestureRef = useGestureRef();
-  const wasThumbsUpRef = useRef(false);
-  const wasVictoryRef = useRef(false);
-  const palmSinceRef = useRef(0);
-  const pauseFiredRef = useRef(false);
+  const thumbsSinceRef = useRef<number | null>(null);
+  const victorySinceRef = useRef<number | null>(null);
+  const firedRef = useRef(false);
+  const lastPinchRef = useRef(-Infinity);
 
   useEffect(() => {
     let raf = 0;
@@ -34,30 +28,24 @@ export function useActionGestures({ onUndo, onHint, onPause, enabled }: UseActio
       }
       const g = gestureRef.current;
       const now = performance.now();
+      if (g.isPinching) lastPinchRef.current = now;
+      const calm = now - lastPinchRef.current > AFTER_PINCH_MS;
 
-      if (g.isThumbsUp && !wasThumbsUpRef.current) onUndo();
-      wasThumbsUpRef.current = g.isThumbsUp;
+      const thumbs = calm && g.isThumbsUp;
+      const victory = calm && g.isVictorySign;
+      thumbsSinceRef.current = thumbs ? (thumbsSinceRef.current ?? now) : null;
+      victorySinceRef.current = victory ? (victorySinceRef.current ?? now) : null;
 
-      if (g.isVictorySign && !wasVictoryRef.current) onHint();
-      wasVictoryRef.current = g.isVictorySign;
-
-      if (g.isPalmOpen) {
-        if (palmSinceRef.current === 0) {
-          palmSinceRef.current = now;
-          pauseFiredRef.current = false;
-        }
-        const held = now - palmSinceRef.current;
-        if (held >= PAUSE_HOLD_MS && !pauseFiredRef.current) {
-          pauseFiredRef.current = true;
-          onPause();
-        }
-      } else {
-        palmSinceRef.current = 0;
+      // One hold, one action: the pose must drop before it can fire again.
+      if (!thumbs && !victory) firedRef.current = false;
+      else if (!firedRef.current) {
+        if (thumbsSinceRef.current !== null && now - thumbsSinceRef.current >= HOLD_MS) { firedRef.current = true; onUndo(); }
+        else if (victorySinceRef.current !== null && now - victorySinceRef.current >= HOLD_MS) { firedRef.current = true; onHint(); }
       }
 
       raf = requestAnimationFrame(loop);
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [enabled, onUndo, onHint, onPause, gestureRef]);
+  }, [enabled, onUndo, onHint, gestureRef]);
 }

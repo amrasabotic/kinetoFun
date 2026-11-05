@@ -5,6 +5,7 @@ export const STATES = {
   COUNTDOWN: 'COUNTDOWN',
   CHALLENGE: 'CHALLENGE',
   FEEDBACK: 'FEEDBACK',
+  LEVEL_END: 'LEVEL_END',
   GAME_OVER: 'GAME_OVER',
   PAUSED: 'PAUSED',
 };
@@ -47,6 +48,12 @@ export const LM = {
 
 export const GAME_CONFIG = {
   POSES_PER_ROUND: 12,
+  POSES_PER_LEVEL: 5,
+  MAX_LEVEL: 10,
+  // A pose counts toward passing a level at this accuracy; 3 of 5 passes.
+  LEVEL_PASS_ACCURACY: 60,
+  LEVEL_PASS_POSES: 3,
+  LEVEL_END_MS: 3500,
   POSE_TIME_BY_DIFFICULTY: { 1: 6, 2: 5, 3: 4, 4: 3 },
   ACCURACY_THRESHOLDS: { PERFECT: 88, GOOD: 68, TRYAGAIN: 0 },
   DETECTION_HOLD_MS: 3000,

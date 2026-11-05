@@ -3,6 +3,17 @@ import { useRouterState } from "@tanstack/react-router";
 import { ensureHandInput, latestHand } from "@/lib/handInput";
 import { HandSmoother } from "@/lib/handTracker";
 
+// On the platform the bridge supplies one cursor for every game, drawn by the platform itself; menu buttons follow it.
+type SharedCursor = { x: number; y: number; visible: boolean };
+const kfWin = (typeof window !== "undefined" ? window : {}) as { __kfCursor?: SharedCursor; __kfMenu?: (on: boolean) => void };
+const kfShared = kfWin.__kfCursor;
+let kfMenuOn: boolean | null = null;
+function kfMenu(on: boolean) {
+  if (!kfShared || on === kfMenuOn) return;
+  kfMenuOn = on;
+  kfWin.__kfMenu?.(on);
+}
+
 // The game runs on TVs with no mouse: an open hand moves this pointer and
 // holding it over any link or button presses it.
 const DWELL_MS = 1000;
@@ -49,6 +60,7 @@ export default function HandPointer() {
       const { hand, lastT } = latestHand();
       // While an arrow is being aimed the game draws its own cursor.
       const off = document.body.dataset.handPointer === "off";
+      kfMenu(!off);
       if (off || !hand || now - lastT > 400) {
         el.style.opacity = "0";
         target = null;
@@ -56,7 +68,7 @@ export default function HandPointer() {
         return;
       }
 
-      const p = now - lastT < 120 ? smoother.update(hand.x, hand.y, now) : smoother.predict(now);
+      const p = kfShared ? kfShared : now - lastT < 120 ? smoother.update(hand.x, hand.y, now) : smoother.predict(now);
       const x = p.x * window.innerWidth;
       const y = p.y * window.innerHeight;
       el.style.opacity = "1";
@@ -96,6 +108,7 @@ export default function HandPointer() {
             cx="32"
             cy="32"
             r="10"
+            opacity={kfShared ? 0 : 1}
             fill="oklch(0.95 0.2 90 / 0.9)"
             stroke="white"
             strokeWidth="3"
@@ -106,6 +119,7 @@ export default function HandPointer() {
             r={RING_R}
             fill="none"
             stroke="oklch(1 0 0 / 0.25)"
+            opacity={kfShared ? 0 : 1}
             strokeWidth="5"
           />
           <circle

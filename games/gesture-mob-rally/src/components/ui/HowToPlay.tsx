@@ -8,7 +8,6 @@ export default function HowToPlay({ onBack }: { onBack: () => void }) {
       <div className="w-full max-w-6xl grid grid-cols-4 gap-4">
         <Row icon="🖐️" title="Move" desc="Move your open hand left and right — your crowd follows your wrist position." />
         <Row icon="✊" title="Charge Mode" desc="Make a fist and hold for half a second to unleash Charge Mode: your crowd glows, smashes obstacles, and defeats enemies faster for 3 seconds. 20s cooldown." />
-        <Row icon="✋" title="Pause / Resume" desc="Hold an open palm still for 1 second to pause. Do it again to resume." />
         <Row icon="🚪" title="Gates" desc="Steer your crowd into a gate to apply its effect — +5, +10, x2, x3 and more. Missing every gate resets your combo." />
         <Row icon="🪓" title="Obstacles" desc="Rotating hammers, saw blades, crushers and more will thin your crowd if you don't dodge them — some can be smashed through during Charge Mode." />
         <Row icon="⚔️" title="Enemy Crowds" desc="Crash into a rival crowd to trigger an automatic 1-for-1 battle. The bigger crowd usually wins." />

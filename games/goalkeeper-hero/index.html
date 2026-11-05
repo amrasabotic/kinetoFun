@@ -217,11 +217,21 @@ const DWELL=900;
 let btns=[];
 
 function regBtn(id,x,y,w,h){btns.push({id,x,y,w,h});}
+// On the platform the bridge supplies one cursor for every game and the platform draws it; button screens follow it
+// and only their hold progress is drawn here.
+const kfShared=window.__kfCursor;
+let kfMenuOn=null;
+function kfInMenu(){
+  const menu=['menu','howto','settings','leaderboard','results'].includes(gs);
+  if(kfShared&&menu!==kfMenuOn){kfMenuOn=menu;if(window.__kfMenu)window.__kfMenu(menu);}
+  return menu&&!!kfShared;
+}
 function hovBtn(){
   // Use any visible glove as pointer
   let hx=-1,hy=-1;
   for(const g of gloves){if(g.visible){hx=g.x;hy=g.y;break;}}
   if(hx<0&&rawHands.length>0){hx=rawHands[0].x;hy=rawHands[0].y;}
+  if(kfInMenu()){hx=kfShared.visible?kfShared.x*W:-1;hy=kfShared.y*H;}
   if(hx<0) return null;
   for(const b of btns){if(hx>=b.x&&hx<=b.x+b.w&&hy>=b.y&&hy<=b.y+b.h)return b.id;}
   return null;
@@ -630,12 +640,16 @@ function drawDwellCursor(){
   let hx=-1,hy=-1;
   for(const g of gloves){if(g.visible){hx=g.x;hy=g.y;break;}}
   if(hx<0&&rawHands.length>0){hx=rawHands[0].x;hy=rawHands[0].y;}
+  const kf=kfInMenu();
+  if(kf){hx=kfShared.visible?kfShared.x*W:-1;hy=kfShared.y*H;}
   if(hx<0) return;
   cx.save();
+  if(!kf){
   cx.shadowColor='#00ff88';cx.shadowBlur=14;
   cx.strokeStyle='#00ff88';cx.lineWidth=2;
   cx.beginPath();cx.arc(hx,hy,16,0,Math.PI*2);cx.stroke();
   cx.fillStyle='#00ff88';cx.beginPath();cx.arc(hx,hy,5,0,Math.PI*2);cx.fill();
+  }
   if(dwellId){
     const p=Math.min((Date.now()-dwellT)/DWELL,1);
     cx.strokeStyle='#ffffff';cx.lineWidth=3;cx.lineCap='round';
@@ -1038,6 +1052,7 @@ function loop(ts){
   tickParts();
 
   // ── RENDER ──
+  kfInMenu();
   if(gs==='menu')        drawMenu();
   else if(gs==='howto')  drawHowTo();
   else if(gs==='settings')    drawSettings();

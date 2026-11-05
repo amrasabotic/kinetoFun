@@ -1019,6 +1019,12 @@ function findTarget(x, y) {
 ══════════════════════════════════════════════════════════ */
 const cursorEl  = document.getElementById('cursor');
 const dwellEl   = cursorEl.querySelector('.c-dwell');
+// On the platform the bridge supplies one cursor for every game and the platform draws it; only the press ring is drawn here.
+const kfShared  = window.__kfCursor;
+if (kfShared) {
+  if (window.__kfMenu) window.__kfMenu(true);
+  cursorEl.querySelectorAll('.c-ring, .c-dot').forEach((el) => { el.style.display = 'none'; });
+}
 
 let cx = -300, cy = -300;       // smooth cursor position
 let rawCx = -300, rawCy = -300; // raw from mediapipe
@@ -1158,8 +1164,8 @@ function onResults(results) {
   rawCy = lm[8].y * window.innerHeight;
 
   // Exponential smoothing
-  cx = cx * 0.55 + rawCx * 0.45;
-  cy = cy * 0.55 + rawCy * 0.45;
+  cx = kfShared ? kfShared.x * window.innerWidth : cx * 0.55 + rawCx * 0.45;
+  cy = kfShared ? kfShared.y * window.innerHeight : cy * 0.55 + rawCy * 0.45;
 
   cursorEl.style.left = cx + 'px';
   cursorEl.style.top  = cy + 'px';
