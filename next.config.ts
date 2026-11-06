@@ -8,15 +8,11 @@ const nextConfig: NextConfig = {
         hostname: "eyipksddjxhbjfjofktj.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
-      ...(process.env.S3_COVERS_PUBLIC_BASE_URL
-        ? [
-            {
-              protocol: "https" as const,
-              hostname: new URL(process.env.S3_COVERS_PUBLIC_BASE_URL).hostname,
-              pathname: "/game-covers/**",
-            },
-          ]
-        : []),
+      {
+        protocol: "https",
+        hostname: "d7wjuxz4ghmly.cloudfront.net",
+        pathname: "/game-covers/**",
+      },
     ],
   },
   async headers() {
