@@ -26,6 +26,10 @@ export async function POST(request: NextRequest) {
   if (!bucket || !publicBaseUrl) {
     return NextResponse.json({ error: "Cover storage is not configured." }, { status: 503 });
   }
+  // Refuse a base URL that isn't a bare origin, so a mangled env value never ends up in cover_image.
+  if (!/^https:\/\/[a-z0-9.-]+\/?$/i.test(publicBaseUrl)) {
+    return NextResponse.json({ error: "Cover storage base URL is misconfigured." }, { status: 503 });
+  }
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
