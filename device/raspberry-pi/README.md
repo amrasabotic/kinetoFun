@@ -12,7 +12,7 @@ pairing page, with the webcam allowed for the site so no permission prompt ever 
 
 ## Install
 
-On a fresh Raspberry Pi OS Bookworm 64-bit (desktop), as the user that should run the kiosk:
+On a fresh Raspberry Pi OS Trixie 64-bit (desktop), as the user that should run the kiosk:
 
     git clone <repository> && cd <repository>/device/raspberry-pi
     sudo ./setup.sh KF-TV-001
@@ -28,6 +28,7 @@ A second argument overrides the site, for example `https://staging.example.com`.
 | --- | --- |
 | `/etc/chromium/policies/managed/kinetofun.json` | Camera and autoplay allowed for the site; no sign-in, translate or notification prompts |
 | `/etc/kinetofun.env` | The page the kiosk opens, including the device key |
+| `/usr/share/kinetofun/loading.html` | Offline-safe logo and spinner shown at boot; opens the TV page once the site answers |
 | `/usr/local/bin/kinetofun-kiosk` | Launcher that restarts Chromium if it exits or crashes |
 | `~/.config/labwc/autostart` | Starts the launcher with the desktop session |
 | `~/.config/kanshi/config` | Desktop forced to 1920×1080 at 60 Hz to match the boot screen |

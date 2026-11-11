@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provisions a Raspberry Pi (Raspberry Pi OS Bookworm 64-bit, desktop) as a KinetoFun TV.
+# Provisions a Raspberry Pi (Raspberry Pi OS Trixie 64-bit, desktop) as a KinetoFun TV.
 # Usage: sudo ./setup.sh <DEVICE_KEY> [BASE_URL]
 set -euo pipefail
 
@@ -32,6 +32,9 @@ ENV
 install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$USER_HOME/.config/labwc"
 AUTOSTART="$USER_HOME/.config/labwc/autostart"
 install -m 0644 "$HERE/background.png" /usr/share/kinetofun-background.png
+install -d /usr/share/kinetofun
+install -m 0644 "$HERE/loading.html" /usr/share/kinetofun/loading.html
+install -m 0644 "$HERE/plymouth/logo.png" /usr/share/kinetofun/logo.png
 # The Pi session runs labwc with -m, so system and user autostart files both run.
 SYS_AUTOSTART=/etc/xdg/labwc/autostart
 if [[ -f "$SYS_AUTOSTART" ]]; then

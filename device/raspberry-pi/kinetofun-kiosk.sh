@@ -3,6 +3,9 @@
 set -u
 source /etc/kinetofun.env
 
+# Local loader first so an offline boot shows the logo, not the browser's offline page.
+LOADER="file:///usr/share/kinetofun/loading.html?to=${KF_URL}"
+
 # Hide the pointer when idle; harmless if unclutter has no display to talk to.
 unclutter -idle 0.1 -root &
 
@@ -20,6 +23,6 @@ while true; do
     --disable-default-apps \
     --disable-sync \
     --no-first-run \
-    "$KF_URL"
+    "$LOADER"
   sleep 3
 done

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HandInputProvider } from "@/features/hand-input/HandInputProvider";
+import { OfflineGuard } from "./OfflineGuard";
 
 export const metadata: Metadata = {
   title: "KinetoFun TV",
@@ -32,6 +33,7 @@ export default function TvLayout({ children }: { children: React.ReactNode }) {
       <HandInputProvider>
         <main className="relative z-10 w-full">{children}</main>
       </HandInputProvider>
+      <OfflineGuard />
     </div>
   );
 }
