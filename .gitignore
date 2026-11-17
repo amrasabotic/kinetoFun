@@ -40,6 +40,9 @@ src/app/(app)/games/games/
 # local auth data store (dev fallback when Supabase isn't configured)
 /.data
 
+# database dumps (scripts/dump-database.mjs); they hold live data
+/supabase/dumps/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
