@@ -40,6 +40,9 @@ export default function AuthLayout({
 
       <Link
         href="/"
+        // Not prefetched: right after sign-in the proxy sends a superadmin from /
+        // to the console, and a prefetch started at that moment fails with a 404.
+        prefetch={false}
         data-focusable
         className="relative z-10 mb-10 flex items-center rounded-lg focus:outline-none"
       >

@@ -122,6 +122,9 @@ function LoginForm() {
         New here?{" "}
         <Link
           href="/signup"
+          // Not prefetched: once sign-in succeeds the proxy redirects /login and
+          // /signup away, and a prefetch started at that moment fails with a 404.
+          prefetch={false}
           data-focusable
           className="font-semibold text-primary transition-colors hover:text-primary/80 focus:outline-none"
         >
