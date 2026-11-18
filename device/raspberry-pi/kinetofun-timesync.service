@@ -1,0 +1,14 @@
+[Unit]
+Description=Correct the clock so the KinetoFun kiosk can open the site
+Wants=network-online.target
+After=network-online.target systemd-timesyncd.service
+
+[Service]
+# simple, not oneshot: waiting for the network must never hold up the desktop starting.
+Type=simple
+ExecStart=/usr/local/bin/kinetofun-timesync
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

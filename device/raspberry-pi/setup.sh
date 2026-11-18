@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USER_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
 
 apt-get update
-apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes swaybg fonts-noto-color-emoji
+apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes swaybg fonts-noto-color-emoji curl
 
 # Managed policy: camera allowed for our origin, so no permission prompt ever appears.
 install -d /etc/chromium/policies/managed
@@ -26,7 +26,16 @@ sed "s#__BASE_URL__#${BASE_URL}#g" "$HERE/chromium-policy.json" > /etc/chromium/
 install -m 0755 "$HERE/kinetofun-kiosk.sh" /usr/local/bin/kinetofun-kiosk
 cat > /etc/kinetofun.env <<ENV
 KF_URL=${BASE_URL}/tvsetup?device=${DEVICE_KEY}
+KF_ORIGIN=${BASE_URL}
 ENV
+
+# Clock: several NTP sources, plus a service that falls back to the site's time when NTP is blocked.
+install -d /etc/systemd/timesyncd.conf.d
+printf '[Time]\nFallbackNTP=time.cloudflare.com time.google.com pool.ntp.org\n' > /etc/systemd/timesyncd.conf.d/kinetofun.conf
+timedatectl set-ntp true || true
+systemctl restart systemd-timesyncd || true
+install -m 0755 "$HERE/kinetofun-timesync.sh" /usr/local/bin/kinetofun-timesync
+install -m 0644 "$HERE/kinetofun-timesync.service" /etc/systemd/system/kinetofun-timesync.service
 
 # Start on login of the desktop session (labwc on Bookworm), restarted by the launcher loop.
 install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$USER_HOME/.config/labwc"
@@ -58,6 +67,7 @@ ExecStart=
 ExecStart=-/usr/bin/plymouth quit --retain-splash
 UNIT
 systemctl daemon-reload
+systemctl enable kinetofun-timesync.service
 # The tty1 console login clears the screen to black between the boot logo and the desktop; SSH still works.
 systemctl mask getty@tty1.service
 chown "$KIOSK_USER:$KIOSK_USER" "$AUTOSTART"

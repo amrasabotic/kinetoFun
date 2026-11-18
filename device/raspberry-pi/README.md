@@ -29,6 +29,8 @@ A second argument overrides the site, for example `https://staging.example.com`.
 | `/etc/chromium/policies/managed/kinetofun.json` | Camera and autoplay allowed for the site; no sign-in, translate or notification prompts |
 | `/etc/kinetofun.env` | The page the kiosk opens, including the device key |
 | `/usr/share/kinetofun/loading.html` | Offline-safe logo and spinner shown at boot; opens the TV page once the site answers |
+| `kinetofun-timesync.service` | Sets the clock at boot (the Pi has no battery clock); uses the site's time when a network blocks NTP |
+| `/etc/systemd/timesyncd.conf.d/kinetofun.conf` | Extra NTP servers |
 | `/usr/local/bin/kinetofun-kiosk` | Launcher that restarts Chromium if it exits or crashes |
 | `~/.config/labwc/autostart` | Starts the launcher with the desktop session |
 | `~/.config/kanshi/config` | Desktop forced to 1920×1080 at 60 Hz to match the boot screen |
