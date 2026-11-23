@@ -331,6 +331,7 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 - No real game SDK or runtime — `/games/[id]/play` is a placeholder screen (score is entered manually).
 - No multiplayer yet — `game_sessions.user_id` is single-player owner; `session_players` reserved for Phase 3.
 - No Raspberry Pi deployment yet. Webcam hand control exists only on the TV screens under `/tvsetup` (ADR-067); the TV games home and `GAME_EXIT` handling exist (Milestone B); games sending `GAME_EXIT`, `tv_ready` and the Pi kiosk kit are Milestones C–D.
+- **Pi Wi-Fi setup (ADR-091), branch `feature/pi-wifi-setup`, not yet tested on a Pi.** `device/raspberry-pi/provision/service.py` (Python standard library, runs as root via `kinetofun-provision.service`) decides at boot between online and setup mode. In setup mode it runs an NetworkManager hotspot at `192.168.4.1`, serves the phone page (`portal.html`, `/api/*`) on the hotspot address and the TV status (`/tv/status.js`, `/tv/qr.svg`, `/tv/loading.html`) on loopback only. Pure parsing and validation in `logic.py`; tests in `test_provision.py`; `--fake` runs it on a laptop. The kiosk opens the loader from `http://127.0.0.1/tv/` when the service answers, otherwise from `file://`. Mid-use Wi-Fi drops and enterprise Wi-Fi are out of scope.
 - No paywall / purchasing.
 
 ### Phase 2 handoff notes

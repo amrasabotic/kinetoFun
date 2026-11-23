@@ -1,22 +1,39 @@
 #!/usr/bin/env bash
 # Provisions a Raspberry Pi (Raspberry Pi OS Trixie 64-bit, desktop) as a KinetoFun TV.
-# Usage: sudo ./setup.sh <DEVICE_KEY> [BASE_URL]
+# Usage: sudo ./setup.sh <DEVICE_KEY> [BASE_URL] [--wifi-country=XX]
 set -euo pipefail
+
+USAGE="Usage: sudo ./setup.sh <DEVICE_KEY> [BASE_URL] [--wifi-country=XX]"
+WIFI_COUNTRY=""
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --wifi-country=*) WIFI_COUNTRY="${arg#*=}" ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+set -- "${ARGS[@]}"
 
 DEVICE_KEY="${1:-}"
 BASE_URL="${2:-https://kineto.fun}"
 KIOSK_USER="${SUDO_USER:-pi}"
 
 if [[ $EUID -ne 0 ]]; then echo "Run with sudo." >&2; exit 1; fi
-if [[ -z "$DEVICE_KEY" ]]; then echo "Usage: sudo ./setup.sh <DEVICE_KEY> [BASE_URL]" >&2; exit 1; fi
+if [[ -z "$DEVICE_KEY" ]]; then echo "$USAGE" >&2; exit 1; fi
 # Keys are 3-64 characters; the server rejects anything else.
 if [[ ! "$DEVICE_KEY" =~ ^[A-Za-z0-9_-]{3,64}$ ]]; then echo "DEVICE_KEY must be 3-64 letters, digits, - or _." >&2; exit 1; fi
+# The radio stays blocked until a country is set, and then the setup hotspot can't start.
+if [[ -z "$WIFI_COUNTRY" ]]; then WIFI_COUNTRY="$(raspi-config nonint get_wifi_country 2>/dev/null || true)"; fi
+if [[ ! "$WIFI_COUNTRY" =~ ^[A-Z]{2}$ ]]; then echo "Set the Wi-Fi country, for example --wifi-country=AL. $USAGE" >&2; exit 1; fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USER_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
 
 apt-get update
-apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes swaybg fonts-noto-color-emoji curl
+apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes swaybg fonts-noto-color-emoji curl \
+  python3 qrencode iw dnsmasq-base
+
+raspi-config nonint do_wifi_country "$WIFI_COUNTRY"
 
 # Managed policy: camera allowed for our origin, so no permission prompt ever appears.
 install -d /etc/chromium/policies/managed
@@ -36,6 +53,13 @@ timedatectl set-ntp true || true
 systemctl restart systemd-timesyncd || true
 install -m 0755 "$HERE/kinetofun-timesync.sh" /usr/local/bin/kinetofun-timesync
 install -m 0644 "$HERE/kinetofun-timesync.service" /etc/systemd/system/kinetofun-timesync.service
+
+# Wi-Fi setup: a hotspot and phone setup page whenever the box has no network at boot.
+install -d /usr/local/lib/kinetofun-provision
+install -m 0644 "$HERE/provision/service.py" "$HERE/provision/logic.py" "$HERE/provision/portal.html" /usr/local/lib/kinetofun-provision/
+install -d /etc/NetworkManager/dnsmasq-shared.d
+install -m 0644 "$HERE/provision/dnsmasq-portal.conf" /etc/NetworkManager/dnsmasq-shared.d/kinetofun-portal.conf
+install -m 0644 "$HERE/kinetofun-provision.service" /etc/systemd/system/kinetofun-provision.service
 
 # Start on login of the desktop session (labwc on Bookworm), restarted by the launcher loop.
 install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$USER_HOME/.config/labwc"
@@ -68,6 +92,7 @@ ExecStart=-/usr/bin/plymouth quit --retain-splash
 UNIT
 systemctl daemon-reload
 systemctl enable kinetofun-timesync.service
+systemctl enable kinetofun-provision.service
 # The tty1 console login clears the screen to black between the boot logo and the desktop; SSH still works.
 systemctl mask getty@tty1.service
 chown "$KIOSK_USER:$KIOSK_USER" "$AUTOSTART"
@@ -101,4 +126,4 @@ plymouth-set-default-theme -R kinetofun
 raspi-config nonint do_boot_behaviour B4 || echo "Set desktop autologin manually in raspi-config." >&2
 raspi-config nonint do_blanking 1 || echo "Disable screen blanking manually in raspi-config." >&2
 
-echo "Done. Device key: $DEVICE_KEY. Reboot to start the kiosk."
+echo "Done. Device key: $DEVICE_KEY. Wi-Fi country: $WIFI_COUNTRY. Reboot to start the kiosk."

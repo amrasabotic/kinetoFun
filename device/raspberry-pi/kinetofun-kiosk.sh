@@ -4,12 +4,30 @@ set -u
 source /etc/kinetofun.env
 
 # Local loader first so an offline boot shows the logo, not the browser's offline page.
-LOADER="file:///usr/share/kinetofun/loading.html?to=${KF_URL}"
+# Served by the Wi-Fi setup service when it runs, so the loader can read its status same-origin.
+SERVED_LOADER="http://127.0.0.1/tv/loading.html?to=${KF_URL}"
+FILE_LOADER="file:///usr/share/kinetofun/loading.html?to=${KF_URL}"
+
+pick_loader() {
+  local tries="$1"
+  for _ in $(seq 1 "$tries"); do
+    if curl -sf -o /dev/null --max-time 1 http://127.0.0.1/tv/loading.html; then
+      LOADER="$SERVED_LOADER"
+      return
+    fi
+    sleep 1
+  done
+  LOADER="$FILE_LOADER"
+}
 
 # Hide the pointer when idle; harmless if unclutter has no display to talk to.
 unclutter -idle 0.1 -root &
 
+# The service can start a little after the desktop, so wait for it once at boot.
+TRIES=15
 while true; do
+  pick_loader "$TRIES"
+  TRIES=1
   chromium \
     --kiosk \
     --password-store=basic \

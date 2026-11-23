@@ -1,0 +1,15 @@
+[Unit]
+Description=KinetoFun Wi-Fi setup hotspot and setup page
+Wants=NetworkManager.service
+After=NetworkManager.service
+
+[Service]
+# simple, not oneshot: the boot check can take two minutes and must never hold up the desktop.
+Type=simple
+EnvironmentFile=/etc/kinetofun.env
+ExecStart=/usr/bin/python3 /usr/local/lib/kinetofun-provision/service.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

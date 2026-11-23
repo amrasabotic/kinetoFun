@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KinetoFun Wi-Fi setup</title>
+<style>
+  :root { --violet: #7c3aed; --violet-dark: #5b21b6; --ink: #1f1235; --muted: #6b6380; --line: #e9e3f7;
+          --soft: #f5f1ff; --bad: #b42318; --bad-bg: #fef3f2; }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; min-height: 100vh; background: #faf8ff; color: var(--ink);
+         font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  main { max-width: 440px; margin: 0 auto; padding: 24px 16px 40px; }
+  .brand { display: block; width: 132px; height: auto; margin: 0 auto; }
+  h1 { font-size: 24px; line-height: 1.2; margin: 10px 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border: 0;
+         border-top: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  .row:first-child { border-top: 0; }
+  .row:active { background: var(--soft); }
+  .row[disabled] { cursor: default; opacity: 0.55; }
+  .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .row .note { font-size: 13px; color: var(--muted); font-weight: 400; display: block; }
+  .bars { display: flex; align-items: flex-end; gap: 2px; height: 16px; }
+  .bars i { width: 4px; background: var(--line); border-radius: 1px; }
+  .bars i.on { background: var(--violet); }
+  .lock { width: 14px; height: 14px; color: var(--muted); flex: none; }
+  .tools { display: flex; justify-content: space-between; margin: 12px 4px 0; }
+  .link { background: none; border: 0; color: var(--violet-dark); font: inherit; font-weight: 600; padding: 8px 0; cursor: pointer; }
+  .empty { padding: 18px 16px; color: var(--muted); }
+  form { margin-top: 4px; }
+  label { display: block; font-weight: 600; margin: 16px 0 6px; }
+  input[type=text], input[type=password] { width: 100%; padding: 14px; font: inherit; font-size: 17px; border: 1px solid #cfc6e6;
+         border-radius: 12px; background: #fff; color: var(--ink); }
+  input:focus { outline: 3px solid #ddd0fe; border-color: var(--violet); }
+  .pw { position: relative; }
+  .pw input { padding-right: 76px; }
+  .pw .link { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+  .primary { width: 100%; margin-top: 20px; padding: 15px; border: 0; border-radius: 12px; background: var(--violet);
+             color: #fff; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
+  .primary[disabled] { opacity: 0.6; }
+  .chosen { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .chosen strong { font-size: 18px; overflow-wrap: anywhere; }
+  .error { background: var(--bad-bg); color: var(--bad); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; }
+  .done { text-align: center; padding: 28px 8px; }
+  .done .tv { width: 72px; height: 72px; color: var(--violet); }
+  .done h2 { margin: 12px 0 8px; font-size: 22px; }
+  .done p { color: var(--muted); margin: 0 0 10px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <img class="brand" src="/logo.png" alt="KinetoFun">
+
+  <section id="pick">
+    <h1>Connect your box to Wi-Fi</h1>
+    <p class="lead">Choose your home network.</p>
+    <p class="error" id="pickError" hidden></p>
+    <div class="card" id="list"><div class="empty">Looking for networks…</div></div>
+    <div class="tools">
+      <button class="link" type="button" id="refresh">Refresh list</button>
+      <button class="link" type="button" id="other">Network not listed?</button>
+    </div>
+  </section>
+
+  <section id="enter" hidden>
+    <h1>Enter the password</h1>
+    <p class="error" id="formError" hidden></p>
+    <form id="form" novalidate>
+      <div class="chosen" id="chosenRow">
+        <strong id="chosenName"></strong>
+        <button class="link" type="button" id="back">Change</button>
+      </div>
+      <div id="nameBox" hidden>
+        <label for="ssid">Network name</label>
+        <input type="text" id="ssid" maxlength="32" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div id="pwBox">
+        <label for="password">Wi-Fi password</label>
+        <div class="pw">
+          <input type="password" id="password" maxlength="64" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button class="link" type="button" id="show">Show</button>
+        </div>
+      </div>
+      <button class="primary" type="submit" id="connect">Connect</button>
+    </form>
+  </section>
+
+  <section id="wait" hidden>
+    <div class="done">
+      <svg class="tv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>
+      </svg>
+      <h2>Look at your TV</h2>
+      <p id="waitText"></p>
+      <p>Your phone will leave the KinetoFun network now. If the TV shows a problem, join it again and this page will tell you what to fix.</p>
+    </div>
+  </section>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let networks = [];
+  let chosen = null;
+  let waiting = false;
+
+  function show(section) {
+    for (const id of ["pick", "enter", "wait"]) $(id).hidden = id !== section;
+  }
+
+  function setError(el, text) {
+    el.textContent = text || "";
+    el.hidden = !text;
+  }
+
+  function bars(signal) {
+    const wrap = document.createElement("span");
+    wrap.className = "bars";
+    const level = signal >= 70 ? 4 : signal >= 50 ? 3 : signal >= 30 ? 2 : 1;
+    for (let i = 1; i <= 4; i++) {
+      const bar = document.createElement("i");
+      bar.style.height = (i * 4) + "px";
+      if (i <= level) bar.className = "on";
+      wrap.appendChild(bar);
+    }
+    return wrap;
+  }
+
+  function lockIcon() {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("class", "lock");
+    svg.setAttribute("aria-label", "Password protected");
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", "M6 10V8a6 6 0 0 1 12 0v2h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h1zm2 0h8V8a4 4 0 0 0-8 0v2z");
+    path.setAttribute("fill", "currentColor");
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function renderList() {
+    const list = $("list");
+    list.replaceChildren();
+    if (!networks.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "No networks found. Tap Refresh list, or add yours with Network not listed?";
+      list.appendChild(empty);
+      return;
+    }
+    for (const n of networks) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "row";
+      row.appendChild(bars(n.signal));
+      const name = document.createElement("span");
+      name.className = "name";
+      // Network names come from anyone nearby, so they only ever go in as text.
+      name.textContent = n.ssid;
+      if (n.enterprise) {
+        const note = document.createElement("span");
+        note.className = "note";
+        note.textContent = "Needs a username. Not supported yet; use a cable.";
+        name.appendChild(note);
+        row.disabled = true;
+      }
+      row.appendChild(name);
+      if (n.secure) row.appendChild(lockIcon());
+      row.addEventListener("click", () => choose(n));
+      list.appendChild(row);
+    }
+  }
+
+  function choose(n) {
+    chosen = n;
+    $("chosenRow").hidden = !n;
+    $("nameBox").hidden = !!n;
+    $("chosenName").textContent = n ? n.ssid : "";
+    $("pwBox").hidden = !!n && !n.secure;
+    $("password").value = "";
+    $("ssid").value = "";
+    setError($("formError"), "");
+    show("enter");
+    (n ? (n.secure ? $("password") : $("connect")) : $("ssid")).focus();
+  }
+
+  async function loadNetworks(refresh) {
+    try {
+      const res = await fetch(refresh ? "/api/networks/refresh" : "/api/networks", { method: refresh ? "POST" : "GET" });
+      const data = await res.json();
+      networks = data.networks || [];
+    } catch (e) {
+      networks = [];
+    }
+    renderList();
+  }
+
+  $("refresh").addEventListener("click", async () => {
+    $("refresh").disabled = true;
+    $("refresh").textContent = "Refreshing…";
+    await loadNetworks(true);
+    $("refresh").disabled = false;
+    $("refresh").textContent = "Refresh list";
+  });
+  $("other").addEventListener("click", () => choose(null));
+  $("back").addEventListener("click", () => show("pick"));
+  $("show").addEventListener("click", () => {
+    const pw = $("password");
+    pw.type = pw.type === "password" ? "text" : "password";
+    $("show").textContent = pw.type === "password" ? "Show" : "Hide";
+  });
+
+  $("form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const ssid = chosen ? chosen.ssid : $("ssid").value.trim();
+    const password = $("pwBox").hidden ? "" : $("password").value;
+    if (!ssid) { setError($("formError"), "Enter the network name."); return; }
+    $("connect").disabled = true;
+    try {
+      const res = await fetch("/api/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ssid, password, hidden: !chosen }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 202) {
+        waiting = true;
+        setError($("pickError"), "");
+        $("waitText").textContent = "Connecting to “" + ssid + "”. The TV shows when it's done.";
+        show("wait");
+      } else {
+        setError($("formError"), data.error || "Something went wrong. Try again.");
+      }
+    } catch (e) {
+      setError($("formError"), "Lost contact with the box. Join the KinetoFun network again.");
+    }
+    $("connect").disabled = false;
+  });
+
+  // After a failed attempt the hotspot comes back; a phone that rejoins learns why from here.
+  async function poll() {
+    try {
+      const res = await fetch("/api/state", { cache: "no-store" });
+      const s = await res.json();
+      if (s.state === "online" && waiting) {
+        $("waitText").textContent = "Connected. You can close this page.";
+      } else if (s.state === "setup" && s.hotspot && waiting) {
+        waiting = false;
+        setError($("pickError"), s.message);
+        show("pick");
+        loadNetworks(false);
+      } else if (s.state === "setup" && !waiting && s.message && $("pickError").hidden) {
+        setError($("pickError"), s.message);
+      }
+    } catch (e) { /* hotspot is down while the box tries the network */ }
+    setTimeout(poll, 2000);
+  }
+
+  loadNetworks(false);
+  poll();
+</script>
+</body>
+</html>
