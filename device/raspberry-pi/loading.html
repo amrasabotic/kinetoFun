@@ -58,7 +58,7 @@
   <section class="view" id="busy" hidden>
     <img src="logo.png" alt="KinetoFun">
     <div class="spinner" id="busySpin"></div>
-    <svg class="tick" id="busyTick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+    <svg class="tick" id="busyTick" hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
     <p id="busyText"></p>
   </section>
 
@@ -108,8 +108,9 @@
   function busy(text, done) {
     // Network names come from anyone nearby, so they only ever go in as text.
     $("busyText").textContent = text;
-    $("busySpin").hidden = !!done;
-    $("busyTick").hidden = !done;
+    // SVG elements ignore the .hidden property, so set the attribute directly.
+    $("busySpin").toggleAttribute("hidden", !!done);
+    $("busyTick").toggleAttribute("hidden", !done);
     view("busy");
   }
 

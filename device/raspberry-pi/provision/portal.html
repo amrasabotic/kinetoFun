@@ -22,7 +22,8 @@
   .row:active { background: var(--soft); }
   .row[disabled] { cursor: default; opacity: 0.55; }
   .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-  .row .note { font-size: 13px; color: var(--muted); font-weight: 400; display: block; }
+  .row .note { font-size: 13px; color: var(--muted); font-weight: 400; display: block; white-space: normal; }
+  #toList { display: block; margin: 12px auto 0; }
   .bars { display: flex; align-items: flex-end; gap: 2px; height: 16px; }
   .bars i { width: 4px; background: var(--line); border-radius: 1px; }
   .bars i.on { background: var(--violet); }
@@ -87,6 +88,7 @@
       </div>
       <button class="primary" type="submit" id="connect">Connect</button>
     </form>
+    <button class="link" type="button" id="toList">Back to the list</button>
   </section>
 
   <section id="wait" hidden>
@@ -207,6 +209,7 @@
   });
   $("other").addEventListener("click", () => choose(null));
   $("back").addEventListener("click", () => show("pick"));
+  $("toList").addEventListener("click", () => show("pick"));
   $("show").addEventListener("click", () => {
     const pw = $("password");
     pw.type = pw.type === "password" ? "text" : "password";
