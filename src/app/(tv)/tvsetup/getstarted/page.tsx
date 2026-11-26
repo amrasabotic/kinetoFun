@@ -160,7 +160,7 @@ export default function TvGetStartedPage() {
           WELCOME, {(userName ?? "PLAYER").toUpperCase()}!
         </h1>
         <p className="text-3xl font-medium text-white/70">Your TV is ready.</p>
-        <p className="text-2xl text-white/50">Let&apos;s get started.</p>
+        <p className="text-2xl text-white/50">Hold your hand still over a button to press it.</p>
       </div>
 
       <ButtonLink href="/tvsetup/games" size="lg" className="h-24 px-20 text-4xl!">
