@@ -39,9 +39,6 @@ pick_loader() {
   LOADER="$FILE_LOADER"
 }
 
-# Hide the pointer when idle; harmless if unclutter has no display to talk to.
-unclutter -idle 0.1 -root &
-
 # Disabled features:
 # - WebRtcPipeWireCamera: the PipeWire camera path asks the desktop portal, which shows its own
 #   "Allow app to use the camera" dialog that the managed policy cannot answer. Without it

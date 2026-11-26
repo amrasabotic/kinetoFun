@@ -32,7 +32,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USER_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
 
 apt-get update
-apt-get install -y chromium unclutter v4l-utils plymouth plymouth-themes swaybg fonts-noto-color-emoji curl \
+apt-get install -y chromium v4l-utils plymouth plymouth-themes swaybg fonts-noto-color-emoji curl \
   python3 qrencode iw dnsmasq-base
 
 raspi-config nonint do_wifi_country "$WIFI_COUNTRY"
@@ -82,6 +82,34 @@ if [[ -f "$SYS_AUTOSTART" ]]; then
   grep -q kinetofun-background "$SYS_AUTOSTART" || sed -i '1i swaybg -c ffffff -i /usr/share/kinetofun-background.png -m fill &' "$SYS_AUTOSTART"
 fi
 echo '/usr/local/bin/kinetofun-kiosk &' > "$AUTOSTART"
+
+# A fully transparent cursor theme for the desktop session. The TV is driven by hand, and the
+# compositor otherwise draws the arrow in the middle of the screen even with no mouse attached.
+CURSOR_DIR=/usr/share/icons/kinetofun-blank
+install -d "$CURSOR_DIR/cursors"
+printf '[Icon Theme]\nName=KinetoFun blank\n' > "$CURSOR_DIR/index.theme"
+python3 - "$CURSOR_DIR/cursors/default" <<'PY'
+import struct, sys
+# Xcursor file with one 1x1 image whose only pixel is fully transparent.
+IMAGE, NOMINAL = 0xFFFD0002, 24
+header = struct.pack("<4sIII", b"Xcur", 16, 0x10000, 1) + struct.pack("<III", IMAGE, NOMINAL, 28)
+image = struct.pack("<9I", 36, IMAGE, NOMINAL, 1, 1, 1, 0, 0, 0) + struct.pack("<I", 0)
+with open(sys.argv[1], "wb") as f:
+    f.write(header + image)
+PY
+# CSS cursor names (cursor-shape protocol) and their classic X11 equivalents.
+for name in left_ptr arrow top_left_arrow pointer hand hand1 hand2 text xterm ibeam vertical-text \
+  crosshair cross wait watch progress left_ptr_watch help question_arrow context-menu cell copy alias \
+  move fleur grab grabbing openhand closedhand all-scroll not-allowed no-drop crossed_circle \
+  col-resize row-resize ew-resize ns-resize nesw-resize nwse-resize n-resize s-resize e-resize w-resize \
+  ne-resize nw-resize se-resize sw-resize sb_h_double_arrow sb_v_double_arrow zoom-in zoom-out X_cursor; do
+  ln -sf default "$CURSOR_DIR/cursors/$name"
+done
+LABWC_ENV="$USER_HOME/.config/labwc/environment"
+touch "$LABWC_ENV"
+sed -i '/^XCURSOR_THEME=/d' "$LABWC_ENV"
+echo 'XCURSOR_THEME=kinetofun-blank' >> "$LABWC_ENV"
+chown "$KIOSK_USER:$KIOSK_USER" "$LABWC_ENV"
 
 # The desktop ignores the kernel video= setting and picks the TV's preferred mode (4K at 30 Hz on 4K sets).
 install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$USER_HOME/.config/kanshi"
