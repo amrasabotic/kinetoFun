@@ -42,6 +42,10 @@ pick_loader() {
 # Hide the pointer when idle; harmless if unclutter has no display to talk to.
 unclutter -idle 0.1 -root &
 
+# Disabled features:
+# - WebRtcPipeWireCamera: the PipeWire camera path asks the desktop portal, which shows its own
+#   "Allow app to use the camera" dialog that the managed policy cannot answer. Without it
+#   Chromium opens the USB camera directly and the policy's allow list applies.
 # The service can start a little after the desktop, so wait for it once at boot.
 TRIES=15
 while true; do
@@ -53,7 +57,7 @@ while true; do
     --noerrdialogs \
     --disable-infobars \
     --disable-session-crashed-bubble \
-    --disable-features=Translate \
+    --disable-features=Translate,WebRtcPipeWireCamera \
     --autoplay-policy=no-user-gesture-required \
     --ozone-platform=wayland \
     --disable-component-update \
