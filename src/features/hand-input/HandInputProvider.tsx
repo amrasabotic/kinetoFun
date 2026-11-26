@@ -120,6 +120,9 @@ export function HandInputProvider({ children }: { children: React.ReactNode }) {
       onDelegate: (delegate) => {
         stats.delegate = delegate;
       },
+      onFrame: () => {
+        stats.frames += 1;
+      },
       onSample: (sample) => {
         stats.samples += 1;
         stats.inferenceMsTotal += sample.inferenceMs;

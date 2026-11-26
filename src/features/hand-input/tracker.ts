@@ -7,6 +7,7 @@
 
 import type { HandLandmarker } from "@mediapipe/tasks-vision";
 import { HAND_MODEL_URL, MEDIAPIPE_WASM_URL } from "./assets";
+import { createFramePacer } from "./frame-pacing";
 
 export type TrackerStatus = "loading" | "ready" | "denied" | "no-camera" | "error";
 
@@ -30,6 +31,8 @@ interface StartOptions {
   onStatus: (status: TrackerStatus) => void;
   /** Which backend the model ended up on; CPU means WebGL was unavailable. */
   onDelegate?: (delegate: Delegate) => void;
+  /** Called once for every new camera frame, before the pacer decides whether to run inference. */
+  onFrame?: () => void;
   /** Upper bound on inference rate; the camera may deliver fewer frames. */
   maxFps?: number;
 }
@@ -75,6 +78,7 @@ export function startHandTracker({
   onSample,
   onStatus,
   onDelegate,
+  onFrame,
   maxFps = 30,
 }: StartOptions): () => void {
   let alive = true;
@@ -82,8 +86,7 @@ export function startHandTracker({
   let landmarker: HandLandmarker | null = null;
   let frameHandle = 0;
   let lastVideoTime = -1;
-  let lastInferenceAt = 0;
-  const minInterval = 1000 / maxFps;
+  const shouldInfer = createFramePacer(maxFps);
   const useVideoFrames = "requestVideoFrameCallback" in HTMLVideoElement.prototype;
 
   const scheduleNext = () => {
@@ -93,33 +96,35 @@ export function startHandTracker({
       : requestAnimationFrame(detect);
   };
 
-  function detect() {
+  // Pacing uses the camera's own clock: the callback time is aligned to the
+  // display refresh, so frames near a refresh boundary would alternate between
+  // short and long gaps.
+  function detect(_callbackTime?: number, metadata?: VideoFrameCallbackMetadata) {
     if (!alive || !landmarker) return;
     const now = performance.now();
 
-    if (
-      video.readyState >= 2 &&
-      video.currentTime !== lastVideoTime &&
-      now - lastInferenceAt >= minInterval
-    ) {
+    if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
-      lastInferenceAt = now;
-      const result = landmarker.detectForVideo(video, now);
-      const inferenceMs = performance.now() - now;
-      const hand = result.landmarks[0];
+      onFrame?.();
 
-      onSample(
-        hand
-          ? {
-              present: true,
-              x: hand[INDEX_TIP].x,
-              y: hand[INDEX_TIP].y,
-              score: result.handedness[0]?.[0]?.score ?? 0,
-              inferenceMs,
-              timestamp: now,
-            }
-          : { present: false, x: 0, y: 0, score: 0, inferenceMs, timestamp: now },
-      );
+      if (shouldInfer((metadata?.mediaTime ?? video.currentTime) * 1000)) {
+        const result = landmarker.detectForVideo(video, now);
+        const inferenceMs = performance.now() - now;
+        const hand = result.landmarks[0];
+
+        onSample(
+          hand
+            ? {
+                present: true,
+                x: hand[INDEX_TIP].x,
+                y: hand[INDEX_TIP].y,
+                score: result.handedness[0]?.[0]?.score ?? 0,
+                inferenceMs,
+                timestamp: now,
+              }
+            : { present: false, x: 0, y: 0, score: 0, inferenceMs, timestamp: now },
+        );
+      }
     }
 
     scheduleNext();
