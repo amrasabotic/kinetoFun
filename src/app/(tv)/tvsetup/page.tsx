@@ -24,9 +24,11 @@ function TvSetup() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // A real Pi is configured with a stable key (?device=KF-TV-001). Without one,
-  // the hook generates and remembers a per-browser key so a simulated TV still
-  // behaves like a single device across reloads.
+  // A real Pi is configured with a stable key (?device=KF-TV-001). The hook
+  // remembers the newest well-formed key, so pairing screens reached without
+  // the query string (for example after disconnecting) still identify the
+  // unit. Without any key, it generates and remembers a per-browser one so a
+  // simulated TV behaves like a single device across reloads.
   const deviceKey = searchParams.get("device");
 
   const { session, status, reconnecting, error, secondsLeft, regenerate } =

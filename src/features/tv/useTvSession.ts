@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { TvSessionView } from "@/lib/tv/pairing";
+import { resolveDeviceKey } from "./device-key";
 
 /** What the TV keeps between reloads. The secret never leaves this device. */
 export interface StoredTvSession {
@@ -19,7 +20,6 @@ export interface StoredTvSession {
 }
 
 const SESSION_KEY = "kf_tv_session";
-const DEVICE_KEY = "kf_tv_device";
 const POLL_MS = 2000;
 /** Cap on the backoff applied while the API is unreachable. */
 const MAX_BACKOFF_MS = 15000;
@@ -54,20 +54,22 @@ function storeTvSession(session: StoredTvSession): void {
 }
 
 /**
- * A stable-ish identifier for this browser standing in for a TV. A real Pi will
- * pass its own key (KF-TV-001) via the `deviceKey` option instead.
+ * The device key for a new session. A real Pi passes its own key (KF-TV-001)
+ * through the `deviceKey` option; a browser standing in for a TV gets a
+ * generated one. Either way it is remembered, see `resolveDeviceKey`.
  */
-function resolveDeviceKey(explicit?: string | null): string {
-  if (explicit) return explicit;
+function deviceKeyForSession(explicit?: string | null): string {
+  let store: Storage | null = null;
   try {
-    const existing = window.localStorage.getItem(DEVICE_KEY);
-    if (existing) return existing;
-    const generated = `kf-tv-web-${Math.random().toString(36).slice(2, 10)}`;
-    window.localStorage.setItem(DEVICE_KEY, generated);
-    return generated;
+    store = window.localStorage;
   } catch {
-    return `kf-tv-web-${Math.random().toString(36).slice(2, 10)}`;
+    store = null;
   }
+  return resolveDeviceKey(
+    explicit,
+    store,
+    () => `kf-tv-web-${Math.random().toString(36).slice(2, 10)}`,
+  );
 }
 
 export interface TvSessionState {
@@ -109,6 +111,13 @@ export function useTvSession(options: { deviceKey?: string | null } = {}): TvSes
     setGeneration((n) => n + 1);
   }, []);
 
+  // Store an explicit key as soon as it is seen. A unit that restores a stored
+  // session creates none on boot, and the next one (after a disconnect) is
+  // created on a pairing screen without the key.
+  useEffect(() => {
+    if (deviceKey) deviceKeyForSession(deviceKey);
+  }, [deviceKey]);
+
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -128,7 +137,7 @@ export function useTvSession(options: { deviceKey?: string | null } = {}): TvSes
       const response = await fetch("/api/tv/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceKey: resolveDeviceKey(deviceKey) }),
+        body: JSON.stringify({ deviceKey: deviceKeyForSession(deviceKey) }),
         cache: "no-store",
       });
 
