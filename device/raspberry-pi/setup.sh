@@ -22,6 +22,8 @@ if [[ $EUID -ne 0 ]]; then echo "Run with sudo." >&2; exit 1; fi
 if [[ -z "$DEVICE_KEY" ]]; then echo "$USAGE" >&2; exit 1; fi
 # Keys are 3-64 characters; the server rejects anything else.
 if [[ ! "$DEVICE_KEY" =~ ^[A-Za-z0-9_-]{3,64}$ ]]; then echo "DEVICE_KEY must be 3-64 letters, digits, - or _." >&2; exit 1; fi
+# Written into shell and systemd files below, so only a plain origin is accepted.
+if [[ ! "$BASE_URL" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$ ]]; then echo "BASE_URL must look like https://example.com (no path or quotes)." >&2; exit 1; fi
 # The radio stays blocked until a country is set, and then the setup hotspot can't start.
 if [[ -z "$WIFI_COUNTRY" ]]; then WIFI_COUNTRY="$(raspi-config nonint get_wifi_country 2>/dev/null || true)"; fi
 if [[ ! "$WIFI_COUNTRY" =~ ^[A-Z]{2}$ ]]; then echo "Set the Wi-Fi country, for example --wifi-country=AL. $USAGE" >&2; exit 1; fi
@@ -41,9 +43,12 @@ sed "s#__BASE_URL__#${BASE_URL}#g" "$HERE/chromium-policy.json" > /etc/chromium/
 
 # Launcher and config.
 install -m 0755 "$HERE/kinetofun-kiosk.sh" /usr/local/bin/kinetofun-kiosk
+# Single quotes read the same in bash (the launcher sources it) and in a systemd
+# EnvironmentFile (the Wi-Fi setup service), and keep a "&" in a hand-edited address intact.
 cat > /etc/kinetofun.env <<ENV
-KF_URL=${BASE_URL}/tvsetup?device=${DEVICE_KEY}
-KF_ORIGIN=${BASE_URL}
+KF_URL='${BASE_URL}/tvsetup?device=${DEVICE_KEY}'
+KF_ORIGIN='${BASE_URL}'
+KF_DEVICE_KEY='${DEVICE_KEY}'
 ENV
 
 # Clock: several NTP sources, plus a service that falls back to the site's time when NTP is blocked.
