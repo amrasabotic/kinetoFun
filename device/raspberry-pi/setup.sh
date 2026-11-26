@@ -116,13 +116,9 @@ install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$USER_HOME/.config/kanshi"
 printf 'profile {\n  output * mode 1920x1080@60Hz\n}\n' > "$USER_HOME/.config/kanshi/config"
 chown "$KIOSK_USER:$KIOSK_USER" "$USER_HOME/.config/kanshi/config"
 
-# Leave the boot logo on screen when the splash quits, instead of a black frame until the desktop draws.
-install -d /etc/systemd/system/plymouth-quit.service.d
-cat > /etc/systemd/system/plymouth-quit.service.d/retain-splash.conf <<UNIT
-[Service]
-ExecStart=
-ExecStart=-/usr/bin/plymouth quit --retain-splash
-UNIT
+# lightdm conflicts with plymouth-quit.service and stops the splash itself, so an override of that
+# unit never runs; remove the one earlier versions of this kit installed.
+rm -rf /etc/systemd/system/plymouth-quit.service.d
 systemctl daemon-reload
 systemctl enable kinetofun-timesync.service
 systemctl enable kinetofun-provision.service
