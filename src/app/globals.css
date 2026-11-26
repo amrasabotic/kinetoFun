@@ -267,7 +267,10 @@ body {
   outline: none;
 }
 
-[data-focusable]:focus-visible {
+/* Text fields draw their own focus state (components/ui/TextField). Browsers
+   match :focus-visible on every click into a text field, so this ring would
+   show on each tap and crowd the label above it. */
+[data-focusable]:focus-visible:not(input, textarea) {
   outline: none;
   box-shadow:
     0 0 0 3px var(--background),
