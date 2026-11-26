@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>KinetoFun Wi-Fi setup</title>
+<!-- An empty icon: without it a browser asks the box for /favicon.ico on every load. -->
+<link rel="icon" href="data:,">
 <style>
   :root { --violet: #7c3aed; --violet-dark: #5b21b6; --ink: #1f1235; --muted: #6b6380; --line: #e9e3f7;
           --soft: #f5f1ff; --bad: #b42318; --bad-bg: #fef3f2; }
@@ -33,12 +35,20 @@
   .empty { padding: 18px 16px; color: var(--muted); }
   form { margin-top: 4px; }
   label { display: block; font-weight: 600; margin: 16px 0 6px; }
-  input[type=text], input[type=password] { width: 100%; padding: 14px; font: inherit; font-size: 17px; border: 1px solid #cfc6e6;
-         border-radius: 12px; background: #fff; color: var(--ink); }
-  input:focus { outline: 3px solid #ddd0fe; border-color: var(--violet); }
-  .pw { position: relative; }
-  .pw input { padding-right: 76px; }
-  .pw .link { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+  input[type=text], .pw { width: 100%; border: 1px solid #cfc6e6; border-radius: 12px; background: #fff; }
+  input[type=text], textarea { font: inherit; font-size: 17px; color: var(--ink); }
+  input[type=text] { padding: 14px; }
+  input:focus, .pw:focus-within { outline: 3px solid #ddd0fe; border-color: var(--violet); }
+  /* The password field is a one-line textarea inside a frame that looks like the text field.
+     A textarea scrolls its side padding along with its text, so its side insets are transparent
+     borders: a long password is cut off where a text field would cut it, clear of the button. */
+  .pw { display: flex; }
+  textarea { flex: 1; min-width: 0; margin: 0; padding: 14px 0; border: solid transparent; border-width: 0 14px;
+             background: none; outline: 0; resize: none; white-space: pre; overflow-wrap: normal;
+             overflow: auto hidden; scrollbar-width: none; }
+  textarea::-webkit-scrollbar { display: none; }
+  .masked { -webkit-text-security: disc; }
+  .pw .link { padding: 0 12px; border-radius: 0 11px 11px 0; }
   .primary { width: 100%; margin-top: 20px; padding: 15px; border: 0; border-radius: 12px; background: var(--violet);
              color: #fff; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
   .primary[disabled] { opacity: 0.6; }
@@ -80,10 +90,14 @@
         <input type="text" id="ssid" maxlength="32" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       </div>
       <div id="pwBox">
-        <label for="password">Wi-Fi password</label>
+        <label for="netkey">Wi-Fi password</label>
         <div class="pw">
-          <input type="password" id="password" maxlength="64" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-          <button class="link" type="button" id="show">Show</button>
+          <!-- A <textarea>, not an <input>, on purpose. iOS offers "Use Strong Password" on any
+               <input> it takes for a password field: by type, by masking, or by a password label
+               with a Show/Hide button after it. Accepting the offer would replace the Wi-Fi
+               password being typed. A textarea is never treated that way, so keep it one. -->
+          <textarea id="netkey" rows="1" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+          <button class="link" type="button" id="show">Hide</button>
         </div>
       </div>
       <button class="primary" type="submit" id="connect">Connect</button>
@@ -182,11 +196,11 @@
     $("nameBox").hidden = !!n;
     $("chosenName").textContent = n ? n.ssid : "";
     $("pwBox").hidden = !!n && !n.secure;
-    $("password").value = "";
+    $("netkey").value = "";
     $("ssid").value = "";
     setError($("formError"), "");
     show("enter");
-    (n ? (n.secure ? $("password") : $("connect")) : $("ssid")).focus();
+    (n ? (n.secure ? $("netkey") : $("connect")) : $("ssid")).focus();
   }
 
   async function loadNetworks(refresh) {
@@ -210,16 +224,33 @@
   $("other").addEventListener("click", () => choose(null));
   $("back").addEventListener("click", () => show("pick"));
   $("toList").addEventListener("click", () => show("pick"));
+  // Hiding is a CSS mask on the field. A browser without it keeps the password readable and has no toggle.
+  $("show").hidden = !(window.CSS && CSS.supports("-webkit-text-security", "disc"));
   $("show").addEventListener("click", () => {
-    const pw = $("password");
-    pw.type = pw.type === "password" ? "text" : "password";
-    $("show").textContent = pw.type === "password" ? "Show" : "Hide";
+    const masked = $("netkey").classList.toggle("masked");
+    $("show").textContent = masked ? "Show" : "Hide";
+  });
+  // A textarea takes Enter and pasted line breaks as text. This field is one line, so Enter connects
+  // and the value is cleaned the way a text field cleans it: line breaks out first, then the limit
+  // of 64 characters, the longest Wi-Fi key. keydown serves hardware and most on-screen keyboards,
+  // beforeinput the ones that send no usable key event.
+  const connectOnEnter = (ev) => { ev.preventDefault(); $("connect").click(); };
+  $("netkey").addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && !ev.isComposing && ev.keyCode !== 229) connectOnEnter(ev);
+  });
+  $("netkey").addEventListener("beforeinput", (ev) => {
+    if (ev.inputType === "insertLineBreak") connectOnEnter(ev);
+  });
+  $("netkey").addEventListener("input", () => {
+    const pw = $("netkey");
+    const clean = pw.value.replace(/[\r\n]/g, "").slice(0, 64);
+    if (clean !== pw.value) pw.value = clean;
   });
 
   $("form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const ssid = chosen ? chosen.ssid : $("ssid").value.trim();
-    const password = $("pwBox").hidden ? "" : $("password").value;
+    const password = $("pwBox").hidden ? "" : $("netkey").value;
     if (!ssid) { setError($("formError"), "Enter the network name."); return; }
     $("connect").disabled = true;
     try {

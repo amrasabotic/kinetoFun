@@ -172,6 +172,7 @@ NetworkManager 1.52:
 - Wi-Fi setup from an iPhone: the QR code joins the hotspot and the setup page opens by itself.
   Wrong password on a saved and on a new network, a correct password on a network that already
   has a saved profile, and a connect through to the TV page.
+- The password field on the setup page draws no "Use Strong Password" offer from iOS.
 - A unit with no saved network and no cable goes to setup by itself and is set up from a phone.
 - A unit whose saved network is out of reach goes to setup about two minutes after boot.
 
