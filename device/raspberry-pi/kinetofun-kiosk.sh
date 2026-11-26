@@ -46,6 +46,8 @@ unclutter -idle 0.1 -root &
 # - WebRtcPipeWireCamera: the PipeWire camera path asks the desktop portal, which shows its own
 #   "Allow app to use the camera" dialog that the managed policy cannot answer. Without it
 #   Chromium opens the USB camera directly and the policy's allow list applies.
+# - NonMilestoneUpdateToast: the "Chrome was updated" bubble after an OS update of Chromium,
+#   which nobody can dismiss on a unit without a mouse.
 # The service can start a little after the desktop, so wait for it once at boot.
 TRIES=15
 while true; do
@@ -57,7 +59,7 @@ while true; do
     --noerrdialogs \
     --disable-infobars \
     --disable-session-crashed-bubble \
-    --disable-features=Translate,WebRtcPipeWireCamera \
+    --disable-features=Translate,WebRtcPipeWireCamera,NonMilestoneUpdateToast \
     --autoplay-policy=no-user-gesture-required \
     --ozone-platform=wayland \
     --disable-component-update \
