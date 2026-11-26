@@ -12,9 +12,12 @@ export function TextField({ label, className, id, icon, ...rest }: TextFieldProp
       <span className="text-xs font-semibold uppercase tracking-widest text-foreground/50">
         {label}
       </span>
-      <div className="relative">
+      <div className="group/field relative">
+        {/* z-10 keeps the icon above the input: the input's backdrop blur makes it
+            a separate layer painted over earlier siblings, so an opaque autofill
+            background would otherwise hide the icon. */}
         {icon && (
-          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground/30">
+          <span className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-foreground/30 transition-colors duration-200 group-focus-within/field:text-primary/80">
             {icon}
           </span>
         )}
