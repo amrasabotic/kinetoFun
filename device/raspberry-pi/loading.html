@@ -11,8 +11,16 @@
   .view { position: absolute; inset: 0; display: flex; }
   [hidden] { display: none !important; }
 
-  #boot, #busy { flex-direction: column; align-items: center; justify-content: center; gap: 3rem; color: #6d28d9; }
-  #boot img, #busy img { width: 22.5rem; max-width: 40vw; }
+  #busy { flex-direction: column; align-items: center; justify-content: center; gap: 3rem; color: #6d28d9; }
+  #busy img { width: 22.5rem; max-width: 40vw; }
+  /* The boot view lands exactly on the desktop background (background.png, drawn full screen):
+     logo.png is a square with the artwork centred, and at 44.92vw its artwork covers the same
+     828 x 353 px at the centre of a 1920 x 1080 screen. So the hand-over shows no jump. */
+  #boot { color: #6d28d9; }
+  #boot img { position: absolute; left: 50%; top: 50%; width: 44.92vw; transform: translate(-50%, -50%); }
+  #boot .below { position: absolute; left: 0; right: 0; top: 72vh; display: flex; flex-direction: column;
+                 align-items: center; gap: 2rem; animation: arrive 0.7s 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(0.8rem); } }
   .spinner { width: 4rem; height: 4rem; border-radius: 50%; border: 0.45rem solid #ede9fe; border-top-color: #7c3aed;
              animation: spin 0.9s linear infinite; }
   #msg { margin: 0; font-size: 1.75rem; font-weight: 700; opacity: 0; transition: opacity 0.6s; }
@@ -51,8 +59,10 @@
 <body>
   <section class="view" id="boot">
     <img src="logo.png" alt="KinetoFun">
-    <div class="spinner"></div>
-    <p id="msg">Connecting…</p>
+    <div class="below">
+      <div class="spinner"></div>
+      <p id="msg">Connecting…</p>
+    </div>
   </section>
 
   <section class="view" id="busy" hidden>

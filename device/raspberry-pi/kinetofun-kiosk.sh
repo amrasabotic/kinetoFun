@@ -45,6 +45,7 @@ pick_loader() {
 #   Chromium opens the USB camera directly and the policy's allow list applies.
 # - NonMilestoneUpdateToast: the "Chrome was updated" bubble after an OS update of Chromium,
 #   which nobody can dismiss on a unit without a mouse.
+# The window opens at the desktop's 1920x1080 so the loader does not render small and jump.
 # The service can start a little after the desktop, so wait for it once at boot.
 TRIES=15
 while true; do
@@ -52,6 +53,8 @@ while true; do
   TRIES=1
   chromium \
     --kiosk \
+    --window-position=0,0 \
+    --window-size=1920,1080 \
     --password-store=basic \
     --noerrdialogs \
     --disable-infobars \
