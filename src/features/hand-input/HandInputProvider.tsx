@@ -18,6 +18,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { isDebugOn, rememberDebugFlag, type DebugFlagStore } from "./debug-flag";
 import { DwellEngine, hasHandTargets } from "./dwell";
 import { HandCursor, type HandCursorHandle } from "./HandCursor";
 import { HandDebugOverlay, createHandStats, type HandStats } from "./HandDebugOverlay";
@@ -67,8 +68,17 @@ function toScreen(camera: number, min: number, max: number, size: number): numbe
 }
 
 const noSubscribe = () => () => {};
+
+function sessionStore(): DebugFlagStore | null {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
 function readDebugFlag(): boolean {
-  return new URLSearchParams(window.location.search).get("handdebug") === "1";
+  return isDebugOn(window.location.search, sessionStore());
 }
 
 export function HandInputProvider({ children }: { children: React.ReactNode }) {
@@ -82,6 +92,10 @@ export function HandInputProvider({ children }: { children: React.ReactNode }) {
   const [hasTargets, setHasTargets] = useState(false);
   const debug = useSyncExternalStore(noSubscribe, readDebugFlag, () => false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    rememberDebugFlag(window.location.search, sessionStore());
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
