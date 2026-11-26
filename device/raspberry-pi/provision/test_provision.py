@@ -88,10 +88,42 @@ class LogicTest(unittest.TestCase):
         self.assertEqual(logic.classify_connect_error(4, "Error: ... (53) The Wi-Fi network could not be found."), "not_found")
         self.assertEqual(logic.classify_connect_error(3, "Error: Timeout expired"), "failed")
 
-    def test_activated_uuid(self):
-        out = "Device 'wlan0' successfully activated with '3f1c2a9e-8b7d-4c6e-9f0a-1b2c3d4e5f60'."
-        self.assertEqual(logic.activated_uuid(out), "3f1c2a9e-8b7d-4c6e-9f0a-1b2c3d4e5f60")
-        self.assertIsNone(logic.activated_uuid("Error: Timeout expired"))
+    def test_classify_wrong_password_from_nmcli_on_trixie(self):
+        # Verbatim output of `nmcli --wait 60 connection up <uuid>` with a wrong WPA2 password
+        # (NetworkManager 1.52, Raspberry Pi OS Trixie).
+        out = ("Passwords or encryption keys are required to access the wireless network 'Home'.\n"
+               "Warning: password for '802-11-wireless-security.psk' not given in 'passwd-file' and nmcli "
+               "cannot ask without '--ask' option.\n"
+               "Error: Connection activation failed: Secrets were required, but not provided\n"
+               "Hint: use 'journalctl -xe NM_CONNECTION=29946592-fe98-4e98-b004-8ef3aba2e573 + NM_DEVICE=wlan0' "
+               "to get more details.")
+        self.assertEqual(logic.classify_connect_error(4, out, "30 (disconnected)"), "wrong_password")
+        self.assertEqual(logic.first_error_line(out),
+                         "Error: Connection activation failed: Secrets were required, but not provided")
+
+    def test_classify_timeout_by_device_state(self):
+        # The router accepted the password but never answered DHCP; nmcli only reports the timeout.
+        out = "Error: Timeout 60 sec expired."
+        self.assertEqual(logic.classify_connect_error(3, out, "70 (connecting (getting IP configuration))"), "no_address")
+        self.assertEqual(logic.classify_connect_error(3, out, "50 (connecting (configuring))"), "failed")
+        self.assertEqual(logic.classify_connect_error(3, out, ""), "failed")
+
+    def test_security_args(self):
+        self.assertEqual(logic.security_args("", False), [])
+        self.assertEqual(logic.security_args("secret12", False), ["wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", "secret12"])
+        self.assertEqual(logic.security_args("secret12", True)[1], "sae")
+
+    def test_parse_scan_marks_wpa3_only(self):
+        nets = {n["ssid"]: n for n in logic.parse_scan("A:50:WPA3\nB:50:WPA2 WPA3\nC:50:WPA1 WPA2\nD:50:")}
+        self.assertTrue(nets["A"]["sae_only"])
+        self.assertFalse(nets["B"]["sae_only"])
+        self.assertFalse(nets["C"]["sae_only"])
+        self.assertFalse(nets["D"]["sae_only"])
+
+    def test_added_uuid(self):
+        out = "Connection 'kinetofun-try' (3f1c2a9e-8b7d-4c6e-9f0a-1b2c3d4e5f60) successfully added."
+        self.assertEqual(logic.added_uuid(out), "3f1c2a9e-8b7d-4c6e-9f0a-1b2c3d4e5f60")
+        self.assertIsNone(logic.added_uuid("Error: Failed to add 'kinetofun-try' connection"))
 
     def test_error_messages_are_distinct(self):
         texts = {logic.error_message(code, "Home") for code in logic.ERROR_CODES}
@@ -143,6 +175,23 @@ class ControllerTest(unittest.TestCase):
         c, _ = self.start()
         self.assertEqual(c.submit_connect("Missing", "secret123", True)[0], 202)
         self.assertTrue(wait_for(lambda: c.error == "not_found"))
+
+    def test_no_address_returns_to_setup(self):
+        c, net = self.start()
+        c.submit_connect("Home Wi-Fi", "noaddress1", False)
+        self.assertTrue(wait_for(lambda: c.error == "no_address" and c.state == "setup"))
+        self.assertIn("didn't give the box an address", c.status(False)["message"])
+
+    def test_autoconnect_held_only_during_attempt(self):
+        seen = []
+        net = service.FakeNetwork(delay=0)
+        original = net.connect
+        net.connect = lambda *a: (seen.append(net.autoconnect_held), original(*a))[1]
+        c, _ = self.start(net)
+        c.submit_connect("Home Wi-Fi", "wrongpass", False)
+        self.assertTrue(wait_for(lambda: c.error == "wrong_password" and c.state == "setup"))
+        self.assertTrue(wait_for(lambda: net.autoconnect_held is False))
+        self.assertEqual(seen, [True])
 
     def test_no_internet_removes_profile(self):
         c, net = self.start()

@@ -19,6 +19,7 @@ sys.path.insert(0, HERE)
 import logic  # noqa: E402
 
 HOTSPOT_NAME = "kinetofun-hotspot"
+TRY_NAME = "kinetofun-try"
 HOTSPOT_ADDR = "192.168.4.1"
 PORTAL_URL = "http://%s/" % HOTSPOT_ADDR
 # tmpfs, so the hotspot password survives a service restart but not a reboot.
@@ -171,31 +172,55 @@ class NmNetwork:
         code, out = run(["iw", "dev", self.iface, "station", "dump"])
         return logic.count_stations(out) if code == 0 else None
 
-    def connect(self, ssid, password, hidden):
-        """Join a network; returns (error_code or None, uuids of profiles it created)."""
-        before = {p["uuid"] for p in self.saved_wifi()}
+    def hold_autoconnect(self, hold):
+        # While held, NetworkManager does not rejoin a saved network on its own. Without this it
+        # does so the moment the hotspot stops, racing the attempt and emptying its scan.
+        run(["nmcli", "device", "set", self.iface, "autoconnect", "no" if hold else "yes"])
+
+    def device_state(self):
+        code, out = run(["nmcli", "-g", "GENERAL.STATE", "device", "show", self.iface])
+        return out.strip() if code == 0 else ""
+
+    def connect(self, ssid, password, hidden, sae_only=False):
+        """Join a network through a fresh profile; returns (error_code or None, kept uuids, detail).
+
+        `nmcli device wifi connect` refuses any password for an SSID that already has a saved
+        profile ("key-mgmt: property is missing"), so a changed router password could never be
+        entered. A separate profile also leaves the saved one untouched when the attempt fails.
+        """
+        self.delete_profile(TRY_NAME)
         if not hidden:
-            # The scan cache is stale after hotspot mode, so look a couple of times.
+            # The scan cache is stale after hotspot mode, so look a couple of times. A scan that
+            # finds nothing at all means the chip was busy, not that the network is gone.
+            seen_any = False
             for _ in range(3):
-                if any(n["ssid"] == ssid for n in self.scan(rescan=True)):
+                found = self.scan(rescan=True)
+                if any(n["ssid"] == ssid for n in found):
                     break
+                seen_any = seen_any or bool(found)
                 time.sleep(3)
             else:
-                return "not_found", []
-        args = ["nmcli", "--wait", "45", "device", "wifi", "connect", ssid, "ifname", self.iface]
-        if password:
-            args += ["password", password]
+                if seen_any:
+                    return "not_found", [], "not in scan"
+        args = ["nmcli", "connection", "add", "type", "wifi", "ifname", self.iface, "con-name", TRY_NAME,
+                "autoconnect", "yes", "ssid", ssid] + logic.security_args(password, sae_only)
         if hidden:
-            args += ["hidden", "yes"]
-        code, out = run(args, timeout=60)
-        created = [p["uuid"] for p in self.saved_wifi() if p["uuid"] not in before]
+            args += ["802-11-wireless.hidden", "yes"]
+        code, out = run(args)
+        uuid = logic.added_uuid(out)
+        if code != 0 or not uuid:
+            return "failed", [], logic.first_error_line(out)
+        # Association plus a slow router's DHCP can take most of a minute.
+        code, out = run(["nmcli", "--wait", "60", "connection", "up", uuid], timeout=75)
         if code != 0:
-            for uuid in created:
-                self.delete_profile(uuid)
-            return logic.classify_connect_error(code, out), []
-        # nmcli may reuse an existing profile instead of creating one; that one must be kept too.
-        used = logic.activated_uuid(out)
-        return None, created + ([used] if used and used not in created else [])
+            error = logic.classify_connect_error(code, out, self.device_state())
+            self.delete_profile(uuid)
+            return error, [], logic.first_error_line(out)
+        return None, [uuid], ""
+
+    def keep_profile(self, uuid, ssid):
+        """Give a profile that worked the network's name, as nmcli itself would have."""
+        run(["nmcli", "connection", "modify", uuid, "connection.id", ssid])
 
     def site_reachable(self, via_wifi):
         return site_reachable(self.origin, self.iface if via_wifi else None)
@@ -217,6 +242,7 @@ class FakeNetwork:
         self.counter = 0
         self.has_internet = False
         self.hotspot = False
+        self.autoconnect_held = False
 
     def radio_on(self):
         pass
@@ -255,19 +281,24 @@ class FakeNetwork:
     def clients(self):
         return 0
 
-    def connect(self, ssid, password, hidden):
+    def hold_autoconnect(self, hold):
+        self.autoconnect_held = hold
+
+    def connect(self, ssid, password, hidden, sae_only=False):
         time.sleep(self.delay)
         if ssid.lower() == "missing" or (not hidden and not any(n["ssid"] == ssid for n in self.NETWORKS)):
-            return "not_found", []
-        if password.startswith("wrong"):
-            return "wrong_password", []
-        if password.startswith("failed"):
-            return "failed", []
+            return "not_found", [], "not in scan"
+        for prefix, code in (("wrong", "wrong_password"), ("noaddress", "no_address"), ("failed", "failed")):
+            if password.startswith(prefix):
+                return code, [], "fake %s" % code
         self.counter += 1
         uuid = "fake-%d" % self.counter
         self.saved.append({"ssid": ssid, "uuid": uuid})
         self.has_internet = not password.startswith("nointernet")
-        return None, [uuid]
+        return None, [uuid], ""
+
+    def keep_profile(self, uuid, ssid):
+        pass
 
     def site_reachable(self, via_wifi):
         return bool(self.saved) and self.has_internet
@@ -341,7 +372,7 @@ class Controller:
             self.target = ssid
             self.error = None
             self.error_ssid = None
-        self.jobs.put((ssid, password, bool(hidden) or known is None))
+        self.jobs.put((ssid, password, bool(hidden) or known is None, bool(known and known.get("sae_only"))))
         return 202, {"ok": True}
 
     def _set(self, **kw):
@@ -392,29 +423,35 @@ class Controller:
                 time.sleep(self.t["poll"])
         self._enter_setup()
 
-    def _attempt(self, ssid, password, hidden):
+    def _attempt(self, ssid, password, hidden, sae_only=False):
         # Let the phone get its reply before the hotspot goes away.
         time.sleep(self.t["reply_grace"])
-        self.net.hotspot_down()
-        self._set(hotspot_active=False)
-        error, created = self.net.connect(ssid, password, hidden)
-        if not error:
-            self._set(state="checking")
-            deadline = time.monotonic() + self.t["internet_wait"]
-            while True:
-                if self.net.site_reachable(True):
-                    self.net.prune_profiles(ssid, created)
-                    self._go_online(target=ssid)
-                    return
-                if time.monotonic() > deadline:
-                    break
-                time.sleep(self.t["poll"])
-            for uuid in created:
-                self.net.delete_profile(uuid)
-            error = "no_internet"
-        log("connect to %s failed: %s" % (ssid, error))
-        self._set(error=error, error_ssid=ssid)
-        self._enter_setup()
+        self.net.hold_autoconnect(True)
+        try:
+            self.net.hotspot_down()
+            self._set(hotspot_active=False)
+            error, created, detail = self.net.connect(ssid, password, hidden, sae_only)
+            if not error:
+                self._set(state="checking")
+                deadline = time.monotonic() + self.t["internet_wait"]
+                while True:
+                    if self.net.site_reachable(True):
+                        self.net.prune_profiles(ssid, created)
+                        for uuid in created:
+                            self.net.keep_profile(uuid, ssid)
+                        self._go_online(target=ssid)
+                        return
+                    if time.monotonic() > deadline:
+                        break
+                    time.sleep(self.t["poll"])
+                for uuid in created:
+                    self.net.delete_profile(uuid)
+                error, detail = "no_internet", "site not reachable over Wi-Fi"
+            log("connect to %s failed: %s (%s)" % (ssid, error, detail))
+            self._set(error=error, error_ssid=ssid)
+            self._enter_setup()
+        finally:
+            self.net.hold_autoconnect(False)
 
     def _retry_saved(self):
         now = time.monotonic()

@@ -7,7 +7,7 @@ HOTSPOT_PREFIX = "KinetoFun-"
 PASSWORD_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 PASSWORD_LENGTH = 8
 
-ERROR_CODES = ("wrong_password", "not_found", "no_internet", "no_wifi", "failed")
+ERROR_CODES = ("wrong_password", "not_found", "no_address", "no_internet", "no_wifi", "failed")
 
 
 def generate_password(length=PASSWORD_LENGTH):
@@ -61,6 +61,8 @@ def parse_scan(output):
             "signal": max(0, min(100, strength)),
             "secure": security not in ("", "--"),
             "enterprise": "802.1X" in security,
+            # WPA3-only networks refuse a WPA2 (psk) profile; mixed WPA2/WPA3 accepts it.
+            "sae_only": "WPA3" in security and "WPA2" not in security and "WPA1" not in security,
         }
         if ssid not in best or entry["signal"] > best[ssid]["signal"]:
             best[ssid] = entry
@@ -125,19 +127,39 @@ def validate_password(password, secure):
     return None
 
 
-def classify_connect_error(exit_code, output):
-    """Map an `nmcli device wifi connect` failure to a code the TV can explain."""
+def classify_connect_error(exit_code, output, device_state=""):
+    """Map a failed `nmcli connection up` to a code the TV can explain.
+
+    nmcli reports a timeout the same way whatever stalled, so the device state read at that
+    moment tells a router that never handed out an address apart from other failures.
+    """
     text = (output or "").lower()
     if exit_code == 10 or "no network with ssid" in text or "could not be found" in text:
         return "not_found"
     if "secrets were required" in text or "no-secrets" in text or "psk: property is invalid" in text:
         return "wrong_password"
+    if "ip configuration" in (device_state or "").lower():
+        return "no_address"
     return "failed"
 
 
-def activated_uuid(output):
-    """Profile UUID from nmcli's "successfully activated with '<uuid>'" line."""
-    m = re.search(r"activated with '([0-9a-fA-F-]{36})'", output or "")
+def first_error_line(output):
+    """nmcli's own error line, safe to log: nmcli never echoes the password back."""
+    lines = [ln.strip() for ln in (output or "").splitlines() if ln.strip()]
+    errors = [ln for ln in lines if ln.lower().startswith("error")]
+    return (errors or lines or [""])[0][:200]
+
+
+def security_args(password, sae_only):
+    """nmcli settings for a new Wi-Fi profile; an empty password means an open network."""
+    if not password:
+        return []
+    return ["wifi-sec.key-mgmt", "sae" if sae_only else "wpa-psk", "wifi-sec.psk", password]
+
+
+def added_uuid(output):
+    """Profile UUID from nmcli's "Connection 'x' (<uuid>) successfully added." line."""
+    m = re.search(r"\(([0-9a-fA-F-]{36})\) successfully added", output or "")
     return m.group(1) if m else None
 
 
@@ -146,6 +168,7 @@ def error_message(code, ssid):
     messages = {
         "wrong_password": "Wrong password for %s. Scan the code again and retype it." % name,
         "not_found": "Couldn't find %s. Move the box closer to the router, check the name and try again." % name,
+        "no_address": "Joined %s, but the router didn't give the box an address. Restart the router and try again." % name,
         "no_internet": "Joined %s, but it has no internet. Try another network or plug in a network cable." % name,
         "no_wifi": "Wi-Fi isn't available on this box. Plug in a network cable.",
         "failed": "Couldn't connect to %s. Try again." % name,
