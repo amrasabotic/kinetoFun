@@ -20,7 +20,6 @@ const en = {
     title: "Where Every Game",
     highlight: "Teaches Something Real",
     subtitle: "KinetoFun is a game universe where reading, math, science and art are embedded in actual gameplay, not worksheets.",
-    exploreAria: "Explore the games",
   },
   features: {
     eyebrow: "WHAT MAKES KINETOFUN DIFFERENT",
@@ -153,7 +152,6 @@ const sq: typeof en = {
     title: "Ku çdo lojë",
     highlight: "të mëson diçka të vërtetë",
     subtitle: "KinetoFun është një univers lojërash ku leximi, matematika, shkenca dhe arti janë pjesë e vetë lojës, jo fletë ushtrimesh.",
-    exploreAria: "Eksploro lojërat",
   },
   features: {
     eyebrow: "ÇFARË E BËN KINETOFUN TË VEÇANTË",

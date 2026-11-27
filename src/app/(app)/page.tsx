@@ -14,6 +14,7 @@ import { useContinuePlaying } from "@/features/sessions/useContinuePlaying";
 import { useLeaderboard } from "@/features/scores/useLeaderboard";
 import { selectFeatured, selectByCategory } from "@/services/games.service";
 import { useSession } from "@/features/auth/session-context";
+import { HomeFilm } from "@/features/home-film";
 import { GameRail } from "@/components/game/GameRail";
 import { WaveDivider } from "@/components/layout/WaveDivider";
 import { ButtonLink } from "@/components/ui/Button";
@@ -281,40 +282,8 @@ function EducationalExcellenceSection() {
           subtitle={e.subtitle}
         />
 
-        {/* Preview mockup */}
-        <div className="relative mx-auto max-w-3xl">
-          {/* floating shapes around the frame */}
-          <FloatBubble bg={C.yellow} rotate={-12} className="left-[-4%] top-[-6%] h-14 w-14 text-2xl">★</FloatBubble>
-          <FloatBubble bg={C.green} rotate={10} delay="0.5s" className="right-[-5%] top-[18%] h-12 w-12 text-xl">✓</FloatBubble>
-          <FloatBubble bg={C.purple} rotate={-8} delay="0.9s" anim="animate-float-delay" className="bottom-[-6%] left-[10%] h-12 w-12 text-xl">🚀</FloatBubble>
-
-          <div className="relative overflow-hidden rounded-[2rem] border-[7px] border-white bg-white shadow-[0_36px_90px_rgba(47,128,255,0.28)]">
-            {/* browser chrome */}
-            <div className="flex items-center gap-1.5 px-5 py-3" style={{ background: "#F2F7FF" }}>
-              <span className="h-3 w-3 rounded-full" style={{ background: C.pink }} />
-              <span className="h-3 w-3 rounded-full" style={{ background: C.yellow }} />
-              <span className="h-3 w-3 rounded-full" style={{ background: C.green }} />
-              <span className="ml-3 h-5 flex-1 rounded-full" style={{ background: "#E1ECFB" }} />
-            </div>
-            {/* screen */}
-            <div className="relative aspect-video" style={{ background: "linear-gradient(135deg,#2F80FF 0%,#5BD97B 100%)" }}>
-              {/* playful scene */}
-              <div className="absolute inset-0 opacity-25" style={{ backgroundImage: "radial-gradient(circle at 1.5px 1.5px, white 1.5px, transparent 0)", backgroundSize: "26px 26px" }} />
-              <div className="absolute left-[14%] top-[20%] text-5xl animate-float">🦊</div>
-              <div className="absolute right-[16%] top-[24%] text-4xl animate-float-delay">🎈</div>
-              <div className="absolute bottom-[18%] left-[24%] text-4xl animate-bob">🔤</div>
-              <div className="absolute bottom-[22%] right-[22%] text-4xl animate-float-slow">🧩</div>
-              {/* play button */}
-              <Link
-                href="/library"
-                data-focusable
-                aria-label={e.exploreAria}
-                className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-2xl transition-transform duration-200 hover:scale-110 focus:outline-none"
-              >
-                <Play className="ml-1 h-9 w-9" style={{ fill: C.blue, color: C.blue }} />
-              </Link>
-            </div>
-          </div>
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] border-[7px] border-white bg-white shadow-[0_36px_90px_rgba(47,128,255,0.28)]">
+          <HomeFilm className="aspect-[4/5] w-full sm:aspect-[2/1]" />
         </div>
       </div>
       <WaveDivider color="#E3F0FF" />
