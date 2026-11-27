@@ -25,7 +25,7 @@ export const LINE_CUES: Record<LineKey, LineCue> = {
   library: within("library", 0.2, 2.5),
   rewards: within("rewards", 0.25, 2.6),
   // The goodbye leaves with the mascot as it sinks out of view.
-  bye: within("bye", 0.12, 2.2),
+  bye: within("bye", 0.07, 2.22),
 };
 
 /** The box each set of words sits in: the caption in the room has its own, the rest share the one inside the TV. */

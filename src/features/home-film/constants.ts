@@ -1,3 +1,4 @@
+import type { Locale } from "@/lib/i18n/config";
 import type { FilmCopy, FilmFormat, FormatKey, SceneName } from "./types";
 
 /** Mascot colours, sampled from public/logo.png. */
@@ -137,7 +138,7 @@ export const FORMATS: Record<FormatKey, FilmFormat> = {
 export const TV_MASCOT = { x: 548, y: 340, width: 236 } as const;
 
 /** The film's words, one table per language. Lines are kept short so every one fits its box when translated. */
-export const COPY: Record<"en", FilmCopy> = {
+export const COPY: Record<Locale, FilmCopy> = {
   en: {
     lines: {
       hello: ["No controller.", "Just your hands."],
@@ -152,5 +153,20 @@ export const COPY: Record<"en", FilmCopy> = {
     },
     description:
       "An animation about KinetoFun. The KinetoFun mascot, a smiling TV with a waving hand, says hello: no controller, just your hands. The view pulls back to a living room, where a child raises a hand towards the family TV. The camera on top of the TV follows the hand, a cursor ring appears on screen, and the mascot waves back. Then the mascot walks through a few games on the TV: pointing pops a balloon, a swipe slices fruit, two hands catch falling stars, and letter blocks light up one by one. A wall of game tiles scrolls past, over 100 games for the whole family. Tickets fly to a counter, the mascot jumps onto a leaderboard podium, and waves goodbye: play with a wave.",
+  },
+  sq: {
+    lines: {
+      hello: ["Pa kontroller.", "Vetëm me duar."],
+      camera: ["Kamera", "ndjek dorën tënde."],
+      pop: ["Shenjo.", "Shpërtheje!"],
+      slice: ["Rrëshqit.", "Preje!"],
+      catch: ["Zgjatu.", "Kape!"],
+      learn: ["Luaj.", "Mëso alfabetin."],
+      library: ["Mbi 100 lojëra.", "Për gjithë familjen."],
+      rewards: ["Fito bileta.", "Ngjitu në renditje."],
+      bye: ["Luaj me një", "lëvizje dore."],
+    },
+    description:
+      "Një animacion për KinetoFun. Maskota e KinetoFun, një televizor i buzëqeshur me një dorë që përshëndet, thotë përshëndetje: pa kontroller, vetëm me duar. Pamja tërhiqet prapa në një dhomë ndenjeje, ku një fëmijë ngre dorën drejt televizorit të familjes. Kamera mbi televizor ndjek dorën, në ekran shfaqet një rreth kursori dhe maskota i kthen përshëndetjen. Pastaj maskota ecën nëpër disa lojëra në televizor: një tullumbace shpërthen kur e shenjon me dorë, një rrëshqitje e dorës pret një frut, dy duar kapin yjet që bien dhe blloqet me shkronja ndizen një nga një. Kalon një mur i tërë me lojëra, mbi 100 lojëra për gjithë familjen. Biletat fluturojnë te një numërues, maskota hidhet mbi podiumin e renditjes dhe përshëndet për lamtumirë: luaj me një lëvizje dore.",
   },
 };

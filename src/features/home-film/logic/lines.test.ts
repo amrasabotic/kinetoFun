@@ -7,26 +7,31 @@ import { FILM_LENGTH } from "./timeline";
 const ENTER = 0.65;
 const EXIT = 0.32;
 
+const wordCount = (phrases: readonly string[]) => phrases.join(" ").split(" ").length;
+
 describe("line cues", () => {
   it("gives every set of words in the copy a cue and a box", () => {
-    expect(new Set(LINE_KEYS)).toEqual(new Set(Object.keys(COPY.en.lines)));
+    for (const copy of Object.values(COPY)) expect(new Set(LINE_KEYS)).toEqual(new Set(Object.keys(copy.lines)));
     for (const key of LINE_KEYS) expect(LINE_BOXES[key]).toBeDefined();
   });
 
-  it("holds every set of words fully in place for at least 1.2 seconds", () => {
-    for (const key of LINE_KEYS) {
-      const words = COPY.en.lines[key].join(" ").split(" ").length;
-      const allIn = LINE_CUES[key].enter + (words - 1) * 0.07 + ENTER;
-      expect(LINE_CUES[key].exit - allIn, key).toBeGreaterThanOrEqual(1.2);
+  it("holds every set of words fully in place for at least 1.2 seconds, in every language", () => {
+    for (const [language, copy] of Object.entries(COPY)) {
+      for (const key of LINE_KEYS) {
+        const allIn = LINE_CUES[key].enter + (wordCount(copy.lines[key]) - 1) * 0.07 + ENTER;
+        expect(LINE_CUES[key].exit - allIn, `${language} ${key}`).toBeGreaterThanOrEqual(1.2);
+      }
     }
   });
 
-  it("never shows two sets of words in the same box at once", () => {
-    for (const a of LINE_KEYS) {
-      for (const b of LINE_KEYS) {
-        if (a === b || LINE_BOXES[a] !== LINE_BOXES[b] || LINE_CUES[a].enter > LINE_CUES[b].enter) continue;
-        const words = COPY.en.lines[a].join(" ").split(" ").length;
-        expect(LINE_CUES[a].exit + (words - 1) * 0.035 + EXIT, `${a} then ${b}`).toBeLessThanOrEqual(LINE_CUES[b].enter);
+  it("never shows two sets of words in the same box at once, in any language", () => {
+    for (const [language, copy] of Object.entries(COPY)) {
+      for (const a of LINE_KEYS) {
+        for (const b of LINE_KEYS) {
+          if (a === b || LINE_BOXES[a] !== LINE_BOXES[b] || LINE_CUES[a].enter > LINE_CUES[b].enter) continue;
+          const gone = LINE_CUES[a].exit + (wordCount(copy.lines[a]) - 1) * 0.035 + EXIT;
+          expect(gone, `${language} ${a} then ${b}`).toBeLessThanOrEqual(LINE_CUES[b].enter);
+        }
       }
     }
   });

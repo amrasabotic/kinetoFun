@@ -265,7 +265,8 @@ function CategoryStrip() {
 // ─── Section 3: Educational Excellence ────────────────────────────────────────
 
 function EducationalExcellenceSection() {
-  const e = useI18n().t.home.excellence;
+  const { t, locale } = useI18n();
+  const e = t.home.excellence;
   return (
     <section
       className="relative -mx-6 overflow-hidden py-20 sm:-mx-10 sm:py-28"
@@ -283,7 +284,7 @@ function EducationalExcellenceSection() {
         />
 
         <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] border-[7px] border-white bg-white shadow-[0_36px_90px_rgba(47,128,255,0.28)]">
-          <HomeFilm className="aspect-[4/5] w-full sm:aspect-[2/1]" />
+          <HomeFilm language={locale} className="aspect-[4/5] w-full sm:aspect-[2/1]" />
         </div>
       </div>
       <WaveDivider color="#E3F0FF" />
