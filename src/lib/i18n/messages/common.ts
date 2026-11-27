@@ -98,11 +98,11 @@ const en = {
     body: "An unexpected error occurred. Try again or head back home.",
   },
   meta: {
-    title: "KinetoFun — Play with a wave",
+    title: "KinetoFun | Play with a wave",
     description: "A gesture-ready, TV-first gaming platform. Browse, launch, and compete from your couch.",
     tvTitle: "KinetoFun TV",
     tvDescription: "Set up your KinetoFun TV.",
-    joinTitle: "Connect to your TV — KinetoFun",
+    joinTitle: "Connect to your TV | KinetoFun",
     joinDescription: "Connect your KinetoFun account to a TV.",
   },
 };
@@ -215,11 +215,11 @@ const sq: typeof en = {
     body: "Ndodhi një gabim i papritur. Provo përsëri ose kthehu në fillim.",
   },
   meta: {
-    title: "KinetoFun — Luaj me një lëvizje dore",
+    title: "KinetoFun | Luaj me një lëvizje dore",
     description: "Platformë lojërash për televizor që luhen me gjeste. Shfleto, nis dhe garo nga divani.",
     tvTitle: "KinetoFun TV",
     tvDescription: "Konfiguro televizorin tënd KinetoFun.",
-    joinTitle: "Lidhu me televizorin — KinetoFun",
+    joinTitle: "Lidhu me televizorin | KinetoFun",
     joinDescription: "Lidh llogarinë tënde KinetoFun me një televizor.",
   },
 };

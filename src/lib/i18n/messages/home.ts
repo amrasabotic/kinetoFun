@@ -19,7 +19,7 @@ const en = {
     eyebrow: "GAME WORLDS · REAL SKILLS",
     title: "Where Every Game",
     highlight: "Teaches Something Real",
-    subtitle: "KinetoFun is a game universe where reading, math, science and art are embedded in actual gameplay — not worksheets.",
+    subtitle: "KinetoFun is a game universe where reading, math, science and art are embedded in actual gameplay, not worksheets.",
     exploreAria: "Explore the games",
   },
   features: {
@@ -152,7 +152,7 @@ const sq: typeof en = {
     eyebrow: "BOTË LOJËRASH · AFTËSI TË VËRTETA",
     title: "Ku çdo lojë",
     highlight: "të mëson diçka të vërtetë",
-    subtitle: "KinetoFun është një univers lojërash ku leximi, matematika, shkenca dhe arti janë pjesë e vetë lojës — jo fletë ushtrimesh.",
+    subtitle: "KinetoFun është një univers lojërash ku leximi, matematika, shkenca dhe arti janë pjesë e vetë lojës, jo fletë ushtrimesh.",
     exploreAria: "Eksploro lojërat",
   },
   features: {
