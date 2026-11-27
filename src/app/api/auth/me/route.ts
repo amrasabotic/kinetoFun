@@ -20,12 +20,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const user = await getCurrentUser();
 
-  if (!user) {
-    return NextResponse.json(
-      { error: "Not authenticated." } satisfies AuthError,
-      { status: 401 },
-    );
-  }
+  // Signed out is a normal answer here, so no 401 noise in the browser console.
+  if (!user) return NextResponse.json({ user: null });
 
   return NextResponse.json({ user } satisfies AuthSuccess);
 }

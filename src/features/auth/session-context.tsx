@@ -17,6 +17,8 @@ interface SessionState {
   isAuthenticated: boolean;
   /** True until the initial session-restore (`/api/auth/me`) settles. */
   isLoading: boolean;
+  /** True after the user signs out or deletes the account here; the caller handles navigation. */
+  signedOut: boolean;
   login: (email: string, password: string) => Promise<User>;
   signup: (
     displayName: string,
@@ -43,6 +45,7 @@ const SessionContext = createContext<SessionState | null>(null);
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [signedOut, setSignedOut] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -61,6 +64,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const next = await authService.login(email, password);
     setUser(next);
+    setSignedOut(false);
     return next;
   }, []);
 
@@ -68,6 +72,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     async (displayName: string, email: string, password: string) => {
       const next = await authService.register(displayName, email, password);
       setUser(next);
+      setSignedOut(false);
       return next;
     },
     [],
@@ -75,18 +80,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await authService.logout();
+    setSignedOut(true);
     setUser(null);
     invalidateFavorites();
   }, []);
 
   const logoutAll = useCallback(async () => {
     await authService.logoutAll();
+    setSignedOut(true);
     setUser(null);
     invalidateFavorites();
   }, []);
 
   const deleteAccount = useCallback(async (password: string) => {
     await authService.deleteAccount(password);
+    setSignedOut(true);
     setUser(null);
     invalidateFavorites();
   }, []);
@@ -96,6 +104,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       user,
       isAuthenticated: user !== null,
       isLoading,
+      signedOut,
       login,
       signup,
       logout,
@@ -103,7 +112,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       deleteAccount,
       refresh,
     }),
-    [user, isLoading, login, signup, logout, logoutAll, deleteAccount, refresh],
+    [user, isLoading, signedOut, login, signup, logout, logoutAll, deleteAccount, refresh],
   );
 
   return (

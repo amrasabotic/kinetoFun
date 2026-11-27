@@ -6,6 +6,7 @@ import {
   fetchFavoriteGameIds,
   removeFavorite as apiRemoveFavorite,
 } from "@/services/favorites.service";
+import { useSession } from "@/features/auth/session-context";
 
 // Shared singleton (module-level, like useGames/useContinuePlaying) so every
 // GameCard's heart button reflects the same state without prop drilling.
@@ -41,16 +42,21 @@ export function invalidateFavorites(): void {
 }
 
 export function useFavorites() {
+  const { isAuthenticated, isLoading } = useSession();
   const [, forceRender] = useState(0);
 
   useEffect(() => {
     const listener = () => forceRender((n) => n + 1);
     listeners.add(listener);
-    ensureLoaded();
     return () => {
       listeners.delete(listener);
     };
   }, []);
+
+  // Signed-out visitors have no favorites, so skip the request that would 401.
+  useEffect(() => {
+    if (isAuthenticated) ensureLoaded();
+  }, [isAuthenticated]);
 
   const isFavorite = useCallback((gameId: string) => favoriteIds.has(gameId), []);
 
@@ -71,5 +77,5 @@ export function useFavorites() {
     }
   }, []);
 
-  return { isFavorite, toggleFavorite, loaded };
+  return { isFavorite, toggleFavorite, loaded: loaded || (!isLoading && !isAuthenticated) };
 }

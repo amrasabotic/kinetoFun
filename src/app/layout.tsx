@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-full font-sans">
         {/* Rounded, friendly fonts for the playful landing page (scoped via
             .landing-root / .font-display in globals.css). Loaded at runtime so the

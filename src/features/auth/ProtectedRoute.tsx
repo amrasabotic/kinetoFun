@@ -18,15 +18,16 @@ export function ProtectedRoute({
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading } = useSession();
+  const { isAuthenticated, isLoading, signedOut } = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // A deliberate sign-out navigates on its own; redirecting here would override it.
+    if (!isLoading && !isAuthenticated && !signedOut) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
-  }, [isLoading, isAuthenticated, router, pathname]);
+  }, [isLoading, isAuthenticated, signedOut, router, pathname]);
 
   if (isLoading || !isAuthenticated) {
     return (
