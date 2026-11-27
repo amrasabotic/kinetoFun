@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useSession } from "@/features/auth/session-context";
 import { shopAction } from "@/features/rewards/useShop";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /**
  * Unlock button for a locked secret world. Two taps (tap, then confirm) so a
@@ -24,6 +25,8 @@ export function UnlockWorldButton({
   const { user, refresh } = useSession();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { t, serverText } = useI18n();
+  const g = t.games;
   const balance = user?.tickets ?? 0;
   const short = balance < cost;
 
@@ -35,11 +38,11 @@ export function UnlockWorldButton({
     setBusy(true);
     try {
       await shopAction("unlock-world", { gameId });
-      toast.success(`${title} unlocked!`);
+      toast.success(g.unlocked(title));
       await refresh();
       onUnlocked();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not unlock this world.");
+      toast.error(err instanceof Error ? serverText(err.message) : g.unlockFailed);
     } finally {
       setBusy(false);
       setConfirming(false);
@@ -62,11 +65,11 @@ export function UnlockWorldButton({
               : "bg-amber-400 text-amber-950 hover:bg-amber-300",
         )}
       >
-        {busy ? "Unlocking…" : confirming ? "Tap again to confirm" : `🔒 Unlock for 🎟️ ${cost}`}
+        {busy ? g.unlocking : confirming ? g.tapToConfirm : g.unlockFor(cost)}
       </button>
       {short && (
         <p className="text-xs text-white/70">
-          You need {cost - balance} more tickets. Finish games to earn them!
+          {g.needMore(cost - balance)}
         </p>
       )}
     </div>

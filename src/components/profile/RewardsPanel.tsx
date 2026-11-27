@@ -5,13 +5,15 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Flame, Gift, Sparkles, Ticket } from "lucide-react";
 import { useRewards } from "@/features/rewards/useRewards";
 import { useGames } from "@/features/games/useGames";
-import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { RewardsOverview } from "@/lib/rewards/catalog";
 
 export function RewardsPanel() {
   const { rewards, loading, error } = useRewards();
   const { games } = useGames();
+  const { t, fmt, serverText } = useI18n();
+  const p = t.profile.rewards;
 
   if (loading) {
     return (
@@ -23,7 +25,7 @@ export function RewardsPanel() {
   if (error || !rewards) {
     return (
       <p className="rounded-xl border border-border/40 bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
-        {error ?? "Rewards are unavailable right now."}
+        {error ? serverText(error) : p.unavailable}
       </p>
     );
   }
@@ -42,39 +44,39 @@ export function RewardsPanel() {
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 p-5 shadow-sm">
           <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
-            <Ticket className="h-4 w-4" /> Tickets
+            <Ticket className="h-4 w-4" /> {p.tickets}
           </div>
           <div className="mt-2 text-3xl font-black tabular-nums text-foreground">
-            {rewards.balance.toLocaleString()}
+            {fmt.number(rewards.balance)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {rewards.rewardedGamesToday} / {rewards.maxRewardedGamesPerDay} ticket games today
+            {p.ticketGamesToday(rewards.rewardedGamesToday, rewards.maxRewardedGamesPerDay)}
           </p>
         </div>
         <div className="rounded-2xl border border-orange-300/40 bg-orange-400/10 p-5 shadow-sm">
           <div className="flex items-center gap-2 text-xs font-semibold text-orange-700 dark:text-orange-300">
-            <Flame className="h-4 w-4" /> Daily streak
+            <Flame className="h-4 w-4" /> {p.streak}
           </div>
           <div className="mt-2 text-3xl font-black tabular-nums text-foreground">
-            {rewards.streak.current} day{rewards.streak.current === 1 ? "" : "s"}
+            {p.days(rewards.streak.current)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {rewards.streak.playedToday
-              ? `Best: ${rewards.streak.best} days`
-              : "Finish a game today to keep it going!"}
+              ? p.best(rewards.streak.best)
+              : p.keepGoing}
           </p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Badges</h2>
+          <h2 className="text-base font-semibold text-foreground">{p.badges}</h2>
           <span className="text-xs text-muted-foreground">
-            {earnedCount} / {rewards.badges.length} earned
+            {p.earned(earnedCount, rewards.badges.length)}
           </span>
         </div>
         <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          {badges.map((badge) => (
+          {badges.map((raw) => ({ ...raw, ...fmt.badge(raw) })).map((badge) => (
             <li
               key={badge.id}
               title={badge.description}
@@ -92,7 +94,7 @@ export function RewardsPanel() {
                 {badge.title}
               </span>
               <span className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
-                {badge.earnedAt ? relativeTime(badge.earnedAt) : badge.description}
+                {badge.earnedAt ? fmt.relative(badge.earnedAt) : badge.description}
               </span>
             </li>
           ))}
@@ -119,6 +121,7 @@ function Pager({
   pageCount: number;
   onChange: (page: number) => void;
 }) {
+  const { t } = useI18n();
   if (pageCount <= 1) return null;
   const btn =
     "flex h-8 w-8 items-center justify-center rounded-full border border-border/40 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
@@ -127,7 +130,7 @@ function Pager({
       <button
         type="button"
         data-focusable
-        aria-label="Previous page"
+        aria-label={t.profile.rewards.previousPage}
         disabled={page === 0}
         onClick={() => onChange(page - 1)}
         className={btn}
@@ -140,7 +143,7 @@ function Pager({
       <button
         type="button"
         data-focusable
-        aria-label="Next page"
+        aria-label={t.profile.rewards.nextPage}
         disabled={page >= pageCount - 1}
         onClick={() => onChange(page + 1)}
         className={btn}
@@ -159,6 +162,8 @@ function RecentTickets({
   gameTitle: (id: string | null) => string | undefined;
 }) {
   const [page, setPage] = useState(0);
+  const { t, fmt } = useI18n();
+  const p = t.profile.rewards;
   const pageCount = Math.ceil(recent.length / RECENT_PAGE_SIZE);
   const current = Math.min(page, Math.max(pageCount - 1, 0));
   const visible = recent.slice(current * RECENT_PAGE_SIZE, (current + 1) * RECENT_PAGE_SIZE);
@@ -166,20 +171,20 @@ function RecentTickets({
   return (
     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
       <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-        <Gift className="h-4 w-4 text-primary" /> Recent tickets
+        <Gift className="h-4 w-4 text-primary" /> {p.recent}
       </h2>
       {recent.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Finish a game to earn your first tickets.
+          {p.recentEmpty}
         </p>
       ) : (
         <ul className="divide-y divide-border/30">
           {visible.map((entry) => (
             <li key={entry.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span className="min-w-0">
-                <span className="block truncate font-medium text-foreground">{entry.label}</span>
+                <span className="block truncate font-medium text-foreground">{fmt.rewardLabel(entry.label)}</span>
                 <span className="block truncate text-xs text-muted-foreground">
-                  {[gameTitle(entry.gameId), relativeTime(entry.createdAt)].filter(Boolean).join(" · ")}
+                  {[gameTitle(entry.gameId), fmt.relative(entry.createdAt)].filter(Boolean).join(" · ")}
                 </span>
               </span>
               <span
@@ -209,6 +214,7 @@ function Collectibles({
 }) {
   const [startedPage, setStartedPage] = useState(0);
   const [unstartedPage, setUnstartedPage] = useState(0);
+  const p = useI18n().t.profile.rewards;
   const withProgress = collections
     .map((c) => ({ ...c, earned: c.items.filter((i) => i.earnedAt).length }))
     .sort((a, b) => b.earned - a.earned);
@@ -234,16 +240,16 @@ function Collectibles({
     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-          <Sparkles className="h-4 w-4 text-primary" /> Collectibles
+          <Sparkles className="h-4 w-4 text-primary" /> {p.collectibles}
         </h2>
         <span className="text-xs text-muted-foreground">
-          {earnedTotal} / {total} collected
+          {p.collected(earnedTotal, total)}
         </span>
       </div>
 
       {started.length === 0 ? (
         <p className="mb-3 text-sm text-muted-foreground">
-          Unlock achievements inside these games to fill your collection.
+          {p.collectiblesEmpty}
         </p>
       ) : (
         <ul className="mb-4 space-y-3">

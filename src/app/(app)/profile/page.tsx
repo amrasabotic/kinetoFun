@@ -12,8 +12,8 @@ import { ButtonLink } from "@/components/ui/Button";
 import { ScoreList } from "@/components/profile/ScoreList";
 import { RewardsPanel } from "@/components/profile/RewardsPanel";
 import { findShopItem } from "@/lib/rewards/shop";
-import { formatDate, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export default function ProfilePage() {
   return (
@@ -27,6 +27,8 @@ function ProfileContent() {
   const { user } = useSession();
   const { stats, loading, error } = useProfileStats();
   const { games } = useGames();
+  const { t, fmt, serverText } = useI18n();
+  const p = t.profile;
 
   if (!user) return null;
 
@@ -63,7 +65,7 @@ function ProfileContent() {
               variant="secondary"
               className="border-white/25 bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
             >
-              Edit profile
+              {p.edit}
             </ButtonLink>
           </div>
           {/* Wave bleeds banner color into the card body */}
@@ -88,7 +90,7 @@ function ProfileContent() {
             </div>
             <div className="mb-1 flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5">
               <Zap className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-bold text-primary">Level {user.level}</span>
+              <span className="text-xs font-bold text-primary">{t.home.results.level(user.level)}</span>
             </div>
           </div>
 
@@ -100,15 +102,15 @@ function ProfileContent() {
             <p className="mt-2 max-w-lg text-sm text-foreground/70">{user.bio}</p>
           )}
           <p className="mt-1 text-xs text-muted-foreground">
-            Member since {formatDate(user.joinedAt)}
+            {p.memberSince(fmt.date(user.joinedAt))}
           </p>
 
           {/* XP bar */}
           <div className="mt-5 max-w-sm">
             <div className="mb-1.5 flex items-center justify-between text-xs">
-              <span className="font-medium text-muted-foreground">XP Progress</span>
+              <span className="font-medium text-muted-foreground">{p.xpProgress}</span>
               <span className="tabular-nums text-muted-foreground">
-                {xpIntoLevel.toLocaleString()} / 1,000
+                {fmt.number(xpIntoLevel)} / {fmt.number(1000)}
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -131,28 +133,28 @@ function ProfileContent() {
         </div>
       ) : error ? (
         <p className="rounded-xl border border-border/40 bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
-          {error}
+          {serverText(error)}
         </p>
       ) : enrichedStats ? (
         <>
           <section className="grid grid-cols-3 gap-4">
             <StatCard
-              label="Games played"
+              label={p.gamesPlayed}
               value={enrichedStats.gamesPlayed}
               Icon={Gamepad2}
               iconBg="bg-violet-500/15"
               iconColor="text-violet-400"
             />
             <StatCard
-              label="Sessions"
+              label={p.sessions}
               value={enrichedStats.totalSessions}
               Icon={Clock}
               iconBg="bg-sky-500/15"
               iconColor="text-sky-400"
             />
             <StatCard
-              label="Best score"
-              value={enrichedStats.bestScore.toLocaleString()}
+              label={p.bestScore}
+              value={fmt.number(enrichedStats.bestScore)}
               Icon={Trophy}
               iconBg="bg-amber-500/15"
               iconColor="text-amber-400"
@@ -162,16 +164,16 @@ function ProfileContent() {
           <div className="grid gap-5 lg:grid-cols-2">
             {/* Recent scores */}
             <section className="space-y-3">
-              <SectionHeading Icon={Star} label="Recent scores" />
+              <SectionHeading Icon={Star} label={p.recentScores} />
               <ScoreList scores={enrichedStats.recentScores} />
             </section>
 
             {/* Recent sessions */}
             <section className="space-y-3">
-              <SectionHeading Icon={Clock} label="Recent activity" />
+              <SectionHeading Icon={Clock} label={p.recentActivity} />
               {enrichedStats.recentSessions.length === 0 ? (
                 <p className="rounded-xl border border-border/40 bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
-                  No sessions yet.
+                  {p.noSessions}
                 </p>
               ) : (
                 <ul className="space-y-1.5">
@@ -189,17 +191,16 @@ function ProfileContent() {
                         />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold text-foreground">
-                            {session.game?.title ?? "Unknown game"}
+                            {session.game?.title ?? p.unknownGame}
                           </span>
                           <span className="block text-xs text-muted-foreground">
-                            {session.players.length} player
-                            {session.players.length > 1 ? "s" : ""} ·{" "}
-                            {relativeTime(session.startedAt)}
+                            {p.players(session.players.length)} ·{" "}
+                            {fmt.relative(session.startedAt)}
                           </span>
                         </span>
                         {session.status === "active" && (
                           <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                            Active
+                            {p.active}
                           </span>
                         )}
                       </Link>

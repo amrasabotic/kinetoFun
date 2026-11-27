@@ -14,6 +14,8 @@ import { LoaderCircle, PartyPopper } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { useSession } from "@/features/auth/session-context";
 import { useHandInput } from "@/features/hand-input/HandInputProvider";
+import { useI18n } from "@/features/i18n/I18nProvider";
+import { LanguagePicker } from "@/components/i18n/LanguagePicker";
 import {
   clearStoredTvSession,
   readStoredTvSession,
@@ -25,6 +27,8 @@ type Phase = "claiming" | "ready" | "failed";
 export default function TvGetStartedPage() {
   const router = useRouter();
   const { refresh } = useSession();
+  const { t, locale, serverText } = useI18n();
+  const g = t.tv.getStarted;
 
   const [phase, setPhase] = useState<Phase>("claiming");
   const [userName, setUserName] = useState<string | null>(null);
@@ -77,7 +81,7 @@ export default function TvGetStartedPage() {
             router.replace("/tvsetup");
             return;
           }
-          setError(body.error ?? "Couldn't finish setting up this TV.");
+          setError(body.error ? serverText(body.error) : g.claimFailed);
           setPhase("failed");
           return;
         }
@@ -89,11 +93,11 @@ export default function TvGetStartedPage() {
         await refresh();
         router.refresh();
       } catch {
-        setError("Couldn't reach KinetoFun. Check the TV's connection.");
+        setError(g.unreachable);
         setPhase("failed");
       }
     })();
-  }, [router, refresh]);
+  }, [router, refresh, serverText, g]);
 
   const handleDisconnect = useCallback(async () => {
     const stored = storedRef.current ?? readStoredTvSession();
@@ -128,7 +132,7 @@ export default function TvGetStartedPage() {
     return (
       <div className="flex flex-col items-center gap-8 text-center" role="status">
         <LoaderCircle className="h-20 w-20 animate-spin text-primary" />
-        <p className="text-3xl text-white/60">Getting your TV ready…</p>
+        <p className="text-3xl text-white/60">{g.claiming}</p>
       </div>
     );
   }
@@ -136,7 +140,7 @@ export default function TvGetStartedPage() {
   if (phase === "failed") {
     return (
       <div className="flex flex-col items-center gap-10 text-center" role="alert">
-        <h1 className="text-5xl font-black tracking-tight">Something went wrong</h1>
+        <h1 className="text-5xl font-black tracking-tight">{t.common.error.title}</h1>
         <p className="max-w-2xl text-2xl text-white/60">{error}</p>
         <Button
           size="lg"
@@ -144,7 +148,7 @@ export default function TvGetStartedPage() {
           disabled={leaving}
           className="h-20 px-14 text-3xl!"
         >
-          Start over
+          {g.startOver}
         </Button>
       </div>
     );
@@ -152,28 +156,29 @@ export default function TvGetStartedPage() {
 
   return (
     <div className="flex flex-col items-center gap-12 text-center">
+      <LanguagePicker variant="tv" tone="dark" className="fixed right-10 top-10 z-20 [&_button]:min-w-0 [&_button]:px-8 [&_button]:py-4 [&_button]:text-2xl" />
       <Image src="/logo.png" alt="KinetoFun" width={180} height={52} priority />
 
       <div className="flex flex-col items-center gap-6">
         <PartyPopper className="h-20 w-20 text-accent" />
         <h1 className="text-6xl font-black tracking-tight sm:text-7xl">
-          WELCOME, {(userName ?? "PLAYER").toUpperCase()}!
+          {g.welcome((userName ?? g.player).toLocaleUpperCase(locale))}
         </h1>
-        <p className="text-3xl font-medium text-white/70">Your TV is ready.</p>
-        <p className="text-2xl text-white/50">Hold your hand still over a button to press it.</p>
+        <p className="text-3xl font-medium text-white/70">{g.ready}</p>
+        <p className="text-2xl text-white/50">{g.hold}</p>
       </div>
 
       <ButtonLink href="/tvsetup/games" size="lg" className="h-24 px-20 text-4xl!">
-        GET STARTED
+        {g.getStarted}
       </ButtonLink>
 
       {/* Two steps, because a hand resting in the wrong place for a second
           would otherwise sign the TV out and send the family back to the QR
           code. */}
       {confirmingDisconnect ? (
-        <div className="flex flex-col items-center gap-6" role="alertdialog" aria-label="Disconnect this TV?">
+        <div className="flex flex-col items-center gap-6" role="alertdialog" aria-label={g.disconnectAria}>
           <p className="text-2xl text-white/70">
-            Disconnect this TV? You&apos;ll need a phone to connect it again.
+            {g.disconnectPrompt}
           </p>
           <div className="flex items-center gap-6">
             <Button
@@ -183,7 +188,7 @@ export default function TvGetStartedPage() {
               disabled={leaving}
               className="h-16 px-10 text-2xl! text-white!"
             >
-              Keep connected
+              {g.keep}
             </Button>
             <Button
               variant="danger"
@@ -192,7 +197,7 @@ export default function TvGetStartedPage() {
               disabled={leaving}
               className="h-16 px-10 text-2xl!"
             >
-              {leaving ? "Disconnecting…" : "Disconnect"}
+              {leaving ? g.disconnecting : g.disconnect}
             </Button>
           </div>
         </div>
@@ -203,7 +208,7 @@ export default function TvGetStartedPage() {
           onClick={askDisconnect}
           className="rounded-xl px-8 py-4 text-2xl text-white/40 transition hover:text-white/80"
         >
-          Not you? Disconnect this TV
+          {g.notYou}
         </button>
       )}
     </div>

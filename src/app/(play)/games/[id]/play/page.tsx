@@ -20,6 +20,7 @@ import { useTvMode } from "@/features/tv/tv-mode";
 import { useTvGameScale } from "@/features/tv/use-tv-game-scale";
 import { GameBackButton } from "@/components/games/GameBackButton";
 import { HandInputProvider } from "@/features/hand-input/HandInputProvider";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /** How long the end-of-game reward card waits before leaving on its own. */
 const REWARD_CARD_MS = 15000;
@@ -70,6 +71,8 @@ function GameLaunchContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { refresh } = useSession();
+  const { t, fmt, serverText } = useI18n();
+  const pl = t.games.play;
   const { games, loading } = useGames();
   const game = findGame(games, params.id);
   const entry = getGameEntry(params.id);
@@ -120,8 +123,7 @@ function GameLaunchContent() {
         key: `badge-${b.id}`,
         kind: "badge" as const,
         emoji: b.emoji,
-        title: b.title,
-        description: b.description,
+        ...fmt.badge(b),
       })),
       ...result.newAchievements.map((a) => ({
         key: `achievement-${a.id}`,
@@ -139,7 +141,7 @@ function GameLaunchContent() {
       badges: [...prev.badges, ...result.newBadges],
       tickets: prev.tickets + result.ticketsEarned,
     }));
-  }, [game]);
+  }, [game, fmt]);
 
   useEffect(() => {
     if (!game || sessionStartedRef.current) return;
@@ -185,7 +187,7 @@ function GameLaunchContent() {
       invalidateContinuePlaying();
       await refresh();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not save score.";
+      const msg = err instanceof Error ? serverText(err.message) : pl.saveFailed;
       toast.error(msg);
     } finally {
       setPhase("done");
@@ -279,9 +281,9 @@ function GameLaunchContent() {
   if (!game || !entry) {
     return (
       <FullScreenOverlay>
-        <p className="text-white/70 mb-4">Game not found.</p>
+        <p className="text-white/70 mb-4">{t.games.detail.notFound}</p>
         <Link href={tv ? "/tvsetup/games" : "/library"} className="text-primary underline">
-          Back to Library
+          {t.games.detail.backToLibrary}
         </Link>
       </FullScreenOverlay>
     );
@@ -291,9 +293,9 @@ function GameLaunchContent() {
     return (
       <FullScreenOverlay gradient={game.cover}>
         <span className="text-6xl" aria-hidden>🔒</span>
-        <h1 className="mt-4 text-2xl font-bold text-white">{game.title} is a secret world</h1>
+        <h1 className="mt-4 text-2xl font-bold text-white">{pl.lockedTitle(game.title)}</h1>
         <p className="mt-2 max-w-sm text-center text-sm text-white/70">
-          Unlock it once with {lockedCost} tickets and it&apos;s yours to play forever.
+          {pl.lockedBody(lockedCost)}
         </p>
         <div className="mt-6 flex gap-3">
           <Link
@@ -301,14 +303,14 @@ function GameLaunchContent() {
             data-focusable
             className="rounded-full bg-amber-400 px-5 py-2.5 text-sm font-bold text-amber-950 hover:bg-amber-300"
           >
-            🎟️ Unlock for {lockedCost}
+            {pl.unlockFor(lockedCost)}
           </Link>
           <Link
             href={tv ? "/tvsetup/games" : "/library"}
             data-focusable
             className="rounded-full border border-white/30 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/10"
           >
-            Back to Library
+            {t.games.detail.backToLibrary}
           </Link>
         </div>
       </FullScreenOverlay>
@@ -319,7 +321,7 @@ function GameLaunchContent() {
     return (
       <FullScreenOverlay gradient={game.cover}>
         <Spinner />
-        <p className="mt-4 text-sm font-medium text-white/70">Launching {game.title}…</p>
+        <p className="mt-4 text-sm font-medium text-white/70">{pl.launching(game.title)}</p>
       </FullScreenOverlay>
     );
   }
@@ -328,7 +330,7 @@ function GameLaunchContent() {
     return (
       <FullScreenOverlay>
         <Spinner />
-        <p className="mt-4 text-sm text-white/60">Saving score…</p>
+        <p className="mt-4 text-sm text-white/60">{pl.saving}</p>
       </FullScreenOverlay>
     );
   }
@@ -342,9 +344,9 @@ function GameLaunchContent() {
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 border border-primary/40 mb-4">
           <span className="text-3xl">✓</span>
         </div>
-        <h1 className="text-2xl font-bold text-white">Score saved!</h1>
+        <h1 className="text-2xl font-bold text-white">{pl.saved}</h1>
         {xpEarned > 0 && (
-          <p className="mt-2 text-lg font-semibold text-primary">+{xpEarned} XP earned</p>
+          <p className="mt-2 text-lg font-semibold text-primary">{pl.xp(xpEarned)}</p>
         )}
         {(rewards || collected.achievements.length > 0) && (
           <RewardSummary rewards={rewards} collected={collected} />
@@ -357,7 +359,7 @@ function GameLaunchContent() {
               autoFocus
               className="mt-6 rounded-full bg-amber-400 px-8 py-3 text-lg font-black text-amber-950 hover:bg-amber-300"
             >
-              Continue
+              {pl.continue}
             </Link>
             <div className="mt-4 h-1 w-48 overflow-hidden rounded-full bg-white/15">
               <div
@@ -367,7 +369,7 @@ function GameLaunchContent() {
             </div>
           </>
         ) : (
-          <p className="mt-2 text-sm text-white/50">Returning to game page…</p>
+          <p className="mt-2 text-sm text-white/50">{pl.returning}</p>
         )}
       </FullScreenOverlay>
       </Hands>
@@ -413,19 +415,21 @@ function RewardSummary({
   rewards: GameRewardResult | null;
   collected: Collected;
 }) {
-  const badges = [...(rewards?.newBadges ?? []), ...collected.badges];
+  const { t, fmt } = useI18n();
+  const pl = t.games.play;
+  const badges = [...(rewards?.newBadges ?? []), ...collected.badges].map((b) => ({ ...b, ...fmt.badge(b) }));
   return (
     <div className="mt-5 w-[34rem] max-w-[calc(100vw-2rem)] space-y-4"
       style={{ animation: "kf-reward-pop 500ms ease-out both" }}>
       {rewards && rewards.ticketsEarned > 0 && (
         <div className="rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4">
           <p className="text-center text-xl font-black text-amber-300">
-            🎟️ +{rewards.ticketsEarned} tickets
+            {pl.tickets(rewards.ticketsEarned)}
           </p>
           <ul className="mt-2 space-y-1 text-sm text-white/70">
             {rewards.lines.map((line) => (
               <li key={line.label} className="flex justify-between gap-3">
-                <span>{line.label}</span>
+                <span>{fmt.rewardLabel(line.label)}</span>
                 <span className="tabular-nums text-amber-200">+{line.amount}</span>
               </li>
             ))}
@@ -435,7 +439,7 @@ function RewardSummary({
       {collected.achievements.length > 0 && (
         <div className="rounded-2xl border border-sky-300/30 bg-sky-400/10 p-4">
           <p className="text-center text-sm font-bold text-sky-200">
-            {collected.achievements.length === 1 ? "New collectible" : `${collected.achievements.length} new collectibles`}
+            {pl.newCollectibles(collected.achievements.length)}
             {collected.tickets > 0 && ` · 🎟️ +${collected.tickets}`}
           </p>
           <ul className="mt-2 flex flex-wrap justify-center gap-2">
@@ -459,19 +463,19 @@ function RewardSummary({
         >
           <span className="text-3xl" aria-hidden>{badge.emoji}</span>
           <span className="text-left">
-            <span className="block text-sm font-bold text-white">New badge: {badge.title}</span>
+            <span className="block text-sm font-bold text-white">{pl.newBadge(badge.title)}</span>
             <span className="block text-xs text-white/60">{badge.description}</span>
           </span>
         </div>
       ))}
       {rewards && rewards.streak.current > 1 && (
         <p className="text-center text-sm font-semibold text-orange-300">
-          🔥 {rewards.streak.current}-day streak
+          {pl.streak(rewards.streak.current)}
         </p>
       )}
       {rewards?.dailyLimitReached && (
         <p className="text-center text-xs text-white/50">
-          You have earned all of today&apos;s tickets. Come back tomorrow for more!
+          {pl.dailyLimit}
         </p>
       )}
     </div>

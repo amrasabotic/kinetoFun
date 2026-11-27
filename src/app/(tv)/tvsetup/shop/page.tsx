@@ -15,10 +15,9 @@ import { useHandInput } from "@/features/hand-input/HandInputProvider";
 import { shopAction, useShop } from "@/features/rewards/useShop";
 import { useTvSignedIn } from "@/features/tv/useTvSignedIn";
 import { tvHomeHref } from "@/features/tv/tv-home-state";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
-  RARITY_LABELS,
   SHOP_ITEMS,
-  SHOP_SLOTS,
   findShopItem,
   type Rarity,
   type SecretWorld,
@@ -35,13 +34,7 @@ const BOX_SHAKE_MS = 1600;
 
 type TabId = "box" | "worlds" | ShopItemKind;
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "box", label: "🎁 Mystery box" },
-  { id: "worlds", label: "🔒 Worlds" },
-  { id: "avatar", label: "Avatars" },
-  { id: "frame", label: "Frames" },
-  { id: "banner", label: "Banners" },
-];
+const TABS: TabId[] = ["box", "worlds", "avatar", "frame", "banner"];
 
 const RARITY_STYLE: Record<Rarity, string> = {
   common: "bg-white/15 text-white",
@@ -61,6 +54,8 @@ function TvShop() {
   const { user, refresh: refreshSession } = useSession();
   const { shop, loading, error, refresh } = useShop(signedIn);
   const { rearm } = useHandInput();
+  const { t, fmt, serverText } = useI18n();
+  const s = t.tv.shop;
 
   // undefined: nothing picked on this tab yet, so the equipped item is shown.
   const [picked, setPicked] = useState<string | null | undefined>(undefined);
@@ -69,7 +64,7 @@ function TvShop() {
   const [notice, setNotice] = useState<string | null>(null);
   const [celebration, setCelebration] = useState<Celebration | null>(null);
 
-  const tabId = (TABS.find((t) => t.id === searchParams.get("tab"))?.id ?? "box") as TabId;
+  const tabId = (TABS.find((id) => id === searchParams.get("tab")) ?? "box") as TabId;
 
   // A new choice appears where the hand already is; give the player a moment before it can be pressed.
   useEffect(() => {
@@ -80,7 +75,7 @@ function TvShop() {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-8" role="status">
         <LoaderCircle className="h-20 w-20 animate-spin text-primary" />
-        <p className="text-3xl text-white/60">Opening the shop…</p>
+        <p className="text-3xl text-white/60">{s.opening}</p>
       </div>
     );
   }
@@ -88,9 +83,9 @@ function TvShop() {
   if (error || !shop) {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-10">
-        <p className="text-4xl font-bold text-white/70">{error ?? "The shop is unavailable right now."}</p>
+        <p className="text-4xl font-bold text-white/70">{serverText(error ?? "The shop is unavailable right now.")}</p>
         <Button size="lg" onClick={() => router.push(tvHomeHref())} className="h-20 px-14 text-3xl!">
-          Back to games
+          {t.games.backToGames}
         </Button>
       </div>
     );
@@ -111,7 +106,7 @@ function TvShop() {
       await Promise.all([refresh(), refreshSession()]);
       if (result) setCelebration(result);
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setNotice(serverText(err instanceof Error ? err.message : "Something went wrong. Please try again."));
     } finally {
       setBusy(false);
       setShaking(false);
@@ -123,7 +118,7 @@ function TvShop() {
     run(async () => {
       await shopAction("buy", { itemId: item.id });
       await shopAction("equip", { slot: item.kind, itemId: item.id });
-      return { title: `${item.name} is yours!`, item };
+      return { title: t.shop.yours(fmt.item(item)), item };
     });
 
   const equip = (kind: ShopItemKind, itemId: string | null) =>
@@ -140,7 +135,7 @@ function TvShop() {
         new Promise((resolve) => setTimeout(resolve, BOX_SHAKE_MS)),
       ]);
       await shopAction("equip", { slot: res.item.kind, itemId: res.item.id });
-      return { title: "You found…", item: res.item };
+      return { title: s.found, item: res.item };
     });
   };
 
@@ -154,29 +149,29 @@ function TvShop() {
           className="h-16 px-8 text-2xl! text-white!"
         >
           <ArrowLeft className="h-7 w-7" />
-          Back
+          {t.common.actions.back}
         </Button>
-        <h1 className="flex-1 text-5xl font-black tracking-tight">Ticket Shop</h1>
+        <h1 className="flex-1 text-5xl font-black tracking-tight">{t.common.nav.shop}</h1>
         <p className="flex items-center gap-3 rounded-full bg-amber-400 px-7 py-3 text-3xl font-black tabular-nums text-amber-950">
           <Ticket className="h-8 w-8" />
-          {shop.balance.toLocaleString()}
+          {fmt.number(shop.balance)}
         </p>
       </header>
 
-      <nav className="flex flex-wrap gap-4" aria-label="Shop sections">
-        {TABS.map((t) => (
+      <nav className="flex flex-wrap gap-4" aria-label={s.sections}>
+        {TABS.map((id) => (
           <button
-            key={t.id}
+            key={id}
             type="button"
             data-focusable
-            aria-pressed={t.id === tabId}
-            onClick={() => show(t.id, 1)}
+            aria-pressed={id === tabId}
+            onClick={() => show(id, 1)}
             className={cn(
               "h-16 rounded-full px-8 text-2xl font-bold transition",
-              t.id === tabId ? "bg-primary text-white" : "bg-white/10 text-white/80",
+              id === tabId ? "bg-primary text-white" : "bg-white/10 text-white/80",
             )}
           >
-            {t.label}
+            {s.tabs[id]}
           </button>
         ))}
       </nav>
@@ -247,9 +242,10 @@ function MysteryBox({
   notice: string | null;
   onOpen: () => void;
 }) {
+  const { t } = useI18n();
   const chances = (Object.keys(odds) as Rarity[])
     .filter((r) => odds[r] > 0)
-    .map((r) => `${RARITY_LABELS[r]} ${Math.round(odds[r] * 100)}%`)
+    .map((r) => `${t.rewards.rarity[r]} ${Math.round(odds[r] * 100)}%`)
     .join(" · ");
 
   return (
@@ -258,14 +254,14 @@ function MysteryBox({
         🎁
       </span>
       <div className="flex max-w-2xl flex-col gap-6">
-        <h2 className="text-6xl font-black">Mystery box</h2>
-        <p className="text-3xl text-white/75">A surprise avatar, frame or banner you don&apos;t have yet.</p>
+        <h2 className="text-6xl font-black">{t.shop.mysteryBox}</h2>
+        <p className="text-3xl text-white/75">{t.shop.mysteryBoxHint}</p>
         {remaining === 0 ? (
-          <p className="text-4xl font-bold text-emerald-300">You own everything! 🎉</p>
+          <p className="text-4xl font-bold text-emerald-300">{t.shop.ownEverything} 🎉</p>
         ) : (
           <>
-            <p className="text-2xl text-white/55">Chances: {chances}</p>
-            <BuyButton price={price} balance={balance} busy={busy} label="Open the box" onBuy={onOpen} />
+            <p className="text-2xl text-white/55">{t.shop.chances(chances)}</p>
+            <BuyButton price={price} balance={balance} busy={busy} label={t.tv.shop.openBox} onBuy={onOpen} />
           </>
         )}
         {notice && <p className="text-2xl font-bold text-rose-300">{notice}</p>}
@@ -313,6 +309,8 @@ function ItemShelf({
   const pageCount = Math.ceil(entries.length / PAGE_SIZE);
   const current = Math.min(Math.max(page, 1), pageCount);
   const visible = entries.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const { t, fmt } = useI18n();
+  const name = (item: ShopItem | null) => (item ? fmt.item(item) : t.rewards.slots[kind].defaultLabel);
 
   const selectedId = picked === undefined ? equipped : picked;
   const selected = findShopItem(selectedId) ?? null;
@@ -323,16 +321,16 @@ function ItemShelf({
     <div className="flex min-h-0 flex-1 gap-8">
       <aside className="flex w-[30%] shrink-0 flex-col items-center gap-5 rounded-3xl bg-white/5 p-8 text-center">
         <LookPreview user={user} kind={kind} item={selected} size="big" />
-        <p className="text-4xl font-black">{selected?.name ?? SHOP_SLOTS[kind].defaultLabel}</p>
+        <p className="text-4xl font-black">{name(selected)}</p>
         {selected && (
           <span className={cn("rounded-full px-5 py-1.5 text-xl font-bold", RARITY_STYLE[selected.rarity])}>
-            {RARITY_LABELS[selected.rarity]}
+            {t.rewards.rarity[selected.rarity]}
           </span>
         )}
         <div className="mt-auto flex w-full flex-col items-center gap-4">
           {inUse ? (
             <p className="flex items-center gap-3 text-3xl font-bold text-emerald-300">
-              <Check className="h-9 w-9" /> You&apos;re using this
+              <Check className="h-9 w-9" /> {t.tv.shop.usingThis}
             </p>
           ) : isOwned ? (
             <button
@@ -342,10 +340,10 @@ function ItemShelf({
               onClick={() => onEquip(selected?.id ?? null)}
               className="h-20 w-full rounded-full bg-primary text-3xl font-black text-white disabled:opacity-50"
             >
-              Use this
+              {t.tv.shop.useThis}
             </button>
           ) : (
-            <BuyButton price={selected!.price} balance={balance} busy={busy} label="Buy" onBuy={() => onBuy(selected!)} />
+            <BuyButton price={selected!.price} balance={balance} busy={busy} label={t.shop.buy} onBuy={() => onBuy(selected!)} />
           )}
           {notice && <p className="text-2xl font-bold text-rose-300">{notice}</p>}
         </div>
@@ -368,7 +366,7 @@ function ItemShelf({
                 )}
               >
                 <LookPreview user={user} kind={kind} item={item} size="tile" />
-                <span className="text-2xl font-bold leading-tight">{item?.name ?? SHOP_SLOTS[kind].defaultLabel}</span>
+                <span className="text-2xl font-bold leading-tight">{name(item)}</span>
                 <TileStatus item={item} owned={owned} equipped={equipped} />
               </button>
             </li>
@@ -381,8 +379,9 @@ function ItemShelf({
 }
 
 function TileStatus({ item, owned, equipped }: { item: ShopItem | null; owned: Set<string>; equipped: string | null }) {
-  if ((item?.id ?? null) === equipped) return <span className="text-xl font-bold text-emerald-300">In use</span>;
-  if (!item || owned.has(item.id)) return <span className="text-xl text-white/60">Owned</span>;
+  const s = useI18n().t.tv.shop;
+  if ((item?.id ?? null) === equipped) return <span className="text-xl font-bold text-emerald-300">{s.inUse}</span>;
+  if (!item || owned.has(item.id)) return <span className="text-xl text-white/60">{s.owned}</span>;
   return (
     <span className="flex items-center gap-2 text-xl font-bold text-amber-300">
       <Ticket className="h-5 w-5" /> {item.price}
@@ -425,8 +424,9 @@ function LookPreview({
 // ── Secret worlds ──────────────────────────────────────────────────────────────
 
 function Worlds({ worlds, page, onPage }: { worlds: SecretWorld[]; page: number; onPage: (page: number) => void }) {
+  const { t } = useI18n();
   if (worlds.length === 0) {
-    return <p className="py-32 text-center text-4xl font-bold text-white/60">No secret worlds yet.</p>;
+    return <p className="py-32 text-center text-4xl font-bold text-white/60">{t.tv.shop.noWorlds}</p>;
   }
   const pageCount = Math.ceil(worlds.length / PAGE_SIZE);
   const current = Math.min(Math.max(page, 1), pageCount);
@@ -453,7 +453,7 @@ function Worlds({ worlds, page, onPage }: { worlds: SecretWorld[]; page: number;
               <div className="relative mt-auto flex w-full items-end justify-between gap-3 p-6">
                 <p className="text-3xl font-black leading-tight text-white drop-shadow">{w.title}</p>
                 {w.unlocked ? (
-                  <span className="rounded-full bg-emerald-400 px-4 py-1.5 text-xl font-black text-emerald-950">Play</span>
+                  <span className="rounded-full bg-emerald-400 px-4 py-1.5 text-xl font-black text-emerald-950">{t.shop.play}</span>
                 ) : (
                   <span className="flex shrink-0 items-center gap-2 rounded-full bg-amber-400 px-4 py-1.5 text-xl font-black text-amber-950">
                     <Lock className="h-5 w-5" /> {w.unlockCost}
@@ -484,10 +484,11 @@ function BuyButton({
   label: string;
   onBuy: () => void;
 }) {
+  const s = useI18n().t.tv.shop;
   if (balance < price) {
     return (
       <p className="flex h-20 w-full items-center justify-center gap-3 rounded-full bg-white/10 text-2xl font-bold text-white/60">
-        Need {price - balance} more <Ticket className="h-7 w-7" />
+        {s.needMore(price - balance)} <Ticket className="h-7 w-7" />
       </p>
     );
   }
@@ -516,17 +517,18 @@ function CelebrationOverlay({
   onClose: () => void;
 }) {
   const item = celebration.item;
+  const { t, fmt } = useI18n();
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-[#050a1a]/95">
       <p className="text-5xl font-black text-amber-300">{celebration.title}</p>
       {item && (
         <div className="flex w-[34rem] flex-col items-center gap-6" style={{ animation: "kf-reward-pop 500ms ease-out both" }}>
           <LookPreview user={user} kind={item.kind} item={item} size="big" />
-          <p className="text-6xl font-black">{item.name}</p>
+          <p className="text-6xl font-black">{fmt.item(item)}</p>
           <span className={cn("rounded-full px-6 py-2 text-2xl font-bold", RARITY_STYLE[item.rarity])}>
-            {RARITY_LABELS[item.rarity]} {SHOP_SLOTS[item.kind].label.toLowerCase().replace(/s$/, "")}
+            {t.tv.shop.kindLabel(t.rewards.rarity[item.rarity], item.kind)}
           </span>
-          <p className="text-2xl text-white/60">It&apos;s on your profile now.</p>
+          <p className="text-2xl text-white/60">{t.tv.shop.onProfile}</p>
         </div>
       )}
       <button
@@ -535,7 +537,7 @@ function CelebrationOverlay({
         onClick={onClose}
         className="h-20 rounded-full bg-primary px-20 text-3xl font-black text-white"
       >
-        Great!
+        {t.tv.shop.great}
       </button>
     </div>
   );
@@ -551,6 +553,7 @@ function PageTile({
   onClick: () => void;
 }) {
   const Icon = direction === "previous" ? ChevronLeft : ChevronRight;
+  const r = useI18n().t.profile.rewards;
   return (
     <button
       type="button"
@@ -558,7 +561,7 @@ function PageTile({
       data-dwell-repeat
       disabled={disabled}
       onClick={onClick}
-      aria-label={direction === "previous" ? "Previous page" : "Next page"}
+      aria-label={direction === "previous" ? r.previousPage : r.nextPage}
       className="flex w-24 shrink-0 items-center justify-center rounded-3xl bg-white/10 text-white transition disabled:opacity-20"
     >
       <Icon className="h-14 w-14" />

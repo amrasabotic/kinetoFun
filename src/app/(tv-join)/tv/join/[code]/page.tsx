@@ -17,6 +17,8 @@ import { CircleCheckBig, LoaderCircle, Tv, TriangleAlert } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { useSession } from "@/features/auth/session-context";
 import type { TvSessionView } from "@/lib/tv/pairing";
+import { useI18n } from "@/features/i18n/I18nProvider";
+import { LanguagePicker } from "@/components/i18n/LanguagePicker";
 
 type Phase =
   | "checking"
@@ -27,8 +29,6 @@ type Phase =
   | "taken"
   | "error";
 
-const EXPIRED_MESSAGE =
-  "This TV connection has expired. Please scan the new QR code shown on the TV.";
 
 /** Shared card chrome, matching the existing auth screens. */
 function Card({ children }: { children: React.ReactNode }) {
@@ -47,6 +47,8 @@ function JoinContent() {
 
   const [phase, setPhase] = useState<Phase>("checking");
   const [message, setMessage] = useState<string | null>(null);
+  const { t, serverText } = useI18n();
+  const j = t.tv.join;
 
   // Check the code is still usable before offering to connect. This call is
   // deliberately unauthenticated and returns the status only — never who, if
@@ -74,14 +76,14 @@ function JoinContent() {
       } catch {
         if (cancelled) return;
         setPhase("error");
-        setMessage("Couldn't reach KinetoFun. Check your connection and try again.");
+        setMessage(j.unreachable);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [code]);
+  }, [code, j]);
 
   const handleConnect = useCallback(async () => {
     setPhase("connecting");
@@ -106,12 +108,12 @@ function JoinContent() {
         return;
       }
       setPhase("error");
-      setMessage(body.error ?? "Couldn't connect to the TV. Please try again.");
+      setMessage(body.error ? serverText(body.error) : j.connectFailed);
     } catch {
       setPhase("error");
-      setMessage("Couldn't reach KinetoFun. Check your connection and try again.");
+      setMessage(j.unreachable);
     }
-  }, [code]);
+  }, [code, j, serverText]);
 
   const nextParam = `?next=${encodeURIComponent(`/tv/join/${code}`)}`;
 
@@ -120,7 +122,7 @@ function JoinContent() {
       <Card>
         <div className="flex flex-col items-center gap-4 py-8" role="status">
           <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-white/60">Checking this TV…</p>
+          <p className="text-sm text-white/60">{j.checking}</p>
         </div>
       </Card>
     );
@@ -131,10 +133,10 @@ function JoinContent() {
       <Card>
         <div className="flex flex-col items-center gap-4 text-center">
           <CircleCheckBig className="h-14 w-14 text-primary" />
-          <h1 className="text-2xl font-black tracking-tight">You&apos;re connected!</h1>
-          <p className="text-white/70">You can continue on your TV.</p>
+          <h1 className="text-2xl font-black tracking-tight">{j.connected}</h1>
+          <p className="text-white/70">{j.continueOnTv}</p>
           <p className="pt-2 text-sm text-white/40">
-            It&apos;s safe to close this page — your TV takes it from here.
+            {j.safeToClose}
           </p>
         </div>
       </Card>
@@ -146,8 +148,8 @@ function JoinContent() {
       <Card>
         <div className="flex flex-col items-center gap-4 text-center" role="alert">
           <TriangleAlert className="h-12 w-12 text-accent" />
-          <h1 className="text-xl font-black tracking-tight">Connection expired</h1>
-          <p className="text-white/70">{EXPIRED_MESSAGE}</p>
+          <h1 className="text-xl font-black tracking-tight">{j.expiredTitle}</h1>
+          <p className="text-white/70">{j.expired}</p>
         </div>
       </Card>
     );
@@ -158,10 +160,9 @@ function JoinContent() {
       <Card>
         <div className="flex flex-col items-center gap-4 text-center" role="alert">
           <Tv className="h-12 w-12 text-accent" />
-          <h1 className="text-xl font-black tracking-tight">TV already connected</h1>
+          <h1 className="text-xl font-black tracking-tight">{j.takenTitle}</h1>
           <p className="text-white/70">
-            This TV is already connected to an account. Disconnect it on the TV first,
-            then scan the new QR code.
+            {j.taken}
           </p>
         </div>
       </Card>
@@ -170,10 +171,13 @@ function JoinContent() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <LanguagePicker tone="dark" />
+      </div>
       <header className="flex flex-col items-center gap-4 text-center">
         <Image src="/logo.png" alt="KinetoFun" width={150} height={44} priority />
-        <h1 className="text-2xl font-black tracking-tight">Join KinetoFun</h1>
-        <p className="text-white/70">You are connecting to a TV.</p>
+        <h1 className="text-2xl font-black tracking-tight">{j.title}</h1>
+        <p className="text-white/70">{j.subtitle}</p>
         <p className="font-mono text-lg tracking-[0.3em] text-accent">{code}</p>
       </header>
 
@@ -181,11 +185,11 @@ function JoinContent() {
         {isAuthenticated ? (
           <div className="space-y-5">
             <p className="text-center text-white/70">
-              Connect{" "}
+              {j.connectBefore}{" "}
               <span className="font-semibold text-white">
-                {user?.displayName ?? "your account"}
+                {user?.displayName ?? j.yourAccount}
               </span>{" "}
-              to this TV?
+              {j.connectAfter}
             </p>
             <Button
               fullWidth
@@ -194,20 +198,20 @@ function JoinContent() {
               disabled={phase === "connecting"}
               className={phase === "connecting" ? "pointer-events-none opacity-60" : undefined}
             >
-              {phase === "connecting" ? "Connecting…" : "Connect to TV"}
+              {phase === "connecting" ? t.tv.welcome.connecting : j.connect}
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
             <p className="text-center text-white/70">
-              Sign in to connect this TV to your KinetoFun account.
+              {j.signInPrompt}
             </p>
             <ButtonLink href={`/login${nextParam}`} fullWidth size="lg">
-              Log in
+              {t.common.nav.logIn}
             </ButtonLink>
-            <p className="text-center text-sm text-white/50">Don&apos;t have an account?</p>
+            <p className="text-center text-sm text-white/50">{j.noAccount}</p>
             <ButtonLink href={`/signup${nextParam}`} fullWidth size="lg" variant="secondary">
-              Create Account
+              {t.auth.signup.submit}
             </ButtonLink>
           </div>
         )}
@@ -223,7 +227,7 @@ function JoinContent() {
       </Card>
 
       <p className="text-center text-xs text-white/35">
-        Connecting links your account to this TV. Your password is never shared with it.
+        {j.footer}
       </p>
     </div>
   );

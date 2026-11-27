@@ -1,14 +1,17 @@
+"use client";
+
 import Link from "next/link";
-import { formatScore, relativeTime } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { Game, Score } from "@/types";
 
 type ScoreWithGame = Score & { game?: Game };
 
 export function ScoreList({ scores }: { scores: ScoreWithGame[] }) {
+  const { t, fmt } = useI18n();
   if (scores.length === 0) {
     return (
       <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45 backdrop-blur-xl">
-        No scores yet — go play something!
+        {t.profile.noScores}
       </p>
     );
   }
@@ -29,14 +32,14 @@ export function ScoreList({ scores }: { scores: ScoreWithGame[] }) {
             />
             <span className="flex-1 min-w-0">
               <span className="block truncate font-semibold text-foreground">
-                {score.game?.title ?? "Unknown game"}
+                {score.game?.title ?? t.profile.unknownGame}
               </span>
               <span className="block text-xs text-foreground/45">
-                {relativeTime(score.achievedAt)}
+                {fmt.relative(score.achievedAt)}
               </span>
             </span>
             <span className="font-mono text-sm font-bold tabular-nums text-primary">
-              {formatScore(score.score)}
+              {fmt.number(score.score)}
             </span>
           </Link>
         </li>

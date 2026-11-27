@@ -16,6 +16,8 @@ import { useTvSignedIn } from "@/features/tv/useTvSignedIn";
 import { saveTvHomeQuery } from "@/features/tv/tv-home-state";
 import { tvGames } from "@/features/tv/tv-games";
 import { TvGameCard } from "@/components/tv/TvGameCard";
+import { useI18n } from "@/features/i18n/I18nProvider";
+import { LanguagePicker } from "@/components/i18n/LanguagePicker";
 
 const PAGE_SIZE = 8;
 const CATEGORY_ORDER: GameCategory[] = ["Action", "Sports", "Arcade", "Puzzle", "Adventure", "Party"];
@@ -36,18 +38,20 @@ function TvGamesHome() {
   const { isFavorite, loaded: favoritesLoaded } = useFavorites();
 
   const playable = useMemo(() => tvGames(games), [games]);
+  const { t, fmt } = useI18n();
+  const h = t.tv.home;
 
   const tabs: Tab[] = [
     {
       id: "recent",
-      label: "Continue playing",
+      label: t.home.dashboard.continuePlaying,
       games: recentIds.flatMap((id) => playable.find((g) => g.id === id) ?? []),
     },
-    { id: "favorites", label: "Favorites", games: playable.filter((g) => isFavorite(g.id)) },
-    { id: "all", label: "All games", games: playable },
+    { id: "favorites", label: t.home.dashboard.favorites, games: playable.filter((g) => isFavorite(g.id)) },
+    { id: "all", label: t.home.dashboard.allGames, games: playable },
     ...CATEGORY_ORDER.map((category) => ({
       id: category.toLowerCase(),
-      label: category,
+      label: fmt.category(category),
       games: playable.filter((g) => g.category === category),
     })),
   ].filter((tab) => tab.games.length > 0);
@@ -56,7 +60,7 @@ function TvGamesHome() {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-8" role="status">
         <LoaderCircle className="h-20 w-20 animate-spin text-primary" />
-        <p className="text-3xl text-white/60">Loading your games…</p>
+        <p className="text-3xl text-white/60">{h.loading}</p>
       </div>
     );
   }
@@ -64,12 +68,12 @@ function TvGamesHome() {
   if (tabs.length === 0) {
     return (
       <p className="py-40 text-center text-4xl font-bold text-white/70">
-        No games are ready for the TV yet.
+        {h.empty}
       </p>
     );
   }
 
-  const tab = tabs.find((t) => t.id === searchParams.get("tab")) ?? tabs[0];
+  const tab = tabs.find((x) => x.id === searchParams.get("tab")) ?? tabs[0];
   const pageCount = Math.ceil(tab.games.length / PAGE_SIZE);
   const page = Math.min(Math.max(Number(searchParams.get("page")) || 1, 1), pageCount);
   const visible = tab.games.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -80,37 +84,40 @@ function TvGamesHome() {
     router.replace(`/tvsetup/games${query}`, { scroll: false });
   };
 
-  const firstName = user?.displayName?.split(" ")[0] || "Player";
+  const firstName = user?.displayName?.split(" ")[0] || h.player;
 
   return (
     <div className="flex h-[calc(100vh_-_var(--spacing)*24)] flex-col gap-7">
       <header className="flex items-center justify-between">
-        <h1 className="text-5xl font-black tracking-tight">Hi, {firstName}!</h1>
-        <Link
-          href="/tvsetup/shop"
-          data-focusable
-          className="flex h-16 items-center gap-3 rounded-full bg-amber-400 px-7 text-2xl font-black text-amber-950"
-        >
-          <Ticket className="h-7 w-7" />
-          {user?.tickets ?? 0}
-          <span className="ml-1 rounded-full bg-amber-950/15 px-4 py-1">Shop</span>
-        </Link>
+        <h1 className="text-5xl font-black tracking-tight">{h.hi(firstName)}</h1>
+        <div className="flex items-center gap-6">
+          <LanguagePicker variant="tv" tone="dark" className="gap-3! [&_button]:min-w-0 [&_button]:h-16 [&_button]:px-6 [&_button]:py-0 [&_button]:text-2xl" />
+          <Link
+            href="/tvsetup/shop"
+            data-focusable
+            className="flex h-16 items-center gap-3 rounded-full bg-amber-400 px-7 text-2xl font-black text-amber-950"
+          >
+            <Ticket className="h-7 w-7" />
+            {user?.tickets ?? 0}
+            <span className="ml-1 rounded-full bg-amber-950/15 px-4 py-1">{h.shop}</span>
+          </Link>
+        </div>
       </header>
 
-      <nav className="flex flex-wrap gap-4" aria-label="Game lists">
-        {tabs.map((t) => (
+      <nav className="flex flex-wrap gap-4" aria-label={h.lists}>
+        {tabs.map((x) => (
           <button
-            key={t.id}
+            key={x.id}
             type="button"
             data-focusable
-            aria-pressed={t.id === tab.id}
-            onClick={() => show(t.id, 1)}
+            aria-pressed={x.id === tab.id}
+            onClick={() => show(x.id, 1)}
             className={cn(
               "h-16 rounded-full px-8 text-2xl font-bold transition",
-              t.id === tab.id ? "bg-primary text-white" : "bg-white/10 text-white/80",
+              x.id === tab.id ? "bg-primary text-white" : "bg-white/10 text-white/80",
             )}
           >
-            {t.label}
+            {x.label}
           </button>
         ))}
       </nav>
@@ -126,7 +133,7 @@ function TvGamesHome() {
       </div>
 
       <p className="text-center text-2xl text-white/50">
-        {tab.label} · page {page} of {pageCount}
+        {h.page(tab.label, page, pageCount)}
       </p>
     </div>
   );
@@ -142,6 +149,7 @@ function PageTile({
   onClick: () => void;
 }) {
   const Icon = direction === "previous" ? ChevronLeft : ChevronRight;
+  const r = useI18n().t.profile.rewards;
   return (
     <button
       type="button"
@@ -149,7 +157,7 @@ function PageTile({
       data-dwell-repeat
       disabled={disabled}
       onClick={onClick}
-      aria-label={direction === "previous" ? "Previous page" : "Next page"}
+      aria-label={direction === "previous" ? r.previousPage : r.nextPage}
       className="flex w-28 shrink-0 items-center justify-center rounded-3xl bg-white/10 text-white transition disabled:opacity-20"
     >
       <Icon className="h-16 w-16" />

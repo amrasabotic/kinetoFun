@@ -6,20 +6,25 @@ import { SpatialNavigation } from "@/components/navigation/SpatialNavigation";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { DisplaySettingsSync } from "@/features/settings/DisplaySettingsSync";
 import { TvModeSync } from "@/features/tv/TvModeSync";
+import { I18nProvider } from "@/features/i18n/I18nProvider";
+import { getRequestLocale, getRequestMessages } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "KinetoFun — Play with a wave",
-  description:
-    "A gesture-ready, TV-first gaming platform. Browse, launch, and compete from your couch.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getRequestMessages();
+  return {
+    title: t.common.meta.title,
+    description: t.common.meta.description,
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getRequestLocale();
   return (
-    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang={locale} className="h-full antialiased" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-full font-sans">
         {/* Rounded, friendly fonts for the playful landing page (scoped via
             .landing-root / .font-display in globals.css). Loaded at runtime so the
@@ -32,11 +37,13 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;500;600;700;800;900&display=swap"
         />
         <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
-          <SessionProvider>
-            <DisplaySettingsSync />
-            <TvModeSync />
-            <SpatialNavigation>{children}</SpatialNavigation>
-          </SessionProvider>
+          <I18nProvider initialLocale={locale}>
+            <SessionProvider>
+              <DisplaySettingsSync />
+              <TvModeSync />
+              <SpatialNavigation>{children}</SpatialNavigation>
+            </SessionProvider>
+          </I18nProvider>
           <Toaster position="bottom-right" richColors />
         </ThemeProvider>
       </body>

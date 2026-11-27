@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 const PROBE_MS = 2000;
 
 export function OfflineGuard() {
   const [offline, setOffline] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -59,7 +61,7 @@ export function OfflineGuard() {
       {/* eslint-disable-next-line @next/next/no-img-element -- next/image would need the network to optimise it */}
       <img src="/logo.png" alt="KinetoFun" className="w-[360px] max-w-[40vw]" />
       <div className="h-16 w-16 animate-spin rounded-full border-[7px] border-[#ede9fe] border-t-[#7c3aed]" />
-      <p className="text-3xl font-bold opacity-80">Connecting to Wi-Fi…</p>
+      <p className="text-3xl font-bold opacity-80">{t.tv.offline}</p>
     </div>
   );
 }

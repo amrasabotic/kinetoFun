@@ -7,6 +7,7 @@ import { searchGames } from "@/services/games.service";
 import { GameCard } from "@/components/game/GameCard";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { Category } from "@/types";
 
 function LibraryContent() {
@@ -16,6 +17,8 @@ function LibraryContent() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const featuredOnly = searchParams.get("featured") === "1";
+  const { t, fmt } = useI18n();
+  const l = t.games.library;
 
   useEffect(() => {
     fetch("/api/categories")
@@ -50,20 +53,18 @@ function LibraryContent() {
     <div className="space-y-8">
       <header className="space-y-2">
         <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
-          Game Library
+          {l.title}
         </h1>
         <p className="text-muted-foreground">
-          {loading
-            ? "Loading games…"
-            : `${results.length} ${results.length === 1 ? "game" : "games"} available${featuredOnly ? " — Featured" : ""}`}
+          {loading ? l.loading : l.count(results.length, featuredOnly)}
         </p>
       </header>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="w-full max-w-sm">
           <TextField
-            label="Search"
-            placeholder="Search games…"
+            label={l.search}
+            placeholder={l.searchPlaceholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="!border-border/50 !bg-card/40"
@@ -81,7 +82,7 @@ function LibraryContent() {
                 : "border border-border/50 bg-card/20 text-muted-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-card/40 hover:text-foreground",
             )}
           >
-            All
+            {l.all}
           </button>
           {categories.map((category) => (
             <button
@@ -95,7 +96,7 @@ function LibraryContent() {
                   : "border border-border/50 bg-card/20 text-muted-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-card/40 hover:text-foreground",
               )}
             >
-              {category.name}
+              {fmt.category(category.name)}
             </button>
           ))}
         </div>
@@ -112,7 +113,7 @@ function LibraryContent() {
         </div>
       ) : results.length === 0 ? (
         <p className="rounded-2xl border border-border/40 bg-card/10 p-12 text-center text-muted-foreground backdrop-blur-sm">
-          No games match &ldquo;{query}&rdquo;.
+          {l.noMatch(query)}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">

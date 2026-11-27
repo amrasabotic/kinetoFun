@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 interface PairingQrProps {
   /** Absolute URL the phone should open. Contains only the pairing code. */
@@ -16,6 +17,7 @@ interface PairingQrProps {
 
 export function PairingQr({ value, size = 420 }: PairingQrProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const alt = useI18n().t.tv.qrAlt;
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +49,7 @@ export function PairingQr({ value, size = 420 }: PairingQrProps) {
         // eslint-disable-next-line @next/next/no-img-element -- a data: URL, nothing for next/image to optimize
         <img
           src={dataUrl}
-          alt="QR code to connect your phone to this TV"
+          alt={alt}
           className="h-full w-full"
         />
       ) : (

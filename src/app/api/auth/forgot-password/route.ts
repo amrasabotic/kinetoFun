@@ -12,6 +12,7 @@ import { rateLimit, clientIp } from "@/lib/auth/rate-limit";
 import { tooManyRequests } from "@/lib/auth/http";
 import { sendEmail } from "@/lib/email/resend";
 import { passwordResetEmail } from "@/lib/email/templates";
+import { getRequestLocale } from "@/lib/i18n/server";
 import type { AuthError } from "@/types/auth";
 
 const RESET_TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
 
       const origin = request.headers.get("origin") ?? new URL(request.url).origin;
       const resetUrl = `${origin}/reset-password?token=${rawToken}`;
-      const { subject, html } = passwordResetEmail(resetUrl);
+      const { subject, html } = passwordResetEmail(resetUrl, await getRequestLocale());
       await sendEmail({ to: user.email, subject, html });
     }
 

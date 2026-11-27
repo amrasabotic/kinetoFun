@@ -9,6 +9,7 @@ import { AuthRequestError } from "@/services/auth.service";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /** Only allow relative, in-app redirect targets (no open redirects). */
 function safeNext(raw: string | null): string {
@@ -19,6 +20,7 @@ function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { signup } = useSession();
+  const { t: { auth: a }, serverText } = useI18n();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,10 +40,10 @@ function SignupForm() {
       router.refresh();
     } catch (err) {
       if (err instanceof AuthRequestError) {
-        setError(err.message);
+        setError(serverText(err.message));
         setFields(err.fields ?? {});
       } else {
-        setError("Couldn't create your account. Please try again.");
+        setError(a.signup.failed);
       }
       setPending(false);
     }
@@ -57,27 +59,27 @@ function SignupForm() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-black tracking-tight text-foreground">
-          Create your account
+          {a.signup.title}
         </h1>
         <p className="mt-1.5 text-sm text-foreground/45">
-          Join KinetoFun in seconds.
+          {a.signup.subtitle}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <TextField
-          label="Display name"
-          placeholder="Player One"
+          label={a.signup.displayName}
+          placeholder={a.signup.displayNamePlaceholder}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           required
           icon={<User className="h-4 w-4" />}
         />
         <TextField
-          label="Email"
+          label={a.email}
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={a.emailPlaceholder}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -85,7 +87,7 @@ function SignupForm() {
         />
         <div className="space-y-2">
           <TextField
-            label="Password"
+            label={a.password}
             type="password"
             autoComplete="new-password"
             placeholder="••••••••"
@@ -97,12 +99,12 @@ function SignupForm() {
           {fields.password ? (
             <ul className="space-y-1 pl-1 text-xs text-destructive">
               {fields.password.map((msg) => (
-                <li key={msg}>• {msg}</li>
+                <li key={msg}>• {serverText(msg)}</li>
               ))}
             </ul>
           ) : (
             <p className="pl-1 text-xs text-foreground/35">
-              At least 8 characters, with a letter and a number.
+              {a.passwordRule}
             </p>
           )}
         </div>
@@ -123,12 +125,12 @@ function SignupForm() {
           disabled={pending}
           className={cn("mt-2", pending && "pointer-events-none opacity-60")}
         >
-          {pending ? "Creating account…" : "Create account"}
+          {pending ? a.signup.pending : a.signup.submit}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-foreground/45">
-        Already have an account?{" "}
+        {a.signup.haveAccount}{" "}
         <Link
           href="/login"
           // Not prefetched: once sign-in succeeds the proxy redirects /login and
@@ -137,7 +139,7 @@ function SignupForm() {
           data-focusable
           className="font-semibold text-primary transition-colors hover:text-primary/80 focus:outline-none"
         >
-          Sign in
+          {a.signup.signIn}
         </Link>
       </p>
     </div>

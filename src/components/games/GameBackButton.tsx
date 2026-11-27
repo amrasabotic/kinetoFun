@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { buttonClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /** Hand held over the button this long presses it (long, so a sweeping hand cannot trigger it). The hand must leave the button before it can press again. */
 const HOLD_MS = 2000;
@@ -24,6 +25,7 @@ const RING_NEAR_PX = 320;
  * over this button fills it.
  */
 export function GameBackButton({ onLeave, large }: { onLeave: () => void; large?: boolean }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLButtonElement>(null);
   const [progress, setProgress] = useState(0);
   const [near, setNear] = useState(false);
@@ -126,7 +128,7 @@ export function GameBackButton({ onLeave, large }: { onLeave: () => void; large?
         style={{ width: `${progress * 100}%` }}
       />
       <ArrowLeft className={cn("relative", large ? "h-7 w-7" : "h-5 w-5")} />
-      <span className="relative">Back to games</span>
+      <span className="relative">{t.games.backToGames}</span>
     </button>
     </>
   );

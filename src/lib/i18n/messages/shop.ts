@@ -1,0 +1,41 @@
+const en = {
+  subtitle: "Spend the tickets you earn by playing on new looks and secret worlds.",
+  mysteryBox: "Mystery box",
+  mysteryBoxHint: "A surprise avatar, frame or banner you don't have yet.",
+  chances: (odds: string) => `Chances: ${odds}`,
+  ownEverything: "You own everything!",
+  open: "Open",
+  secretWorlds: "Secret worlds",
+  buy: "Buy",
+  yours: (name: string) => `${name} is yours!`,
+  tapToConfirm: "Tap to confirm",
+  using: "Using",
+  use: "Use",
+  play: "Play",
+  unlock: "Unlock",
+  youGot: "You got…",
+  later: "Later",
+  useNow: "Use it now",
+};
+
+const sq: typeof en = {
+  subtitle: "Shpenzo biletat që fiton duke luajtur për pamje të reja dhe botë të fshehta.",
+  mysteryBox: "Kuti misterioze",
+  mysteryBoxHint: "Një avatar, kornizë ose baner surprizë që nuk e ke ende.",
+  chances: (odds: string) => `Mundësitë: ${odds}`,
+  ownEverything: "I ke të gjitha!",
+  open: "Hap",
+  secretWorlds: "Botë të fshehta",
+  buy: "Bli",
+  yours: (name: string) => `${name} është jotja!`,
+  tapToConfirm: "Prek për ta konfirmuar",
+  using: "Në përdorim",
+  use: "Përdor",
+  play: "Luaj",
+  unlock: "Zhblloko",
+  youGot: "More…",
+  later: "Më vonë",
+  useNow: "Përdore tani",
+};
+
+export const shop = { en, sq };

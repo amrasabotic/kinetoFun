@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export function StarRating({
   rating,
@@ -8,10 +11,11 @@ export function StarRating({
   className?: string;
 }) {
   const rounded = Math.round(rating);
+  const g = useI18n().t.games;
   return (
     <span
       className={cn("inline-flex items-center gap-1.5", className)}
-      aria-label={`Rated ${rating.toFixed(1)} out of 5`}
+      aria-label={g.rated(rating.toFixed(1))}
     >
       <span className="text-amber-400" aria-hidden>
         {"★".repeat(rounded)}

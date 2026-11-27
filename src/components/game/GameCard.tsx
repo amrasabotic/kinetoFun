@@ -3,8 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { playersLabel } from "@/lib/format";
 import { useSession } from "@/features/auth/session-context";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import { FavoriteButton } from "./FavoriteButton";
 import type { Game } from "@/types";
 import { Play, Users, Star } from "lucide-react";
@@ -17,6 +17,7 @@ export function GameCard({
   className?: string;
 }) {
   const { isAuthenticated } = useSession();
+  const { t, fmt } = useI18n();
 
   return (
     <Link
@@ -57,7 +58,7 @@ export function GameCard({
               border: `1px solid ${game.accent ?? "#1AACE0"}55`,
             }}
           >
-            {game.category}
+            {fmt.category(game.category)}
           </span>
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="flex items-center gap-0.5 rounded-full border border-amber-400/30 bg-black/35 px-2 py-0.5 text-[10px] font-bold text-amber-300 backdrop-blur-md">
@@ -89,7 +90,7 @@ export function GameCard({
         <div className="absolute inset-x-0 bottom-0 z-20 px-3 pb-3">
           {game.unlockCost && (
             <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-amber-400/95 px-2 py-0.5 text-[10px] font-bold text-amber-950">
-              🔒 Secret world
+              {t.games.secretWorld}
             </span>
           )}
           <h3 className="line-clamp-2 text-xs font-bold leading-snug text-white drop-shadow-md sm:text-sm">
@@ -102,10 +103,10 @@ export function GameCard({
       <div className="flex items-center justify-between border-t border-border/40 bg-card/80 px-3 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <Users className="h-3 w-3 shrink-0" />
-          <span className="truncate">{playersLabel(game.players)}</span>
+          <span className="truncate">{fmt.players(game.players)}</span>
         </div>
         <span className="shrink-0 rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-bold text-muted-foreground transition-colors duration-200 group-hover:bg-primary/15 group-hover:text-primary">
-          Play →
+          {t.games.playArrow}
         </span>
       </div>
     </Link>

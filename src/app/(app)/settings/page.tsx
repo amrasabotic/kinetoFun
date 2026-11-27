@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  User, Monitor, Keyboard, Info, AlertTriangle, type LucideIcon,
+  User, Monitor, Keyboard, Info, AlertTriangle, Languages, type LucideIcon,
 } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
 import { useSettings } from "@/features/settings/useSettings";
@@ -12,6 +12,8 @@ import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
+import { LanguagePicker } from "@/components/i18n/LanguagePicker";
 
 export default function SettingsPage() {
   return (
@@ -25,6 +27,8 @@ function SettingsContent() {
   const router = useRouter();
   const { user, isAuthenticated, logout, logoutAll, deleteAccount, refresh } = useSession();
   const { settings, updateSettings } = useSettings();
+  const { t, serverText } = useI18n();
+  const s = t.settings;
   const [signingOut, setSigningOut] = useState(false);
   const [signingOutAll, setSigningOutAll] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -58,18 +62,18 @@ function SettingsContent() {
   async function handleDeleteAccount() {
     if (isDeleting) return;
     if (!deletePassword) {
-      setDeleteError("Enter your password to confirm.");
+      setDeleteError(s.enterPassword);
       return;
     }
     setIsDeleting(true);
     setDeleteError(null);
     try {
       await deleteAccount(deletePassword);
-      toast.success("Account deleted.");
+      toast.success(s.deleted);
       router.replace("/");
       router.refresh();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to delete account.";
+      const msg = err instanceof Error ? serverText(err.message) : serverText("Failed to delete account.");
       setDeleteError(msg);
       setIsDeleting(false);
     }
@@ -92,13 +96,13 @@ function SettingsContent() {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Failed to save profile");
+        throw new Error(data.error ? serverText(data.error) : s.saveFailed);
       }
       await refresh();
       setEditingProfile(false);
-      toast.success("Profile updated!");
+      toast.success(s.profileUpdated);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to save profile";
+      const msg = err instanceof Error ? err.message : s.saveFailed;
       setProfileError(msg);
       toast.error(msg);
     } finally {
@@ -131,9 +135,9 @@ function SettingsContent() {
         {/* Subtle primary tint */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 to-transparent" />
         <h1 className="relative text-3xl font-black tracking-tight text-foreground sm:text-4xl">
-          Settings
+          {s.title}
         </h1>
-        <p className="relative mt-1 text-sm text-muted-foreground">Manage your account and preferences.</p>
+        <p className="relative mt-1 text-sm text-muted-foreground">{s.subtitle}</p>
         {/* Wave bottom */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 leading-[0]" aria-hidden>
           <svg className="block h-8 w-full" viewBox="0 0 1440 32" preserveAspectRatio="none">
@@ -146,7 +150,7 @@ function SettingsContent() {
       </header>
 
       {/* ── Account ──────────────────────────────────────────────────────── */}
-      <Section title="Account" Icon={User} accent="primary">
+      <Section title={s.account} Icon={User} accent="primary">
         {isAuthenticated && user ? (
           <div className="space-y-6">
             {editingProfile ? (
@@ -158,8 +162,8 @@ function SettingsContent() {
                 )}
 
                 <Field
-                  label="Display name"
-                  hint="Shown everywhere as your name"
+                  label={s.displayName}
+                  hint={s.displayNameHint}
                 >
                   <input
                     type="text"
@@ -167,13 +171,13 @@ function SettingsContent() {
                     onChange={(e) => setEditDisplayName(e.target.value)}
                     maxLength={100}
                     className={inputCls}
-                    placeholder="Your name"
+                    placeholder={s.displayNamePlaceholder}
                   />
                 </Field>
 
                 <Field
-                  label="Username / @handle"
-                  hint="Optional — shown as @handle on your profile"
+                  label={s.username}
+                  hint={s.usernameHint}
                 >
                   <input
                     type="text"
@@ -181,24 +185,24 @@ function SettingsContent() {
                     onChange={(e) => setEditUsername(e.target.value)}
                     maxLength={50}
                     className={inputCls}
-                    placeholder="optional_handle"
+                    placeholder={s.usernamePlaceholder}
                   />
                 </Field>
 
-                <Field label="Bio" hint={`${editBio.length}/500`}>
+                <Field label={s.bio} hint={`${editBio.length}/500`}>
                   <textarea
                     value={editBio}
                     onChange={(e) => setEditBio(e.target.value)}
                     maxLength={500}
                     rows={3}
                     className={inputCls}
-                    placeholder="Tell us about yourself"
+                    placeholder={s.bioPlaceholder}
                   />
                 </Field>
 
                 <div>
                   <label className="mb-3 block text-sm font-semibold text-foreground">
-                    Avatar color
+                    {s.avatarColor}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {AVATAR_COLORS.map((color) => (
@@ -224,14 +228,14 @@ function SettingsContent() {
                     disabled={isSavingProfile}
                     className={cn(isSavingProfile && "pointer-events-none opacity-60")}
                   >
-                    {isSavingProfile ? "Saving…" : "Save changes"}
+                    {isSavingProfile ? t.common.actions.saving : s.saveChanges}
                   </Button>
                   <Button
                     variant="secondary"
                     onClick={handleCancelEdit}
                     disabled={isSavingProfile}
                   >
-                    Cancel
+                    {t.common.actions.cancel}
                   </Button>
                 </div>
               </div>
@@ -272,7 +276,7 @@ function SettingsContent() {
                     }}
                     className="shrink-0"
                   >
-                    Edit profile
+                    {t.profile.edit}
                   </Button>
                 </div>
 
@@ -286,7 +290,7 @@ function SettingsContent() {
                     disabled={signingOut || signingOutAll}
                     className={cn((signingOut || signingOutAll) && "pointer-events-none opacity-60")}
                   >
-                    {signingOut ? "Signing out…" : "Sign out"}
+                    {signingOut ? s.signingOut : t.common.nav.signOut}
                   </Button>
                   <button
                     type="button"
@@ -298,7 +302,7 @@ function SettingsContent() {
                       (signingOut || signingOutAll) && "pointer-events-none opacity-60",
                     )}
                   >
-                    {signingOutAll ? "Signing out all devices…" : "Sign out of all devices"}
+                    {signingOutAll ? s.signingOutAll : s.signOutAll}
                   </button>
                 </div>
               </>
@@ -306,68 +310,76 @@ function SettingsContent() {
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">You&apos;re not signed in.</p>
-            <ButtonLink href="/login">Sign in</ButtonLink>
+            <p className="text-sm text-muted-foreground">{s.notSignedIn}</p>
+            <ButtonLink href="/login">{t.auth.login.submit}</ButtonLink>
           </div>
         )}
       </Section>
 
+      {/* ── Language ─────────────────────────────────────────────────────── */}
+      <Section title={t.common.language.label} Icon={Languages} accent="primary">
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">{t.common.language.hint}</p>
+          <LanguagePicker variant="large" />
+        </div>
+      </Section>
+
       {/* ── Display ──────────────────────────────────────────────────────── */}
-      <Section title="Display" Icon={Monitor} accent="sky">
+      <Section title={s.display} Icon={Monitor} accent="sky">
         <Toggle
-          label="Large UI text"
-          description="Increase text size for big-screen, across-the-room reading."
+          label={s.largeText}
+          description={s.largeTextHint}
           checked={settings.largeText}
           onChange={(checked) => {
             updateSettings({ largeText: checked });
-            toast("Display settings saved", { duration: 1500 });
+            toast(s.displaySaved, { duration: 1500 });
           }}
         />
         <Divider />
         <Toggle
-          label="Reduce motion"
-          description="Minimize animations and transitions."
+          label={s.reduceMotion}
+          description={s.reduceMotionHint}
           checked={settings.reduceMotion}
           onChange={(checked) => {
             updateSettings({ reduceMotion: checked });
-            toast("Display settings saved", { duration: 1500 });
+            toast(s.displaySaved, { duration: 1500 });
           }}
         />
       </Section>
 
       {/* ── Input ────────────────────────────────────────────────────────── */}
-      <Section title="Input" Icon={Keyboard} accent="green">
+      <Section title={s.input} Icon={Keyboard} accent="green">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-semibold text-foreground">Gesture controls</p>
+            <p className="font-semibold text-foreground">{s.gestures}</p>
             <p className="text-sm text-muted-foreground">
-              Camera-based hand tracking arrives with the hardware input layer (Phase 4).
+              {s.gesturesHint}
             </p>
           </div>
           <span className="shrink-0 rounded-full border border-border/40 bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-            Coming soon
+            {s.comingSoon}
           </span>
         </div>
         <Divider />
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-semibold text-foreground">Keyboard navigation</p>
+            <p className="font-semibold text-foreground">{s.keyboard}</p>
             <p className="text-sm text-muted-foreground">
-              Use arrow keys to move focus, Enter to select. Always on.
+              {s.keyboardHint}
             </p>
           </div>
           <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            Active
+            {t.profile.active}
           </span>
         </div>
       </Section>
 
       {/* ── About ────────────────────────────────────────────────────────── */}
-      <Section title="About" Icon={Info} accent="zinc">
+      <Section title={s.about} Icon={Info} accent="zinc">
         <dl className="divide-y divide-border/30 text-sm">
           {[
-            { label: "App", value: "KinetoFun" },
-            { label: "Version", value: "0.1.0 (Phase 2 — Auth)" },
+            { label: s.app, value: "KinetoFun" },
+            { label: s.version, value: s.versionValue },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between py-2.5 first:pt-0 last:pb-0">
               <dt className="text-muted-foreground">{label}</dt>
@@ -379,13 +391,13 @@ function SettingsContent() {
 
       {/* ── Danger Zone ──────────────────────────────────────────────────── */}
       {isAuthenticated && user && (
-        <Section title="Danger Zone" Icon={AlertTriangle} accent="zinc">
+        <Section title={s.danger} Icon={AlertTriangle} accent="zinc">
           {!showDeleteConfirm ? (
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="font-semibold text-foreground">Delete account</p>
+                <p className="font-semibold text-foreground">{s.deleteAccount}</p>
                 <p className="text-sm text-muted-foreground">
-                  Permanently deletes your account, scores, sessions, and favorites. This can&apos;t be undone.
+                  {s.deleteHint}
                 </p>
               </div>
               <Button
@@ -393,19 +405,19 @@ function SettingsContent() {
                 className="shrink-0"
                 onClick={() => setShowDeleteConfirm(true)}
               >
-                Delete account
+                {s.deleteAccount}
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-foreground">
-                Enter your password to permanently delete your account.
+                {s.deletePrompt}
               </p>
               <input
                 type="password"
                 autoFocus
                 className={inputCls}
-                placeholder="Password"
+                placeholder={t.auth.password}
                 value={deletePassword}
                 onChange={(e) => {
                   setDeletePassword(e.target.value);
@@ -426,7 +438,7 @@ function SettingsContent() {
                     setDeleteError(null);
                   }}
                 >
-                  Cancel
+                  {t.common.actions.cancel}
                 </Button>
                 <Button
                   variant="danger"
@@ -434,7 +446,7 @@ function SettingsContent() {
                   className={cn(isDeleting && "pointer-events-none opacity-60")}
                   onClick={handleDeleteAccount}
                 >
-                  {isDeleting ? "Deleting…" : "Permanently delete"}
+                  {isDeleting ? s.deleting : s.deleteForever}
                 </Button>
               </div>
             </div>

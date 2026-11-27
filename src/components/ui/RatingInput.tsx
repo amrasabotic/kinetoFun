@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export function RatingInput({
   onRate,
@@ -14,6 +15,7 @@ export function RatingInput({
 }) {
   const [hoveredScore, setHoveredScore] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const g = useI18n().t.games;
 
   const displayScore = hoveredScore ?? currentScore ?? 0;
 
@@ -39,7 +41,7 @@ export function RatingInput({
             onClick={() => handleClick(score)}
             onMouseEnter={() => setHoveredScore(score)}
             disabled={disabled || isSubmitting}
-            aria-label={`Rate ${score} stars`}
+            aria-label={g.rateStars(score)}
             className={cn(
               "text-2xl transition-colors duration-75",
               score <= displayScore ? "text-amber-400" : "text-muted-foreground/40",

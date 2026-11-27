@@ -7,8 +7,10 @@ import { authService, AuthRequestError } from "@/services/auth.service";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export default function ForgotPasswordPage() {
+  const { t: { auth: a }, serverText } = useI18n();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -25,8 +27,8 @@ export default function ForgotPasswordPage() {
     } catch (err) {
       setError(
         err instanceof AuthRequestError
-          ? err.message
-          : "Couldn't send the reset email. Please try again.",
+          ? serverText(err.message)
+          : a.forgot.failed,
       );
     } finally {
       setPending(false);
@@ -40,25 +42,25 @@ export default function ForgotPasswordPage() {
 
       <div className="mb-8">
         <h1 className="text-2xl font-black tracking-tight text-foreground">
-          Reset your password
+          {a.forgot.title}
         </h1>
         <p className="mt-1.5 text-sm text-foreground/45">
-          We&apos;ll email you a link to choose a new one.
+          {a.forgot.subtitle}
         </p>
       </div>
 
       {sent ? (
         <p className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-foreground/70">
-          If an account exists for <span className="font-semibold text-foreground">{email}</span>,
-          a reset link is on its way. It expires in 30 minutes.
+          {a.forgot.sentBefore} <span className="font-semibold text-foreground">{email}</span>
+          {a.forgot.sentAfter}
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           <TextField
-            label="Email"
+            label={a.email}
             type="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={a.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -81,7 +83,7 @@ export default function ForgotPasswordPage() {
             disabled={pending}
             className={cn("mt-2", pending && "pointer-events-none opacity-60")}
           >
-            {pending ? "Sending…" : "Send reset link"}
+            {pending ? a.forgot.pending : a.forgot.submit}
           </Button>
         </form>
       )}
@@ -92,7 +94,7 @@ export default function ForgotPasswordPage() {
           data-focusable
           className="font-semibold text-primary transition-colors hover:text-primary/80 focus:outline-none"
         >
-          Back to sign in
+          {a.backToSignIn}
         </Link>
       </p>
     </div>

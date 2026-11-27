@@ -7,6 +7,7 @@ import { useSession } from "@/features/auth/session-context";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { cn } from "@/lib/utils";
 import { searchGames } from "@/services/games.service";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 const GLOBAL = "global";
 
@@ -15,6 +16,7 @@ export default function LeaderboardPage() {
   const { games: allGames } = useGames();
   const [selected, setSelected] = useState<string>(GLOBAL);
   const [query, setQuery] = useState("");
+  const lb = useI18n().t.leaderboard;
 
   const visibleGames = searchGames(allGames, query);
 
@@ -25,16 +27,16 @@ export default function LeaderboardPage() {
   const selectedGame = allGames.find((g) => g.id === selected);
   const selectedTitle =
     selected === GLOBAL
-      ? "Global best scores"
-      : `${selectedGame?.title ?? selected} leaderboard`;
+      ? lb.globalTitle
+      : lb.gameTitle(selectedGame?.title ?? selected);
 
   return (
     <div className="space-y-6">
       <header className="space-y-1">
         <h1 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">
-          Leaderboards
+          {lb.title}
         </h1>
-        <p className="text-muted-foreground">Top players across KinetoFun.</p>
+        <p className="text-muted-foreground">{lb.subtitle}</p>
       </header>
 
       {/* Mobile: search + horizontal scrollable strip */}
@@ -45,7 +47,7 @@ export default function LeaderboardPage() {
             active={selected === GLOBAL}
             onClick={() => setSelected(GLOBAL)}
           >
-            🌐 Global
+            🌐 {lb.global}
           </MobileChip>
           {visibleGames.map((game) => (
             <MobileChip
@@ -65,7 +67,7 @@ export default function LeaderboardPage() {
         <aside className="w-56 flex-shrink-0 border-r border-border/30 bg-card/10 flex flex-col">
           <div className="px-3 py-3 border-b border-border/20 space-y-2">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-              Games
+              {lb.games}
             </p>
             <SearchInput query={query} onChange={setQuery} />
           </div>
@@ -76,7 +78,7 @@ export default function LeaderboardPage() {
                 onClick={() => setSelected(GLOBAL)}
                 thumbnail={null}
                 cover={null}
-                title="Global"
+                title={lb.global}
                 isGlobal
               />
             )}
@@ -92,7 +94,7 @@ export default function LeaderboardPage() {
             ))}
             {visibleGames.length === 0 && (
               <p className="px-4 py-6 text-center text-xs text-muted-foreground/50">
-                No games found
+                {lb.noGames}
               </p>
             )}
           </nav>
@@ -137,6 +139,7 @@ function LeaderboardContent({
   entries: ReturnType<typeof useLeaderboard>["entries"];
   userId?: string;
 }) {
+  const { t, serverText } = useI18n();
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -147,14 +150,14 @@ function LeaderboardContent({
   if (error) {
     return (
       <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45">
-        {error}
+        {serverText(error)}
       </p>
     );
   }
   if (entries.length === 0) {
     return (
       <p className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-6 text-center text-sm text-foreground/45">
-        No scores yet — be the first to play!
+        {t.leaderboard.empty}
       </p>
     );
   }
@@ -230,6 +233,7 @@ function SearchInput({
   query: string;
   onChange: (v: string) => void;
 }) {
+  const placeholder = useI18n().t.games.library.searchPlaceholder;
   return (
     <div className="relative">
       <svg
@@ -250,7 +254,7 @@ function SearchInput({
         type="text"
         value={query}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search games…"
+        placeholder={placeholder}
         className={cn(
           "w-full rounded-lg bg-background/40 border border-border/30 py-1.5 pl-8 pr-3",
           "text-xs text-foreground placeholder:text-muted-foreground/40",

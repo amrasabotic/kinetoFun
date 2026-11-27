@@ -10,12 +10,17 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { motion } from "motion/react";
 import { User, Settings, ChevronDown, LogOut, Shield, Store } from "lucide-react";
+import { useI18n } from "@/features/i18n/I18nProvider";
+import { LanguagePicker } from "@/components/i18n/LanguagePicker";
+import type { Messages } from "@/lib/i18n";
 
-const NAV = [
-  { href: "/", label: "Home" },
-  { href: "/library", label: "Games" },
-  { href: "/leaderboard", label: "Leaderboard" },
-];
+function navItems(t: Messages) {
+  return [
+    { href: "/", label: t.common.nav.home },
+    { href: "/library", label: t.common.nav.games },
+    { href: "/leaderboard", label: t.common.nav.leaderboard },
+  ];
+}
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
@@ -29,6 +34,7 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { logout } = useSession();
+  const { t } = useI18n();
 
   // Close on outside click or Escape.
   useEffect(() => {
@@ -50,10 +56,10 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
 
   const isSuperAdmin = user.role === "superadmin";
   const NAV_ITEMS = [
-    { href: "/profile",  label: "Profile",  Icon: User     },
-    { href: "/shop",     label: "Ticket Shop", Icon: Store  },
-    { href: "/settings", label: "Settings", Icon: Settings },
-    ...(isSuperAdmin ? [{ href: "/superadmin/dashboard", label: "Admin Console", Icon: Shield }] : []),
+    { href: "/profile",  label: t.common.nav.profile,  Icon: User     },
+    { href: "/shop",     label: t.common.nav.shop, Icon: Store  },
+    { href: "/settings", label: t.common.nav.settings, Icon: Settings },
+    ...(isSuperAdmin ? [{ href: "/superadmin/dashboard", label: t.common.nav.adminConsole, Icon: Shield }] : []),
   ];
 
   async function handleLogout() {
@@ -105,7 +111,7 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
         {/* User identity header */}
         <div className="border-b border-[#1AACE0]/10 px-4 py-3.5">
           <p className="truncate text-[13px] font-bold text-[#1A2E74]">{user.displayName}</p>
-          <p className="truncate text-[11px] text-[#5B72A8]">{user.email ?? "Signed in"}</p>
+          <p className="truncate text-[11px] text-[#5B72A8]">{user.email ?? t.common.nav.signedIn}</p>
         </div>
 
         {/* Nav items */}
@@ -131,7 +137,7 @@ function ProfileDropdown({ user }: { user: NonNullable<ReturnType<typeof useSess
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#F7267C]/80 transition-colors duration-150 hover:bg-[#F7267C]/10 hover:text-[#F7267C] focus:outline-none focus-visible:bg-[#F7267C]/10"
           >
             <LogOut className="h-4 w-4 shrink-0 text-[#F7267C]/60" />
-            Sign out
+            {t.common.nav.signOut}
           </button>
         </div>
       </div>
@@ -145,6 +151,8 @@ export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useSession();
+  const { t, fmt } = useI18n();
+  const NAV = navItems(t);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -221,17 +229,18 @@ export function TopBar() {
 
           {/* Right cluster */}
           <div className="ml-auto flex items-center gap-2">
+            <LanguagePicker className="hidden md:inline-flex" />
             {isAuthenticated && user ? (
               <>
                 <Link
                   href="/shop"
                   data-focusable
-                  title="Your tickets — open the shop"
+                  title={t.common.nav.ticketsTitle}
                   className="flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-100/70 px-3 py-1.5 text-sm font-black tabular-nums text-amber-700 transition hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
                 >
                   <span aria-hidden>🎟️</span>
-                  {(user.tickets ?? 0).toLocaleString()}
-                  <span className="sr-only">tickets</span>
+                  {fmt.number(user.tickets ?? 0)}
+                  <span className="sr-only">{t.common.nav.tickets}</span>
                 </Link>
                 <ProfileDropdown user={user} />
               </>
@@ -242,7 +251,7 @@ export function TopBar() {
                   data-focusable
                   className="hidden rounded-full px-4 py-2 text-sm font-medium text-[#1A2E74]/85 transition-all duration-200 hover:text-[#1A2E74] focus:outline-none md:block"
                 >
-                  Log in
+                  {t.common.nav.logIn}
                 </Link>
                 <Link
                   href="/signup"
@@ -254,7 +263,7 @@ export function TopBar() {
                     boxShadow: "0 4px 16px rgba(26,172,224,0.35)",
                   }}
                 >
-                  Get started
+                  {t.common.nav.getStarted}
                 </Link>
               </>
             )}
@@ -262,7 +271,7 @@ export function TopBar() {
             {/* Mobile menu toggle */}
             <button
               data-focusable
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-label={mobileOpen ? t.common.nav.closeMenu : t.common.nav.openMenu}
               aria-expanded={mobileOpen}
               onClick={() => setMobileOpen((v) => !v)}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-[#1A2E74]/20 bg-[#1A2E74]/08 text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/15 hover:text-[#1A2E74] focus:outline-none md:hidden"
@@ -342,7 +351,7 @@ export function TopBar() {
                 <Avatar user={user} size="sm" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-[#1A2E74]">{user.displayName}</p>
-                  <p className="truncate text-[11px] text-[#5B72A8]">{user.email ?? "Signed in"}</p>
+                  <p className="truncate text-[11px] text-[#5B72A8]">{user.email ?? t.common.nav.signedIn}</p>
                 </div>
               </div>
               {/* Profile link */}
@@ -352,7 +361,7 @@ export function TopBar() {
                 className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74] focus:outline-none"
               >
                 <User className="h-4 w-4 text-[#1AACE0]/70" />
-                Profile
+                {t.common.nav.profile}
               </Link>
               {/* Settings link */}
               <Link
@@ -361,7 +370,7 @@ export function TopBar() {
                 className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74] focus:outline-none"
               >
                 <Settings className="h-4 w-4 text-[#1AACE0]/70" />
-                Settings
+                {t.common.nav.settings}
               </Link>
               {/* Admin console link (superadmins only) */}
               {user.role === "superadmin" && (
@@ -371,7 +380,7 @@ export function TopBar() {
                   className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-[#1A2E74]/70 transition-all duration-200 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74] focus:outline-none"
                 >
                   <Shield className="h-4 w-4 text-[#1AACE0]/70" />
-                  Admin Console
+                  {t.common.nav.adminConsole}
                 </Link>
               )}
               {/* Sign out */}
@@ -381,7 +390,7 @@ export function TopBar() {
                 className="flex items-center gap-3 rounded-2xl px-5 py-3 text-sm font-medium text-[#F7267C]/80 transition-all duration-200 hover:bg-[#F7267C]/10 hover:text-[#F7267C] focus:outline-none"
               >
                 <LogOut className="h-4 w-4 text-[#F7267C]/60" />
-                Sign out
+                {t.common.nav.signOut}
               </button>
             </div>
           ) : (
@@ -391,13 +400,16 @@ export function TopBar() {
                 data-focusable
                 className="flex items-center justify-center rounded-2xl border border-[#1A2E74]/10 px-5 py-3 text-sm font-semibold text-[#1A2E74]/80 transition-all duration-200 hover:bg-[#1A2E74]/08 hover:text-[#1A2E74] focus:outline-none"
               >
-                Log in
+                {t.common.nav.logIn}
               </Link>
               <ButtonLink href="/signup" fullWidth className="rounded-2xl">
-                Get started
+                {t.common.nav.getStarted}
               </ButtonLink>
             </div>
           )}
+          <div className="mt-4 flex justify-center">
+            <LanguagePicker />
+          </div>
         </div>
       </div>
 

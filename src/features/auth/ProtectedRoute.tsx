@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/features/auth/session-context";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /**
  * Client-side guard for pages that require authentication. While the session is
@@ -19,6 +20,7 @@ export function ProtectedRoute({
   fallback?: React.ReactNode;
 }) {
   const { isAuthenticated, isLoading, signedOut } = useSession();
+  const { t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -36,7 +38,7 @@ export function ProtectedRoute({
           <div
             className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary"
             role="status"
-            aria-label="Loading"
+            aria-label={t.common.actions.loading}
           />
         </div>
       )

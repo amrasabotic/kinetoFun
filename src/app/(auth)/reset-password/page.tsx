@@ -8,11 +8,13 @@ import { authService, AuthRequestError } from "@/services/auth.service";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const { t: { auth: a }, serverText } = useI18n();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ function ResetPasswordForm() {
     setFields({});
 
     if (password !== confirmPassword) {
-      setError("Passwords don't match.");
+      setError(a.reset.mismatch);
       return;
     }
 
@@ -38,10 +40,10 @@ function ResetPasswordForm() {
       setTimeout(() => router.replace("/login"), 2000);
     } catch (err) {
       if (err instanceof AuthRequestError) {
-        setError(err.message);
+        setError(serverText(err.message));
         setFields(err.fields ?? {});
       } else {
-        setError("Couldn't reset your password. Please try again.");
+        setError(a.reset.failed);
       }
     } finally {
       setPending(false);
@@ -55,26 +57,26 @@ function ResetPasswordForm() {
 
       <div className="mb-8">
         <h1 className="text-2xl font-black tracking-tight text-foreground">
-          Choose a new password
+          {a.reset.title}
         </h1>
         <p className="mt-1.5 text-sm text-foreground/45">
-          Enter and confirm your new password below.
+          {a.reset.subtitle}
         </p>
       </div>
 
       {!token ? (
         <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
-          This reset link is missing its token. Please request a new one.
+          {a.reset.missingToken}
         </p>
       ) : done ? (
         <p className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-foreground/70">
-          Your password has been reset. Redirecting you to sign in…
+          {a.reset.done}
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <TextField
-              label="New password"
+              label={a.reset.newPassword}
               type="password"
               autoComplete="new-password"
               placeholder="••••••••"
@@ -86,18 +88,18 @@ function ResetPasswordForm() {
             {fields.password ? (
               <ul className="space-y-1 pl-1 text-xs text-destructive">
                 {fields.password.map((msg) => (
-                  <li key={msg}>• {msg}</li>
+                  <li key={msg}>• {serverText(msg)}</li>
                 ))}
               </ul>
             ) : (
               <p className="pl-1 text-xs text-foreground/35">
-                At least 8 characters, with a letter and a number.
+                {a.passwordRule}
               </p>
             )}
           </div>
 
           <TextField
-            label="Confirm new password"
+            label={a.reset.confirmPassword}
             type="password"
             autoComplete="new-password"
             placeholder="••••••••"
@@ -123,7 +125,7 @@ function ResetPasswordForm() {
             disabled={pending}
             className={cn("mt-2", pending && "pointer-events-none opacity-60")}
           >
-            {pending ? "Resetting…" : "Reset password"}
+            {pending ? a.reset.pending : a.reset.submit}
           </Button>
         </form>
       )}
@@ -134,7 +136,7 @@ function ResetPasswordForm() {
           data-focusable
           className="font-semibold text-primary transition-colors hover:text-primary/80 focus:outline-none"
         >
-          Back to sign in
+          {a.backToSignIn}
         </Link>
       </p>
     </div>

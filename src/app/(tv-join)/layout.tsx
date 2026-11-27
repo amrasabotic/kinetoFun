@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { getRequestMessages } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Connect to your TV — KinetoFun",
-  description: "Connect your KinetoFun account to a TV.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getRequestMessages();
+  return { title: t.common.meta.joinTitle, description: t.common.meta.joinDescription };
+}
 
 /**
  * Mobile-first shell for /tv/join/[code]. This is the phone side of pairing, so

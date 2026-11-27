@@ -2,12 +2,7 @@
 
 import { CameraOff, Hand, LoaderCircle } from "lucide-react";
 import type { TrackerStatus } from "./tracker";
-
-const MESSAGES: Partial<Record<TrackerStatus, string>> = {
-  denied: "Camera access is blocked, so hand control is off.",
-  "no-camera": "No camera found. Connect a webcam to control the TV by hand.",
-  error: "Hand control couldn't start. Restart the TV to try again.",
-};
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /**
  * One line at the bottom of the screen telling the player what hand control
@@ -28,6 +23,12 @@ export function HandStatusHint({
   handVisible: boolean;
   hasTargets: boolean;
 }) {
+  const h = useI18n().t.tv.hand;
+  const MESSAGES: Partial<Record<TrackerStatus, string>> = {
+    denied: h.denied,
+    "no-camera": h.noCamera,
+    error: h.error,
+  };
   let icon: React.ReactNode;
   let text: string;
   let delay: string;
@@ -36,12 +37,12 @@ export function HandStatusHint({
     return null;
   } else if (status === "loading") {
     icon = <LoaderCircle className="h-7 w-7 animate-spin" />;
-    text = "Starting hand control…";
+    text = h.starting;
     delay = "1s";
   } else if (status === "ready") {
     if (handVisible) return null;
     icon = <Hand className="h-7 w-7 text-accent" />;
-    text = "Raise your hand to control the TV";
+    text = h.raise;
     delay = "2s";
   } else {
     icon = <CameraOff className="h-7 w-7 text-destructive" />;

@@ -20,7 +20,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { StarRating } from "@/components/ui/StarRating";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
-import { playersLabel } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { Game, GameCategory } from "@/types";
 import type { LucideIcon } from "lucide-react";
 
@@ -120,6 +120,7 @@ function MedalBadge({ rank }: { rank: number }) {
 // ─── Section 1: Hero ──────────────────────────────────────────────────────────
 
 function HeroSection() {
+  const h = useI18n().t.home.hero;
   return (
     <section
       className="relative -mx-6 -mt-8 overflow-hidden sm:-mx-10"
@@ -138,12 +139,12 @@ function HeroSection() {
           </span> */}
 
           <h1 className="font-display text-[2.6rem] leading-[1.04] sm:text-6xl lg:text-[4.2rem]" style={{ color: C.ink }}>
-            Play Real Games.{" "}
-            <span style={{ color: C.pink }}>Build Real Skills.</span>
+            {h.title}{" "}
+            <span style={{ color: C.pink }}>{h.highlight}</span>
           </h1>
 
           <p className="mx-auto mt-5 max-w-md text-lg leading-relaxed lg:mx-0" style={{ color: C.inkSoft }}>
-            Interactive worlds. Skill-based levels. Rewards kids actually want to earn.
+            {h.subtitle}
           </p>
 
           {/* CTAs */}
@@ -154,7 +155,7 @@ function HeroSection() {
               className="group inline-flex h-16 w-full items-center justify-center gap-2 rounded-full px-9 text-lg font-extrabold transition hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 sm:w-auto focus:outline-none"
               style={{ background: C.yellow, color: C.ink, boxShadow: "0 12px 28px rgba(255,170,40,0.45)" }}
             >
-              Try FREE for 30 Days
+              {h.tryFree}
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
@@ -164,7 +165,7 @@ function HeroSection() {
               style={{ borderColor: `${C.blue}40`, color: C.blue }}
             >
               <Play className="h-5 w-5 fill-current" />
-              Explore Games
+              {h.explore}
             </Link>
           </div>
 
@@ -204,7 +205,7 @@ function HeroSection() {
             {/* Mascot card */}
             {/* <div className="relative overflow-hidden rounded-[2.4rem] border-[6px] border-white bg-white/70 shadow-[0_30px_70px_rgba(47,128,255,0.3)]"> */}
               {/* <img src="/kid.gif" alt="A happy child learning and playing" className="h-auto w-full" /> */}
-              <img src="/kineto-hero.png" alt="A happy child learning and playing" className="h-auto w-full scale-230 origin-center pointer-events-none"  />
+              <img src="/kineto-hero.png" alt={h.imageAlt} className="h-auto w-full scale-230 origin-center pointer-events-none"  />
 
             {/* </div> */}
 
@@ -226,31 +227,32 @@ function HeroSection() {
 // ─── Section 2: Category nav strip ────────────────────────────────────────────
 
 const CATEGORIES = [
-  { label: "Reading",      emoji: "📖", color: C.blue },
-  { label: "Math",         emoji: "➗", color: C.green },
-  { label: "Science",      emoji: "🔬", color: C.purple },
-  { label: "Art & Colors", emoji: "🎨", color: C.pink },
-  { label: "Music",        emoji: "🎵", color: C.orange },
+  { key: "reading", emoji: "📖", color: C.blue },
+  { key: "math",    emoji: "➗", color: C.green },
+  { key: "science", emoji: "🔬", color: C.purple },
+  { key: "art",     emoji: "🎨", color: C.pink },
+  { key: "music",   emoji: "🎵", color: C.orange },
 ] as const;
 
 function CategoryStrip() {
+  const s = useI18n().t.home.strip;
   return (
     <section className="relative -mx-6 bg-white sm:-mx-10">
       <div className="mx-auto -mt-10 max-w-[1100px] px-6 sm:px-10">
         <div className="flex flex-wrap items-center justify-center gap-3 rounded-[2rem] border border-[#E4EEFC] bg-white p-5 shadow-[0_18px_50px_rgba(47,128,255,0.16)] sm:gap-4">
           <span className="hidden text-sm font-extrabold sm:block" style={{ color: C.inkSoft }}>
-            Pick a world:
+            {s.pick}
           </span>
           {CATEGORIES.map((cat) => (
             <Link
-              key={cat.label}
+              key={cat.key}
               href="/library"
               data-focusable
               className="group inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-extrabold text-white transition-transform duration-200 hover:-translate-y-1 hover:scale-105 active:translate-y-0 focus:outline-none"
               style={{ background: cat.color, boxShadow: `0 8px 18px ${cat.color}55` }}
             >
               <span className="text-lg transition-transform duration-200 group-hover:scale-125">{cat.emoji}</span>
-              {cat.label}
+              {s[cat.key]}
             </Link>
           ))}
         </div>
@@ -262,6 +264,7 @@ function CategoryStrip() {
 // ─── Section 3: Educational Excellence ────────────────────────────────────────
 
 function EducationalExcellenceSection() {
+  const e = useI18n().t.home.excellence;
   return (
     <section
       className="relative -mx-6 overflow-hidden py-20 sm:-mx-10 sm:py-28"
@@ -270,12 +273,12 @@ function EducationalExcellenceSection() {
       <div className="relative z-10 mx-auto max-w-[1600px] px-6 sm:px-10">
         <SectionHeading
           Icon={Sparkles}
-          eyebrow="GAME WORLDS · REAL SKILLS"
+          eyebrow={e.eyebrow}
           eyebrowColor={C.blue}
-          title="Where Every Game"
-          highlight="Teaches Something Real"
+          title={e.title}
+          highlight={e.highlight}
           highlightColor={C.pink}
-          subtitle="KinetoFun is a game universe where reading, math, science and art are embedded in actual gameplay — not worksheets."
+          subtitle={e.subtitle}
         />
 
         {/* Preview mockup */}
@@ -305,7 +308,7 @@ function EducationalExcellenceSection() {
               <Link
                 href="/library"
                 data-focusable
-                aria-label="Explore the games"
+                aria-label={e.exploreAria}
                 className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-2xl transition-transform duration-200 hover:scale-110 focus:outline-none"
               >
                 <Play className="ml-1 h-9 w-9" style={{ fill: C.blue, color: C.blue }} />
@@ -326,25 +329,11 @@ type Feature = {
   color: string; emoji: string; cta: string;
 };
 
-const FEATURES: Feature[] = [
-  {
-    Icon: BookOpen, eyebrow: "Skill Worlds", emoji: "📚",
-    title: "12+ Skill Worlds. One Epic Journey.",
-    desc: "From alphabet islands to math dungeons — each world targets a real skill set. Kids progress through levels, not pages.",
-    color: C.blue, cta: "Explore the worlds",
-  },
-  {
-    Icon: Palette, eyebrow: "Designed to Hook", emoji: "🎨",
-    title: "Games Kids Actually Want to Play",
-    desc: "Designed from the ground up for kids — vivid characters, satisfying sound effects, and game mechanics that feel genuinely fun to play.",
-    color: C.pink, cta: "See what's inside",
-  },
-  {
-    Icon: Map, eyebrow: "Your Progression", emoji: "🧭",
-    title: "Your Child's Skill Path, Built as They Play",
-    desc: "Master a level → unlock the next. Struggle → the game adjusts. Every child gets a different path because every child plays differently.",
-    color: C.green, cta: "How progression works",
-  },
+const FEATURE_LOOKS = [
+  { Icon: BookOpen, emoji: "📚", color: C.blue },
+  { Icon: Palette, emoji: "🎨", color: C.pink },
+  { Icon: Map, emoji: "🧭", color: C.green },
+  { Icon: Rocket, emoji: "🌍", color: C.purple },
 ];
 
 function FeatureIllustration({ feature }: { feature: Feature }) {
@@ -404,6 +393,7 @@ function FeatureRow({ feature, reverse, children }: { feature: Feature; reverse?
 
 /** Real games rendered as explorable "worlds" — keeps the live useGames() feature. */
 function WorldCard({ game }: { game: Game }) {
+  const { fmt } = useI18n();
   return (
     <Link
       href={`/games/${game.id}`}
@@ -420,7 +410,7 @@ function WorldCard({ game }: { game: Game }) {
           className="absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white"
           style={{ background: `${game.accent ?? C.blue}dd` }}
         >
-          {game.category}
+          {fmt.category(game.category)}
         </span>
         <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-extrabold" style={{ color: C.ink }}>
           <Star className="h-3 w-3" style={{ fill: C.yellow, color: C.yellow }} />
@@ -429,7 +419,7 @@ function WorldCard({ game }: { game: Game }) {
       </div>
       <div className="p-3">
         <h4 className="truncate font-display text-sm font-extrabold" style={{ color: C.ink }}>{game.title}</h4>
-        <p className="mt-0.5 text-[11px] font-bold" style={{ color: C.inkSoft }}>{playersLabel(game.players)}</p>
+        <p className="mt-0.5 text-[11px] font-bold" style={{ color: C.inkSoft }}>{fmt.players(game.players)}</p>
       </div>
     </Link>
   );
@@ -458,28 +448,24 @@ function WorldsIllustration() {
 }
 
 function FeatureGridSection() {
-  const worldsFeature: Feature = {
-    Icon: Rocket, eyebrow: "Game Library", emoji: "🌍",
-    title: "New Game Worlds Unlock as They Grow",
-    desc: "Every world is a real playable game — puzzle, action, arcade, adventure. Beat the levels, unlock what's next.",
-    color: C.purple, cta: "Browse all game worlds",
-  };
+  const f = useI18n().t.home.features;
+  const features: Feature[] = FEATURE_LOOKS.map((look, i) => ({ ...look, ...f.items[i] }));
   return (
     <section className="relative -mx-6 overflow-hidden bg-white py-20 sm:-mx-10 sm:py-28">
       <div className="relative z-10 mx-auto max-w-[1600px] space-y-20 px-6 sm:space-y-28 sm:px-10">
         <SectionHeading
           Icon={BookOpen}
-          eyebrow="WHAT MAKES KINETOFUN DIFFERENT"
+          eyebrow={f.eyebrow}
           eyebrowColor={C.green}
-          title="A Game Platform Built"
-          highlight="to Grow Real Skills"
+          title={f.title}
+          highlight={f.highlight}
           highlightColor={C.blue}
-          subtitle="Four things that turn screen time into skill time."
+          subtitle={f.subtitle}
         />
-        <FeatureRow feature={FEATURES[0]} />
-        <FeatureRow feature={FEATURES[1]} reverse />
-        <FeatureRow feature={FEATURES[2]} />
-        <FeatureRow feature={worldsFeature} reverse>
+        <FeatureRow feature={features[0]} />
+        <FeatureRow feature={features[1]} reverse />
+        <FeatureRow feature={features[2]} />
+        <FeatureRow feature={features[3]} reverse>
           <WorldsIllustration />
         </FeatureRow>
       </div>
@@ -491,19 +477,21 @@ function FeatureGridSection() {
 // ─── Section 5: Proven Results ────────────────────────────────────────────────
 
 const RESULT_BARS = [
-  { label: "Reading",    before: 36, after: 80, color: C.blue },
-  { label: "Math",       before: 30, after: 74, color: C.green },
-  { label: "Confidence", before: 42, after: 90, color: C.purple },
-];
+  { key: "reading",    before: 36, after: 80, color: C.blue },
+  { key: "math",       before: 30, after: 74, color: C.green },
+  { key: "confidence", before: 42, after: 90, color: C.purple },
+] as const;
 
 function StarLearners() {
   const { entries, loading } = useLeaderboard();
+  const { t, fmt } = useI18n();
+  const r = t.home.results;
   const top = entries.slice(0, 4);
   return (
     <div className="rounded-[2rem] border-2 border-white bg-white p-6 shadow-[0_18px_50px_rgba(47,128,255,0.18)]">
       <div className="mb-4 flex items-center gap-2">
         <Trophy className="h-5 w-5" style={{ color: C.orange }} />
-        <h3 className="font-display text-xl font-extrabold" style={{ color: C.ink }}>Star Learners This Week</h3>
+        <h3 className="font-display text-xl font-extrabold" style={{ color: C.ink }}>{r.starLearners}</h3>
       </div>
       {loading ? (
         <div className="space-y-2">
@@ -521,18 +509,18 @@ function StarLearners() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-display text-sm font-extrabold" style={{ color: C.ink }}>{entry.user.displayName}</p>
-                <p className="text-[11px] font-bold" style={{ color: C.inkSoft }}>Level {entry.user.level}</p>
+                <p className="text-[11px] font-bold" style={{ color: C.inkSoft }}>{r.level(entry.user.level)}</p>
               </div>
               <span className="flex items-center gap-1 font-display text-sm font-extrabold" style={{ color: C.green }}>
                 <Star className="h-3.5 w-3.5" style={{ fill: C.yellow, color: C.yellow }} />
-                {entry.score.toLocaleString()}
+                {fmt.number(entry.score)}
               </span>
             </li>
           ))}
         </ul>
       ) : (
         <p className="rounded-2xl bg-[#F4F9FF] px-4 py-6 text-center text-sm font-bold" style={{ color: C.inkSoft }}>
-          Be the first on the board — start your first game today!
+          {r.beFirst}
         </p>
       )}
     </div>
@@ -540,6 +528,7 @@ function StarLearners() {
 }
 
 function ProvenResultsSection() {
+  const r = useI18n().t.home.results;
   return (
     <section
       className="relative -mx-6 overflow-hidden py-20 sm:-mx-10 sm:py-28"
@@ -548,12 +537,12 @@ function ProvenResultsSection() {
       <div className="relative z-10 mx-auto max-w-[1600px] px-6 sm:px-10">
         <SectionHeading
           Icon={TrendingUp}
-          eyebrow="PROVEN RESULTS"
+          eyebrow={r.eyebrow}
           eyebrowColor={C.blue}
-          title="Real Progress You Can"
-          highlight="Actually See"
+          title={r.title}
+          highlight={r.highlight}
           highlightColor={C.pink}
-          subtitle="Kids who play KinetoFun games build skills that show up in the real world."
+          subtitle={r.subtitle}
         />
 
         <div className="grid items-stretch gap-6 lg:grid-cols-2">
@@ -562,23 +551,23 @@ function ProvenResultsSection() {
             <div className="mb-6 flex items-end gap-3">
               <span className="font-display text-5xl font-extrabold" style={{ color: C.blue }}>2×</span>
               <p className="pb-1.5 text-sm font-bold leading-snug" style={{ color: C.inkSoft }}>
-                Kids using KinetoFun show 2× faster skill gains in reading and math.
+                {r.stat}
               </p>
             </div>
             <div className="flex h-56 items-end justify-around gap-4 rounded-2xl px-2 pt-4" style={{ background: "#F4F9FF" }}>
               {RESULT_BARS.map((bar) => (
-                <div key={bar.label} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+                <div key={bar.key} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
                   <div className="flex h-full w-full items-end justify-center gap-1.5">
-                    <div className="w-1/2 rounded-t-lg" style={{ height: `${bar.before}%`, background: "#CDDDF2" }} title="Before" />
-                    <div className="w-1/2 rounded-t-lg animate-grow-up" style={{ height: `${bar.after}%`, background: bar.color }} title="With KinetoFun" />
+                    <div className="w-1/2 rounded-t-lg" style={{ height: `${bar.before}%`, background: "#CDDDF2" }} title={r.before} />
+                    <div className="w-1/2 rounded-t-lg animate-grow-up" style={{ height: `${bar.after}%`, background: bar.color }} title={r.withKf} />
                   </div>
-                  <span className="text-xs font-extrabold" style={{ color: C.ink }}>{bar.label}</span>
+                  <span className="text-xs font-extrabold" style={{ color: C.ink }}>{r[bar.key]}</span>
                 </div>
               ))}
             </div>
             <div className="mt-4 flex items-center justify-center gap-5 text-xs font-bold" style={{ color: C.inkSoft }}>
-              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded" style={{ background: "#CDDDF2" }} /> Before</span>
-              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded" style={{ background: C.blue }} /> With KinetoFun</span>
+              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded" style={{ background: "#CDDDF2" }} /> {r.before}</span>
+              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded" style={{ background: C.blue }} /> {r.withKf}</span>
             </div>
           </div>
 
@@ -589,9 +578,9 @@ function ProvenResultsSection() {
         {/* Claim chips */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           {[
-            { Icon: BadgeCheck, label: "Skills built through real gameplay", color: C.blue },
-            { Icon: Users, label: "Trusted by thousands of families", color: C.green },
-            { Icon: Star, label: "4.8 / 5 average rating", color: C.orange },
+            { Icon: BadgeCheck, label: r.chipSkills, color: C.blue },
+            { Icon: Users, label: r.chipFamilies, color: C.green },
+            { Icon: Star, label: r.chipRating, color: C.orange },
           ].map(({ Icon, label, color }) => (
             <span key={label} className="inline-flex items-center gap-2 rounded-full border-2 border-white bg-white px-4 py-2 text-sm font-extrabold shadow-sm" style={{ color: C.ink }}>
               <Icon className="h-4 w-4" style={{ color }} />
@@ -607,14 +596,15 @@ function ProvenResultsSection() {
 
 // ─── Section 6: Learning system overview ──────────────────────────────────────
 
-const LEARNING_TILES: { Icon: LucideIcon; title: string; desc: string; color: string; image: string }[] = [
-  { Icon: Activity,    title: "Track Every Level Up",      desc: "See which worlds your child conquered, which skills they've earned, and what's unlocking next.", color: C.blue,   image: "/first-game.png" },
-  { Icon: Compass,     title: "Levels That Adapt to Them", desc: "Games adjust difficulty in real time — staying challenging without frustrating. Always in the zone.", color: C.green,  image: "/second-game.png" },
-  { Icon: Gamepad2,    title: "Tap, Play, Master",         desc: "Drag, match, tap, build — real game mechanics that burn skills into memory through repetition that doesn't feel like repetition.", color: C.pink,   image: "/third-game.png" },
-  { Icon: ShieldCheck, title: "Safe & Ad-Free",            desc: "Zero ads, zero strangers, zero random videos. Just a walled game world built for kids.", color: C.purple, image: "/fourth-game.png" },
+const LEARNING_TILES: { Icon: LucideIcon; color: string; image: string }[] = [
+  { Icon: Activity,    color: C.blue,   image: "/first-game.png" },
+  { Icon: Compass,     color: C.green,  image: "/second-game.png" },
+  { Icon: Gamepad2,    color: C.pink,   image: "/third-game.png" },
+  { Icon: ShieldCheck, color: C.purple, image: "/fourth-game.png" },
 ];
 
 function LearningSystemSection() {
+  const how = useI18n().t.home.how;
   const [idx, setIdx] = useState(0);
   const [visible, setVisible] = useState(true);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -656,19 +646,19 @@ function LearningSystemSection() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const tile = LEARNING_TILES[idx];
+  const tile = { ...LEARNING_TILES[idx], ...how.tiles[idx] };
 
   return (
     <section className="relative -mx-6 overflow-hidden bg-white py-20 sm:-mx-10 sm:py-28">
       <div className="relative z-10 mx-auto max-w-[1600px] px-6 sm:px-10">
         <SectionHeading
           Icon={Compass}
-          eyebrow="HOW IT WORKS"
+          eyebrow={how.eyebrow}
           eyebrowColor={C.purple}
-          title="A Game Ecosystem Built for"
-          highlight="Real Skill Growth"
+          title={how.title}
+          highlight={how.highlight}
           highlightColor={C.green}
-          subtitle="Every game, every world, every reward — all designed so play becomes progress."
+          subtitle={how.subtitle}
         />
 
         {/* ── Single-card carousel ── */}
@@ -677,7 +667,7 @@ function LearningSystemSection() {
           {/* Left arrow */}
           <button
             type="button"
-            aria-label="Previous"
+            aria-label={how.previous}
             onClick={prev}
             className="absolute -left-5 top-[40%] z-10 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#EEF4FE] bg-white shadow-[0_4px_16px_rgba(47,128,255,0.18)] transition-all duration-200 hover:scale-110 hover:border-[#C8DCFF] focus:outline-none sm:-left-8"
             style={{ color: C.blue }}
@@ -720,7 +710,7 @@ function LearningSystemSection() {
           {/* Right arrow */}
           <button
             type="button"
-            aria-label="Next"
+            aria-label={how.next}
             onClick={next}
             className="absolute -right-5 top-[40%] z-10 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#EEF4FE] bg-white shadow-[0_4px_16px_rgba(47,128,255,0.18)] transition-all duration-200 hover:scale-110 hover:border-[#C8DCFF] focus:outline-none sm:-right-8"
             style={{ color: C.blue }}
@@ -732,9 +722,9 @@ function LearningSystemSection() {
           <div className="mt-6 flex items-center justify-center gap-2">
             {LEARNING_TILES.map((t, i) => (
               <button
-                key={t.title}
+                key={t.image}
                 type="button"
-                aria-label={`Go to card ${i + 1}`}
+                aria-label={how.goTo(i + 1)}
                 onClick={() => navigate(i)}
                 className="rounded-full transition-all duration-300 focus:outline-none"
                 style={{
@@ -755,6 +745,7 @@ function LearningSystemSection() {
 // ─── Section 7: Rewards system ────────────────────────────────────────────────
 
 function RewardsSection() {
+  const rw = useI18n().t.home.rewards;
   return (
     <section
       className="relative -mx-6 overflow-hidden py-20 sm:-mx-10 sm:py-28"
@@ -770,7 +761,7 @@ function RewardsSection() {
             <div className="relative w-full h-full flex items-center justify-center animate-bob">
  <img
     src="/rewards.png"
-    alt="rewards"
+    alt={rw.imageAlt}
     className="w-11/12 h-11/12 object-contain drop-shadow-lg"
   />
   </div>
@@ -786,19 +777,19 @@ function RewardsSection() {
         <div className="text-center lg:text-left">
           <span className="mb-4 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-extrabold uppercase tracking-wide" style={{ background: `${C.pink}1f`, color: C.pink }}>
             <Gift className="h-4 w-4" />
-            Rewards
+            {rw.eyebrow}
           </span>
           <h2 className="font-display text-[2rem] leading-tight sm:text-5xl" style={{ color: C.ink }}>
-            Tickets &amp; <span style={{ color: C.pink }}>Rewards</span>
+            {rw.title} <span style={{ color: C.pink }}>{rw.highlight}</span>
           </h2>
           <p className="mx-auto mt-4 max-w-md text-base leading-relaxed lg:mx-0" style={{ color: C.inkSoft }}>
-            Every game you finish earns tickets, and every skill you master earns a badge. Spend tickets to unlock avatars, secret worlds and playful surprises. The more you play, the more you earn.
+            {rw.body}
           </p>
           <ul className="mx-auto mt-6 max-w-md space-y-3 text-left">
             {[
-              { Icon: Ticket, text: "Earn tickets for every game you finish & every day of your play streak", color: C.blue },
-              { Icon: Star,   text: "Unlock badges and collectibles for every skill mastered", color: C.orange },
-              { Icon: Trophy, text: "Spend tickets on avatars, secret worlds and surprises", color: C.green },
+              { Icon: Ticket, text: rw.points[0], color: C.blue },
+              { Icon: Star,   text: rw.points[1], color: C.orange },
+              { Icon: Trophy, text: rw.points[2], color: C.green },
             ].map(({ Icon, text, color }) => (
               <li key={text} className="flex items-center gap-3 rounded-2xl border-2 border-white bg-white/70 px-4 py-3 text-sm font-bold" style={{ color: C.ink }}>
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white" style={{ background: color }}>
@@ -817,13 +808,14 @@ function RewardsSection() {
 
 // ─── Section 8: Testimonials ──────────────────────────────────────────────────
 
-const TESTIMONIALS: { quote: string; name: string; role: string; color: string }[] = [
-  { quote: "My son won't put it down. He thinks he's just playing games -- and he is. But he's also reading sentences I didn't expect for months.", name: "Layla K.", role: "Parent of a 5-year-old", color: C.pink },
-  { quote: "The world map shows exactly which levels he's unlocked. For the first time, I actually want him on his tablet.", name: "Marcus T.", role: "Dad of two", color: C.blue },
-  { quote: "Zero ads, no random videos, no strangers. And the reward system keeps my girls playing one more level every single night.", name: "Aisha R.", role: "Mom of twins", color: C.green },
+const TESTIMONIALS: { name: string; color: string }[] = [
+  { name: "Layla K.", color: C.pink },
+  { name: "Marcus T.", color: C.blue },
+  { name: "Aisha R.", color: C.green },
 ];
 
 function TestimonialsSection() {
+  const ts = useI18n().t.home.testimonials;
   return (
     <section
       className="relative -mx-6 overflow-hidden py-20 sm:-mx-10 sm:py-28"
@@ -832,15 +824,15 @@ function TestimonialsSection() {
       <div className="relative z-10 mx-auto max-w-[1600px] px-6 sm:px-10">
         <SectionHeading
           Icon={Star}
-          eyebrow="REAL FAMILIES, REAL RESULTS"
+          eyebrow={ts.eyebrow}
           eyebrowColor={C.orange}
-          title="Loved by Parents &"
-          highlight="Kids Alike"
+          title={ts.title}
+          highlight={ts.highlight}
           highlightColor={C.pink}
-          subtitle="Join thousands of families turning game time into skill time."
+          subtitle={ts.subtitle}
         />
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {TESTIMONIALS.map((t, i) => (
+          {TESTIMONIALS.map((look, i) => ({ ...look, ...ts.items[i] })).map((t, i) => (
             <div
               key={t.name}
               className={cn(
@@ -875,19 +867,20 @@ function TestimonialsSection() {
 
 // ─── Section 9: Feature icon strip ────────────────────────────────────────────
 
-const ICON_STRIP: { Icon: LucideIcon; label: string; color: string }[] = [
-  { Icon: ShieldCheck, label: "100% Safe & Ad-Free",      color: C.green },
-  { Icon: Gamepad2,    label: "Real Games, Real Skills",   color: C.blue },
-  { Icon: Compass,     label: "Skill-Based Progression",   color: C.purple },
-  { Icon: TrendingUp,  label: "See Every Level Up",        color: C.orange },
+const ICON_STRIP: { Icon: LucideIcon; color: string }[] = [
+  { Icon: ShieldCheck, color: C.green },
+  { Icon: Gamepad2,    color: C.blue },
+  { Icon: Compass,     color: C.purple },
+  { Icon: TrendingUp,  color: C.orange },
 ];
 
 function IconStripSection() {
+  const labels = useI18n().t.home.icons;
   return (
     <section className="relative -mx-6 overflow-hidden bg-white py-16 sm:-mx-10 sm:py-20">
       <div className="relative z-10 mx-auto max-w-[1600px] px-6 sm:px-10">
         <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
-          {ICON_STRIP.map(({ Icon, label, color }) => (
+          {ICON_STRIP.map(({ Icon, color }, i) => ({ Icon, color, label: labels[i] })).map(({ Icon, label, color }) => (
             <div key={label} className="group flex flex-col items-center text-center">
               <div
                 className="mb-4 flex h-24 w-24 items-center justify-center rounded-full transition-transform duration-300 group-hover:-translate-y-1.5 group-hover:scale-105"
@@ -908,6 +901,8 @@ function IconStripSection() {
 // ─── Section 10: Final CTA ────────────────────────────────────────────────────
 
 function FinalCtaSection() {
+  const { t } = useI18n();
+  const cta = t.home.cta;
   return (
     <section
       className="relative -mx-6 overflow-hidden py-24 sm:-mx-10 sm:py-32"
@@ -922,10 +917,10 @@ function FinalCtaSection() {
         </div> */}
 
         <h2 className="font-display text-[2.2rem] leading-[1.08] text-white drop-shadow sm:text-6xl">
-          Ready to Play? The Adventure Starts Now.
+          {cta.title}
         </h2>
         <p className="mx-auto mt-5 max-w-lg text-lg text-white/90">
-          Thousands of kids are already unlocking worlds and levelling up. Jump in — no downloads, no pressure, just play.
+          {cta.body}
         </p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -935,7 +930,7 @@ function FinalCtaSection() {
             className="group inline-flex h-16 w-full items-center justify-center gap-2 rounded-full px-9 text-lg font-extrabold transition hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 sm:w-auto focus:outline-none"
             style={{ background: C.yellow, color: C.ink, boxShadow: "0 14px 30px rgba(0,0,0,0.25)" }}
           >
-            Try FREE for 30 Days
+            {t.home.hero.tryFree}
             <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Link>
           <Link
@@ -944,13 +939,13 @@ function FinalCtaSection() {
             className="inline-flex h-16 w-full items-center justify-center gap-2 rounded-full border-2 border-white/60 bg-white/10 px-7 text-lg font-extrabold text-white backdrop-blur-sm transition hover:bg-white/20 hover:-translate-y-0.5 active:translate-y-0 sm:w-auto focus:outline-none"
           >
             <Sparkles className="h-5 w-5" />
-            Browse Game Worlds
+            {cta.browse}
           </Link>
         </div>
 
         <p className="mt-6 flex items-center justify-center gap-2 text-sm font-bold text-white/85">
           <ShieldCheck className="h-4 w-4" />
-          No credit card required · Cancel anytime · Safe &amp; ad-free
+          {cta.reassurance}
         </p>
       </div>
       <WaveDivider color="#091440" />
@@ -962,6 +957,7 @@ function FinalCtaSection() {
 
 function BackToTop() {
   const [visible, setVisible] = useState(false);
+  const label = useI18n().t.home.backToTop;
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 400);
@@ -972,7 +968,7 @@ function BackToTop() {
   return (
     <button
       type="button"
-      aria-label="Back to top"
+      aria-label={label}
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       className={`fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 hover:brightness-110 hover:scale-110 active:scale-100 focus:outline-none ${
         visible ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"
@@ -1015,6 +1011,8 @@ export default function HomePage() {
   const { games, loading } = useGames();
   const { gameIds: recentIds } = useContinuePlaying(isAuthenticated);
   const { isFavorite } = useFavorites();
+  const { t, fmt } = useI18n();
+  const d = t.home.dashboard;
   const featured = selectFeatured(games);
   // The hero is image-led, so prefer a featured game that has artwork and only
   // fall back to a gradient-only one when no featured game has an image.
@@ -1066,10 +1064,10 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
           <div className="relative z-20 max-w-2xl">
             <Badge tone="default" className="mb-4 bg-black/40 !text-white/90">
-              Featured
+              {d.featured}
             </Badge>
             <p className="text-sm font-medium text-zinc-200">
-              {user ? `Welcome back, ${user.displayName}` : "Welcome to KinetoFun"}
+              {user ? d.welcomeBack(user.displayName) : d.welcome}
             </p>
             <h1 className="mt-2 text-4xl font-black tracking-tight text-white drop-shadow sm:text-6xl">
               {spotlight.title}
@@ -1080,13 +1078,13 @@ export default function HomePage() {
             <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-zinc-200">
               <StarRating rating={spotlight.rating} />
               <span aria-hidden>•</span>
-              <span>{playersLabel(spotlight.players)}</span>
+              <span>{fmt.players(spotlight.players)}</span>
               <span aria-hidden>•</span>
-              <span>{spotlight.category}</span>
+              <span>{fmt.category(spotlight.category)}</span>
             </div>
             <div className="mt-7 flex flex-wrap gap-3">
               <ButtonLink href={`/games/${spotlight.id}/play`} size="lg">
-                ▶ Play now
+                {d.playNow}
               </ButtonLink>
               <ButtonLink
                 href={`/games/${spotlight.id}`}
@@ -1094,7 +1092,7 @@ export default function HomePage() {
                 variant="secondary"
                 className="border-white/40 bg-white/15 text-white hover:bg-white/25"
               >
-                More info
+                {d.moreInfo}
               </ButtonLink>
             </div>
           </div>
@@ -1102,31 +1100,31 @@ export default function HomePage() {
       ) : null}
 
       {continuePlaying.length > 0 ? (
-        <GameRail title="Continue playing" games={continuePlaying} />
+        <GameRail title={d.continuePlaying} games={continuePlaying} />
       ) : null}
 
       {favoriteGames.length > 0 ? (
-        <GameRail title="Favorites" games={favoriteGames} />
+        <GameRail title={d.favorites} games={favoriteGames} />
       ) : null}
 
       <GameRail
-        title="Featured games"
+        title={d.featuredGames}
         games={featured}
-        subtitle="View all"
+        subtitle={t.common.actions.viewAll}
         viewAllHref="/library?featured=1"
       />
 
       {CATEGORY_RAILS.map((category) => (
         <GameRail
           key={category}
-          title={category}
+          title={fmt.category(category)}
           games={selectByCategory(games, category)}
-          subtitle="View all"
+          subtitle={t.common.actions.viewAll}
           viewAllHref={`/library?category=${category.toLowerCase()}`}
         />
       ))}
 
-      <GameRail title="All games" games={games} subtitle="View all" viewAllHref="/library" />
+      <GameRail title={d.allGames} games={games} subtitle={t.common.actions.viewAll} viewAllHref="/library" />
     </div>
   );
 }

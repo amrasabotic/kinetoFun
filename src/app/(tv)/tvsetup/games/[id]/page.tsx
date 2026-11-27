@@ -18,7 +18,7 @@ import { useTvSignedIn } from "@/features/tv/useTvSignedIn";
 import { tvHomeHref } from "@/features/tv/tv-home-state";
 import { findGame } from "@/services/games.service";
 import { tvGames } from "@/features/tv/tv-games";
-import { formatScore, playersLabel } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export default function TvGamePage() {
   const params = useParams<{ id: string }>();
@@ -29,6 +29,8 @@ export default function TvGamePage() {
   const game = findGame(games, params.id);
   const { entries } = useLeaderboard(game?.id ?? null);
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { t, fmt } = useI18n();
+  const d = t.tv.game;
 
   // Same rule as the desktop game page: admins can always play secret worlds.
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
@@ -51,9 +53,9 @@ export default function TvGamePage() {
   if (!game || !tvGames(games).some((g) => g.id === game.id)) {
     return (
       <div className="flex flex-col items-center gap-10 py-32 text-center">
-        <h1 className="text-5xl font-black">This game isn&apos;t available</h1>
+        <h1 className="text-5xl font-black">{d.unavailable}</h1>
         <Button size="lg" onClick={goBack} className="h-20 px-14 text-3xl!">
-          Back to games
+          {t.games.backToGames}
         </Button>
       </div>
     );
@@ -74,7 +76,7 @@ export default function TvGamePage() {
           className="h-16 px-8 text-2xl! text-white!"
         >
           <ArrowLeft className="h-7 w-7" />
-          Back
+          {t.common.actions.back}
         </Button>
         {/* Players come back here after every round, so this is where tickets just earned get spent. */}
         <Link
@@ -84,7 +86,7 @@ export default function TvGamePage() {
         >
           <Ticket className="h-7 w-7" />
           {user?.tickets ?? 0}
-          <span className="ml-1 rounded-full bg-amber-950/15 px-4 py-1">Shop</span>
+          <span className="ml-1 rounded-full bg-amber-950/15 px-4 py-1">{t.tv.home.shop}</span>
         </Link>
       </div>
 
@@ -98,11 +100,11 @@ export default function TvGamePage() {
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-6">
-          <p className="text-2xl font-bold uppercase tracking-[0.2em] text-accent">{game.category}</p>
+          <p className="text-2xl font-bold uppercase tracking-[0.2em] text-accent">{fmt.category(game.category)}</p>
           <h1 className="text-6xl font-black leading-tight tracking-tight">{game.title}</h1>
           <p className="text-3xl text-white/70">{game.tagline}</p>
           <p className="text-2xl text-white/50">
-            {playersLabel(game.players)} · about {game.durationMinutes} min
+            {fmt.players(game.players)} · {d.about(game.durationMinutes)}
           </p>
 
           {(top || mine) && (
@@ -110,11 +112,11 @@ export default function TvGamePage() {
               {top && (
                 <p className="flex items-center gap-3">
                   <Trophy className="h-7 w-7 text-accent" />
-                  Top score {formatScore(top.score)}
+                  {d.topScore(fmt.number(top.score))}
                   <span className="text-white/50">· {top.user.displayName}</span>
                 </p>
               )}
-              {mine && <p>Your best {formatScore(mine.score)}</p>}
+              {mine && <p>{d.yourBest(fmt.number(mine.score))}</p>}
             </div>
           )}
 
@@ -132,7 +134,7 @@ export default function TvGamePage() {
             ) : (
               <ButtonLink href={`/games/${game.id}/play`} size="lg" className="h-24 px-16 text-4xl!">
                 <Play className="h-10 w-10 fill-current" />
-                PLAY
+                {d.play}
               </ButtonLink>
             )}
             <Button
@@ -143,7 +145,7 @@ export default function TvGamePage() {
               className="h-24 px-10 text-2xl! text-white!"
             >
               <Heart className={favorite ? "h-8 w-8 fill-destructive text-destructive" : "h-8 w-8"} />
-              {favorite ? "Favorite" : "Add to favorites"}
+              {favorite ? d.favorite : t.games.addFavorite}
             </Button>
           </div>
         </div>

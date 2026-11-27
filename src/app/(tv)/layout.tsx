@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { HandInputProvider } from "@/features/hand-input/HandInputProvider";
 import { OfflineGuard } from "./OfflineGuard";
+import { getRequestMessages } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "KinetoFun TV",
-  description: "Set up your KinetoFun TV.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getRequestMessages();
+  return { title: t.common.meta.tvTitle, description: t.common.meta.tvDescription };
+}
 
 /**
  * Chrome-free shell for the screens the Raspberry Pi renders on a television.

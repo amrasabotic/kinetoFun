@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X, Info, AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/features/auth/session-context";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 interface PublicSettings {
   maintenanceMode: boolean;
@@ -18,6 +19,7 @@ const ANNOUNCEMENT_DISMISS_KEY = "kf_announcement_dismissed";
 
 export function AnnouncementBanner() {
   const { user } = useSession();
+  const b = useI18n().t.common.banner;
   const [settings, setSettings] = useState<PublicSettings | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -50,12 +52,12 @@ export function AnnouncementBanner() {
             <ShieldAlert className="h-10 w-10 text-rose-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Down for Maintenance</h1>
+            <h1 className="text-2xl font-bold text-white">{b.maintenanceTitle}</h1>
             <p className="mt-3 max-w-sm text-base text-slate-400">
               {settings.maintenanceMessage}
             </p>
           </div>
-          <p className="text-xs text-slate-600">Check back soon</p>
+          <p className="text-xs text-slate-600">{b.checkBack}</p>
         </div>
       );
     }
@@ -66,8 +68,8 @@ export function AnnouncementBanner() {
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-4 w-4 shrink-0" />
           <span>
-            <span className="font-semibold">Maintenance mode is active.</span>{" "}
-            Regular users see a maintenance screen. You can access the app as an admin.
+            <span className="font-semibold">{b.maintenanceActive}</span>{" "}
+            {b.maintenanceAdmin}
           </span>
         </div>
       </div>
@@ -106,7 +108,7 @@ export function AnnouncementBanner() {
       <span className="flex-1">{settings.announcementText}</span>
       <button
         onClick={dismiss}
-        aria-label="Dismiss announcement"
+        aria-label={b.dismiss}
         className={cn("rounded-md p-1 transition", styles.close)}
       >
         <X className="h-3.5 w-3.5" />

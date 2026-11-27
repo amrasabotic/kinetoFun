@@ -1,11 +1,15 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, Lock } from "lucide-react";
 import type { Game } from "@/types";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /** Large game tile for the TV games home, sized to be read from the sofa. */
 export function TvGameCard({ game, favorite }: { game: Game; favorite: boolean }) {
   const image = game.coverImage || game.thumbnail;
+  const { fmt } = useI18n();
 
   return (
     <Link
@@ -35,7 +39,7 @@ export function TvGameCard({ game, favorite }: { game: Game; favorite: boolean }
 
       <div className="relative mt-auto p-6">
         <p className="text-3xl font-black leading-tight text-white drop-shadow">{game.title}</p>
-        <p className="mt-1 text-xl text-white/70">{game.category}</p>
+        <p className="mt-1 text-xl text-white/70">{fmt.category(game.category)}</p>
       </div>
     </Link>
   );

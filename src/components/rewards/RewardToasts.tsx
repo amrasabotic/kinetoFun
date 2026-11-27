@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { playRewardChime } from "@/lib/rewards/chime";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export interface RewardToast {
   key: string;
@@ -29,6 +30,7 @@ export function RewardToasts({
   onDismiss: () => void;
 }) {
   const current = queue[0];
+  const r = useI18n().t.rewards;
   const duration = queue.length > 1 ? QUEUED_TOAST_MS : TOAST_MS;
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export function RewardToasts({
         <span className="text-4xl" aria-hidden>{current.emoji}</span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold uppercase tracking-wider text-amber-300">
-            {current.kind === "badge" ? "New badge!" : "Collectible unlocked!"}
+            {current.kind === "badge" ? r.toast.badge : r.toast.collectible}
           </p>
           <p className="truncate text-lg font-black text-white">{current.title}</p>
           

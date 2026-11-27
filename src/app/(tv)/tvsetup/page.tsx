@@ -13,6 +13,8 @@ import { LoaderCircle, RefreshCw, WifiOff } from "lucide-react";
 import { useTvSession } from "@/features/tv/useTvSession";
 import { PairingQr } from "@/components/tv/PairingQr";
 import { Button } from "@/components/ui/Button";
+import { LanguagePicker } from "@/components/i18n/LanguagePicker";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 function formatCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -43,16 +45,19 @@ function TvSetup() {
   }, [status, router]);
 
   const isPaired = status === "authenticated" || status === "ready";
+  const { t, serverText } = useI18n();
+  const w = t.tv.welcome;
 
   return (
     <div className="flex flex-col items-center gap-8 text-center">
+      <LanguagePicker variant="tv" tone="dark" className="fixed right-10 top-10 z-20 [&_button]:min-w-0 [&_button]:px-8 [&_button]:py-4 [&_button]:text-2xl" />
       <header className="flex flex-col items-center gap-4">
         <Image src="/logo.png" alt="KinetoFun" width={220} height={64} priority />
         <h1 className="text-6xl font-black tracking-tight sm:text-7xl">
-          WELCOME TO KINETOFUN
+          {w.title}
         </h1>
         <p className="max-w-3xl text-3xl font-medium text-white/70">
-          Scan this QR code with your phone to get started
+          {w.scan}
         </p>
       </header>
 
@@ -61,7 +66,7 @@ function TvSetup() {
           <PairingQr value={session.joinUrl} size={360} />
 
           <div className="flex flex-col items-center gap-3">
-            <p className="text-xl uppercase tracking-[0.35em] text-white/50">Code</p>
+            <p className="text-xl uppercase tracking-[0.35em] text-white/50">{w.code}</p>
             <p className="font-mono text-6xl font-black tracking-[0.2em] text-accent">
               {session.pairingCode}
             </p>
@@ -69,8 +74,8 @@ function TvSetup() {
 
           <p className="text-xl text-white/50" aria-live="polite">
             {secondsLeft > 0
-              ? `This code expires in ${formatCountdown(secondsLeft)}`
-              : "Generating a new code…"}
+              ? w.expires(formatCountdown(secondsLeft))
+              : w.generating}
           </p>
         </div>
       ) : (
@@ -80,7 +85,7 @@ function TvSetup() {
         >
           <LoaderCircle className="h-16 w-16 animate-spin text-primary" />
           <p className="text-2xl text-white/60">
-            {isPaired ? "Connecting…" : "Preparing your TV…"}
+            {isPaired ? w.connecting : w.preparing}
           </p>
         </div>
       )}
@@ -93,16 +98,16 @@ function TvSetup() {
           role="status"
         >
           <WifiOff className="h-7 w-7 shrink-0" />
-          <span>Reconnecting to KinetoFun…</span>
+          <span>{w.reconnecting}</span>
         </div>
       )}
 
       {error && (
         <div className="flex flex-col items-center gap-6" role="alert">
-          <p className="max-w-2xl text-2xl text-destructive">{error}</p>
+          <p className="max-w-2xl text-2xl text-destructive">{serverText(error)}</p>
           <Button size="lg" onClick={regenerate} className="h-16 px-10 text-2xl!">
             <RefreshCw className="h-6 w-6" />
-            Try again
+            {t.common.actions.retry}
           </Button>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ButtonLink } from "@/components/ui/Button";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export default function AppError({
   error,
@@ -10,6 +11,7 @@ export default function AppError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useI18n();
   useEffect(() => {
     console.error("[app error]", error);
   }, [error]);
@@ -20,9 +22,9 @@ export default function AppError({
         <span className="text-3xl">⚠️</span>
       </div>
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Something went wrong</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t.common.error.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          An unexpected error occurred. Try again or head back home.
+          {t.common.error.body}
         </p>
       </div>
       <div className="flex gap-3">
@@ -30,10 +32,10 @@ export default function AppError({
           onClick={reset}
           className="inline-flex h-10 items-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:brightness-110"
         >
-          Try again
+          {t.common.actions.retry}
         </button>
         <ButtonLink href="/" variant="secondary">
-          Go home
+          {t.common.actions.goHome}
         </ButtonLink>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { LanguagePicker } from "@/components/i18n/LanguagePicker";
 
 /** Minimal, focused chrome for the login / signup screens. */
 export default function AuthLayout({
@@ -9,6 +10,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-12">
+      <LanguagePicker className="absolute right-5 top-5 z-20" />
 
       {/* ── Wave background — same bezier shape as homepage WaveDivider, two layers ── */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 leading-[0]" aria-hidden>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { GameCard } from "./GameCard";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { Game } from "@/types";
 
 /**
@@ -115,10 +116,11 @@ function ArrowButton({
   onClick: () => void;
 }) {
   const Icon = side === "left" ? ChevronLeft : ChevronRight;
+  const g = useI18n().t.games;
   return (
     <button
       type="button"
-      aria-label={side === "left" ? "Scroll left" : "Scroll right"}
+      aria-label={side === "left" ? g.scrollLeft : g.scrollRight}
       tabIndex={visible ? 0 : -1}
       onClick={onClick}
       className={cn(

@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { formatScore } from '@/lib/format';
+import { useI18n } from '@/features/i18n/I18nProvider';
 import type { LeaderboardEntry } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
 import {
@@ -33,10 +33,12 @@ export function LeaderboardTable({
   entries: LeaderboardEntry[];
   highlightUserId?: string;
 }) {
+  const { t, fmt } = useI18n();
+  const lb = t.leaderboard.table;
   if (entries.length === 0) {
     return (
       <p className="rounded-2xl border border-border/40 bg-transparent p-8 text-center text-muted-foreground">
-        No scores recorded yet.
+        {lb.empty}
       </p>
     );
   }
@@ -46,9 +48,9 @@ export function LeaderboardTable({
       <Table>
         <TableHeader>
           <TableRow className="border-border/40 hover:bg-transparent">
-            <TableHead className="w-16 text-center">Rank</TableHead>
-            <TableHead>Player</TableHead>
-            <TableHead className="text-right">Score</TableHead>
+            <TableHead className="w-16 text-center">{lb.rank}</TableHead>
+            <TableHead>{lb.player}</TableHead>
+            <TableHead className="text-right">{lb.score}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -92,7 +94,7 @@ export function LeaderboardTable({
                         {entry.user.displayName}
                         {isMe && (
                           <span className="ml-2 text-xs font-normal text-primary">
-                            (you)
+                            {lb.you}
                           </span>
                         )}
                       </span>
@@ -102,7 +104,7 @@ export function LeaderboardTable({
                   {/* Score */}
                   <TableCell className="text-right">
                     <span className="font-mono text-lg font-bold tabular-nums text-foreground">
-                      {formatScore(entry.score)}
+                      {fmt.number(entry.score)}
                     </span>
                   </TableCell>
                 </motion.tr>

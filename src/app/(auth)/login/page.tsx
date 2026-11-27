@@ -9,6 +9,7 @@ import { AuthRequestError } from "@/services/auth.service";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /** Only allow relative, in-app redirect targets (no open redirects). */
 function safeNext(raw: string | null): string {
@@ -19,6 +20,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useSession();
+  const { t: { auth: a }, serverText } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +43,8 @@ function LoginForm() {
     } catch (err) {
       setError(
         err instanceof AuthRequestError
-          ? err.message
-          : "Couldn't sign in. Please try again.",
+          ? serverText(err.message)
+          : a.login.failed,
       );
       setPending(false);
     }
@@ -58,19 +60,19 @@ function LoginForm() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-black tracking-tight text-foreground">
-          Welcome back
+          {a.login.title}
         </h1>
         <p className="mt-1.5 text-sm text-foreground/45">
-          Sign in to keep playing.
+          {a.login.subtitle}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <TextField
-          label="Email"
+          label={a.email}
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={a.emailPlaceholder}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -78,7 +80,7 @@ function LoginForm() {
         />
         <div className="space-y-2">
           <TextField
-            label="Password"
+            label={a.password}
             type="password"
             autoComplete="current-password"
             placeholder="••••••••"
@@ -93,7 +95,7 @@ function LoginForm() {
               data-focusable
               className="text-xs font-semibold text-primary transition-colors hover:text-primary/80 focus:outline-none"
             >
-              Forgot password?
+              {a.login.forgot}
             </Link>
           </div>
         </div>
@@ -114,12 +116,12 @@ function LoginForm() {
           disabled={pending}
           className={cn("mt-2", pending && "pointer-events-none opacity-60")}
         >
-          {pending ? "Signing in…" : "Sign in"}
+          {pending ? a.login.pending : a.login.submit}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-foreground/45">
-        New here?{" "}
+        {a.login.newHere}{" "}
         <Link
           href="/signup"
           // Not prefetched: once sign-in succeeds the proxy redirects /login and
@@ -128,7 +130,7 @@ function LoginForm() {
           data-focusable
           className="font-semibold text-primary transition-colors hover:text-primary/80 focus:outline-none"
         >
-          Create an account
+          {a.login.createAccount}
         </Link>
       </p>
     </div>

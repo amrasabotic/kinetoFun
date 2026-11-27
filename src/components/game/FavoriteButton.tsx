@@ -3,16 +3,18 @@
 import { Heart } from "lucide-react";
 import { useFavorites } from "@/features/games/useFavorites";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export function FavoriteButton({ gameId, className }: { gameId: string; className?: string }) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const active = isFavorite(gameId);
+  const g = useI18n().t.games;
 
   return (
     // Button
     <button
       type="button"
-      aria-label={active ? "Remove from favorites" : "Add to favorites"}
+      aria-label={active ? g.removeFavorite : g.addFavorite}
       aria-pressed={active}
       onClick={(e) => {
         e.preventDefault();

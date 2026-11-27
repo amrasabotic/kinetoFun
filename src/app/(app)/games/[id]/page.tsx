@@ -12,7 +12,7 @@ import { StarRating } from "@/components/ui/StarRating";
 import { GameRail } from "@/components/game/GameRail";
 import { RateThisGame } from "@/components/game/RateThisGame";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
-import { playersLabel } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import { useShop } from "@/features/rewards/useShop";
 import { UnlockWorldButton } from "@/components/game/UnlockWorldButton";
 
@@ -20,6 +20,8 @@ export default function GameDetailPage() {
   const params = useParams<{ id: string }>();
   const { user } = useSession();
   const { games, loading } = useGames();
+  const { t, fmt } = useI18n();
+  const d = t.games.detail;
   const game = findGame(games, params.id);
   const { entries: topScores } = useLeaderboard(game?.id ?? null);
   // Only secret worlds need the player's unlock status. Admins can always
@@ -40,12 +42,12 @@ export default function GameDetailPage() {
   if (!game) {
     return (
       <div className="flex flex-col items-center gap-4 py-24 text-center">
-        <h1 className="text-3xl font-bold text-foreground">Game not found</h1>
+        <h1 className="text-3xl font-bold text-foreground">{d.notFound}</h1>
         <p className="text-sm text-foreground/45">
-          We couldn&apos;t find a game with that id.
+          {d.notFoundBody}
         </p>
         <ButtonLink href="/library" variant="primary">
-          Back to Library
+          {d.backToLibrary}
         </ButtonLink>
       </div>
     );
@@ -74,10 +76,10 @@ export default function GameDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
         <div className="relative max-w-2xl">
           <div className="mb-4 flex flex-wrap gap-2">
-            <Badge tone="accent">{game.category}</Badge>
+            <Badge tone="accent">{fmt.category(game.category)}</Badge>
             {game.unlockCost && (
               <Badge tone="accent" className="bg-amber-400/90 !text-amber-950">
-                🔒 Secret world
+                {t.games.secretWorld}
               </Badge>
             )}
           </div>
@@ -91,16 +93,16 @@ export default function GameDetailPage() {
               <StarRating rating={game.rating} />
               {(game.ratingCount ?? 0) > 0 && (
                 <span className="text-xs text-white/40">
-                  ({game.ratingCount} {game.ratingCount === 1 ? "rating" : "ratings"})
+                  ({d.ratings(game.ratingCount ?? 0)})
                 </span>
               )}
             </div>
             <span aria-hidden>·</span>
-            <span>{playersLabel(game.players)}</span>
+            <span>{fmt.players(game.players)}</span>
             <span aria-hidden>·</span>
             <span>{game.releaseYear}</span>
             <span aria-hidden>·</span>
-            <span>~{game.durationMinutes} min</span>
+            <span>{d.minutes(game.durationMinutes)}</span>
           </div>
 
           <div className="mt-7 flex flex-wrap gap-3">
@@ -113,11 +115,11 @@ export default function GameDetailPage() {
               />
             ) : (
               <ButtonLink href={`/games/${game.id}/play`} size="lg">
-                ▶ Play now
+                {t.home.dashboard.playNow}
               </ButtonLink>
             )}
             <ButtonLink href="/library" size="lg" variant="secondary" className="border-white/40 bg-white/15 text-white hover:bg-white/25">
-              Back to Library
+              {d.backToLibrary}
             </ButtonLink>
           </div>
         </div>
@@ -127,9 +129,9 @@ export default function GameDetailPage() {
         {/* Description */}
         <div className="space-y-5 lg:col-span-2">
           <div className="flex items-baseline gap-3">
-            <h2 className="text-lg font-bold text-foreground">About</h2>
+            <h2 className="text-lg font-bold text-foreground">{d.about}</h2>
             <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
-              // {game.category}
+              // {fmt.category(game.category)}
             </span>
           </div>
           <p className="text-base leading-relaxed text-foreground/70">
@@ -137,15 +139,15 @@ export default function GameDetailPage() {
           </p>
 
           <dl className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Stat label="Players" value={`${game.minPlayers}–${game.maxPlayers}`} />
-            <Stat label="Category" value={game.category} />
-            <Stat label="Released" value={String(game.releaseYear)} />
-            <Stat label="Session" value={`~${game.durationMinutes} min`} />
+            <Stat label={d.players} value={`${game.minPlayers}–${game.maxPlayers}`} />
+            <Stat label={d.category} value={fmt.category(game.category)} />
+            <Stat label={d.released} value={String(game.releaseYear)} />
+            <Stat label={d.session} value={d.minutes(game.durationMinutes)} />
             <Stat
-              label="Rating"
+              label={d.rating}
               value={`${game.rating.toFixed(1)} / 5${(game.ratingCount ?? 0) > 0 ? ` (${game.ratingCount})` : ""}`}
             />
-            <Stat label="Mode" value={playersLabel(game.players)} />
+            <Stat label={d.mode} value={fmt.players(game.players)} />
           </dl>
         </div>
 
@@ -153,13 +155,13 @@ export default function GameDetailPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-3">
-              <h2 className="text-lg font-bold text-foreground">Top scores</h2>
+              <h2 className="text-lg font-bold text-foreground">{d.topScores}</h2>
               <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/35">
-                // global
+                // {d.global}
               </span>
             </div>
             <ButtonLink href="/leaderboard" variant="ghost" size="sm">
-              See all
+              {d.seeAll}
             </ButtonLink>
           </div>
           <LeaderboardTable entries={topScores} highlightUserId={user?.id} />
@@ -173,7 +175,7 @@ export default function GameDetailPage() {
       </div>
 
       {related.length > 0 && (
-        <GameRail title="More like this" games={related} />
+        <GameRail title={d.moreLikeThis} games={related} />
       )}
     </div>
   );

@@ -10,10 +10,9 @@ import { useSession } from "@/features/auth/session-context";
 import { shopAction, useShop } from "@/features/rewards/useShop";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
-  RARITY_LABELS,
   SHOP_ITEMS,
-  SHOP_SLOTS,
   type Rarity,
   type SecretWorld,
   type ShopItem,
@@ -43,6 +42,9 @@ function ShopContent() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<ShopItem | null>(null);
+  const { t, fmt, serverText } = useI18n();
+  const sh = t.shop;
+  const rw = t.rewards;
 
   if (!user) return null;
 
@@ -53,7 +55,7 @@ function ShopContent() {
       if (success) toast.success(success);
       await Promise.all([refresh(), refreshSession()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+      toast.error(err instanceof Error ? serverText(err.message) : serverText("Something went wrong. Please try again."));
     } finally {
       setBusy(null);
       setConfirming(null);
@@ -79,7 +81,7 @@ function ShopContent() {
   if (error || !shop) {
     return (
       <p className="rounded-xl border border-border/40 bg-card p-8 text-center text-sm text-muted-foreground">
-        {error ?? "The shop is unavailable right now."}
+        {serverText(error ?? "The shop is unavailable right now.")}
       </p>
     );
   }
@@ -87,7 +89,7 @@ function ShopContent() {
   const owned = new Set(shop.owned);
   const odds = (Object.keys(shop.mysteryBox.odds) as Rarity[])
     .filter((r) => shop.mysteryBox.odds[r] > 0)
-    .map((r) => `${RARITY_LABELS[r]} ${Math.round(shop.mysteryBox.odds[r] * 100)}%`)
+    .map((r) => `${rw.rarity[r]} ${Math.round(shop.mysteryBox.odds[r] * 100)}%`)
     .join(" · ");
 
   return (
@@ -96,14 +98,14 @@ function ShopContent() {
       <section className="flex flex-col items-center gap-5 rounded-3xl border border-border/40 bg-card p-6 text-center shadow-sm sm:flex-row sm:text-left">
         <Avatar user={user} size="lg" />
         <div className="flex-1">
-          <h1 className="text-3xl font-black tracking-tight text-foreground">Ticket Shop</h1>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">{t.common.nav.shop}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Spend the tickets you earn by playing on new looks and secret worlds.
+            {sh.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-2xl border border-amber-300/60 bg-amber-100/70 px-5 py-3 text-2xl font-black tabular-nums text-amber-700">
           <Ticket className="h-6 w-6" />
-          {shop.balance.toLocaleString()}
+          {fmt.number(shop.balance)}
         </div>
       </section>
 
@@ -113,24 +115,24 @@ function ShopContent() {
           <span className="text-7xl" aria-hidden>🎁</span>
           <div className="flex-1 text-center sm:text-left">
             <h2 className="flex items-center justify-center gap-2 text-xl font-bold text-foreground sm:justify-start">
-              <Gift className="h-5 w-5 text-fuchsia-500" /> Mystery box
+              <Gift className="h-5 w-5 text-fuchsia-500" /> {sh.mysteryBox}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              A surprise avatar, frame or banner you don&apos;t have yet.
+              {sh.mysteryBoxHint}
             </p>
             {shop.mysteryBox.remaining > 0 && (
-              <p className="mt-1 text-xs text-muted-foreground">Chances: {odds}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{sh.chances(odds)}</p>
             )}
           </div>
           {shop.mysteryBox.remaining === 0 ? (
-            <p className="text-sm font-semibold text-muted-foreground">You own everything!</p>
+            <p className="text-sm font-semibold text-muted-foreground">{sh.ownEverything}</p>
           ) : (
             <SpendButton
               price={shop.mysteryBox.price}
               balance={shop.balance}
               confirming={confirming === "box"}
               busy={busy === "box"}
-              label="Open"
+              label={sh.open}
               onClick={() =>
                 spend("box", async () => {
                   const res = await shopAction<{ item: ShopItem }>("mystery-box");
@@ -145,7 +147,7 @@ function ShopContent() {
       {/* Secret worlds */}
       {shop.worlds.length > 0 && (
         <section className="space-y-4">
-          <SectionTitle icon={<Lock className="h-4 w-4" />} title="Secret worlds" />
+          <SectionTitle icon={<Lock className="h-4 w-4" />} title={sh.secretWorlds} />
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {shop.worlds.map((w) => (
               <WorldCard
@@ -158,7 +160,7 @@ function ShopContent() {
                   spend(
                     `world:${w.gameId}`,
                     () => shopAction("unlock-world", { gameId: w.gameId }),
-                    `${w.title} unlocked!`,
+                    t.games.unlocked(w.title),
                   )
                 }
               />
@@ -172,11 +174,11 @@ function ShopContent() {
         const items = SHOP_ITEMS.filter((i) => i.kind === kind && (!i.retired || owned.has(i.id)));
         return (
           <section key={kind} className="space-y-4">
-            <SectionTitle icon={<Sparkles className="h-4 w-4" />} title={SHOP_SLOTS[kind].label} />
+            <SectionTitle icon={<Sparkles className="h-4 w-4" />} title={rw.slots[kind].label} />
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
               <ItemTile
                 preview={<Preview kind={kind} user={user} item={null} />}
-                name={SHOP_SLOTS[kind].defaultLabel}
+                name={rw.slots[kind].defaultLabel}
               >
                 <EquipButton
                   equipped={equipped === null}
@@ -190,7 +192,7 @@ function ShopContent() {
                 <ItemTile
                   key={item.id}
                   preview={<Preview kind={kind} user={user} item={item} />}
-                  name={item.name}
+                  name={fmt.item(item)}
                   rarity={item.rarity}
                 >
                   {owned.has(item.id) ? (
@@ -207,13 +209,13 @@ function ShopContent() {
                       balance={shop.balance}
                       confirming={confirming === `buy:${item.id}`}
                       busy={busy === `buy:${item.id}`}
-                      label="Buy"
+                      label={sh.buy}
                       compact
                       onClick={() =>
                         spend(
                           `buy:${item.id}`,
                           () => shopAction("buy", { itemId: item.id }),
-                          `${item.name} is yours!`,
+                          sh.yours(fmt.item(item)),
                         )
                       }
                     />
@@ -284,13 +286,14 @@ function ItemTile({
   rarity?: Rarity;
   children: React.ReactNode;
 }) {
+  const rarityLabels = useI18n().t.rewards.rarity;
   return (
     <li className="flex flex-col items-center gap-2 rounded-2xl border border-border/40 bg-card p-3 text-center shadow-sm">
       <div className="flex h-16 w-full items-center justify-center">{preview}</div>
       <p className="text-xs font-bold leading-tight text-foreground">{name}</p>
       {rarity && (
         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", RARITY_STYLE[rarity])}>
-          {RARITY_LABELS[rarity]}
+          {rarityLabels[rarity]}
         </span>
       )}
       <div className="mt-auto w-full">{children}</div>
@@ -316,6 +319,7 @@ function SpendButton({
   onClick: () => void;
 }) {
   const short = balance < price;
+  const sh = useI18n().t.shop;
   return (
     <button
       type="button"
@@ -332,16 +336,17 @@ function SpendButton({
             : "bg-amber-400 text-amber-950 hover:bg-amber-300",
       )}
     >
-      {busy ? "…" : short ? `🎟️ ${price}` : confirming ? "Tap to confirm" : `${label} · 🎟️ ${price}`}
+      {busy ? "…" : short ? `🎟️ ${price}` : confirming ? sh.tapToConfirm : `${label} · 🎟️ ${price}`}
     </button>
   );
 }
 
 function EquipButton({ equipped, busy, onClick }: { equipped: boolean; busy: boolean; onClick: () => void }) {
+  const sh = useI18n().t.shop;
   if (equipped) {
     return (
       <span className="inline-flex w-full items-center justify-center gap-1 rounded-full bg-primary/15 px-3 py-1.5 text-xs font-bold text-primary">
-        <Check className="h-3.5 w-3.5" /> Using
+        <Check className="h-3.5 w-3.5" /> {sh.using}
       </span>
     );
   }
@@ -353,7 +358,7 @@ function EquipButton({ equipped, busy, onClick }: { equipped: boolean; busy: boo
       onClick={onClick}
       className="w-full rounded-full border border-border/60 px-3 py-1.5 text-xs font-bold text-foreground transition hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
     >
-      {busy ? "…" : "Use"}
+      {busy ? "…" : sh.use}
     </button>
   );
 }
@@ -371,6 +376,7 @@ function WorldCard({
   busy: boolean;
   onUnlock: () => void;
 }) {
+  const sh = useI18n().t.shop;
   return (
     <li className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-sm">
       <div className="relative aspect-[4/3] bg-gradient-to-br">
@@ -393,7 +399,7 @@ function WorldCard({
             data-focusable
             className="block w-full rounded-full bg-primary px-3 py-1.5 text-center text-xs font-bold text-primary-foreground transition hover:brightness-110"
           >
-            Play
+            {sh.play}
           </Link>
         ) : (
           <SpendButton
@@ -401,7 +407,7 @@ function WorldCard({
             balance={balance}
             confirming={confirming}
             busy={busy}
-            label="Unlock"
+            label={sh.unlock}
             compact
             onClick={onUnlock}
           />
@@ -424,19 +430,21 @@ function RevealDialog({
   onEquip: () => void;
   onClose: () => void;
 }) {
+  const { t, fmt } = useI18n();
+  const sh = t.shop;
   return (
     <div role="dialog" aria-modal className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-3xl border border-border/40 bg-card p-8 text-center shadow-2xl">
-        <p className="text-sm font-semibold text-muted-foreground">You got…</p>
+        <p className="text-sm font-semibold text-muted-foreground">{sh.youGot}</p>
         <div className="my-5 flex justify-center">
           <div className="w-40">
             <Preview kind={item.kind} user={user} item={item} />
           </div>
         </div>
-        <p className="text-2xl font-black text-foreground">{item.name}</p>
+        <p className="text-2xl font-black text-foreground">{fmt.item(item)}</p>
         <span className={cn("mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold", RARITY_STYLE[item.rarity])}>
-          {RARITY_LABELS[item.rarity]}
+          {t.rewards.rarity[item.rarity]}
         </span>
         <div className="mt-6 flex justify-center gap-3">
           <button
@@ -445,7 +453,7 @@ function RevealDialog({
             onClick={onClose}
             className="rounded-full border border-border/60 px-5 py-2 text-sm font-bold text-foreground hover:bg-muted/50"
           >
-            Later
+            {sh.later}
           </button>
           <button
             type="button"
@@ -454,7 +462,7 @@ function RevealDialog({
             onClick={onEquip}
             className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground hover:brightness-110"
           >
-            {busy ? "…" : "Use it now"}
+            {busy ? "…" : sh.useNow}
           </button>
         </div>
       </div>
