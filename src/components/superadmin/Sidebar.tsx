@@ -17,22 +17,23 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InitialsAvatar } from "./ui";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 interface NavItem {
   href: string;
-  label: string;
+  key: "dashboard" | "users" | "categories" | "games" | "leaderboards" | "subscriptions" | "settings" | "auditLogs";
   Icon: LucideIcon;
 }
 
 const NAV: NavItem[] = [
-  { href: "/superadmin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/superadmin/users", label: "Users", Icon: Users },
-  { href: "/superadmin/categories", label: "Categories", Icon: FolderTree },
-  { href: "/superadmin/games", label: "Games", Icon: Gamepad2 },
-  { href: "/superadmin/leaderboards", label: "Leaderboards", Icon: Trophy },
-  { href: "/superadmin/subscriptions", label: "Subscriptions", Icon: CreditCard },
-  { href: "/superadmin/settings", label: "Settings", Icon: Settings },
-  { href: "/superadmin/audit-logs", label: "Audit Logs", Icon: ScrollText },
+  { href: "/superadmin/dashboard", key: "dashboard", Icon: LayoutDashboard },
+  { href: "/superadmin/users", key: "users", Icon: Users },
+  { href: "/superadmin/categories", key: "categories", Icon: FolderTree },
+  { href: "/superadmin/games", key: "games", Icon: Gamepad2 },
+  { href: "/superadmin/leaderboards", key: "leaderboards", Icon: Trophy },
+  { href: "/superadmin/subscriptions", key: "subscriptions", Icon: CreditCard },
+  { href: "/superadmin/settings", key: "settings", Icon: Settings },
+  { href: "/superadmin/audit-logs", key: "auditLogs", Icon: ScrollText },
 ];
 
 export interface AdminIdentity {
@@ -56,6 +57,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const isCollapsed = collapsed && !mobile;
+  const a = useI18n().t.admin;
 
   return (
     <div
@@ -68,7 +70,7 @@ export function Sidebar({
       {!mobile && onToggleCollapse && (
         <button
           type="button"
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? a.shell.expand : a.shell.collapse}
           onClick={onToggleCollapse}
           className="absolute -right-3 top-7 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:text-violet-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
         >
@@ -86,7 +88,7 @@ export function Sidebar({
         {!isCollapsed && (
           <div className="min-w-0">
             <p className="truncate text-sm font-bold tracking-tight text-slate-900">KinetoFun</p>
-            <p className="truncate text-[11px] font-medium text-slate-400">Admin Console</p>
+            <p className="truncate text-[11px] font-medium text-slate-400">{a.shell.console}</p>
           </div>
         )}
       </div>
@@ -95,11 +97,12 @@ export function Sidebar({
       <nav className="mt-6 flex flex-1 flex-col gap-1">
         {!isCollapsed && (
           <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Menu
+            {a.shell.menu}
           </p>
         )}
-        {NAV.map(({ href, label, Icon }) => {
+        {NAV.map(({ href, key, Icon }) => {
           const active = pathname.startsWith(href);
+          const label = a.nav[key];
           return (
             <Link
               key={href}

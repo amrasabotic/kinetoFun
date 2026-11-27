@@ -13,7 +13,7 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import { Card, Skeleton, Switch, AdminButton, Select, Badge } from "@/components/superadmin/ui";
 
 interface PlatformSettings {
@@ -48,6 +48,8 @@ export default function SettingsPage() {
   const [announcementSave, setAnnouncementSave] = useState<SaveState>("idle");
   const [registrationSave, setRegistrationSave] = useState<SaveState>("idle");
   const [contentSave, setContentSave] = useState<SaveState>("idle");
+  const { t, fmt, serverText } = useI18n();
+  const s = t.adminSettings;
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -87,7 +89,7 @@ export default function SettingsPage() {
   if (error || !settings) {
     return (
       <div className="rounded-xl border border-rose-100 bg-rose-50 px-5 py-4 text-sm text-rose-700">
-        {error ?? "Failed to load settings."}
+        {serverText(error ?? "Failed to load settings.")}
       </div>
     );
   }
@@ -95,12 +97,12 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Platform Settings</h2>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">{s.title}</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Configure platform-wide behaviour.
+          {s.subtitle}
           {settings.updatedAt && (
             <span className="ml-2 text-slate-400">
-              Last saved {formatDate(settings.updatedAt)}.
+              {s.lastSaved(fmt.date(settings.updatedAt))}
             </span>
           )}
         </p>
@@ -109,8 +111,8 @@ export default function SettingsPage() {
       {/* ── Maintenance ─────────────────────────────────────────────────────── */}
       <SettingsSection
         icon={<ShieldAlert className="h-5 w-5 text-rose-500" />}
-        title="Maintenance Mode"
-        description="When enabled, the platform shows a maintenance banner and can block access for regular users."
+        title={s.maintenance}
+        description={s.maintenanceHint}
         saveState={maintenanceSave}
         onSave={() =>
           save(
@@ -124,9 +126,9 @@ export default function SettingsPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-900">Enable maintenance mode</p>
+            <p className="text-sm font-medium text-slate-900">{s.enableMaintenance}</p>
             <p className="text-xs text-slate-500">
-              Shows a banner to all users. Admins can still access the platform.
+              {s.enableMaintenanceHint}
             </p>
           </div>
           <Switch
@@ -137,18 +139,18 @@ export default function SettingsPage() {
         {settings.maintenanceMode && (
           <div className="mt-1 rounded-lg border border-rose-100 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-700">
             <AlertTriangle className="mr-1.5 inline h-3.5 w-3.5" />
-            Maintenance mode is active — regular users will see the maintenance message.
+            {s.maintenanceOn}
           </div>
         )}
         <div className="mt-4">
           <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Maintenance message
+            {s.maintenanceMessage}
           </label>
           <textarea
             rows={3}
             value={settings.maintenanceMessage}
             onChange={(e) => setSettings({ ...settings, maintenanceMessage: e.target.value })}
-            placeholder="We're performing scheduled maintenance…"
+            placeholder={s.maintenancePlaceholder}
             className={cn(textareaCls, "mt-2")}
           />
         </div>
@@ -157,8 +159,8 @@ export default function SettingsPage() {
       {/* ── Announcement Banner ─────────────────────────────────────────────── */}
       <SettingsSection
         icon={<Megaphone className="h-5 w-5 text-amber-500" />}
-        title="Announcement Banner"
-        description="Show a dismissable platform-wide banner to all users."
+        title={s.announcement}
+        description={s.announcementHint}
         saveState={announcementSave}
         onSave={() =>
           save(
@@ -173,9 +175,9 @@ export default function SettingsPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-900">Show announcement banner</p>
+            <p className="text-sm font-medium text-slate-900">{s.showAnnouncement}</p>
             <p className="text-xs text-slate-500">
-              Displays at the top of every page for logged-in users.
+              {s.showAnnouncementHint}
             </p>
           </div>
           <Switch
@@ -187,36 +189,36 @@ export default function SettingsPage() {
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="sm:col-span-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Message
+              {s.message}
             </label>
             <textarea
               rows={2}
               value={settings.announcementText}
               onChange={(e) => setSettings({ ...settings, announcementText: e.target.value })}
-              placeholder="e.g. New games added this week! Check out the Arcade section."
+              placeholder={s.messagePlaceholder}
               className={cn(textareaCls, "mt-2")}
             />
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Type
+              {s.type}
             </label>
             <div className="mt-2 flex flex-col gap-2">
-              {(["info", "warning", "success"] as const).map((t) => (
+              {(["info", "warning", "success"] as const).map((kind) => (
                 <button
-                  key={t}
-                  onClick={() => setSettings({ ...settings, announcementType: t })}
+                  key={kind}
+                  onClick={() => setSettings({ ...settings, announcementType: kind })}
                   className={cn(
                     "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition",
-                    settings.announcementType === t
+                    settings.announcementType === kind
                       ? "border-violet-300 bg-violet-50 text-violet-700 ring-2 ring-violet-500/20"
                       : "border-slate-200 text-slate-600 hover:bg-slate-50",
                   )}
                 >
-                  {t === "info" && <Info className="h-3.5 w-3.5 text-sky-500" />}
-                  {t === "warning" && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
-                  {t === "success" && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
-                  {t}
+                  {kind === "info" && <Info className="h-3.5 w-3.5 text-sky-500" />}
+                  {kind === "warning" && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+                  {kind === "success" && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+                  {s.types[kind]}
                 </button>
               ))}
             </div>
@@ -243,7 +245,7 @@ export default function SettingsPage() {
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             )}
             <span>
-              <span className="font-semibold">Preview:</span> {settings.announcementText}
+              <span className="font-semibold">{s.preview}</span> {settings.announcementText}
             </span>
           </div>
         )}
@@ -252,8 +254,8 @@ export default function SettingsPage() {
       {/* ── Registration ────────────────────────────────────────────────────── */}
       <SettingsSection
         icon={<UserPlus className="h-5 w-5 text-emerald-500" />}
-        title="Registration"
-        description="Control whether new users can sign up for an account."
+        title={s.registration}
+        description={s.registrationHint}
         saveState={registrationSave}
         onSave={() =>
           save({ registrationOpen: settings.registrationOpen }, setRegistrationSave)
@@ -261,9 +263,9 @@ export default function SettingsPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-900">Open registration</p>
+            <p className="text-sm font-medium text-slate-900">{s.openRegistration}</p>
             <p className="text-xs text-slate-500">
-              When off, new sign-up attempts are rejected. Existing users are unaffected.
+              {s.openRegistrationHint}
             </p>
           </div>
           <Switch
@@ -274,7 +276,7 @@ export default function SettingsPage() {
         {!settings.registrationOpen && (
           <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-700">
             <AlertTriangle className="mr-1.5 inline h-3.5 w-3.5" />
-            Registration is closed — new users cannot sign up.
+            {s.registrationClosed}
           </div>
         )}
       </SettingsSection>
@@ -282,8 +284,8 @@ export default function SettingsPage() {
       {/* ── Content Config ──────────────────────────────────────────────────── */}
       <SettingsSection
         icon={<LayoutGrid className="h-5 w-5 text-violet-500" />}
-        title="Content Configuration"
-        description="Customise default content display settings across the platform."
+        title={s.content}
+        description={s.contentHint}
         saveState={contentSave}
         onSave={() =>
           save(
@@ -299,23 +301,23 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Featured section title
+              {s.featuredTitle}
             </label>
             <input
               type="text"
               value={settings.featuredSectionTitle}
               onChange={(e) => setSettings({ ...settings, featuredSectionTitle: e.target.value })}
-              placeholder="Featured Games"
+              placeholder={s.featuredPlaceholder}
               maxLength={100}
               className={cn(inputCls, "mt-2")}
             />
             <p className="mt-1 text-xs text-slate-400">
-              Shown as the heading above featured games on the home screen.
+              {s.featuredHint}
             </p>
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Max leaderboard entries
+              {s.maxEntries}
             </label>
             <input
               type="number"
@@ -331,12 +333,12 @@ export default function SettingsPage() {
               className={cn(inputCls, "mt-2")}
             />
             <p className="mt-1 text-xs text-slate-400">
-              Number of players shown on public leaderboards (1–100).
+              {s.maxEntriesHint}
             </p>
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Default difficulty filter
+              {s.defaultDifficulty}
             </label>
             <div className="mt-2">
               <Select
@@ -348,16 +350,16 @@ export default function SettingsPage() {
                   })
                 }
                 options={[
-                  { value: "all", label: "All difficulties" },
-                  { value: "easy", label: "Easy" },
-                  { value: "medium", label: "Medium" },
-                  { value: "hard", label: "Hard" },
+                  { value: "all", label: s.allDifficulties },
+                  { value: "easy", label: t.common.difficulty.easy },
+                  { value: "medium", label: t.common.difficulty.medium },
+                  { value: "hard", label: t.common.difficulty.hard },
                 ]}
                 className="w-full"
               />
             </div>
             <p className="mt-1 text-xs text-slate-400">
-              Pre-selected filter on the games browse page.
+              {s.defaultDifficultyHint}
             </p>
           </div>
         </div>
@@ -407,12 +409,14 @@ function SaveButton({ state, onClick }: { state: SaveState; onClick: () => void 
   const isSaving = state === "saving";
   const isSaved = state === "saved";
   const isError = state === "error";
+  const { t } = useI18n();
+  const s = t.adminSettings;
 
   if (isSaved) {
     return (
       <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
         <CheckCircle2 className="h-4 w-4" />
-        Saved
+        {s.saved}
       </span>
     );
   }
@@ -421,7 +425,7 @@ function SaveButton({ state, onClick }: { state: SaveState; onClick: () => void 
     return (
       <span className="flex items-center gap-1.5 text-xs font-medium text-rose-600">
         <AlertTriangle className="h-4 w-4" />
-        Failed
+        {s.failed}
       </span>
     );
   }
@@ -429,11 +433,11 @@ function SaveButton({ state, onClick }: { state: SaveState; onClick: () => void 
   return (
     <AdminButton size="sm" onClick={onClick} disabled={isSaving}>
       {isSaving ? (
-        "Saving…"
+        t.common.actions.saving
       ) : (
         <>
           <Save className="h-3.5 w-3.5" />
-          Save
+          {t.common.actions.save}
         </>
       )}
     </AdminButton>

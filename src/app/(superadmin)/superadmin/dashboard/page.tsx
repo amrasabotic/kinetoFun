@@ -18,8 +18,8 @@ import {
   ScrollText,
 } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
-import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import { Card, StatCard, Skeleton, EmptyState, Badge } from "@/components/superadmin/ui";
 import { AreaChart, BarList } from "@/components/superadmin/charts";
 import { auditMeta, auditSentence } from "@/components/superadmin/audit";
@@ -63,9 +63,8 @@ interface AdminUser {
 
 interface ActivityItem {
   id: string;
-  action: string;
+  log: Pick<AuditLog, "action" | "details" | "entityType">;
   who: string;
-  text: string;
   at: string;
 }
 
@@ -84,6 +83,8 @@ export default function DashboardPage() {
   const [data, setData] = useState<Analytics | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t, locale, fmt } = useI18n();
+  const d = t.adminDashboard;
 
   useEffect(() => {
     let active = true;
@@ -98,18 +99,16 @@ export default function DashboardPage() {
 
         const logs: ActivityItem[] = (logsRes.logs ?? []).map((l: AuditLog) => ({
           id: l.id,
-          action: l.action,
+          log: l,
           who: l.adminName,
-          text: auditSentence(l),
           at: l.createdAt,
         }));
         const signups: ActivityItem[] = (usersRes.users ?? [])
           .slice(0, 8)
           .map((u: AdminUser) => ({
             id: `user-${u.id}`,
-            action: "user.registered",
+            log: { action: "user.registered", details: { name: u.name }, entityType: "user" },
             who: u.name,
-            text: `${u.name} registered an account`,
             at: u.createdAt,
           }));
         const merged = [...logs, ...signups]
@@ -123,17 +122,17 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const firstName = user?.displayName?.split(" ")[0] ?? "Admin";
+  const firstName = user?.displayName?.split(" ")[0] ?? t.admin.shell.admin;
 
   return (
     <div className="space-y-8">
       {/* Welcome */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-          Welcome back, {firstName}.
+          {d.welcome(firstName)}
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Here&apos;s what&apos;s happening across KinetoFun today.
+          {d.subtitle}
         </p>
       </div>
 
@@ -143,12 +142,12 @@ export default function DashboardPage() {
           Array.from({ length: 6 }).map((_, i) => <KpiSkeleton key={i} />)
         ) : (
           <>
-            <StatCard tint="violet" icon={<Users className="h-5 w-5" />} value={data.totalUsers.toLocaleString()} label="Total Users" />
-            <StatCard tint="sky" icon={<Gamepad2 className="h-5 w-5" />} value={data.totalGames.toLocaleString()} label="Total Games" />
-            <StatCard tint="amber" icon={<FolderTree className="h-5 w-5" />} value={data.totalCategories.toLocaleString()} label="Categories" />
-            <StatCard tint="rose" icon={<PlayCircle className="h-5 w-5" />} value={data.gamesPlayedToday.toLocaleString()} label="Played Today" />
-            <StatCard tint="emerald" live icon={<Radio className="h-5 w-5" />} value={data.activeSessionsNow.toLocaleString()} label="Active Sessions" />
-            <StatCard tint="emerald" icon={<CheckCircle2 className="h-5 w-5" />} value={data.publishedGames.toLocaleString()} label="Published" />
+            <StatCard tint="violet" icon={<Users className="h-5 w-5" />} value={fmt.number(data.totalUsers)} label={d.totalUsers} />
+            <StatCard tint="sky" icon={<Gamepad2 className="h-5 w-5" />} value={fmt.number(data.totalGames)} label={d.totalGames} />
+            <StatCard tint="amber" icon={<FolderTree className="h-5 w-5" />} value={fmt.number(data.totalCategories)} label={d.categories} />
+            <StatCard tint="rose" icon={<PlayCircle className="h-5 w-5" />} value={fmt.number(data.gamesPlayedToday)} label={d.playedToday} />
+            <StatCard tint="emerald" live icon={<Radio className="h-5 w-5" />} value={fmt.number(data.activeSessionsNow)} label={d.activeSessions} />
+            <StatCard tint="emerald" icon={<CheckCircle2 className="h-5 w-5" />} value={fmt.number(data.publishedGames)} label={d.published} />
           </>
         )}
       </div>
@@ -156,20 +155,20 @@ export default function DashboardPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ChartCard
-          title="User Growth"
-          subtitle="New sign-ups · last 14 days"
+          title={d.userGrowth}
+          subtitle={d.userGrowthSub}
           icon={<TrendingUp className="h-4 w-4 text-violet-500" />}
           loading={loading || !data}
         >
-          {data && <AreaChart data={data.userGrowth} color="#7c3aed" valueLabel="new users" />}
+          {data && <AreaChart data={data.userGrowth} color="#7c3aed" valueLabel={d.newUsers} />}
         </ChartCard>
         <ChartCard
-          title="Games Played Over Time"
-          subtitle="Play sessions · last 14 days"
+          title={d.playsOverTime}
+          subtitle={d.playsOverTimeSub}
           icon={<Activity className="h-4 w-4 text-sky-500" />}
           loading={loading || !data}
         >
-          {data && <AreaChart data={data.playsPerDay} color="#0ea5e9" valueLabel="plays" />}
+          {data && <AreaChart data={data.playsPerDay} color="#0ea5e9" valueLabel={d.plays} />}
         </ChartCard>
       </div>
 
@@ -179,13 +178,13 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Activity className="h-4 w-4 text-slate-400" />
-              Recent Activity
+              {d.recentActivity}
             </h3>
             <button
               onClick={() => router.push("/superadmin/audit-logs")}
               className="text-xs font-medium text-violet-600 transition hover:text-violet-700"
             >
-              View all
+              {t.common.actions.viewAll}
             </button>
           </div>
           <div className="p-2">
@@ -204,13 +203,13 @@ export default function DashboardPage() {
             ) : activity.length === 0 ? (
               <EmptyState
                 icon={<Activity className="h-6 w-6" />}
-                title="No activity yet"
-                description="Platform events — sign-ups, category and game changes — will show up here."
+                title={d.noActivity}
+                description={d.noActivityHint}
               />
             ) : (
               <ul>
                 {activity.map((a) => {
-                  const meta = auditMeta(a.action);
+                  const meta = auditMeta(a.log.action, locale);
                   return (
                     <li
                       key={a.id}
@@ -225,10 +224,10 @@ export default function DashboardPage() {
                         {meta.icon}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-slate-700">{a.text}</p>
-                        <p className="truncate text-xs text-slate-400">by {a.who}</p>
+                        <p className="truncate text-sm text-slate-700">{auditSentence(a.log, locale)}</p>
+                        <p className="truncate text-xs text-slate-400">{d.by(a.who)}</p>
                       </div>
-                      <span className="shrink-0 text-xs text-slate-400">{relativeTime(a.at)}</span>
+                      <span className="shrink-0 text-xs text-slate-400">{fmt.relative(a.at)}</span>
                     </li>
                   );
                 })}
@@ -240,19 +239,19 @@ export default function DashboardPage() {
         {/* Right column: quick actions + top games */}
         <div className="space-y-6">
           <Card className="p-5">
-            <h3 className="text-sm font-semibold text-slate-900">Quick Actions</h3>
+            <h3 className="text-sm font-semibold text-slate-900">{d.quickActions}</h3>
             <div className="mt-3 space-y-2">
-              <QuickAction icon={<FolderTree className="h-4 w-4" />} label="Add a category" onClick={() => router.push("/superadmin/categories")} />
-              <QuickAction icon={<Plus className="h-4 w-4" />} label="Add a game" onClick={() => router.push("/superadmin/games")} />
-              <QuickAction icon={<Users className="h-4 w-4" />} label="Manage users" onClick={() => router.push("/superadmin/users")} />
-              <QuickAction icon={<ScrollText className="h-4 w-4" />} label="View audit logs" onClick={() => router.push("/superadmin/audit-logs")} />
+              <QuickAction icon={<FolderTree className="h-4 w-4" />} label={d.addCategory} onClick={() => router.push("/superadmin/categories")} />
+              <QuickAction icon={<Plus className="h-4 w-4" />} label={d.addGame} onClick={() => router.push("/superadmin/games")} />
+              <QuickAction icon={<Users className="h-4 w-4" />} label={d.manageUsers} onClick={() => router.push("/superadmin/users")} />
+              <QuickAction icon={<ScrollText className="h-4 w-4" />} label={d.viewAudit} onClick={() => router.push("/superadmin/audit-logs")} />
             </div>
           </Card>
 
           <Card className="p-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Trophy className="h-4 w-4 text-amber-500" />
-              Top Games
+              {d.topGames}
             </h3>
             <div className="mt-4">
               {loading ? (
@@ -262,7 +261,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : !data || data.topGames.length === 0 ? (
-                <p className="py-3 text-sm text-slate-400">No plays recorded yet.</p>
+                <p className="py-3 text-sm text-slate-400">{d.noPlays}</p>
               ) : (
                 <ul className="space-y-2">
                   {data.topGames.map((g, i) => (
@@ -271,9 +270,9 @@ export default function DashboardPage() {
                       <TopThumb game={g} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-800">{g.title}</p>
-                        <p className="truncate text-xs text-slate-400">{g.category}</p>
+                        <p className="truncate text-xs text-slate-400">{fmt.category(g.category)}</p>
                       </div>
-                      <Badge tone="slate">{g.playCount.toLocaleString()} plays</Badge>
+                      <Badge tone="slate">{d.playCount(fmt.number(g.playCount))}</Badge>
                     </li>
                   ))}
                 </ul>
@@ -288,11 +287,11 @@ export default function DashboardPage() {
         <Card className="p-5">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <TrendingUp className="h-4 w-4 text-violet-500" />
-            Most Popular Games
+            {d.mostPopular}
           </h3>
           <div className="mt-4">
             <BarList
-              data={data.topGames.map((g) => ({ label: g.title, value: g.playCount, sub: "plays" }))}
+              data={data.topGames.map((g) => ({ label: g.title, value: g.playCount, sub: d.plays }))}
             />
           </div>
         </Card>

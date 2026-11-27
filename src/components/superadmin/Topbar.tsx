@@ -16,18 +16,24 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/features/auth/session-context";
 import { InitialsAvatar } from "./ui";
 import type { AdminIdentity } from "./Sidebar";
+import { useI18n } from "@/features/i18n/I18nProvider";
+import { LanguagePicker } from "@/components/i18n/LanguagePicker";
+import type { Messages } from "@/lib/i18n";
 
-const TITLES: Record<string, string> = {
-  "/superadmin/dashboard": "Dashboard",
-  "/superadmin/users": "Users",
-  "/superadmin/categories": "Categories",
-  "/superadmin/games": "Games",
-  "/superadmin/audit-logs": "Audit Logs",
+const TITLES: Record<string, keyof Messages["admin"]["nav"]> = {
+  "/superadmin/dashboard": "dashboard",
+  "/superadmin/users": "users",
+  "/superadmin/categories": "categories",
+  "/superadmin/games": "games",
+  "/superadmin/leaderboards": "leaderboards",
+  "/superadmin/subscriptions": "subscriptions",
+  "/superadmin/settings": "settings",
+  "/superadmin/audit-logs": "auditLogs",
 };
 
-function titleFor(pathname: string): string {
+function titleFor(pathname: string, a: Messages["admin"]): string {
   const key = Object.keys(TITLES).find((k) => pathname.startsWith(k));
-  return key ? TITLES[key]! : "Admin";
+  return key ? a.nav[TITLES[key]!] : a.shell.admin;
 }
 
 /** Close `open` on outside click or Escape. */
@@ -62,14 +68,15 @@ export function Topbar({
   onOpenMobile: () => void;
 }) {
   const pathname = usePathname();
-  const title = titleFor(pathname);
+  const a = useI18n().t.admin;
+  const title = titleFor(pathname, a);
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200/70 bg-[#F8FAFC]/80 px-4 backdrop-blur-xl sm:px-6">
       {/* Mobile hamburger */}
       <button
         type="button"
-        aria-label="Open menu"
+        aria-label={a.shell.openMenu}
         onClick={onOpenMobile}
         className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 lg:hidden"
       >
@@ -79,7 +86,7 @@ export function Topbar({
       {/* Title + breadcrumb */}
       <div className="min-w-0">
         <nav className="hidden items-center gap-1.5 text-[11px] font-medium text-slate-400 sm:flex">
-          <span>Admin</span>
+          <span>{a.shell.admin}</span>
           <span>/</span>
           <span className="text-slate-600">{title}</span>
         </nav>
@@ -92,8 +99,8 @@ export function Topbar({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
-            aria-label="Search"
-            placeholder="Search…"
+            aria-label={a.shell.search}
+            placeholder={a.shell.searchPlaceholder}
             className="h-9 w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-12 text-sm text-slate-700 placeholder-slate-400 transition focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
           />
           <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
@@ -101,6 +108,7 @@ export function Topbar({
           </kbd>
         </div>
 
+        <LanguagePicker className="hidden sm:inline-flex" />
         <NotificationsMenu />
         <ProfileMenu user={user} />
       </div>
@@ -112,12 +120,13 @@ function NotificationsMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, open, () => setOpen(false));
+  const a = useI18n().t.admin;
 
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
-        aria-label="Notifications"
+        aria-label={a.shell.notifications}
         onClick={() => setOpen((v) => !v)}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
       >
@@ -132,12 +141,12 @@ function NotificationsMenu() {
         )}
       >
         <div className="border-b border-slate-100 px-4 py-3">
-          <p className="text-sm font-semibold text-slate-900">Notifications</p>
+          <p className="text-sm font-semibold text-slate-900">{a.shell.notifications}</p>
         </div>
         <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
           <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-          <p className="mt-2 text-sm font-medium text-slate-700">You&apos;re all caught up</p>
-          <p className="mt-0.5 text-xs text-slate-400">No new notifications.</p>
+          <p className="mt-2 text-sm font-medium text-slate-700">{a.shell.caughtUp}</p>
+          <p className="mt-0.5 text-xs text-slate-400">{a.shell.noNotifications}</p>
         </div>
       </div>
     </div>
@@ -149,6 +158,7 @@ function ProfileMenu({ user }: { user: AdminIdentity }) {
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { logout } = useSession();
+  const a = useI18n().t.admin;
   useDismiss(ref, open, () => setOpen(false));
 
   async function handleLogout() {
@@ -159,8 +169,8 @@ function ProfileMenu({ user }: { user: AdminIdentity }) {
   }
 
   const items = [
-    { label: "Profile", Icon: UserIcon, onClick: () => { setOpen(false); router.push("/profile"); } },
-    { label: "Settings", Icon: Settings, onClick: () => { setOpen(false); router.push("/settings"); } },
+    { label: a.shell.profile, Icon: UserIcon, onClick: () => { setOpen(false); router.push("/profile"); } },
+    { label: a.shell.settings, Icon: Settings, onClick: () => { setOpen(false); router.push("/settings"); } },
   ];
 
   return (
@@ -208,7 +218,7 @@ function ProfileMenu({ user }: { user: AdminIdentity }) {
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50 focus:outline-none"
           >
             <LogOut className="h-4 w-4" />
-            Logout
+            {a.shell.logout}
           </button>
         </div>
       </div>

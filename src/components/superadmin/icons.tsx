@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as Lucide from "lucide-react";
 import { Gamepad2, Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 type IconCmp = React.ComponentType<{ className?: string }>;
 
@@ -55,6 +56,7 @@ export function IconPicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const ic = useI18n().t.adminMedia.icons;
 
   useEffect(() => {
     if (!open) return;
@@ -91,7 +93,7 @@ export function IconPicker({
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
           <CategoryIcon name={value} className="h-[18px] w-[18px]" />
         </span>
-        <span className="flex-1 truncate font-medium">{value || "Choose icon"}</span>
+        <span className="flex-1 truncate font-medium">{value || ic.choose}</span>
         <ChevronDown
           className={cn("h-4 w-4 text-slate-400 transition-transform", open && "rotate-180")}
         />
@@ -109,7 +111,7 @@ export function IconPicker({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search icons…"
+              placeholder={ic.search}
               className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-2 text-xs text-slate-700 placeholder-slate-400 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             />
           </div>
@@ -140,7 +142,7 @@ export function IconPicker({
           })}
           {filtered.length === 0 && (
             <p className="col-span-7 px-2 py-6 text-center text-xs text-slate-400">
-              No icons match “{query}”.
+              {ic.noMatch(query)}
             </p>
           )}
         </div>

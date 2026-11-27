@@ -1,7 +1,7 @@
 # KinetoFun — Project Context
 
 > **SINGLE SOURCE OF TRUTH.** Read this before making any change. Update it after every feature completion.
-> Last updated: 2026-10-30 (Bubble Bath Bakery — ADR-078)
+> Last updated: 2026-11-27 (Albanian translation — ADR-092)
 >
 > ⚠️ **Migrations 0011 (favorites) and 0012 (user display settings) are written but NOT yet applied** — same DB-role limitation described below. The favorites feature and server-side settings persistence will silently no-op (empty list / setting not saved server-side) until the user runs these against AWS RDS via their DB GUI.
 >
@@ -43,6 +43,7 @@ Users will be able to:
 
 ## Completed Features
 
+- **[2026-11-27] Platform in Albanian (ADR-092).** Every platform screen is available in English and Albanian (Shqip): landing and home, library, game pages, play and score screens, leaderboard, profile, shop, settings, auth pages and the reset email, legal pages, the TV screens under `/tvsetup`, the phone pairing page `/tv/join` and the whole admin console. Games are not translated; their titles, descriptions and in-game text stay in English. The language is a `kf-locale` cookie (default from the browser's languages, else English) with a picker in the top bar, auth pages, Settings, the phone pairing page, the admin top bar and on the TV welcome, get-started and games screens (hand dwell). Dictionaries live in `src/lib/i18n/messages/` (one file per area, English and Albanian side by side, Albanian typed against English). API routes still answer in English; the client maps those messages to Albanian in `src/lib/i18n/server-messages.ts`, and reward labels and badge names in `src/lib/i18n/rewards.ts`. The Raspberry Pi files (`device/raspberry-pi/`: Wi-Fi portal, loading screen, setup service) are deliberately left in English. `src/lib/i18n/i18n.test.ts` checks every English string has Albanian text.
 - **[2026-11-02] Whack-a-Mole rebuilt (ADR-085).** Plain HTML, rules in `wam.js` (tested headless), carnival arcade cabinet look. Palm centre aims the hammer, a fist smashes (wrist-distance finger test with hysteresis, works tilted and with either hand). 10 levels with golden moles, hard hats and bombs, score goals and stars. Catalog text update in `supabase/seed_whack_a_mole_v2.sql`, **not yet applied**. Not yet tried with a live hand.
 - **[2026-11-02] Mix It Up rebuilt as a potion shop (ADR-086).** Plain HTML, rules in `mixit.js` (tested headless); the Vite/React sources were removed. Customers order potion colours; the player mixes them from paint jars (palm moves, fist grabs, open hand drops). 10 days teach colour mixing, from primaries to four-scoop recipes with white and black; hearts, coins and stars. Catalog text update in `supabase/seed_mix_it_up_v2.sql`, **not yet applied**. Not yet tried with a live hand.
 - **[2026-11-02] Traffic Controller rebuilt (ADR-087).** Plain HTML, rules in `traffic.js` (tested headless); Vite sources removed. Point the open hand at a road and make a fist to turn it green (fist on WALK for pedestrians); lights go amber, then all red. 10 shifts with pedestrians, ambulances, buses; strikes for jams, drivers running the red, held-up ambulances. Catalog text in `supabase/seed_traffic_controller_v2.sql`, **not yet applied**. Not yet tried with a live hand.
@@ -307,6 +308,7 @@ See `architecture-decisions.md` for the permanent, append-only record. Summary o
 - Web-first build; no hardware in early phases.
 - Next.js + React frontend, Supabase PostgreSQL backend, JWT auth.
 - Phased delivery: Frontend → Backend → Game System → Hardware Input.
+- Platform text comes from `src/lib/i18n` dictionaries (English, Albanian); new UI text goes into both, never inline. Games keep their own English text (ADR-092).
 
 ---
 

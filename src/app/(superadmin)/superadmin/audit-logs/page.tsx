@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { AuditLog } from "@/types";
 import { cn } from "@/lib/utils";
-import { relativeTime } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   Card,
   StatCard,
@@ -88,11 +88,13 @@ export default function AuditLogsPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
   const [selected, setSelected] = useState<AuditLog | null>(null);
+  const { t, locale, fmt, serverText } = useI18n();
+  const al = t.adminAudit;
 
   // Debounce the search box.
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(query.trim()), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebounced(query.trim()), 300);
+    return () => clearTimeout(timer);
   }, [query]);
 
   // Reset to page 1 whenever any filter changes.
@@ -126,11 +128,11 @@ export default function AuditLogsPage() {
         return Array.from(map, ([id, name]) => ({ id, name }));
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load audit logs.");
+      setError(serverText(err instanceof Error ? err.message : "Failed to load audit logs."));
     } finally {
       setLoading(false);
     }
-  }, [entity, adminId, debounced, dateFilter, page]);
+  }, [entity, adminId, debounced, dateFilter, page, serverText]);
 
   useEffect(() => {
     void load();
@@ -140,18 +142,18 @@ export default function AuditLogsPage() {
 
   const adminOptions = useMemo(
     () => [
-      { value: "all", label: "All admins" },
+      { value: "all", label: al.allAdmins },
       ...admins.map((a) => ({ value: a.id, label: a.name })),
     ],
-    [admins],
+    [admins, al],
   );
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Audit Logs</h2>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">{t.admin.nav.auditLogs}</h2>
         <p className="mt-1 text-sm text-slate-500">
-          A complete trail of every action taken in the admin console.
+          {al.subtitle}
         </p>
       </div>
 
@@ -167,10 +169,10 @@ export default function AuditLogsPage() {
           ))
         ) : (
           <>
-            <StatCard tint="violet" icon={<CalendarClock className="h-5 w-5" />} value={summary.today} label="Actions Today" />
-            <StatCard tint="sky" icon={<CalendarDays className="h-5 w-5" />} value={summary.week} label="This Week" />
-            <StatCard tint="emerald" icon={<Calendar className="h-5 w-5" />} value={summary.month} label="This Month" />
-            <StatCard tint="amber" icon={<ScrollText className="h-5 w-5" />} value={summary.total} label="Total Logs" />
+            <StatCard tint="violet" icon={<CalendarClock className="h-5 w-5" />} value={summary.today} label={al.today} />
+            <StatCard tint="sky" icon={<CalendarDays className="h-5 w-5" />} value={summary.week} label={al.week} />
+            <StatCard tint="emerald" icon={<Calendar className="h-5 w-5" />} value={summary.month} label={al.month} />
+            <StatCard tint="amber" icon={<ScrollText className="h-5 w-5" />} value={summary.total} label={al.total} />
           </>
         )}
       </div>
@@ -178,29 +180,29 @@ export default function AuditLogsPage() {
       <Card>
         {/* Toolbar */}
         <div className="space-y-3 border-b border-slate-100 p-4">
-          <SearchInput value={query} onChange={setQuery} placeholder="Search by admin, action, or entity…" />
+          <SearchInput value={query} onChange={setQuery} placeholder={al.search} />
           <div className="flex flex-wrap items-center gap-2">
             <Select
-              aria-label="Entity"
+              aria-label={al.entity}
               value={entity}
               onChange={(v) => setEntity(v as EntityFilter)}
               options={[
-                { value: "all", label: "All entities" },
-                { value: "category", label: "Categories" },
-                { value: "game", label: "Games" },
-                { value: "user", label: "Users" },
+                { value: "all", label: al.allEntities },
+                { value: "category", label: t.admin.nav.categories },
+                { value: "game", label: t.admin.nav.games },
+                { value: "user", label: t.admin.nav.users },
               ]}
             />
-            <Select aria-label="Admin" value={adminId} onChange={setAdminId} options={adminOptions} />
+            <Select aria-label={al.admin} value={adminId} onChange={setAdminId} options={adminOptions} />
             <Select
-              aria-label="Date range"
+              aria-label={al.dateRange}
               value={dateFilter}
               onChange={(v) => setDateFilter(v as DateFilter)}
               options={[
-                { value: "all", label: "All time" },
-                { value: "today", label: "Today" },
-                { value: "7d", label: "Last 7 days" },
-                { value: "30d", label: "Last 30 days" },
+                { value: "all", label: al.allTime },
+                { value: "today", label: al.todayOption },
+                { value: "7d", label: al.last7 },
+                { value: "30d", label: al.last30 },
               ]}
             />
             {filtersActive && (
@@ -214,7 +216,7 @@ export default function AuditLogsPage() {
                 className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-3.5 w-3.5" />
-                Clear
+                {t.adminGames.clear}
               </button>
             )}
           </div>
@@ -227,11 +229,11 @@ export default function AuditLogsPage() {
         ) : logs.length === 0 ? (
           <EmptyState
             icon={<Inbox className="h-6 w-6" />}
-            title={filtersActive ? "No matching activity" : "No audit activity"}
+            title={filtersActive ? al.noMatch : al.none}
             description={
               filtersActive
-                ? "Try adjusting your filters or date range."
-                : "Admin actions like creating categories or publishing games will be recorded here."
+                ? al.adjustFilters
+                : al.noneHint
             }
           />
         ) : (
@@ -239,16 +241,16 @@ export default function AuditLogsPage() {
             <table className="w-full text-left text-sm">
               <thead className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 <tr className="border-b border-slate-100">
-                  <th className="px-5 py-3 font-semibold">Action</th>
-                  <th className="px-5 py-3 font-semibold">Admin</th>
-                  <th className="px-5 py-3 font-semibold">Entity</th>
-                  <th className="hidden px-5 py-3 font-semibold sm:table-cell">When</th>
+                  <th className="px-5 py-3 font-semibold">{al.action}</th>
+                  <th className="px-5 py-3 font-semibold">{al.admin}</th>
+                  <th className="px-5 py-3 font-semibold">{al.entity}</th>
+                  <th className="hidden px-5 py-3 font-semibold sm:table-cell">{al.when}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => {
-                  const meta = auditMeta(log.action);
+                  const meta = auditMeta(log.action, locale);
                   return (
                     <tr
                       key={log.id}
@@ -272,14 +274,14 @@ export default function AuditLogsPage() {
                       <td className="px-5 py-3">
                         <Badge tone="slate">
                           {ENTITY_ICON[log.entityType]}
-                          <span className="capitalize">{log.entityType}</span>
+                          <span className="capitalize">{al.entities[log.entityType] ?? log.entityType}</span>
                         </Badge>
                       </td>
                       <td className="hidden px-5 py-3 text-slate-500 sm:table-cell">
-                        {relativeTime(log.createdAt)}
+                        {fmt.relative(log.createdAt)}
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <span className="text-xs font-medium text-violet-600">Details</span>
+                        <span className="text-xs font-medium text-violet-600">{al.details}</span>
                       </td>
                     </tr>
                   );
@@ -300,7 +302,9 @@ export default function AuditLogsPage() {
 }
 
 function LogDetail({ log, onClose }: { log: AuditLog; onClose: () => void }) {
-  const meta = auditMeta(log.action);
+  const { t, locale, fmt } = useI18n();
+  const al = t.adminAudit;
+  const meta = auditMeta(log.action, locale);
   const detailEntries = Object.entries(log.details ?? {});
   return (
     <div role="dialog" aria-modal className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -317,7 +321,7 @@ function LogDetail({ log, onClose }: { log: AuditLog; onClose: () => void }) {
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Close"
+            aria-label={t.common.actions.close}
           >
             <X className="h-4 w-4" />
           </button>
@@ -325,30 +329,30 @@ function LogDetail({ log, onClose }: { log: AuditLog; onClose: () => void }) {
 
         <div className="space-y-4 p-6">
           <div className="grid grid-cols-2 gap-4">
-            <DetailRow label="Admin">
+            <DetailRow label={al.admin}>
               <span className="flex items-center gap-2">
                 <InitialsAvatar name={log.adminName} size="sm" />
                 {log.adminName}
               </span>
             </DetailRow>
-            <DetailRow label="Entity">
+            <DetailRow label={al.entity}>
               <Badge tone="slate">
                 {ENTITY_ICON[log.entityType]}
-                <span className="capitalize">{log.entityType}</span>
+                <span className="capitalize">{al.entities[log.entityType] ?? log.entityType}</span>
               </Badge>
             </DetailRow>
-            <DetailRow label="Entity ID">
+            <DetailRow label={al.entityId}>
               <span className="break-all font-mono text-xs text-slate-600">{log.entityId ?? "—"}</span>
             </DetailRow>
-            <DetailRow label="Timestamp">
-              <span className="text-slate-600">{new Date(log.createdAt).toLocaleString()}</span>
+            <DetailRow label={al.timestamp}>
+              <span className="text-slate-600">{fmt.dateTime(log.createdAt)}</span>
             </DetailRow>
           </div>
 
           <div>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Details</p>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">{al.details}</p>
             {detailEntries.length === 0 ? (
-              <p className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-400">No additional details.</p>
+              <p className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-400">{al.noDetails}</p>
             ) : (
               <pre className="max-h-60 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700">
                 {JSON.stringify(log.details, null, 2)}

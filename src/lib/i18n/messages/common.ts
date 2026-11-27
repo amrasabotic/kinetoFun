@@ -105,9 +105,6 @@ const en = {
     joinTitle: "Connect to your TV — KinetoFun",
     joinDescription: "Connect your KinetoFun account to a TV.",
   },
-  rewards: {
-    ticketsEarned: (n: number) => `+${n} tickets`,
-  },
 };
 
 const sq: typeof en = {
@@ -224,9 +221,6 @@ const sq: typeof en = {
     tvDescription: "Konfiguro televizorin tënd KinetoFun.",
     joinTitle: "Lidhu me televizorin — KinetoFun",
     joinDescription: "Lidh llogarinë tënde KinetoFun me një televizor.",
-  },
-  rewards: {
-    ticketsEarned: (n: number) => `+${n} bileta`,
   },
 };
 

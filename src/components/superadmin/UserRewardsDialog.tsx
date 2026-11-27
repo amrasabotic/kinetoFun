@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Flame, Ticket, X } from "lucide-react";
-import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { RewardsOverview } from "@/lib/rewards/catalog";
 import { AdminButton, InitialsAvatar, Skeleton } from "@/components/superadmin/ui";
 
@@ -26,25 +26,27 @@ export function UserRewardsDialog({ user, canAdjust, onClose, onAdjusted }: Prop
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const { t, fmt, serverText } = useI18n();
+  const r_ = t.adminUsers.rewardsDialog;
 
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/admin/users/${user.id}/rewards`)
       .then(async (res) => {
-        if (!res.ok) throw new Error("Rewards are unavailable for this account.");
+        if (!res.ok) throw new Error(r_.unavailable);
         return (await res.json()) as RewardsOverview;
       })
       .then((json) => { if (!cancelled) setData(json); })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Failed to load rewards.");
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : serverText("Failed to load rewards."));
       });
     return () => { cancelled = true; };
-  }, [user.id, reloadKey]);
+  }, [user.id, reloadKey, r_, serverText]);
 
   async function submit() {
     const n = Number.parseInt(amount, 10);
     if (!Number.isFinite(n) || n <= 0) {
-      setFormError("Enter a positive whole number.");
+      setFormError(r_.positive);
       return;
     }
     setBusy(true);
@@ -62,7 +64,7 @@ export function UserRewardsDialog({ user, canAdjust, onClose, onAdjusted }: Prop
       setReason("");
       setReloadKey((k) => k + 1);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to adjust tickets.");
+      setFormError(serverText(err instanceof Error ? err.message : "Failed to adjust tickets."));
     } finally {
       setBusy(false);
     }
@@ -80,7 +82,7 @@ export function UserRewardsDialog({ user, canAdjust, onClose, onAdjusted }: Prop
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-900/20">
         <button
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t.common.actions.close}
           className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
         >
           <X className="h-4 w-4" />
@@ -103,22 +105,22 @@ export function UserRewardsDialog({ user, canAdjust, onClose, onAdjusted }: Prop
         ) : (
           <>
             <div className="mt-5 grid grid-cols-4 gap-2 text-center">
-              <Stat label="Tickets" value={data.balance.toLocaleString()} icon={<Ticket className="h-3.5 w-3.5" />} />
-              <Stat label="Streak" value={`${data.streak.current}d`} icon={<Flame className="h-3.5 w-3.5" />} />
-              <Stat label="Badges" value={`${earnedBadges}/${data.badges.length}`} />
-              <Stat label="Collectibles" value={collectibles} />
+              <Stat label={t.profile.rewards.tickets} value={fmt.number(data.balance)} icon={<Ticket className="h-3.5 w-3.5" />} />
+              <Stat label={r_.streak} value={r_.streakValue(data.streak.current)} icon={<Flame className="h-3.5 w-3.5" />} />
+              <Stat label={t.profile.rewards.badges} value={`${earnedBadges}/${data.badges.length}`} />
+              <Stat label={t.profile.rewards.collectibles} value={collectibles} />
             </div>
 
-            <h3 className="mt-5 text-xs font-semibold uppercase tracking-wider text-slate-400">Recent tickets</h3>
+            <h3 className="mt-5 text-xs font-semibold uppercase tracking-wider text-slate-400">{t.profile.rewards.recent}</h3>
             {data.recent.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-400">No tickets earned yet.</p>
+              <p className="mt-2 text-sm text-slate-400">{r_.none}</p>
             ) : (
               <ul className="mt-2 divide-y divide-slate-100 text-sm">
                 {data.recent.map((r) => (
                   <li key={r.id} className="flex items-center justify-between gap-3 py-1.5">
                     <span className="min-w-0 truncate text-slate-600">
-                      {r.label}
-                      <span className="ml-2 text-xs text-slate-400">{relativeTime(r.createdAt)}</span>
+                      {fmt.rewardLabel(r.label)}
+                      <span className="ml-2 text-xs text-slate-400">{fmt.relative(r.createdAt)}</span>
                     </span>
                     <span className={cn("font-semibold tabular-nums", r.delta > 0 ? "text-emerald-600" : "text-rose-600")}>
                       {r.delta > 0 ? "+" : ""}{r.delta}
@@ -130,7 +132,7 @@ export function UserRewardsDialog({ user, canAdjust, onClose, onAdjusted }: Prop
 
             {canAdjust && (
               <div className="mt-6 rounded-xl border border-slate-200 p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Adjust tickets</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">{r_.adjust}</h3>
                 <div className="mt-3 flex gap-2">
                   <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200 text-sm">
                     {(["add", "remove"] as const).map((d) => (
@@ -142,7 +144,7 @@ export function UserRewardsDialog({ user, canAdjust, onClose, onAdjusted }: Prop
                           direction === d ? "bg-violet-50 text-violet-700" : "text-slate-500 hover:bg-slate-50",
                         )}
                       >
-                        {d}
+                        {r_[d]}
                       </button>
                     ))}
                   </div>
@@ -152,7 +154,7 @@ export function UserRewardsDialog({ user, canAdjust, onClose, onAdjusted }: Prop
                     max={1000}
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="Amount"
+                    placeholder={r_.amount}
                     className="h-10 w-28 rounded-lg border border-slate-200 px-3 text-sm text-slate-700 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
                   />
                 </div>
@@ -160,13 +162,13 @@ export function UserRewardsDialog({ user, canAdjust, onClose, onAdjusted }: Prop
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   maxLength={200}
-                  placeholder="Reason (saved to the audit log)"
+                  placeholder={r_.reason}
                   className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
                 />
                 {formError && <p className="mt-2 text-sm text-rose-600">{formError}</p>}
                 <div className="mt-3 flex justify-end">
                   <AdminButton onClick={submit} disabled={busy || !amount || reason.trim().length < 3}>
-                    {busy ? "Saving…" : direction === "add" ? "Add tickets" : "Remove tickets"}
+                    {busy ? t.common.actions.saving : direction === "add" ? r_.addTickets : r_.removeTickets}
                   </AdminButton>
                 </div>
               </div>

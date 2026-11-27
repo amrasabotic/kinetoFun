@@ -8,6 +8,7 @@
 import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Search, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 // ── Card ─────────────────────────────────────────────────────────────────────
 
@@ -242,17 +243,18 @@ export function Pagination({
   total: number;
   onPage: (p: number) => void;
 }) {
+  const ui = useI18n().t.admin.ui;
   return (
     <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3.5">
       <p className="text-xs text-slate-400">
-        {total} {total === 1 ? "result" : "results"} · Page {page} of {totalPages}
+        {ui.results(total, page, totalPages)}
       </p>
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => onPage(Math.max(1, page - 1))}
           disabled={page === 1}
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
-          aria-label="Previous page"
+          aria-label={ui.previousPage}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -260,7 +262,7 @@ export function Pagination({
           onClick={() => onPage(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
-          aria-label="Next page"
+          aria-label={ui.nextPage}
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -318,7 +320,7 @@ export function Select({
 export function SearchInput({
   value,
   onChange,
-  placeholder = "Search…",
+  placeholder,
   className,
 }: {
   value: string;
@@ -326,13 +328,14 @@ export function SearchInput({
   placeholder?: string;
   className?: string;
 }) {
+  const fallback = useI18n().t.admin.shell.searchPlaceholder;
   return (
     <div className={cn("relative", className)}>
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? fallback}
         className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder-slate-400 transition focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
       />
     </div>
@@ -348,6 +351,7 @@ export function ViewToggle({
   view: "table" | "card";
   onChange: (v: "table" | "card") => void;
 }) {
+  const ui = useI18n().t.admin.ui;
   return (
     <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-0.5">
       {(["table", "card"] as const).map((v) => {
@@ -357,7 +361,7 @@ export function ViewToggle({
           <button
             key={v}
             type="button"
-            aria-label={`${v} view`}
+            aria-label={ui.view[v]}
             aria-pressed={active}
             onClick={() => onChange(v)}
             className={cn(

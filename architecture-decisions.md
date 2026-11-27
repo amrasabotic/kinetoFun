@@ -1893,3 +1893,14 @@ The platform's Back button no longer draws a ring at the raw fingertip for games
 **Out of scope for v1.** Wi-Fi dropping while the unit is in use (the TV says to unplug and replug), WPA2-Enterprise, and hotel sign-in pages; a cable covers those.
 
 **Verification.** `test_provision.py` (28 tests, passing) covers parsing of `nmcli` terse output and scans, validation, error classification, QR escaping, password alphabet; the controller against a fake network for boot online, hotspot start, wrong password, not found, no internet, success, busy, no retry with a phone connected, and retry finding a router that came back; HTTP routes in fake mode. `--fake` runs the whole flow on a laptop. Not yet run on a Pi or with real phones.
+
+## ADR-092 — Platform translated to Albanian; games stay English
+
+**Date:** 2026-11-27
+**Status:** Accepted
+
+**Decision.** The platform supports English and Albanian (`en`, `sq`). The language is stored in a `kf-locale` cookie for a year, not in the URL, so TV, pairing and kiosk links keep working unchanged. The root layout reads the cookie (falling back to the `Accept-Language` header, then English) and passes the locale to a client `I18nProvider`; server components (legal pages, not-found, layout metadata, the reset email) read it through `src/lib/i18n/server.ts`. Changing language writes the cookie and refreshes the router. Dictionaries are plain TypeScript objects, one file per area under `src/lib/i18n/messages/`, with English and Albanian side by side and the Albanian object typed as the English one, so a missing key fails the type check; wording that depends on numbers or names is a function. API routes keep answering in English: the client turns those messages into Albanian through an English-keyed map (`server-messages.ts`, unknown messages pass through), and ticket history labels and badge and shop item names through `rewards.ts`, matched against the reward catalogue. Game titles, descriptions, collectible names and anything inside a game stay in English, as do category names an admin creates (known built-in categories are translated). Albanian uses the informal singular ("Hyr", "Luaj"), as major Albanian product UIs do.
+
+**Out of scope.** The Raspberry Pi device files (`device/raspberry-pi/`: Wi-Fi setup portal, TV loading screen, setup service) stay English for now.
+
+**Verification.** `src/lib/i18n/i18n.test.ts`: locale choice from cookie and header, every English dictionary string has non-empty Albanian text, API errors and reward labels translate, relative times and categories format per language. Typecheck clean for all platform code. Not yet reviewed by a native speaker or tried on the Pi.

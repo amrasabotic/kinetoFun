@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Upload, Loader2, X, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /**
  * Device file upload for a game cover. Uploads the chosen image to the
@@ -24,6 +25,8 @@ export function CoverUpload({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const { t, serverText } = useI18n();
+  const cu = t.adminMedia.cover;
 
   async function upload(file: File) {
     setError(null);
@@ -36,10 +39,10 @@ export function CoverUpload({
         body: fd,
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Upload failed.");
+      if (!res.ok) throw new Error(j.error ?? cu.failed);
       onChange(j.url as string);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed.");
+      setError(e instanceof Error ? serverText(e.message) : cu.failed);
     } finally {
       setUploading(false);
     }
@@ -66,10 +69,10 @@ export function CoverUpload({
           "relative h-20 w-20 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-900/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
           dragOver && "ring-2 ring-violet-500",
         )}
-        aria-label="Upload cover image"
+        aria-label={cu.uploadAria}
       >
         {value ? (
-          <Image src={value} alt="Cover preview" fill sizes="80px" className="object-cover" />
+          <Image src={value} alt={cu.preview} fill sizes="80px" className="object-cover" />
         ) : (
           <span className={cn("flex h-full w-full items-center justify-center bg-gradient-to-br", gradient)}>
             <ImageIcon className="h-5 w-5 text-white/70" />
@@ -92,7 +95,7 @@ export function CoverUpload({
             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
           >
             <Upload className="h-3.5 w-3.5" />
-            {value ? "Replace image" : "Upload image"}
+            {value ? cu.replace : cu.upload}
           </button>
           {value && (
             <button
@@ -102,12 +105,12 @@ export function CoverUpload({
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
             >
               <X className="h-3.5 w-3.5" />
-              Remove
+              {cu.remove}
             </button>
           )}
         </div>
         <p className="text-xs text-slate-400">
-          PNG, JPG, WEBP or GIF · up to 5MB. Drag &amp; drop or click. The gradient is used when empty.
+          {cu.hint}
         </p>
         {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
       </div>

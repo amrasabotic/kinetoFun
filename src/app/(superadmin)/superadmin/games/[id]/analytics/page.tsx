@@ -12,7 +12,7 @@ import {
   Flame,
   Zap,
 } from "lucide-react";
-import { formatDate } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   Card,
   StatCard,
@@ -46,6 +46,8 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<Days>("30");
+  const { t, fmt, serverText } = useI18n();
+  const an = t.adminAnalytics;
 
   useEffect(() => {
     setLoading(true);
@@ -53,9 +55,9 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
     fetch(`/api/admin/games/${id}/analytics?days=${days}`)
       .then((r) => (r.ok ? r.json() : r.json().then((j) => Promise.reject(j.error ?? "Failed"))))
       .then((d: GameAnalytics) => setData(d))
-      .catch((e) => setError(typeof e === "string" ? e : "Failed to load analytics."))
+      .catch((e) => setError(serverText(typeof e === "string" ? e : "Failed to load analytics.")))
       .finally(() => setLoading(false));
-  }, [id, days]);
+  }, [id, days, serverText]);
 
   return (
     <div className="space-y-6">
@@ -67,16 +69,16 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
             className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-violet-600"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Games
+            {an.back}
           </Link>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">
             {loading ? (
               <Skeleton className="inline-block h-6 w-48" />
             ) : (
-              <>Analytics: <span className="text-violet-700">{data?.gameTitle ?? id}</span></>
+              <>{an.title} <span className="text-violet-700">{data?.gameTitle ?? id}</span></>
             )}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">Session activity and player performance.</p>
+          <p className="mt-1 text-sm text-slate-500">{an.subtitle}</p>
         </div>
 
         {/* Day range toggle */}
@@ -91,7 +93,7 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
                   : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              {d}d
+              {an.range(d)}
             </button>
           ))}
         </div>
@@ -115,15 +117,15 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
           ))
         ) : (
           <>
-            <StatCard tint="violet" icon={<Activity className="h-5 w-5" />} value={data?.totalSessions ?? 0} label="Total Sessions" />
-            <StatCard tint="sky" icon={<Users className="h-5 w-5" />} value={data?.uniquePlayers ?? 0} label="Unique Players" />
+            <StatCard tint="violet" icon={<Activity className="h-5 w-5" />} value={data?.totalSessions ?? 0} label={an.totalSessions} />
+            <StatCard tint="sky" icon={<Users className="h-5 w-5" />} value={data?.uniquePlayers ?? 0} label={an.uniquePlayers} />
             <StatCard
               tint="emerald"
               icon={<Clock className="h-5 w-5" />}
-              value={`${data?.avgSessionMinutes ?? 0}m`}
-              label="Avg Session"
+              value={an.minutes(data?.avgSessionMinutes ?? 0)}
+              label={an.avgSession}
             />
-            <StatCard tint="amber" icon={<Trophy className="h-5 w-5" />} value={data?.totalScores ?? 0} label="Scores Submitted" />
+            <StatCard tint="amber" icon={<Trophy className="h-5 w-5" />} value={data?.totalScores ?? 0} label={an.scores} />
           </>
         )}
       </div>
@@ -132,19 +134,19 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
       <Card className="p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <BarChart2 className="h-4 w-4 text-violet-500" />
-          Sessions per Day
-          <span className="ml-auto text-xs font-normal text-slate-400">Last {days} days</span>
+          {an.perDay}
+          <span className="ml-auto text-xs font-normal text-slate-400">{an.lastDays(days)}</span>
         </div>
         <div className="mt-4">
           {loading ? (
             <Skeleton className="h-44 w-full" />
           ) : data && data.sessionsPerDay.length > 0 ? (
-            <AreaChart data={data.sessionsPerDay} color="#7c3aed" valueLabel="sessions" />
+            <AreaChart data={data.sessionsPerDay} color="#7c3aed" valueLabel={an.sessionsUnit} />
           ) : (
             <EmptyState
               icon={<BarChart2 className="h-5 w-5" />}
-              title="No session data"
-              description="No sessions recorded in this period."
+              title={an.noData}
+              description={an.noDataHint}
             />
           )}
         </div>
@@ -156,7 +158,7 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
         <Card className="p-5">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <Trophy className="h-4 w-4 text-amber-500" />
-            Top Players
+            {an.topPlayers}
           </h3>
           <div className="mt-4">
             {loading ? (
@@ -172,8 +174,8 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
             ) : !data || data.topPlayers.length === 0 ? (
               <EmptyState
                 icon={<Trophy className="h-5 w-5" />}
-                title="No scores yet"
-                description="Players will appear here once scores are submitted."
+                title={an.noScores}
+                description={an.noScoresHint}
               />
             ) : (
               <div className="space-y-2">
@@ -187,7 +189,7 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
                       {p.userName}
                     </span>
                     <Badge tone={p.rank <= 3 ? "amber" : "slate"}>
-                      {p.bestScore.toLocaleString()}
+                      {fmt.number(p.bestScore)}
                     </Badge>
                   </div>
                 ))}
@@ -200,7 +202,7 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
         <Card className="p-5">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <Zap className="h-4 w-4 text-sky-500" />
-            Activity Insights
+            {an.insights}
           </h3>
           <div className="mt-4 space-y-4">
             {loading ? (
@@ -214,22 +216,22 @@ export default function GameAnalyticsPage({ params }: { params: Promise<{ id: st
               <>
                 <InsightRow
                   icon={<Flame className="h-4 w-4 text-rose-500" />}
-                  label="Most Active Day"
-                  value={data?.mostActiveDay ?? "—"}
+                  label={an.mostActive}
+                  value={data?.mostActiveDay ? (an.weekdays[data.mostActiveDay] ?? data.mostActiveDay) : "—"}
                 />
                 <InsightRow
                   icon={<Users className="h-4 w-4 text-sky-500" />}
-                  label="Peak Concurrent"
-                  value={data ? `${data.peakConcurrent} player${data.peakConcurrent !== 1 ? "s" : ""}` : "—"}
+                  label={an.peak}
+                  value={data ? t.profile.players(data.peakConcurrent) : "—"}
                 />
                 <InsightRow
                   icon={<Activity className="h-4 w-4 text-violet-500" />}
-                  label="Sessions (this period)"
+                  label={an.sessionsPeriod}
                   value={data?.sessionsPerDay.reduce((s, d) => s + d.value, 0).toString() ?? "—"}
                 />
                 <InsightRow
                   icon={<Trophy className="h-4 w-4 text-amber-500" />}
-                  label="Ranked Players"
+                  label={an.ranked}
                   value={data?.topPlayers.length.toString() ?? "—"}
                 />
               </>

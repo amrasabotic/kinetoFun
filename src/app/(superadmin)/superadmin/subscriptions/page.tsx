@@ -11,8 +11,8 @@ import {
   Trash2,
   BadgePlus,
 } from "lucide-react";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   Card,
   StatCard,
@@ -69,6 +69,8 @@ export default function SubscriptionsPage() {
   const [grantOpen, setGrantOpen] = useState(false);
   const [toRevoke, setToRevoke] = useState<AdminSubscription | null>(null);
   const [busy, setBusy] = useState(false);
+  const { t, fmt, serverText } = useI18n();
+  const sb = t.adminSubscriptions;
 
   async function load() {
     setLoading(true);
@@ -87,7 +89,7 @@ export default function SubscriptionsPage() {
         setUsers((userJson.users as AdminUser[]) ?? []);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load subscriptions.");
+      setError(serverText(err instanceof Error ? err.message : "Failed to load subscriptions."));
     } finally {
       setLoading(false);
     }
@@ -119,7 +121,7 @@ export default function SubscriptionsPage() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? "Failed to revoke subscription.");
+        throw new Error(j.error ?? sb.revokeFailed);
       }
       const { subscription } = await res.json();
       setSubscriptions((prev) =>
@@ -133,7 +135,7 @@ export default function SubscriptionsPage() {
       }
       setToRevoke(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to revoke subscription.");
+      alert(err instanceof Error ? serverText(err.message) : sb.revokeFailed);
     } finally {
       setBusy(false);
     }
@@ -171,7 +173,7 @@ export default function SubscriptionsPage() {
       }
       setGrantOpen(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to grant subscription.");
+      alert(serverText(err instanceof Error ? err.message : "Failed to grant subscription."));
     } finally {
       setBusy(false);
     }
@@ -181,12 +183,12 @@ export default function SubscriptionsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">Subscription Management</h2>
-          <p className="mt-1 text-sm text-slate-500">View and manage user plan entitlements.</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">{sb.title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{sb.subtitle}</p>
         </div>
         <AdminButton onClick={() => setGrantOpen(true)}>
           <BadgePlus className="h-4 w-4" />
-          Grant Pro
+          {sb.grant}
         </AdminButton>
       </div>
 
@@ -202,10 +204,10 @@ export default function SubscriptionsPage() {
           ))
         ) : (
           <>
-            <StatCard tint="violet" icon={<CreditCard className="h-5 w-5" />} value={summary?.totalPro ?? 0} label="Total Pro" />
-            <StatCard tint="emerald" icon={<BadgeCheck className="h-5 w-5" />} value={summary?.activeSubscriptions ?? 0} label="Active" />
-            <StatCard tint="sky" icon={<Wrench className="h-5 w-5" />} value={summary?.manualGrants ?? 0} label="Manual Grants" />
-            <StatCard tint="amber" icon={<ShieldCheck className="h-5 w-5" />} value={summary?.providerManaged ?? 0} label="Provider-Managed" />
+            <StatCard tint="violet" icon={<CreditCard className="h-5 w-5" />} value={summary?.totalPro ?? 0} label={sb.totalPro} />
+            <StatCard tint="emerald" icon={<BadgeCheck className="h-5 w-5" />} value={summary?.activeSubscriptions ?? 0} label={sb.active} />
+            <StatCard tint="sky" icon={<Wrench className="h-5 w-5" />} value={summary?.manualGrants ?? 0} label={sb.manual} />
+            <StatCard tint="amber" icon={<ShieldCheck className="h-5 w-5" />} value={summary?.providerManaged ?? 0} label={sb.provider} />
           </>
         )}
       </div>
@@ -218,7 +220,7 @@ export default function SubscriptionsPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name or email…"
+              placeholder={t.adminUsers.search}
               className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder-slate-400 transition focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             />
           </div>
@@ -231,11 +233,11 @@ export default function SubscriptionsPage() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<CreditCard className="h-6 w-6" />}
-            title={query ? "No matching subscriptions" : "No subscriptions yet"}
+            title={query ? sb.noMatch : sb.none}
             description={
               query
-                ? "Try adjusting your search."
-                : 'Use "Grant Pro" to manually assign pro access to a user.'
+                ? sb.adjustSearch
+                : sb.noneHint
             }
           />
         ) : (
@@ -243,11 +245,11 @@ export default function SubscriptionsPage() {
             <table className="w-full text-left text-sm">
               <thead className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 <tr className="border-b border-slate-100">
-                  <th className="px-5 py-3 font-semibold">User</th>
-                  <th className="px-5 py-3 font-semibold">Plan</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Provider</th>
-                  <th className="px-5 py-3 font-semibold">Period End</th>
+                  <th className="px-5 py-3 font-semibold">{t.adminUsers.colUser}</th>
+                  <th className="px-5 py-3 font-semibold">{sb.colPlan}</th>
+                  <th className="px-5 py-3 font-semibold">{t.adminUsers.colStatus}</th>
+                  <th className="px-5 py-3 font-semibold">{sb.colProvider}</th>
+                  <th className="px-5 py-3 font-semibold">{sb.colPeriodEnd}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -268,24 +270,24 @@ export default function SubscriptionsPage() {
                     </td>
                     <td className="px-5 py-3">
                       <Badge tone={s.plan === "pro" ? "violet" : "slate"} className="capitalize">
-                        {s.plan}
+                        {sb.plans[s.plan] ?? s.plan}
                       </Badge>
                     </td>
                     <td className="px-5 py-3">
                       {s.status === "active" ? (
                         <Badge tone="emerald">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          Active
+                          {sb.active}
                         </Badge>
                       ) : (
-                        <Badge tone="slate">Inactive</Badge>
+                        <Badge tone="slate">{sb.inactive}</Badge>
                       )}
                     </td>
                     <td className="px-5 py-3 text-slate-500 capitalize">
-                      {s.provider ?? "—"}
+                      {s.provider ? (sb.providers[s.provider] ?? s.provider) : "—"}
                     </td>
                     <td className="px-5 py-3 text-slate-500">
-                      {s.currentPeriodEnd ? formatDate(s.currentPeriodEnd) : "—"}
+                      {s.currentPeriodEnd ? fmt.date(s.currentPeriodEnd) : "—"}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <ActionMenu
@@ -293,7 +295,7 @@ export default function SubscriptionsPage() {
                           ...(s.status !== "active"
                             ? [
                                 {
-                                  label: "Grant Pro",
+                                  label: sb.grant,
                                   icon: <BadgePlus className="h-4 w-4" />,
                                   onClick: () => handleGrant(s.userId),
                                 },
@@ -302,7 +304,7 @@ export default function SubscriptionsPage() {
                           ...(s.status === "active"
                             ? [
                                 {
-                                  label: "Revoke",
+                                  label: sb.revoke,
                                   icon: <Trash2 className="h-4 w-4" />,
                                   danger: true as const,
                                   onClick: () => setToRevoke(s),
@@ -339,15 +341,15 @@ export default function SubscriptionsPage() {
         open={!!toRevoke}
         danger
         icon={<Trash2 className="h-5 w-5" />}
-        title="Revoke subscription?"
+        title={sb.revokeTitle}
         description={
           <>
-            This will set{" "}
-            <span className="font-semibold text-slate-700">{toRevoke?.userName}</span>&apos;s
-            subscription to inactive. You can re-grant it at any time.
+            {sb.revokeBefore}{" "}
+            <span className="font-semibold text-slate-700">{toRevoke?.userName}</span>
+            {sb.revokeAfter}
           </>
         }
-        confirmLabel="Revoke"
+        confirmLabel={sb.revoke}
         busy={busy}
         onConfirm={confirmRevoke}
         onCancel={() => setToRevoke(null)}
@@ -369,6 +371,8 @@ function GrantProDialog({
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AdminUser | null>(null);
+  const { t } = useI18n();
+  const sb = t.adminSubscriptions;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -384,8 +388,8 @@ function GrantProDialog({
     <div role="dialog" aria-modal className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-900/20">
-        <h2 className="text-base font-bold text-slate-900">Grant Pro Access</h2>
-        <p className="mt-1 text-sm text-slate-500">Search for a user and grant them a manual pro subscription.</p>
+        <h2 className="text-base font-bold text-slate-900">{sb.grantTitle}</h2>
+        <p className="mt-1 text-sm text-slate-500">{sb.grantHint}</p>
 
         <div className="mt-4">
           <div className="relative">
@@ -394,14 +398,14 @@ function GrantProDialog({
               autoFocus
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelected(null); }}
-              placeholder="Search by name or email…"
+              placeholder={t.adminUsers.search}
               className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder-slate-400 transition focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             />
           </div>
 
           <div className="mt-2 max-h-52 overflow-y-auto rounded-lg border border-slate-100">
             {filtered.length === 0 ? (
-              <p className="p-4 text-center text-sm text-slate-400">No users found.</p>
+              <p className="p-4 text-center text-sm text-slate-400">{sb.noUsers}</p>
             ) : (
               filtered.map((u) => (
                 <button
@@ -428,13 +432,13 @@ function GrantProDialog({
 
         <div className="mt-6 flex justify-end gap-3">
           <AdminButton variant="secondary" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t.common.actions.cancel}
           </AdminButton>
           <AdminButton
             onClick={() => selected && onGrant(selected.id)}
             disabled={busy || !selected}
           >
-            {busy ? "Granting…" : "Grant Pro"}
+            {busy ? sb.granting : sb.grant}
           </AdminButton>
         </div>
       </div>

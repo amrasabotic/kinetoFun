@@ -3,14 +3,15 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AdminButton } from "./ui";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /** An accessible, animated confirm modal. Render conditionally on `open`. */
 export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   danger,
   busy,
   icon,
@@ -29,6 +30,7 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   const [shown, setShown] = useState(false);
+  const ui = useI18n().t.admin.ui;
 
   useEffect(() => {
     if (!open) return;
@@ -81,14 +83,14 @@ export function ConfirmDialog({
 
         <div className="mt-6 flex justify-end gap-3">
           <AdminButton variant="secondary" onClick={onCancel} disabled={busy}>
-            {cancelLabel}
+            {cancelLabel ?? ui.cancel}
           </AdminButton>
           <AdminButton
             variant={danger ? "danger" : "primary"}
             onClick={onConfirm}
             disabled={busy}
           >
-            {busy ? "Working…" : confirmLabel}
+            {busy ? ui.working : confirmLabel ?? ui.confirm}
           </AdminButton>
         </div>
       </div>

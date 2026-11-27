@@ -14,6 +14,7 @@ const SQ: Record<string, string> = {
   "Cover storage is not configured.": "Ruajtja e kopertinave nuk është konfiguruar.",
   "Display name cannot be empty.": "Emri i shfaqur nuk mund të jetë bosh.",
   "Display name is too long (max 100 chars).": "Emri i shfaqur është shumë i gjatë (maksimumi 100 karaktere).",
+  "Failed": "Dështoi.",
   "Failed to add favorite.": "Shtimi te të preferuarat dështoi.",
   "Failed to adjust tickets.": "Ndryshimi i biletave dështoi.",
   "Failed to connect to the TV.": "Lidhja me televizorin dështoi.",

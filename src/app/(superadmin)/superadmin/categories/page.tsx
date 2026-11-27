@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import type { Category } from "@/types";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   Card,
   StatCard,
@@ -50,6 +50,8 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<{ category: Category | null } | null>(null);
   const [toDelete, setToDelete] = useState<Category | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const { t, fmt, serverText } = useI18n();
+  const c_ = t.adminCategories;
 
   async function load() {
     setLoading(true);
@@ -60,7 +62,7 @@ export default function CategoriesPage() {
       const json = await res.json();
       setCategories(json.categories as Category[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load categories.");
+      setError(serverText(err instanceof Error ? err.message : "Failed to load categories."));
     } finally {
       setLoading(false);
     }
@@ -118,7 +120,7 @@ export default function CategoriesPage() {
       setCategories((prev) =>
         prev.map((x) => (x.id === c.id ? { ...x, isActive: c.isActive } : x)),
       );
-      alert("Failed to update status.");
+      alert(c_.statusFailed);
     }
   }
 
@@ -131,7 +133,7 @@ export default function CategoriesPage() {
         body: JSON.stringify({ order: ordered.map((c) => c.id) }),
       });
     } catch {
-      alert("Failed to save the new order.");
+      alert(c_.orderFailed);
       void load();
     }
   }
@@ -154,38 +156,38 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">Categories</h2>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">{t.admin.nav.categories}</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Organize the catalog. Drag to reorder how categories appear.
+            {c_.subtitle}
           </p>
         </div>
         <AdminButton onClick={() => setEditing({ category: null })}>
           <Plus className="h-4 w-4" />
-          Add category
+          {c_.add}
         </AdminButton>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard tint="violet" icon={<FolderTree className="h-5 w-5" />} value={summary.total} label="Total Categories" />
-        <StatCard tint="emerald" icon={<CheckCircle2 className="h-5 w-5" />} value={summary.active} label="Active" />
-        <StatCard tint="amber" icon={<EyeOff className="h-5 w-5" />} value={summary.hidden} label="Hidden" />
-        <StatCard tint="sky" icon={<Gamepad2 className="h-5 w-5" />} value={summary.withGames} label="With Games" />
+        <StatCard tint="violet" icon={<FolderTree className="h-5 w-5" />} value={summary.total} label={c_.total} />
+        <StatCard tint="emerald" icon={<CheckCircle2 className="h-5 w-5" />} value={summary.active} label={c_.active} />
+        <StatCard tint="amber" icon={<EyeOff className="h-5 w-5" />} value={summary.hidden} label={c_.hidden} />
+        <StatCard tint="sky" icon={<Gamepad2 className="h-5 w-5" />} value={summary.withGames} label={c_.withGames} />
       </div>
 
       <Card>
         {/* Toolbar */}
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center">
-          <SearchInput value={query} onChange={setQuery} placeholder="Search categories…" className="flex-1" />
+          <SearchInput value={query} onChange={setQuery} placeholder={c_.search} className="flex-1" />
           <div className="flex items-center gap-2">
             <Select
-              aria-label="Filter by status"
+              aria-label={c_.filterStatus}
               value={status}
               onChange={(v) => setStatus(v as StatusFilter)}
               options={[
-                { value: "all", label: "All statuses" },
-                { value: "active", label: "Active" },
-                { value: "inactive", label: "Inactive" },
+                { value: "all", label: c_.allStatuses },
+                { value: "active", label: c_.active },
+                { value: "inactive", label: c_.inactive },
               ]}
             />
             <ViewToggle view={view} onChange={setView} />
@@ -199,17 +201,17 @@ export default function CategoriesPage() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<FolderTree className="h-6 w-6" />}
-            title={query || status !== "all" ? "No matching categories" : "No categories yet"}
+            title={query || status !== "all" ? c_.noMatch : c_.none}
             description={
               query || status !== "all"
-                ? "Try adjusting your search or filters."
-                : "Create your first category to start organizing the catalog."
+                ? t.adminUsers.adjustFilters
+                : c_.noneHint
             }
             action={
               !query && status === "all" ? (
                 <AdminButton onClick={() => setEditing({ category: null })}>
                   <Plus className="h-4 w-4" />
-                  Create your first category
+                  {c_.createFirst}
                 </AdminButton>
               ) : undefined
             }
@@ -220,10 +222,10 @@ export default function CategoriesPage() {
               <thead className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 <tr className="border-b border-slate-100">
                   <th className="w-8 px-2 py-3" />
-                  <th className="px-3 py-3 font-semibold">Category</th>
-                  <th className="px-5 py-3 font-semibold">Games</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Created</th>
+                  <th className="px-3 py-3 font-semibold">{c_.colCategory}</th>
+                  <th className="px-5 py-3 font-semibold">{t.admin.nav.games}</th>
+                  <th className="px-5 py-3 font-semibold">{t.adminUsers.colStatus}</th>
+                  <th className="px-5 py-3 font-semibold">{c_.colCreated}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -271,26 +273,26 @@ export default function CategoriesPage() {
                         {c.isActive ? (
                           <Badge tone="emerald">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Active
+                            {c_.active}
                           </Badge>
                         ) : (
                           <Badge tone="slate">
                             <EyeOff className="h-3 w-3" />
-                            Hidden
+                            {c_.hidden}
                           </Badge>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-slate-500">{formatDate(c.createdAt)}</td>
+                      <td className="px-5 py-3 text-slate-500">{fmt.date(c.createdAt)}</td>
                       <td className="px-5 py-3 text-right">
                         <ActionMenu
                           items={[
                             {
-                              label: "Edit",
+                              label: t.common.actions.edit,
                               icon: <Pencil className="h-4 w-4" />,
                               onClick: () => setEditing({ category: c }),
                             },
                             {
-                              label: c.isActive ? "Disable" : "Enable",
+                              label: c.isActive ? c_.disable : c_.enable,
                               icon: c.isActive ? (
                                 <EyeOff className="h-4 w-4" />
                               ) : (
@@ -299,7 +301,7 @@ export default function CategoriesPage() {
                               onClick: () => toggleActive(c),
                             },
                             {
-                              label: "Delete",
+                              label: t.common.actions.delete,
                               icon: <Trash2 className="h-4 w-4" />,
                               danger: true,
                               onClick: () => setToDelete(c),
@@ -325,17 +327,17 @@ export default function CategoriesPage() {
                   <ActionMenu
                     items={[
                       {
-                        label: "Edit",
+                        label: t.common.actions.edit,
                         icon: <Pencil className="h-4 w-4" />,
                         onClick: () => setEditing({ category: c }),
                       },
                       {
-                        label: c.isActive ? "Disable" : "Enable",
+                        label: c.isActive ? c_.disable : c_.enable,
                         icon: c.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />,
                         onClick: () => toggleActive(c),
                       },
                       {
-                        label: "Delete",
+                        label: t.common.actions.delete,
                         icon: <Trash2 className="h-4 w-4" />,
                         danger: true,
                         onClick: () => setToDelete(c),
@@ -345,17 +347,17 @@ export default function CategoriesPage() {
                 </div>
                 <h3 className="mt-3 font-semibold text-slate-900">{c.name}</h3>
                 <p className="mt-1 line-clamp-2 flex-1 text-sm text-slate-500">
-                  {c.description || "No description."}
+                  {c.description || c_.noDescription}
                 </p>
                 <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
                     <Gamepad2 className="h-3.5 w-3.5 text-slate-400" />
-                    {c.gamesCount ?? 0} games
+                    {c_.games(c.gamesCount ?? 0)}
                   </span>
                   {c.isActive ? (
-                    <Badge tone="emerald">Active</Badge>
+                    <Badge tone="emerald">{c_.active}</Badge>
                   ) : (
-                    <Badge tone="slate">Hidden</Badge>
+                    <Badge tone="slate">{c_.hidden}</Badge>
                   )}
                 </div>
               </div>
@@ -452,6 +454,8 @@ function CategoryFormModal({
   const [slugTouched, setSlugTouched] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const { t, serverText } = useI18n();
+  const c_ = t.adminCategories;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((p) => ({ ...p, [key]: value }));
@@ -463,7 +467,7 @@ function CategoryFormModal({
 
   async function submit() {
     if (!form.name.trim()) {
-      setErr("Category name is required.");
+      setErr(c_.nameRequired);
       return;
     }
     setSaving(true);
@@ -487,10 +491,10 @@ function CategoryFormModal({
         },
       );
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Failed to save category.");
+      if (!res.ok) throw new Error(j.error ?? c_.saveFailed);
       onSaved(j.category as Category, isNew);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to save category.");
+      setErr(e instanceof Error ? serverText(e.message) : c_.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -506,26 +510,26 @@ function CategoryFormModal({
           </span>
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              {isNew ? "Add a category" : "Edit category"}
+              {isNew ? t.adminDashboard.addCategory : c_.edit}
             </h2>
             <p className="text-xs text-slate-400">
-              {isNew ? "Create a new way to group games" : `Editing ${category!.name}`}
+              {isNew ? c_.newHint : c_.editing(category!.name)}
             </p>
           </div>
         </div>
 
         <div className="space-y-4 overflow-y-auto p-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Category name" required>
+            <Field label={c_.name} required>
               <input
                 value={form.name}
                 onChange={(e) => onNameChange(e.target.value)}
-                placeholder="e.g. Brain Games"
+                placeholder={c_.namePlaceholder}
                 className={inputCls}
                 autoFocus
               />
             </Field>
-            <Field label="Slug (auto-generated)">
+            <Field label={c_.slug}>
               <input
                 value={form.slug}
                 onChange={(e) => {
@@ -538,21 +542,21 @@ function CategoryFormModal({
             </Field>
           </div>
 
-          <Field label="Description">
+          <Field label={c_.description}>
             <textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
               rows={2}
-              placeholder="What kind of games belong here?"
+              placeholder={c_.descriptionPlaceholder}
               className={inputCls}
             />
           </Field>
 
-          <Field label="Icon">
+          <Field label={c_.icon}>
             <IconPicker value={form.icon} onChange={(name) => set("icon", name)} />
           </Field>
 
-          <Field label="Image (optional)">
+          <Field label={c_.image}>
             <CoverUpload
               value={form.image}
               gradient="from-violet-500 to-indigo-600"
@@ -561,7 +565,7 @@ function CategoryFormModal({
           </Field>
 
           <div className="grid items-center gap-4 sm:grid-cols-2">
-            <Field label="Sort order">
+            <Field label={c_.sortOrder}>
               <input
                 type="number"
                 min={0}
@@ -572,12 +576,12 @@ function CategoryFormModal({
             </Field>
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Status
+                {t.adminUsers.colStatus}
               </label>
               <div className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2">
-                <Switch checked={form.isActive} onChange={(v) => set("isActive", v)} label="Active" />
+                <Switch checked={form.isActive} onChange={(v) => set("isActive", v)} label={c_.active} />
                 <span className="text-sm font-medium text-slate-600">
-                  {form.isActive ? "Active" : "Inactive"}
+                  {form.isActive ? c_.active : c_.inactive}
                 </span>
               </div>
             </div>
@@ -588,10 +592,10 @@ function CategoryFormModal({
 
         <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
           <AdminButton variant="secondary" onClick={onCancel} disabled={saving}>
-            Cancel
+            {t.common.actions.cancel}
           </AdminButton>
           <AdminButton onClick={submit} disabled={saving}>
-            {saving ? "Saving…" : "Save category"}
+            {saving ? t.common.actions.saving : c_.save}
           </AdminButton>
         </div>
       </div>
@@ -637,6 +641,8 @@ function DeleteCategoryFlow({
   const [choice, setChoice] = useState<"move" | "delete-games">("move");
   const [target, setTarget] = useState<string>(others[0]?.id ?? "");
   const [err, setErr] = useState<string | null>(null);
+  const { t, serverText } = useI18n();
+  const c_ = t.adminCategories;
 
   async function run(strategy?: "move" | "delete-games", targetId?: string) {
     setBusy(true);
@@ -651,10 +657,10 @@ function DeleteCategoryFlow({
         { method: "DELETE" },
       );
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? j.message ?? "Failed to delete.");
+      if (!res.ok) throw new Error(j.error ?? j.message ?? c_.deleteFailed);
       onDeleted(category.id);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to delete.");
+      setErr(e instanceof Error ? serverText(e.message) : c_.deleteFailed);
     } finally {
       setBusy(false);
     }
@@ -667,15 +673,14 @@ function DeleteCategoryFlow({
         open
         danger
         icon={<Trash2 className="h-5 w-5" />}
-        title="Delete category?"
+        title={c_.deleteTitle}
         description={
           <>
-            This permanently deletes{" "}
-            <span className="font-semibold text-slate-700">{category.name}</span>. This can&apos;t
-            be undone.
+            {t.adminUsers.deleteBefore}{" "}
+            <span className="font-semibold text-slate-700">{category.name}</span>. {c_.cantUndo}
           </>
         }
-        confirmLabel="Delete category"
+        confirmLabel={c_.deleteCategory}
         busy={busy}
         onConfirm={() => run()}
         onCancel={onClose}
@@ -691,11 +696,11 @@ function DeleteCategoryFlow({
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
           <AlertTriangle className="h-5 w-5" />
         </div>
-        <h2 className="text-lg font-bold text-slate-900">Delete “{category.name}”?</h2>
+        <h2 className="text-lg font-bold text-slate-900">{c_.deleteNamed(category.name)}</h2>
         <p className="mt-1.5 text-sm text-slate-500">
-          This category currently contains{" "}
-          <span className="font-semibold text-slate-700">{gamesCount} game{gamesCount === 1 ? "" : "s"}</span>.
-          Choose what to do with them.
+          {c_.contains}{" "}
+          <span className="font-semibold text-slate-700">{c_.games(gamesCount)}</span>.{" "}
+          {c_.chooseWhat}
         </p>
 
         <div className="mt-5 space-y-2.5">
@@ -719,9 +724,9 @@ function DeleteCategoryFlow({
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
                 <ArrowRightLeft className="h-3.5 w-3.5 text-violet-500" />
-                Move games to another category
+                {c_.moveTitle}
               </p>
-              <p className="mt-0.5 text-xs text-slate-500">Reassign every game, then delete this category.</p>
+              <p className="mt-0.5 text-xs text-slate-500">{c_.moveHint}</p>
               {choice === "move" && others.length > 0 && (
                 <select
                   value={target}
@@ -736,7 +741,7 @@ function DeleteCategoryFlow({
                 </select>
               )}
               {others.length === 0 && (
-                <p className="mt-1 text-xs text-amber-600">No other category to move games into.</p>
+                <p className="mt-1 text-xs text-amber-600">{c_.noOther}</p>
               )}
             </div>
           </label>
@@ -760,10 +765,10 @@ function DeleteCategoryFlow({
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
                 <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                Delete games together with category
+                {c_.deleteWithTitle}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                Permanently removes all {gamesCount} game{gamesCount === 1 ? "" : "s"} and their scores.
+                {c_.deleteWithHint(gamesCount)}
               </p>
             </div>
           </label>
@@ -773,14 +778,14 @@ function DeleteCategoryFlow({
 
         <div className="mt-6 flex justify-end gap-3">
           <AdminButton variant="secondary" onClick={onClose} disabled={busy}>
-            Cancel
+            {t.common.actions.cancel}
           </AdminButton>
           <AdminButton
             variant={choice === "delete-games" ? "danger" : "primary"}
             disabled={busy || (choice === "move" && !target)}
             onClick={() => run(choice, target)}
           >
-            {busy ? "Working…" : choice === "move" ? "Move & delete category" : "Delete everything"}
+            {busy ? t.admin.ui.working : choice === "move" ? c_.moveAndDelete : c_.deleteEverything}
           </AdminButton>
         </div>
       </div>

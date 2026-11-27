@@ -32,7 +32,7 @@ import type {
   GameAgeGroup,
 } from "@/types";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/format";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   Card,
   StatCard,
@@ -108,6 +108,8 @@ export default function GamesPage() {
   const [secretWorld, setSecretWorld] = useState<Game | null>(null);
   const [bulk, setBulk] = useState<null | { action: "publish" | "archive" | "delete" | "category" }>(null);
   const [busy, setBusy] = useState(false);
+  const { t, fmt, serverText } = useI18n();
+  const g_ = t.adminGames;
 
   async function load() {
     setLoading(true);
@@ -122,7 +124,7 @@ export default function GamesPage() {
       setGames(gJson.games as Game[]);
       if (cRes.ok) setCategories((await cRes.json()).categories as Category[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load games.");
+      setError(serverText(err instanceof Error ? err.message : "Failed to load games."));
     } finally {
       setLoading(false);
     }
@@ -204,7 +206,7 @@ export default function GamesPage() {
       if (!res.ok) throw new Error(j.error ?? "Failed to update the game.");
       setGames((prev) => prev.map((g) => (g.id === game.id ? { ...g, tvReady: j.game.tvReady } : g)));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update the game.");
+      alert(serverText(err instanceof Error ? err.message : "Failed to update the game."));
     }
   }
 
@@ -215,12 +217,12 @@ export default function GamesPage() {
       const res = await fetch(`/api/admin/games/${toDelete.id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? "Failed to delete.");
+        throw new Error(j.error ?? t.adminCategories.deleteFailed);
       }
       setGames((prev) => prev.filter((g) => g.id !== toDelete.id));
       setToDelete(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete.");
+      alert(err instanceof Error ? serverText(err.message) : t.adminCategories.deleteFailed);
     } finally {
       setBusy(false);
     }
@@ -265,7 +267,7 @@ export default function GamesPage() {
       setSelected(new Set());
       setBulk(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Bulk action failed.");
+      alert(serverText(err instanceof Error ? err.message : "Bulk action failed."));
     } finally {
       setBusy(false);
     }
@@ -286,74 +288,74 @@ export default function GamesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">Games Catalog</h2>
-          <p className="mt-1 text-sm text-slate-500">Create, curate, and publish the game library.</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">{g_.title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{g_.subtitle}</p>
         </div>
         <AdminButton onClick={() => setEditing({ game: { ...EMPTY }, isNew: true })}>
           <Plus className="h-4 w-4" />
-          Add game
+          {g_.add}
         </AdminButton>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard tint="violet" icon={<Gamepad2 className="h-5 w-5" />} value={summary.total} label="Total Games" />
-        <StatCard tint="emerald" icon={<CheckCircle2 className="h-5 w-5" />} value={summary.published} label="Published" />
-        <StatCard tint="amber" icon={<FileText className="h-5 w-5" />} value={summary.draft} label="Draft" />
-        <StatCard tint="sky" icon={<Sparkles className="h-5 w-5" />} value={summary.featured} label="Featured" />
+        <StatCard tint="violet" icon={<Gamepad2 className="h-5 w-5" />} value={summary.total} label={t.adminDashboard.totalGames} />
+        <StatCard tint="emerald" icon={<CheckCircle2 className="h-5 w-5" />} value={summary.published} label={g_.statuses.published} />
+        <StatCard tint="amber" icon={<FileText className="h-5 w-5" />} value={summary.draft} label={g_.statuses.draft} />
+        <StatCard tint="sky" icon={<Sparkles className="h-5 w-5" />} value={summary.featured} label={g_.featured} />
       </div>
 
       <Card>
         {/* Toolbar */}
         <div className="space-y-3 border-b border-slate-100 p-4">
-          <SearchInput value={query} onChange={setQuery} placeholder="Search games…" />
+          <SearchInput value={query} onChange={setQuery} placeholder={t.games.library.searchPlaceholder} />
           <div className="flex flex-wrap items-center gap-2">
             <Select
-              aria-label="Category"
+              aria-label={g_.category}
               icon={<FolderTree className="h-3.5 w-3.5" />}
               value={category}
               onChange={setCategory}
               options={[
-                { value: "all", label: "All categories" },
+                { value: "all", label: g_.allCategories },
                 ...categories.map((c) => ({ value: c.id, label: c.name })),
               ]}
             />
             <Select
-              aria-label="Status"
+              aria-label={t.adminUsers.colStatus}
               value={status}
               onChange={setStatus}
               options={[
-                { value: "all", label: "All statuses" },
-                ...STATUSES.map((s) => ({ value: s, label: cap(s) })),
+                { value: "all", label: t.adminCategories.allStatuses },
+                ...STATUSES.map((s) => ({ value: s, label: g_.statuses[s] })),
               ]}
             />
             <Select
-              aria-label="Difficulty"
+              aria-label={g_.difficulty}
               value={difficulty}
               onChange={setDifficulty}
               options={[
-                { value: "all", label: "All difficulty" },
-                ...DIFFICULTIES.map((d) => ({ value: d, label: cap(d) })),
+                { value: "all", label: g_.allDifficulty },
+                ...DIFFICULTIES.map((d) => ({ value: d, label: t.common.difficulty[d] })),
               ]}
             />
             <Select
-              aria-label="Age group"
+              aria-label={g_.ageGroup}
               value={ageGroup}
               onChange={setAgeGroup}
               options={[
-                { value: "all", label: "All ages" },
-                ...AGE_GROUPS.map((a) => ({ value: a, label: `Ages ${a}` })),
+                { value: "all", label: g_.allAges },
+                ...AGE_GROUPS.map((a) => ({ value: a, label: g_.ages(a) })),
               ]}
             />
             <Select
-              aria-label="Sort"
+              aria-label={g_.sort}
               icon={<ArrowUpDown className="h-3.5 w-3.5" />}
               value={sort}
               onChange={(v) => setSort(v as typeof sort)}
               options={[
-                { value: "newest", label: "Newest" },
-                { value: "played", label: "Most played" },
-                { value: "title", label: "Alphabetical" },
+                { value: "newest", label: t.adminUsers.newest },
+                { value: "played", label: g_.mostPlayed },
+                { value: "title", label: g_.alphabetical },
               ]}
             />
             {filtersActive && (
@@ -368,7 +370,7 @@ export default function GamesPage() {
                 className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-3.5 w-3.5" />
-                Clear
+                {g_.clear}
               </button>
             )}
           </div>
@@ -377,24 +379,24 @@ export default function GamesPage() {
         {/* Bulk action bar */}
         {selected.size > 0 && (
           <div className="kf-rise flex flex-wrap items-center gap-2 border-b border-violet-100 bg-violet-50/60 px-4 py-2.5">
-            <span className="text-sm font-semibold text-violet-700">{selected.size} selected</span>
+            <span className="text-sm font-semibold text-violet-700">{g_.selected(selected.size)}</span>
             <div className="ml-auto flex flex-wrap items-center gap-1.5">
               <AdminButton size="sm" variant="secondary" onClick={() => setBulk({ action: "publish" })}>
-                <Send className="h-3.5 w-3.5" /> Publish
+                <Send className="h-3.5 w-3.5" /> {g_.publish}
               </AdminButton>
               <AdminButton size="sm" variant="secondary" onClick={() => setBulk({ action: "archive" })}>
-                <Archive className="h-3.5 w-3.5" /> Archive
+                <Archive className="h-3.5 w-3.5" /> {g_.archive}
               </AdminButton>
               <AdminButton size="sm" variant="secondary" onClick={() => setBulk({ action: "category" })}>
-                <FolderTree className="h-3.5 w-3.5" /> Category
+                <FolderTree className="h-3.5 w-3.5" /> {g_.category}
               </AdminButton>
               <AdminButton size="sm" variant="danger" onClick={() => setBulk({ action: "delete" })}>
-                <Trash2 className="h-3.5 w-3.5" /> Delete
+                <Trash2 className="h-3.5 w-3.5" /> {t.common.actions.delete}
               </AdminButton>
               <button
                 onClick={() => setSelected(new Set())}
                 className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-slate-600"
-                aria-label="Clear selection"
+                aria-label={g_.clearSelection}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -409,17 +411,17 @@ export default function GamesPage() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<Gamepad2 className="h-6 w-6" />}
-            title={filtersActive ? "No matching games" : "No games yet"}
+            title={filtersActive ? g_.noMatch : g_.none}
             description={
               filtersActive
-                ? "Try adjusting your search or filters."
-                : "Add your first game to start building the catalog."
+                ? t.adminUsers.adjustFilters
+                : g_.noneHint
             }
             action={
               !filtersActive ? (
                 <AdminButton onClick={() => setEditing({ game: { ...EMPTY }, isNew: true })}>
                   <Plus className="h-4 w-4" />
-                  Add game
+                  {g_.add}
                 </AdminButton>
               ) : undefined
             }
@@ -432,17 +434,17 @@ export default function GamesPage() {
                   <th className="w-10 px-4 py-3">
                     <input
                       type="checkbox"
-                      aria-label="Select all on page"
+                      aria-label={g_.selectPage}
                       checked={allOnPageSelected}
                       onChange={toggleSelectPage}
                       className="h-4 w-4 cursor-pointer accent-violet-600"
                     />
                   </th>
-                  <th className="px-3 py-3 font-semibold">Game</th>
-                  <th className="px-5 py-3 font-semibold">Category</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Plays</th>
-                  <th className="hidden px-5 py-3 font-semibold lg:table-cell">Created</th>
+                  <th className="px-3 py-3 font-semibold">{g_.colGame}</th>
+                  <th className="px-5 py-3 font-semibold">{g_.category}</th>
+                  <th className="px-5 py-3 font-semibold">{t.adminUsers.colStatus}</th>
+                  <th className="px-5 py-3 font-semibold">{g_.colPlays}</th>
+                  <th className="hidden px-5 py-3 font-semibold lg:table-cell">{t.adminCategories.colCreated}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -460,7 +462,7 @@ export default function GamesPage() {
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
-                          aria-label={`Select ${g.title}`}
+                          aria-label={g_.selectOne(g.title)}
                           checked={isSelected}
                           onChange={() => toggleSelect(g.id)}
                           className="h-4 w-4 cursor-pointer accent-violet-600"
@@ -477,7 +479,7 @@ export default function GamesPage() {
                               )}
                               {g.unlockCost && (
                                 <span
-                                  title={`Secret world · ${g.unlockCost} tickets`}
+                                  title={g_.secretTitle(g.unlockCost)}
                                   className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
                                 >
                                   <Lock className="h-3 w-3" />
@@ -486,7 +488,7 @@ export default function GamesPage() {
                               )}
                               {g.tvReady && (
                                 <span
-                                  title="Shown on the TV"
+                                  title={g_.onTv}
                                   className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700"
                                 >
                                   <Tv className="h-3 w-3" />
@@ -505,43 +507,43 @@ export default function GamesPage() {
                       </td>
                       <td className="px-5 py-3">
                         <Badge tone={STATUS_TONE[(g.status ?? "published") as GameStatus]}>
-                          {cap(g.status ?? "published")}
+                          {g_.statuses[(g.status ?? "published") as GameStatus]}
                         </Badge>
                       </td>
                       <td className="px-5 py-3">
                         <span className="inline-flex items-center gap-1 font-medium text-slate-600">
                           <PlayCircle className="h-3.5 w-3.5 text-slate-400" />
-                          {(g.playCount ?? 0).toLocaleString()}
+                          {fmt.number(g.playCount ?? 0)}
                         </span>
                       </td>
                       <td className="hidden px-5 py-3 text-slate-500 lg:table-cell">
-                        {g.createdAt ? formatDate(g.createdAt) : "—"}
+                        {g.createdAt ? fmt.date(g.createdAt) : "—"}
                       </td>
                       <td className="px-5 py-3 text-right">
                         <ActionMenu
                           items={[
                             {
-                              label: "Edit game",
+                              label: g_.edit,
                               icon: <Pencil className="h-4 w-4" />,
                               onClick: () => setEditing({ game: { ...g }, isNew: false }),
                             },
                             {
-                              label: g.unlockCost ? "Secret world price" : "Make secret world",
+                              label: g.unlockCost ? g_.secretPrice : t.adminMedia.secretWorld.make,
                               icon: <Lock className="h-4 w-4" />,
                               onClick: () => setSecretWorld(g),
                             },
                             {
-                              label: g.tvReady ? "Hide from TV" : "Show on TV",
+                              label: g.tvReady ? g_.hideTv : g_.showTv,
                               icon: <Tv className="h-4 w-4" />,
                               onClick: () => void toggleTvReady(g),
                             },
                             {
-                              label: "Analytics",
+                              label: g_.analytics,
                               icon: <BarChart2 className="h-4 w-4" />,
                               onClick: () => router.push(`/superadmin/games/${g.id}/analytics`),
                             },
                             {
-                              label: "Delete game",
+                              label: g_.delete,
                               icon: <Trash2 className="h-4 w-4" />,
                               danger: true,
                               onClick: () => setToDelete(g),
@@ -590,15 +592,14 @@ export default function GamesPage() {
         open={!!toDelete}
         danger
         icon={<Trash2 className="h-5 w-5" />}
-        title="Delete game?"
+        title={g_.deleteTitle}
         description={
           <>
-            This permanently deletes{" "}
-            <span className="font-semibold text-slate-700">{toDelete?.title}</span> and its scores.
-            This can&apos;t be undone.
+            {t.adminUsers.deleteBefore}{" "}
+            <span className="font-semibold text-slate-700">{toDelete?.title}</span> {g_.deleteAfter}
           </>
         }
-        confirmLabel="Delete game"
+        confirmLabel={g_.delete}
         busy={busy}
         onConfirm={confirmDelete}
         onCancel={() => setToDelete(null)}
@@ -619,9 +620,6 @@ export default function GamesPage() {
   );
 }
 
-function cap(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 function categoryLabel(g: Game, categories: Category[]): string {
   if (g.categoryId) {
@@ -662,6 +660,8 @@ function BulkDialog({
   onConfirm: (categoryId?: string) => void;
 }) {
   const [target, setTarget] = useState(categories[0]?.id ?? "");
+  const { t } = useI18n();
+  const g_ = t.adminGames;
 
   if (action === "category") {
     return (
@@ -671,9 +671,9 @@ function BulkDialog({
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
             <FolderTree className="h-5 w-5" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900">Change category</h2>
+          <h2 className="text-lg font-bold text-slate-900">{g_.changeCategory}</h2>
           <p className="mt-1.5 text-sm text-slate-500">
-            Move {count} game{count === 1 ? "" : "s"} into a new category.
+            {g_.moveInto(count)}
           </p>
           <select
             value={target}
@@ -688,10 +688,10 @@ function BulkDialog({
           </select>
           <div className="mt-6 flex justify-end gap-3">
             <AdminButton variant="secondary" onClick={onCancel} disabled={busy}>
-              Cancel
+              {t.common.actions.cancel}
             </AdminButton>
             <AdminButton onClick={() => onConfirm(target)} disabled={busy || !target}>
-              {busy ? "Working…" : `Move ${count} game${count === 1 ? "" : "s"}`}
+              {busy ? t.admin.ui.working : g_.moveCount(count)}
             </AdminButton>
           </div>
         </div>
@@ -700,9 +700,9 @@ function BulkDialog({
   }
 
   const meta = {
-    publish: { title: "Publish games?", label: "Publish", danger: false, icon: <Send className="h-5 w-5" /> },
-    archive: { title: "Archive games?", label: "Archive", danger: false, icon: <Archive className="h-5 w-5" /> },
-    delete: { title: "Delete games?", label: "Delete", danger: true, icon: <Trash2 className="h-5 w-5" /> },
+    publish: { title: g_.publishTitle, label: g_.publish, danger: false, icon: <Send className="h-5 w-5" /> },
+    archive: { title: g_.archiveTitle, label: g_.archive, danger: false, icon: <Archive className="h-5 w-5" /> },
+    delete: { title: g_.deleteManyTitle, label: t.common.actions.delete, danger: true, icon: <Trash2 className="h-5 w-5" /> },
   }[action];
 
   return (
@@ -714,13 +714,13 @@ function BulkDialog({
       description={
         action === "delete" ? (
           <>
-            This permanently deletes{" "}
-            <span className="font-semibold text-slate-700">{count} game{count === 1 ? "" : "s"}</span>{" "}
-            and their scores. This can&apos;t be undone.
+            {t.adminUsers.deleteBefore}{" "}
+            <span className="font-semibold text-slate-700">{t.adminCategories.games(count)}</span>{" "}
+            {g_.deleteManyAfter}
           </>
         ) : (
           <>
-            This will {action} {count} selected game{count === 1 ? "" : "s"}.
+            {action === "publish" ? g_.willPublish(count) : g_.willArchive(count)}
           </>
         )
       }
@@ -758,6 +758,9 @@ function GameFormModal({
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const { t, serverText } = useI18n();
+  const g_ = t.adminGames;
+  const f = g_.form;
 
   function set<K extends keyof Game>(key: K, value: Game[K]) {
     setForm((p) => ({ ...p, [key]: value }));
@@ -789,10 +792,10 @@ function GameFormModal({
         body: JSON.stringify(payload),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Failed to save.");
+      if (!res.ok) throw new Error(j.error ?? f.saveFailed);
       onSaved(j.game as Game);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to save.");
+      setErr(e instanceof Error ? serverText(e.message) : f.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -806,21 +809,21 @@ function GameFormModal({
           <Thumb game={form} />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-base font-bold text-slate-900">
-              {isNew ? "Add a game" : form.title || "Edit game"}
+              {isNew ? t.adminDashboard.addGame : form.title || g_.edit}
             </h2>
             <p className="text-xs text-slate-400">
-              {isNew ? "Create a new catalog entry" : "Update catalog details"}
+              {isNew ? f.newHint : f.editHint}
             </p>
           </div>
           <Badge tone={STATUS_TONE[(form.status ?? "draft") as GameStatus]}>
-            {cap(form.status ?? "draft")}
+            {g_.statuses[(form.status ?? "draft") as GameStatus]}
           </Badge>
         </div>
 
         <div className="space-y-5 overflow-y-auto p-6">
           {/* Core */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="ID (slug)" required>
+            <Field label={f.id} required>
               <input
                 value={form.id}
                 disabled={!isNew}
@@ -829,22 +832,22 @@ function GameFormModal({
                 className={inputCls}
               />
             </Field>
-            <Field label="Game name" required>
+            <Field label={f.name} required>
               <input value={form.title} onChange={(e) => set("title", e.target.value)} className={inputCls} />
             </Field>
-            <Field label="Short description" full>
+            <Field label={f.shortDescription} full>
               <input
                 value={form.shortDescription ?? ""}
                 onChange={(e) => set("shortDescription", e.target.value)}
-                placeholder="One punchy line for cards & lists"
+                placeholder={f.shortDescriptionPlaceholder}
                 maxLength={160}
                 className={inputCls}
               />
             </Field>
-            <Field label="Tagline" full>
+            <Field label={f.tagline} full>
               <input value={form.tagline} onChange={(e) => set("tagline", e.target.value)} className={inputCls} />
             </Field>
-            <Field label="Description" full>
+            <Field label={t.adminCategories.description} full>
               <textarea
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
@@ -856,13 +859,13 @@ function GameFormModal({
 
           {/* Classification */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Category">
+            <Field label={g_.category}>
               <select
                 value={form.categoryId ?? ""}
                 onChange={(e) => onCategoryChange(e.target.value)}
                 className={inputCls}
               >
-                {!form.categoryId && <option value="">Select a category…</option>}
+                {!form.categoryId && <option value="">{f.selectCategory}</option>}
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -870,7 +873,7 @@ function GameFormModal({
                 ))}
               </select>
             </Field>
-            <Field label="Players">
+            <Field label={t.games.detail.players}>
               <select
                 value={form.players}
                 onChange={(e) => set("players", e.target.value as GamePlayers)}
@@ -878,19 +881,19 @@ function GameFormModal({
               >
                 {PLAYER_MODES.map((p) => (
                   <option key={p} value={p}>
-                    {p}
+                    {t.common.players[p]}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Difficulty" full>
+            <Field label={g_.difficulty} full>
               <Segmented<GameDifficulty>
                 value={form.difficulty ?? "medium"}
                 onChange={(v) => set("difficulty", v)}
-                options={DIFFICULTIES.map((d) => ({ value: d, label: cap(d) }))}
+                options={DIFFICULTIES.map((d) => ({ value: d, label: t.common.difficulty[d] }))}
               />
             </Field>
-            <Field label="Age group" full>
+            <Field label={g_.ageGroup} full>
               <Segmented<GameAgeGroup>
                 value={form.ageGroup ?? "6-8"}
                 onChange={(v) => set("ageGroup", v)}
@@ -901,20 +904,20 @@ function GameFormModal({
 
           {/* Media */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Game image" full>
+            <Field label={f.image} full>
               <CoverUpload
                 value={form.thumbnail}
                 gradient={form.cover}
                 onChange={(url) => set("thumbnail", url)}
               />
             </Field>
-            <Field label="Cover gradient (fallback Tailwind classes)" full>
+            <Field label={f.gradient} full>
               <input value={form.cover} onChange={(e) => set("cover", e.target.value)} className={inputCls} />
             </Field>
-            <Field label="Accent (hex)">
+            <Field label={f.accent}>
               <input value={form.accent} onChange={(e) => set("accent", e.target.value)} className={inputCls} />
             </Field>
-            <Field label="Rating (0–5)">
+            <Field label={f.rating}>
               <input
                 type="number"
                 min={0}
@@ -926,24 +929,24 @@ function GameFormModal({
               />
               <p className="mt-1 text-xs text-slate-500">
                 {(form.ratingCount ?? 0) > 0
-                  ? `${form.ratingCount} user ${form.ratingCount === 1 ? "rating" : "ratings"} (auto-calculated average in use)`
-                  : "Default rating shown until the game receives real user ratings."}
+                  ? f.ratingsInUse(form.ratingCount ?? 0)
+                  : f.ratingDefault}
               </p>
             </Field>
           </div>
 
           {/* Numbers */}
           <div className="grid gap-4 sm:grid-cols-4">
-            <Field label="Min players">
+            <Field label={f.minPlayers}>
               <input type="number" min={1} value={form.minPlayers} onChange={(e) => set("minPlayers", Number(e.target.value))} className={inputCls} />
             </Field>
-            <Field label="Max players">
+            <Field label={f.maxPlayers}>
               <input type="number" min={1} value={form.maxPlayers} onChange={(e) => set("maxPlayers", Number(e.target.value))} className={inputCls} />
             </Field>
-            <Field label="Release year">
+            <Field label={f.releaseYear}>
               <input type="number" value={form.releaseYear} onChange={(e) => set("releaseYear", Number(e.target.value))} className={inputCls} />
             </Field>
-            <Field label="Duration (min)">
+            <Field label={f.duration}>
               <input type="number" min={0} value={form.durationMinutes} onChange={(e) => set("durationMinutes", Number(e.target.value))} className={inputCls} />
             </Field>
           </div>
@@ -952,26 +955,26 @@ function GameFormModal({
           <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-2">
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Status
+                {t.adminUsers.colStatus}
               </label>
               <Segmented<GameStatus>
                 value={form.status ?? "draft"}
                 onChange={(v) => set("status", v)}
-                options={STATUSES.map((s) => ({ value: s, label: cap(s) }))}
+                options={STATUSES.map((s) => ({ value: s, label: g_.statuses[s] }))}
               />
             </div>
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Featured
+                {g_.featured}
               </label>
               <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <Switch
                   checked={form.featured ?? false}
                   onChange={(v) => set("featured", v)}
-                  label="Featured"
+                  label={g_.featured}
                 />
                 <span className="text-sm font-medium text-slate-600">
-                  {form.featured ? "Shown on homepage" : "Not featured"}
+                  {form.featured ? f.onHomepage : f.notFeatured}
                 </span>
               </div>
             </div>
@@ -982,10 +985,10 @@ function GameFormModal({
 
         <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
           <AdminButton variant="secondary" onClick={onCancel} disabled={saving}>
-            Cancel
+            {t.common.actions.cancel}
           </AdminButton>
           <AdminButton onClick={submit} disabled={saving}>
-            {saving ? "Saving…" : isNew ? "Create game" : "Save changes"}
+            {saving ? t.common.actions.saving : isNew ? f.create : t.settings.saveChanges}
           </AdminButton>
         </div>
       </div>

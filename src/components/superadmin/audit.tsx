@@ -29,6 +29,7 @@ import {
   Tv,
 } from "lucide-react";
 import type { AuditLog } from "@/types";
+import { getMessages, type Locale } from "@/lib/i18n";
 
 type Tint = "violet" | "emerald" | "amber" | "rose" | "sky" | "slate";
 
@@ -71,73 +72,25 @@ const MAP: Record<string, AuditMeta> = {
   "settings.updated": { icon: <Settings className={ICON} />, tint: "violet", label: "Updated platform settings" },
 };
 
-export function auditMeta(action: string): AuditMeta {
-  return MAP[action] ?? { icon: <Activity className={ICON} />, tint: "slate", label: action };
+export function auditMeta(action: string, locale: Locale = "en"): AuditMeta {
+  const meta = MAP[action] ?? { icon: <Activity className={ICON} />, tint: "slate", label: action };
+  return { ...meta, label: getMessages(locale).admin.audit.labels[action] ?? meta.label };
 }
 
 /** Build a readable sentence describing the log's details. */
-export function auditSentence(log: Pick<AuditLog, "action" | "details" | "entityType">): string {
+export function auditSentence(
+  log: Pick<AuditLog, "action" | "details" | "entityType">,
+  locale: Locale = "en",
+): string {
   const d = log.details ?? {};
   const name = (d.name as string) || (d.title as string) || (d.email as string);
-  const count = d.count as number | undefined;
-  switch (log.action) {
-    case "category.created":
-      return `Created category${name ? ` “${name}”` : ""}`;
-    case "category.updated":
-      return `Updated category${name ? ` “${name}”` : ""}`;
-    case "category.deleted":
-      return `Deleted category${name ? ` “${name}”` : ""}`;
-    case "category.enabled":
-      return `Enabled category${name ? ` “${name}”` : ""}`;
-    case "category.disabled":
-      return `Disabled category${name ? ` “${name}”` : ""}`;
-    case "category.reordered":
-      return `Reordered ${count ?? ""} categories`.trim();
-    case "game.created":
-      return `Created game${name ? ` “${name}”` : ""}`;
-    case "game.updated":
-      return `Updated game${name ? ` “${name}”` : ""}`;
-    case "game.published":
-      return `Published game${name ? ` “${name}”` : ""}`;
-    case "game.archived":
-      return `Archived game${name ? ` “${name}”` : ""}`;
-    case "game.deleted":
-      return `Deleted a game`;
-    case "game.bulk_publish":
-      return `Published ${count ?? "multiple"} games`;
-    case "game.bulk_archive":
-      return `Archived ${count ?? "multiple"} games`;
-    case "game.bulk_delete":
-      return `Deleted ${count ?? "multiple"} games`;
-    case "game.bulk_category":
-      return `Recategorized ${count ?? "multiple"} games`;
-    case "game.secret_world_updated":
-      return d.unlockCost
-        ? `Made ${name ? `“${name}”` : "a game"} a secret world for ${d.unlockCost as number} tickets`
-        : `Made ${name ? `“${name}”` : "a game"} free to play again`;
-    case "game.tv_ready_updated":
-      return `${d.tvReady ? "Showed" : "Hid"} ${name ? `“${name}”` : "a game"} ${d.tvReady ? "on" : "from"} the TV`;
-    case "user.role_updated":
-      return `Set ${name ?? "a user"} to ${(d.role as string) ?? "a new role"}`;
-    case "user.deleted":
-      return `Deleted a user account`;
-    case "user.tickets_adjusted": {
-      const delta = Number(d.delta ?? 0);
-      return `${delta >= 0 ? "Gave" : "Removed"} ${Math.abs(delta)} tickets ${delta >= 0 ? "to" : "from"} ${name ?? "a user"}`;
-    }
-    case "user.registered":
-      return `${name ?? "A new user"} registered an account`;
-    case "leaderboard.score_deleted":
-      return `Deleted a score from leaderboard`;
-    case "leaderboard.reset":
-      return `Reset leaderboard for a game`;
-    case "subscription.granted":
-      return `Granted pro subscription to ${name ?? "a user"}`;
-    case "subscription.revoked":
-      return `Revoked subscription for ${name ?? "a user"}`;
-    case "settings.updated":
-      return `Updated platform settings`;
-    default:
-      return auditMeta(log.action).label;
-  }
+  const sentence = getMessages(locale).admin.audit.sentence(log.action, {
+    name: name || undefined,
+    count: d.count as number | undefined,
+    unlockCost: d.unlockCost as number | undefined,
+    tvReady: Boolean(d.tvReady),
+    role: d.role as string | undefined,
+    delta: Number(d.delta ?? 0),
+  });
+  return sentence ?? auditMeta(log.action, locale).label;
 }

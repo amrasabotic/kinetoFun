@@ -5,6 +5,8 @@
 
 import { useId, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { INTL_LOCALE, type Locale } from "@/lib/i18n";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export interface SeriesPoint {
   /** ISO date (YYYY-MM-DD) or any label. */
@@ -22,10 +24,10 @@ function niceMax(max: number): number {
   return Math.ceil(max / pow) * pow;
 }
 
-function shortDate(iso: string): string {
+function shortDate(iso: string, locale: Locale): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString(INTL_LOCALE[locale], { month: "short", day: "numeric" });
 }
 
 /** Smooth-ish area + line chart. */
@@ -41,6 +43,7 @@ export function AreaChart({
   valueLabel?: string;
 }) {
   const gid = useId().replace(/:/g, "");
+  const { locale, fmt } = useI18n();
   const [hover, setHover] = useState<number | null>(null);
 
   const { line, area, points, max } = useMemo(() => {
@@ -134,9 +137,9 @@ export function AreaChart({
 
       {/* x-axis labels (first / mid / last) */}
       <div className="mt-1 flex justify-between px-1 text-[10px] font-medium text-slate-400">
-        {data.length > 0 && <span>{shortDate(data[0]!.date)}</span>}
-        {data.length > 2 && <span>{shortDate(data[Math.floor(data.length / 2)]!.date)}</span>}
-        {data.length > 1 && <span>{shortDate(data[data.length - 1]!.date)}</span>}
+        {data.length > 0 && <span>{shortDate(data[0]!.date, locale)}</span>}
+        {data.length > 2 && <span>{shortDate(data[Math.floor(data.length / 2)]!.date, locale)}</span>}
+        {data.length > 1 && <span>{shortDate(data[data.length - 1]!.date, locale)}</span>}
       </div>
 
       {/* tooltip */}
@@ -149,10 +152,10 @@ export function AreaChart({
           }}
         >
           <div className="font-bold text-slate-900">
-            {points[hover]!.d.value.toLocaleString()}
+            {fmt.number(points[hover]!.d.value)}
             {valueLabel && <span className="ml-1 font-medium text-slate-400">{valueLabel}</span>}
           </div>
-          <div className="text-[10px] text-slate-400">{shortDate(points[hover]!.d.date)}</div>
+          <div className="text-[10px] text-slate-400">{shortDate(points[hover]!.d.date, locale)}</div>
         </div>
       )}
     </div>
@@ -168,6 +171,7 @@ export function BarList({
   color?: string;
 }) {
   const max = Math.max(1, ...data.map((d) => d.value));
+  const { fmt } = useI18n();
   return (
     <div className="space-y-3">
       {data.map((d, i) => (
@@ -175,7 +179,7 @@ export function BarList({
           <div className="mb-1 flex items-center justify-between gap-2 text-sm">
             <span className="truncate font-medium text-slate-700">{d.label}</span>
             <span className="shrink-0 text-xs font-semibold text-slate-500">
-              {d.value.toLocaleString()}
+              {fmt.number(d.value)}
               {d.sub && <span className="ml-1 text-slate-400">{d.sub}</span>}
             </span>
           </div>

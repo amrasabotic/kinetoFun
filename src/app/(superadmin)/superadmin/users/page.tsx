@@ -16,8 +16,8 @@ import {
   Ticket,
 } from "lucide-react";
 import { useSession } from "@/features/auth/session-context";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   Card,
   StatCard,
@@ -66,6 +66,8 @@ export default function UsersPage() {
   const [toDelete, setToDelete] = useState<AdminUser | null>(null);
   const [rewardsFor, setRewardsFor] = useState<AdminUser | null>(null);
   const [busy, setBusy] = useState(false);
+  const { t, fmt, serverText } = useI18n();
+  const u_ = t.adminUsers;
 
   async function load() {
     setLoading(true);
@@ -76,7 +78,7 @@ export default function UsersPage() {
       const json = await res.json();
       setUsers(json.users as AdminUser[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users.");
+      setError(serverText(err instanceof Error ? err.message : "Failed to load users."));
     } finally {
       setLoading(false);
     }
@@ -130,14 +132,14 @@ export default function UsersPage() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? "Failed to update role.");
+        throw new Error(j.error ?? u_.roleFailed);
       }
       setUsers((prev) =>
         prev.map((u) => (u.id === manage.id ? { ...u, role: role as AdminUser["role"] } : u)),
       );
       setManage(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update role.");
+      alert(err instanceof Error ? serverText(err.message) : u_.roleFailed);
     } finally {
       setBusy(false);
     }
@@ -155,7 +157,7 @@ export default function UsersPage() {
       setUsers((prev) => prev.filter((u) => u.id !== toDelete.id));
       setToDelete(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete user.");
+      alert(serverText(err instanceof Error ? err.message : "Failed to delete user."));
     } finally {
       setBusy(false);
     }
@@ -176,15 +178,15 @@ export default function UsersPage() {
         prev.map((usr) => (usr.id === u.id ? { ...usr, active: !u.active } : usr)),
       );
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update user.");
+      alert(serverText(err instanceof Error ? err.message : "Failed to update user."));
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">User Management</h2>
-        <p className="mt-1 text-sm text-slate-500">Manage accounts, roles, and access.</p>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">{u_.title}</h2>
+        <p className="mt-1 text-sm text-slate-500">{u_.subtitle}</p>
       </div>
 
       {/* Summary */}
@@ -199,9 +201,9 @@ export default function UsersPage() {
           ))
         ) : (
           <>
-            <StatCard tint="violet" icon={<UsersIcon className="h-5 w-5" />} value={summary.total} label="Total Users" />
-            <StatCard tint="sky" icon={<ShieldCheck className="h-5 w-5" />} value={summary.admins} label="Admins" />
-            <StatCard tint="emerald" icon={<UserPlus className="h-5 w-5" />} value={summary.newWeek} label="New This Week" />
+            <StatCard tint="violet" icon={<UsersIcon className="h-5 w-5" />} value={summary.total} label={t.adminDashboard.totalUsers} />
+            <StatCard tint="sky" icon={<ShieldCheck className="h-5 w-5" />} value={summary.admins} label={u_.admins} />
+            <StatCard tint="emerald" icon={<UserPlus className="h-5 w-5" />} value={summary.newWeek} label={u_.newWeek} />
           </>
         )}
       </div>
@@ -215,7 +217,7 @@ export default function UsersPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name or email…"
+              placeholder={u_.search}
               className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder-slate-400 transition focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             />
           </div>
@@ -225,10 +227,10 @@ export default function UsersPage() {
               value={roleFilter}
               onChange={(v) => setRoleFilter(v as RoleFilter)}
               options={[
-                { value: "all", label: "All roles" },
-                { value: "user", label: "Users" },
-                { value: "admin", label: "Admins" },
-                { value: "superadmin", label: "Superadmins" },
+                { value: "all", label: u_.allRoles },
+                { value: "user", label: u_.filterUsers },
+                { value: "admin", label: u_.admins },
+                { value: "superadmin", label: u_.superadmins },
               ]}
             />
             <Select
@@ -236,9 +238,9 @@ export default function UsersPage() {
               value={sort}
               onChange={(v) => setSort(v as SortKey)}
               options={[
-                { value: "newest", label: "Newest" },
-                { value: "oldest", label: "Oldest" },
-                { value: "name", label: "Name A–Z" },
+                { value: "newest", label: u_.newest },
+                { value: "oldest", label: u_.oldest },
+                { value: "name", label: u_.nameAz },
               ]}
             />
           </div>
@@ -252,11 +254,11 @@ export default function UsersPage() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<UsersIcon className="h-6 w-6" />}
-            title={query || roleFilter !== "all" ? "No matching users" : "No users yet"}
+            title={query || roleFilter !== "all" ? u_.noMatch : u_.none}
             description={
               query || roleFilter !== "all"
-                ? "Try adjusting your search or filters."
-                : "Accounts will appear here as people sign up."
+                ? u_.adjustFilters
+                : u_.noneHint
             }
           />
         ) : (
@@ -264,11 +266,11 @@ export default function UsersPage() {
             <table className="w-full text-left text-sm">
               <thead className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 <tr className="border-b border-slate-100">
-                  <th className="px-5 py-3 font-semibold">User</th>
-                  <th className="px-5 py-3 font-semibold">Role</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Tickets</th>
-                  <th className="px-5 py-3 font-semibold">Joined</th>
+                  <th className="px-5 py-3 font-semibold">{u_.colUser}</th>
+                  <th className="px-5 py-3 font-semibold">{u_.colRole}</th>
+                  <th className="px-5 py-3 font-semibold">{u_.colStatus}</th>
+                  <th className="px-5 py-3 font-semibold">{u_.colTickets}</th>
+                  <th className="px-5 py-3 font-semibold">{u_.colJoined}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -287,7 +289,7 @@ export default function UsersPage() {
                             <p className="truncate font-semibold text-slate-900">
                               {u.name}
                               {isSelf && (
-                                <span className="ml-2 text-[10px] font-medium text-slate-400">(you)</span>
+                                <span className="ml-2 text-[10px] font-medium text-slate-400">{t.leaderboard.table.you}</span>
                               )}
                             </p>
                             <p className="truncate text-xs text-slate-400">{u.email}</p>
@@ -298,26 +300,26 @@ export default function UsersPage() {
                         <Badge
                           tone={u.role === "superadmin" ? "violet" : u.role === "admin" ? "sky" : "slate"}
                         >
-                          {u.role}
+                          {u_.roles[u.role]}
                         </Badge>
                       </td>
                       <td className="px-5 py-3">
                         {u.active !== false ? (
                           <Badge tone="emerald">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Active
+                            {u_.active}
                           </Badge>
                         ) : (
                           <Badge tone="rose">
                             <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                            Suspended
+                            {u_.suspended}
                           </Badge>
                         )}
                       </td>
                       <td className="px-5 py-3 tabular-nums text-slate-500">
-                        {u.tickets === null ? "—" : u.tickets.toLocaleString()}
+                        {u.tickets === null ? "—" : fmt.number(u.tickets)}
                       </td>
-                      <td className="px-5 py-3 text-slate-500">{formatDate(u.createdAt)}</td>
+                      <td className="px-5 py-3 text-slate-500">{fmt.date(u.createdAt)}</td>
                       <td className="px-5 py-3 text-right">
                         {isSelf ? (
                           <span className="text-xs text-slate-300">—</span>
@@ -325,29 +327,29 @@ export default function UsersPage() {
                           <ActionMenu
                             items={[
                               {
-                                label: "Tickets & rewards",
+                                label: u_.rewards,
                                 icon: <Ticket className="h-4 w-4" />,
                                 onClick: () => setRewardsFor(u),
                               },
                               {
-                                label: "Edit role",
+                                label: u_.editRole,
                                 icon: <Pencil className="h-4 w-4" />,
                                 onClick: () => setManage(u),
                               },
                               u.active !== false
                                 ? {
-                                    label: "Suspend user",
+                                    label: u_.suspend,
                                     icon: <UserX className="h-4 w-4" />,
                                     danger: true,
                                     onClick: () => toggleActive(u),
                                   }
                                 : {
-                                    label: "Reactivate user",
+                                    label: u_.reactivate,
                                     icon: <UserCheck className="h-4 w-4" />,
                                     onClick: () => toggleActive(u),
                                   },
                               {
-                                label: "Delete user",
+                                label: u_.delete,
                                 icon: <Trash2 className="h-4 w-4" />,
                                 danger: true,
                                 onClick: () => setToDelete(u),
@@ -403,14 +405,14 @@ export default function UsersPage() {
         open={!!toDelete}
         danger
         icon={<Trash2 className="h-5 w-5" />}
-        title="Delete user?"
+        title={u_.deleteTitle}
         description={
           <>
-            This permanently deletes <span className="font-semibold text-slate-700">{toDelete?.email}</span>{" "}
-            and all of their scores and sessions. This can&apos;t be undone.
+            {u_.deleteBefore} <span className="font-semibold text-slate-700">{toDelete?.email}</span>{" "}
+            {u_.deleteAfter}
           </>
         }
-        confirmLabel="Delete user"
+        confirmLabel={u_.delete}
         busy={busy}
         onConfirm={confirmDelete}
         onCancel={() => setToDelete(null)}
@@ -431,6 +433,8 @@ function RoleDialog({
   onSave: (role: string) => void;
 }) {
   const [role, setRole] = useState(user.role);
+  const { t } = useI18n();
+  const u_ = t.adminUsers;
   return (
     <div role="dialog" aria-modal className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={onCancel} />
@@ -444,7 +448,7 @@ function RoleDialog({
         </div>
 
         <div className="mt-5">
-          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Role</label>
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">{u_.colRole}</label>
           <div className="mt-2 grid grid-cols-3 gap-2">
             {ROLES.map((r) => (
               <button
@@ -457,7 +461,7 @@ function RoleDialog({
                     : "border-slate-200 text-slate-600 hover:bg-slate-50",
                 )}
               >
-                {r}
+                {u_.roles[r]}
               </button>
             ))}
           </div>
@@ -465,10 +469,10 @@ function RoleDialog({
 
         <div className="mt-6 flex justify-end gap-3">
           <AdminButton variant="secondary" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t.common.actions.cancel}
           </AdminButton>
           <AdminButton onClick={() => onSave(role)} disabled={busy || role === user.role}>
-            {busy ? "Saving…" : "Save role"}
+            {busy ? t.common.actions.saving : u_.saveRole}
           </AdminButton>
         </div>
       </div>

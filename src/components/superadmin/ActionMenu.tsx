@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 export interface ActionItem {
   label: string;
@@ -12,7 +13,9 @@ export interface ActionItem {
 }
 
 /** A row action "⋯" menu with outside-click / Escape dismissal. */
-export function ActionMenu({ items, label = "Actions" }: { items: ActionItem[]; label?: string }) {
+export function ActionMenu({ items, label: labelProp }: { items: ActionItem[]; label?: string }) {
+  const fallback = useI18n().t.admin.ui.actions;
+  const label = labelProp ?? fallback;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

@@ -10,6 +10,17 @@ import { settings } from "./messages/settings";
 import { shop } from "./messages/shop";
 import { legal } from "./messages/legal";
 import { tv } from "./messages/tv";
+import { admin } from "./messages/admin";
+import { adminDashboard } from "./messages/admin-dashboard";
+import { adminUsers } from "./messages/admin-users";
+import { adminCategories } from "./messages/admin-categories";
+import { adminMedia } from "./messages/admin-media";
+import { adminGames } from "./messages/admin-games";
+import { adminAnalytics } from "./messages/admin-analytics";
+import { adminLeaderboards } from "./messages/admin-leaderboards";
+import { adminSubscriptions } from "./messages/admin-subscriptions";
+import { adminSettings } from "./messages/admin-settings";
+import { adminAudit } from "./messages/admin-audit";
 
 const areas = {
   common,
@@ -23,6 +34,17 @@ const areas = {
   shop,
   legal,
   tv,
+  admin,
+  adminDashboard,
+  adminUsers,
+  adminCategories,
+  adminMedia,
+  adminGames,
+  adminAnalytics,
+  adminLeaderboards,
+  adminSubscriptions,
+  adminSettings,
+  adminAudit,
 };
 
 type Areas = typeof areas;

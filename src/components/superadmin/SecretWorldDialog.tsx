@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Lock } from "lucide-react";
 import type { Game } from "@/types";
 import { AdminButton } from "@/components/superadmin/ui";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
 /** Set or clear the ticket price that makes a game a secret world. */
 export function SecretWorldDialog({
@@ -18,6 +19,8 @@ export function SecretWorldDialog({
   const [price, setPrice] = useState(game.unlockCost ? String(game.unlockCost) : "300");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t, serverText } = useI18n();
+  const sw = t.adminMedia.secretWorld;
 
   async function save(unlockCost: number | null) {
     setBusy(true);
@@ -32,7 +35,7 @@ export function SecretWorldDialog({
       if (!res.ok || !json.game) throw new Error(json.error ?? "Failed to update the game.");
       onSaved(json.game);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update the game.");
+      setError(serverText(err instanceof Error ? err.message : "Failed to update the game."));
     } finally {
       setBusy(false);
     }
@@ -50,21 +53,19 @@ export function SecretWorldDialog({
             <Lock className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="truncate text-base font-bold text-slate-900">Secret world: {game.title}</h2>
+            <h2 className="truncate text-base font-bold text-slate-900">{sw.title(game.title)}</h2>
             <p className="text-sm text-slate-400">
-              {game.unlockCost ? `Currently ${game.unlockCost} tickets` : "Currently free to play"}
+              {game.unlockCost ? sw.currently(game.unlockCost) : sw.currentlyFree}
             </p>
           </div>
         </div>
 
         <p className="mt-4 text-sm text-slate-500">
-          New players must unlock a secret world with tickets before playing. Anyone who has
-          already played this game, or has unlocked it, keeps access. A regular player earns
-          roughly 20–40 tickets a day.
+          {sw.body}
         </p>
 
         <label className="mt-4 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-          Price in tickets
+          {sw.price}
         </label>
         <input
           type="number"
@@ -79,14 +80,14 @@ export function SecretWorldDialog({
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           {game.unlockCost && (
             <AdminButton variant="secondary" onClick={() => save(null)} disabled={busy}>
-              Make free again
+              {sw.makeFree}
             </AdminButton>
           )}
           <AdminButton variant="secondary" onClick={onClose} disabled={busy}>
-            Cancel
+            {t.common.actions.cancel}
           </AdminButton>
           <AdminButton onClick={() => save(n)} disabled={busy || !valid || n === game.unlockCost}>
-            {busy ? "Saving…" : game.unlockCost ? "Update price" : "Make secret world"}
+            {busy ? t.common.actions.saving : game.unlockCost ? sw.update : sw.make}
           </AdminButton>
         </div>
       </div>

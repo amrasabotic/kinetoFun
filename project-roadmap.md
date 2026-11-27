@@ -1,7 +1,7 @@
 # KinetoFun — Roadmap
 
 > Tracks execution progress. Update whenever a task changes state.
-> Last updated: 2026-10-30 (Bubble Bath Bakery — ADR-078)
+> Last updated: 2026-11-27 (Albanian translation — ADR-092)
 
 ---
 
@@ -111,6 +111,7 @@ _None yet._
 
 ## Done
 
+- [x] **[2026-11-27] Platform in Albanian (ADR-092).** English and Albanian for every platform screen, TV screens and the admin console, with a language picker; games stay English. Branch `feature/albanian-translation`, PR into `dev`. **Next:** a native speaker reviews the Albanian wording; check the TV picker by hand dwell on the Pi; decide whether the Pi Wi-Fi screens should follow later (left English on purpose).
 - [x] **[2026-11-02] Whack-a-Mole rebuilt (ADR-085).** Steady aim, reliable fist smash, 10 levels. **Next:** try the fist smash with a live hand on the Pi, apply `supabase/seed_whack_a_mole_v2.sql`.
 - [x] **[2026-11-02] Mix It Up rebuilt as a potion shop (ADR-086).** Colour-mixing orders, 10 days. **Next:** try grab and drop with a live hand on the Pi, apply `supabase/seed_mix_it_up_v2.sql`.
 - [x] **[2026-11-02] Traffic Controller rebuilt (ADR-087).** Reliable point-and-fist control, 10 shifts. **Next:** try with a live hand on the Pi, apply `supabase/seed_traffic_controller_v2.sql`.

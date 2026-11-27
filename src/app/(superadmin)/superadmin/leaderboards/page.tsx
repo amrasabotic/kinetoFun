@@ -9,8 +9,8 @@ import {
   ChevronRight,
   RotateCcw,
 } from "lucide-react";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   Card,
   StatCard,
@@ -68,6 +68,8 @@ export default function LeaderboardsPage() {
   const [toDeleteScore, setToDeleteScore] = useState<{ id: string; gameId: string; label: string } | null>(null);
   const [resetTarget, setResetTarget] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { t, fmt, serverText } = useI18n();
+  const lb = t.adminLeaderboards;
 
   // Load games list on mount
   useEffect(() => {
@@ -97,9 +99,9 @@ export default function LeaderboardsPage() {
         setTotal(j.total ?? 0);
         setTotalPages(j.totalPages ?? 1);
       })
-      .catch((e) => setError(typeof e === "string" ? e : "Failed to load leaderboard."))
+      .catch((e) => setError(serverText(typeof e === "string" ? e : "Failed to load leaderboard.")))
       .finally(() => setLoading(false));
-  }, [selectedGame, page]);
+  }, [selectedGame, page, serverText]);
 
   function handleGameChange(gameId: string) {
     setSelectedGame(gameId);
@@ -162,7 +164,7 @@ export default function LeaderboardsPage() {
       }
       setToDeleteScore(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete score.");
+      alert(serverText(err instanceof Error ? err.message : "Failed to delete score."));
     } finally {
       setBusy(false);
     }
@@ -185,27 +187,27 @@ export default function LeaderboardsPage() {
       setExpanded(null);
       setResetTarget(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to reset leaderboard.");
+      alert(serverText(err instanceof Error ? err.message : "Failed to reset leaderboard."));
     } finally {
       setBusy(false);
     }
   }
 
-  const selectedGameTitle = games.find((g) => g.id === selectedGame)?.title ?? "this game";
+  const selectedGameTitle = games.find((g) => g.id === selectedGame)?.title ?? lb.thisGame;
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">Leaderboard Moderation</h2>
-          <p className="mt-1 text-sm text-slate-500">Remove cheated or test scores from game leaderboards.</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">{lb.title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{lb.subtitle}</p>
         </div>
       </div>
 
       {/* Game selector */}
       <Card className="p-5">
         <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-          Select Game
+          {lb.selectGame}
         </label>
         <div className="relative mt-2 max-w-sm">
           <select
@@ -214,7 +216,7 @@ export default function LeaderboardsPage() {
             disabled={gamesLoading}
             className="h-10 w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20 disabled:opacity-50"
           >
-            <option value="">{gamesLoading ? "Loading games…" : "Choose a game…"}</option>
+            <option value="">{gamesLoading ? t.games.library.loading : lb.chooseGame}</option>
             {games.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.title}
@@ -229,8 +231,8 @@ export default function LeaderboardsPage() {
       {!selectedGame && (
         <EmptyState
           icon={<Trophy className="h-6 w-6" />}
-          title="Select a game"
-          description="Choose a game above to view and moderate its leaderboard."
+          title={lb.selectTitle}
+          description={lb.selectHint}
         />
       )}
 
@@ -243,20 +245,20 @@ export default function LeaderboardsPage() {
               tint="violet"
               icon={<Trophy className="h-5 w-5" />}
               value={total}
-              label="Players on Board"
+              label={lb.players}
             />
             <StatCard
               tint="sky"
               icon={<Trophy className="h-5 w-5" />}
               value={players.reduce((s, p) => s + p.totalSubmissions, 0)}
-              label="Scores (this page)"
+              label={lb.scoresPage}
             />
           </div>
 
           <Card>
             <div className="flex items-center justify-between border-b border-slate-100 p-4">
               <p className="text-sm font-medium text-slate-700">
-                {total} player{total !== 1 ? "s" : ""}
+                {t.profile.players(total)}
               </p>
               <AdminButton
                 variant="danger"
@@ -264,7 +266,7 @@ export default function LeaderboardsPage() {
                 disabled={total === 0}
               >
                 <RotateCcw className="h-4 w-4" />
-                Reset Leaderboard
+                {lb.reset}
               </AdminButton>
             </div>
 
@@ -275,8 +277,8 @@ export default function LeaderboardsPage() {
             ) : players.length === 0 ? (
               <EmptyState
                 icon={<Trophy className="h-6 w-6" />}
-                title="No scores yet"
-                description="No scores have been submitted for this game."
+                title={t.adminAnalytics.noScores}
+                description={lb.noScoresHint}
               />
             ) : (
               <div className="overflow-x-auto">
@@ -284,11 +286,11 @@ export default function LeaderboardsPage() {
                   <thead className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                     <tr className="border-b border-slate-100">
                       <th className="w-8 px-3 py-3" />
-                      <th className="px-5 py-3 font-semibold">Rank</th>
-                      <th className="px-5 py-3 font-semibold">Player</th>
-                      <th className="px-5 py-3 font-semibold">Best Score</th>
-                      <th className="px-5 py-3 font-semibold">Submissions</th>
-                      <th className="px-5 py-3 font-semibold">Last Played</th>
+                      <th className="px-5 py-3 font-semibold">{t.leaderboard.table.rank}</th>
+                      <th className="px-5 py-3 font-semibold">{t.leaderboard.table.player}</th>
+                      <th className="px-5 py-3 font-semibold">{t.profile.bestScore}</th>
+                      <th className="px-5 py-3 font-semibold">{lb.submissions}</th>
+                      <th className="px-5 py-3 font-semibold">{lb.lastPlayed}</th>
                       <th className="px-5 py-3" />
                     </tr>
                   </thead>
@@ -304,7 +306,7 @@ export default function LeaderboardsPage() {
                               <button
                                 onClick={() => toggleExpand(p.userId)}
                                 className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                                title={isExpanded ? "Collapse" : "Expand scores"}
+                                title={isExpanded ? lb.collapse : lb.expand}
                               >
                                 {isExpanded ? (
                                   <ChevronUp className="h-4 w-4" />
@@ -326,24 +328,24 @@ export default function LeaderboardsPage() {
                               </div>
                             </td>
                             <td className="px-5 py-3 font-semibold text-slate-900">
-                              {p.bestScore.toLocaleString()}
+                              {fmt.number(p.bestScore)}
                             </td>
                             <td className="px-5 py-3 text-slate-500">{p.totalSubmissions}</td>
                             <td className="px-5 py-3 text-slate-500">
-                              {p.lastPlayed ? formatDate(p.lastPlayed) : "—"}
+                              {p.lastPlayed ? fmt.date(p.lastPlayed) : "—"}
                             </td>
                             <td className="px-5 py-3 text-right">
                               <ActionMenu
                                 items={[
                                   {
-                                    label: "Delete best score",
+                                    label: lb.deleteBest,
                                     icon: <Trash2 className="h-4 w-4" />,
                                     danger: true,
                                     onClick: () =>
                                       setToDeleteScore({
                                         id: p.bestScoreId,
                                         gameId: selectedGame,
-                                        label: `best score (${p.bestScore.toLocaleString()}) for ${p.userName}`,
+                                        label: lb.bestLabel(fmt.number(p.bestScore), p.userName),
                                       }),
                                   },
                                 ]}
@@ -361,14 +363,14 @@ export default function LeaderboardsPage() {
                                     ))}
                                   </div>
                                 ) : expandedScores.length === 0 ? (
-                                  <p className="py-2 text-sm text-slate-400">No scores found.</p>
+                                  <p className="py-2 text-sm text-slate-400">{lb.noneFound}</p>
                                 ) : (
                                   <div className="overflow-hidden rounded-lg border border-slate-100 bg-white">
                                     <table className="w-full text-sm">
                                       <thead>
                                         <tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                                          <th className="px-4 py-2 text-left">Score</th>
-                                          <th className="px-4 py-2 text-left">Date</th>
+                                          <th className="px-4 py-2 text-left">{t.leaderboard.table.score}</th>
+                                          <th className="px-4 py-2 text-left">{lb.date}</th>
                                           <th className="px-4 py-2" />
                                         </tr>
                                       </thead>
@@ -382,13 +384,13 @@ export default function LeaderboardsPage() {
                                             )}
                                           >
                                             <td className="px-4 py-2 font-medium text-slate-900">
-                                              {s.score.toLocaleString()}
+                                              {fmt.number(s.score)}
                                               {s.id === p.bestScoreId && (
-                                                <Badge tone="amber" className="ml-2 text-[10px]">best</Badge>
+                                                <Badge tone="amber" className="ml-2 text-[10px]">{lb.best}</Badge>
                                               )}
                                             </td>
                                             <td className="px-4 py-2 text-slate-500">
-                                              {formatDate(s.achievedAt)}
+                                              {fmt.date(s.achievedAt)}
                                             </td>
                                             <td className="px-4 py-2 text-right">
                                               <button
@@ -396,11 +398,11 @@ export default function LeaderboardsPage() {
                                                   setToDeleteScore({
                                                     id: s.id,
                                                     gameId: selectedGame,
-                                                    label: `score of ${s.score.toLocaleString()} for ${p.userName}`,
+                                                    label: lb.scoreLabel(fmt.number(s.score), p.userName),
                                                   })
                                                 }
                                                 className="rounded-md p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
-                                                title="Delete this score"
+                                                title={lb.deleteThis}
                                               >
                                                 <Trash2 className="h-3.5 w-3.5" />
                                               </button>
@@ -434,15 +436,15 @@ export default function LeaderboardsPage() {
         open={!!toDeleteScore}
         danger
         icon={<Trash2 className="h-5 w-5" />}
-        title="Delete score?"
+        title={lb.deleteTitle}
         description={
           <>
-            This permanently removes the{" "}
-            <span className="font-semibold text-slate-700">{toDeleteScore?.label}</span>.
-            This can&apos;t be undone.
+            {lb.removesThe}{" "}
+            <span className="font-semibold text-slate-700">{toDeleteScore?.label}</span>.{" "}
+            {t.adminCategories.cantUndo}
           </>
         }
-        confirmLabel="Delete score"
+        confirmLabel={lb.deleteScore}
         busy={busy}
         onConfirm={confirmDeleteScore}
         onCancel={() => setToDeleteScore(null)}
@@ -453,14 +455,14 @@ export default function LeaderboardsPage() {
         open={resetTarget}
         danger
         icon={<RotateCcw className="h-5 w-5" />}
-        title="Reset leaderboard?"
+        title={lb.resetTitle}
         description={
           <>
-            This permanently deletes <span className="font-semibold text-slate-700">all scores</span> for{" "}
-            <span className="font-semibold text-slate-700">{selectedGameTitle}</span>. This can&apos;t be undone.
+            {t.adminUsers.deleteBefore} <span className="font-semibold text-slate-700">{lb.allScores}</span> {lb.forGame}{" "}
+            <span className="font-semibold text-slate-700">{selectedGameTitle}</span>. {t.adminCategories.cantUndo}
           </>
         }
-        confirmLabel="Reset leaderboard"
+        confirmLabel={lb.resetConfirm}
         busy={busy}
         onConfirm={confirmReset}
         onCancel={() => setResetTarget(false)}
